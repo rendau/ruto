@@ -13,7 +13,7 @@ import (
 	_ "github.com/samber/lo"
 
 	"github.com/rendau/ruto/internal/config"
-	serviceGwServerHttpP "github.com/rendau/ruto/internal/service/gw_server/http"
+	serviceGwServerHttpP "github.com/rendau/ruto/internal/service/gw/server/http"
 )
 
 type App struct {

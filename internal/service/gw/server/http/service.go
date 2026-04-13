@@ -24,8 +24,6 @@ func New(port int) *Service {
 		ReadHeaderTimeout: 4 * time.Second,
 	}
 
-	fmt.Println(server.ReadTimeout)
-
 	return &Service{
 		handlerWrapper: handlerWrapper,
 		server:         server,
