@@ -2,10 +2,8 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,12 +13,13 @@ import (
 	_ "github.com/samber/lo"
 
 	"github.com/rendau/ruto/internal/config"
+	serviceGwServerHttpP "github.com/rendau/ruto/internal/service/gw_server/http"
 )
 
 type App struct {
 	pgpool *pgxpool.Pool
 
-	httpServer *http.Server
+	serviceGwServerHttp *serviceGwServerHttpP.Service
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -44,14 +43,8 @@ func (a *App) Init() {
 	a.pgpool, err = initPgPool(config.Conf.PgDsn)
 	errCheck(err, "pgpool init")
 
-	// http-server
-	a.httpServer = &http.Server{
-		Addr:              ":" + config.Conf.HttpPort,
-		Handler:           http.DefaultServeMux,
-		ReadHeaderTimeout: 2 * time.Second,
-		ReadTimeout:       time.Minute,
-		MaxHeaderBytes:    300 * 1024,
-	}
+	// gw-server-http
+	a.serviceGwServerHttp = serviceGwServerHttpP.New(config.Conf.HttpPort)
 }
 
 func (a *App) PreStartHook() {
@@ -61,16 +54,8 @@ func (a *App) PreStartHook() {
 func (a *App) Start() {
 	slog.Info("Starting")
 
-	// http-gw server
-	{
-		go func() {
-			err := a.httpServer.ListenAndServe()
-			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				// errCheck(err, "http-server stopped")
-			}
-		}()
-		slog.Info("http-server started " + a.httpServer.Addr)
-	}
+	// gw-server-http
+	a.serviceGwServerHttp.Run()
 }
 
 func (a *App) Listen() {
@@ -87,13 +72,11 @@ func (a *App) Stop() {
 	// stop context
 	a.ctxCancel()
 
-	// http-gw server
+	// // gw-server-http
 	{
-		ctx, ctxCancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer ctxCancel()
-
-		if err := a.httpServer.Shutdown(ctx); err != nil {
-			slog.Error("http-server shutdown error", "error", err)
+		err := a.serviceGwServerHttp.Stop(15 * time.Second)
+		if err != nil {
+			slog.Error("http-server Stop error", "error", err)
 			a.exitCode = 1
 		}
 	}
