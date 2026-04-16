@@ -9,6 +9,7 @@ type Root struct {
 	Timeout       RootTimeout
 	Cors          RootCors
 	Jwt           []RootJwt
+	Apps          []App
 }
 
 type RootTimeout struct {
