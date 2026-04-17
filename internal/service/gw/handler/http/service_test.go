@@ -11,7 +11,7 @@ import (
 	"github.com/rendau/ruto/internal/model/config"
 )
 
-func TestServiceSetConfig_ProxyByConfig(t *testing.T) {
+func TestServiceBuild_ProxyByConfig(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Backend-Method", r.Method)
 		w.Header().Set("X-Backend-Path", r.URL.Path)
@@ -21,7 +21,7 @@ func TestServiceSetConfig_ProxyByConfig(t *testing.T) {
 	defer backend.Close()
 
 	s := New()
-	err := s.SetConfig(&config.Root{
+	err := s.Build(&config.Root{
 		PublicBaseUrl: "https://public.example",
 		Apps: []config.App{
 			{
@@ -45,7 +45,7 @@ func TestServiceSetConfig_ProxyByConfig(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("SetConfig() error = %v", err)
+		t.Fatalf("Build() error = %v", err)
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/users?q=1", nil)
@@ -67,14 +67,14 @@ func TestServiceSetConfig_ProxyByConfig(t *testing.T) {
 	}
 }
 
-func TestServiceSetConfig_IPValidationMiddleware(t *testing.T) {
+func TestServiceBuild_IPValidationMiddleware(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer backend.Close()
 
 	s := New()
-	err := s.SetConfig(&config.Root{
+	err := s.Build(&config.Root{
 		PublicBaseUrl: "https://public.example",
 		Apps: []config.App{
 			{
@@ -101,7 +101,7 @@ func TestServiceSetConfig_IPValidationMiddleware(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("SetConfig() error = %v", err)
+		t.Fatalf("Build() error = %v", err)
 	}
 
 	t.Run("forbidden for unknown ip", func(t *testing.T) {
@@ -129,14 +129,14 @@ func TestServiceSetConfig_IPValidationMiddleware(t *testing.T) {
 	})
 }
 
-func TestServiceSetConfig_CorsPreflight(t *testing.T) {
+func TestServiceBuild_CorsPreflight(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer backend.Close()
 
 	s := New()
-	err := s.SetConfig(&config.Root{
+	err := s.Build(&config.Root{
 		PublicBaseUrl: "https://public.example",
 		Cors: config.RootCors{
 			Enabled:          true,
@@ -168,7 +168,7 @@ func TestServiceSetConfig_CorsPreflight(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("SetConfig() error = %v", err)
+		t.Fatalf("Build() error = %v", err)
 	}
 
 	req := httptest.NewRequest(http.MethodOptions, "/api/users", nil)
@@ -193,9 +193,9 @@ func TestServiceSetConfig_CorsPreflight(t *testing.T) {
 	}
 }
 
-func TestServiceSetConfig_DuplicateRoute(t *testing.T) {
+func TestServiceBuild_DuplicateRoute(t *testing.T) {
 	s := New()
-	err := s.SetConfig(&config.Root{
+	err := s.Build(&config.Root{
 		PublicBaseUrl: "https://public.example",
 		Apps: []config.App{
 			{
@@ -244,7 +244,7 @@ func TestServiceSetConfig_DuplicateRoute(t *testing.T) {
 	}
 }
 
-func TestServiceSetConfig_TimeoutMiddleware(t *testing.T) {
+func TestServiceBuild_TimeoutMiddleware(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(30 * time.Millisecond)
 		_, _ = io.WriteString(w, "ok")
@@ -252,7 +252,7 @@ func TestServiceSetConfig_TimeoutMiddleware(t *testing.T) {
 	defer backend.Close()
 
 	s := New()
-	err := s.SetConfig(&config.Root{
+	err := s.Build(&config.Root{
 		PublicBaseUrl: "https://public.example",
 		Timeout:       config.RootTimeout{Global: 5 * time.Millisecond},
 		Apps: []config.App{
@@ -277,7 +277,7 @@ func TestServiceSetConfig_TimeoutMiddleware(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("SetConfig() error = %v", err)
+		t.Fatalf("Build() error = %v", err)
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/users", nil)
@@ -288,78 +288,4 @@ func TestServiceSetConfig_TimeoutMiddleware(t *testing.T) {
 	if got, want := rw.Code, http.StatusServiceUnavailable; got != want {
 		t.Fatalf("unexpected response status: got %d want %d", got, want)
 	}
-}
-
-func TestServiceValidate(t *testing.T) {
-	s := New()
-
-	t.Run("nil config", func(t *testing.T) {
-		err := s.Validate(nil)
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		if got, want := err.Error(), "config is nil"; got != want {
-			t.Fatalf("unexpected error: got %q want %q", got, want)
-		}
-	})
-
-	t.Run("invalid root config", func(t *testing.T) {
-		err := s.Validate(&config.Root{})
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		if got, want := err.Error(), "config validate: public_base_url: must not be empty"; got != want {
-			t.Fatalf("unexpected error: got %q want %q", got, want)
-		}
-	})
-
-	t.Run("duplicate route", func(t *testing.T) {
-		err := s.Validate(&config.Root{
-			PublicBaseUrl: "https://public.example",
-			Apps: []config.App{
-				{
-					Id:         "app-1",
-					PublicPath: "api",
-					Backend: config.AppBackend{
-						Host: "http://backend.local",
-						Path: "svc",
-					},
-					Endpoints: []config.Endpoint{
-						{
-							Id:     "ep-1",
-							Method: http.MethodGet,
-							Path:   "users",
-							Backend: config.EndpointBackend{
-								Path: "users",
-							},
-						},
-					},
-				},
-				{
-					Id:         "app-2",
-					PublicPath: "api",
-					Backend: config.AppBackend{
-						Host: "http://backend.local",
-						Path: "svc",
-					},
-					Endpoints: []config.Endpoint{
-						{
-							Id:     "ep-2",
-							Method: http.MethodGet,
-							Path:   "users",
-							Backend: config.EndpointBackend{
-								Path: "users",
-							},
-						},
-					},
-				},
-			},
-		})
-		if err == nil {
-			t.Fatal("expected error")
-		}
-		if !strings.Contains(err.Error(), "config build handler: duplicate route") {
-			t.Fatalf("unexpected error: %v", err)
-		}
-	})
 }

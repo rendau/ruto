@@ -1,69 +1,53 @@
 package http
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
-	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
-	"sync/atomic"
+	"time"
 
 	"github.com/rendau/ruto/internal/model/config"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 )
 
 type Service struct {
-	handlerStore atomic.Pointer[handlerHolderT]
-}
-
-type handlerHolderT struct {
 	h http.Handler
 }
 
 func New() *Service {
-	s := &Service{}
-	s.handlerStore.Store(&handlerHolderT{h: http.NotFoundHandler()})
-	return s
+	return &Service{
+		h: http.NotFoundHandler(),
+	}
 }
 
-func (s *Service) SetConfig(conf *config.Root) error {
-	if err := conf.Validate(); err != nil {
-		return fmt.Errorf("config validate: %w", err)
-	}
+func (s *Service) Build(conf *config.Root) error {
+	conf.Normalize()
 
-	h, err := buildHandler(conf)
+	var err error
+	var h http.Handler
+
+	err = conf.Validate()
 	if err != nil {
-		return err
-	}
-
-	s.handlerStore.Store(&handlerHolderT{h: h})
-	return nil
-}
-
-func (s *Service) Validate(conf *config.Root) error {
-	if err := conf.Validate(); err != nil {
 		return fmt.Errorf("config validate: %w", err)
 	}
 
-	if _, err := buildHandler(conf); err != nil {
-		return fmt.Errorf("config build handler: %w", err)
+	h, err = buildHandler(conf)
+	if err != nil {
+		return fmt.Errorf("buildHandler: %w", err)
 	}
+
+	s.h = h
 
 	return nil
-}
-
-func (s *Service) Handler() http.Handler {
-	h := s.handlerStore.Load()
-	if h == nil || h.h == nil {
-		return http.NotFoundHandler()
-	}
-	return h.h
 }
 
 func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.Handler().ServeHTTP(w, r)
+	s.h.ServeHTTP(w, r)
 }
 
 func buildHandler(conf *config.Root) (http.Handler, error) {
@@ -71,17 +55,13 @@ func buildHandler(conf *config.Root) (http.Handler, error) {
 
 	routeToEndpoint := make(map[string]string)
 
-	for appIdx := range conf.Apps {
-		app := conf.Apps[appIdx]
-
+	for _, app := range conf.Apps {
 		backendBaseURL, err := parseBackendHost(app.Backend.Host)
 		if err != nil {
-			return nil, fmt.Errorf("apps[%d].backend.host: %w", appIdx, err)
+			return nil, fmt.Errorf("apps.backend.host: %s %w", app.Backend.Host, err)
 		}
 
-		for endpointIdx := range app.Endpoints {
-			endpoint := app.Endpoints[endpointIdx]
-
+		for _, endpoint := range app.Endpoints {
 			routePath := joinPath(app.PublicPath, endpoint.Path)
 			pattern := endpoint.Method + " " + routePath
 
@@ -135,25 +115,52 @@ func joinPath(parts ...string) string {
 func newReverseProxyHandler(targetBaseURL *url.URL, backendPath, endpointID string) http.Handler {
 	targetScheme := targetBaseURL.Scheme
 	targetHost := targetBaseURL.Host
-	targetRawQuery := targetBaseURL.RawQuery
 
 	proxy := &httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			req.URL.Scheme = targetScheme
-			req.URL.Host = targetHost
-			req.URL.Path = backendPath
-			req.URL.RawPath = ""
-			req.URL.RawQuery = mergeRawQuery(targetRawQuery, req.URL.RawQuery)
-			req.Host = targetHost
+		// Director: func(req *http.Request) {
+		// 	req.URL.Scheme = targetScheme
+		// 	req.URL.Host = targetHost
+		// 	req.URL.Path = backendPath
+		// 	req.URL.RawPath = ""
+		// 	req.Host = targetHost
+		// },
+		// ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+		// 	slog.Error("reverse proxy request failed",
+		// 		"error", err,
+		// 		"endpoint_id", endpointID,
+		// 		"method", r.Method,
+		// 		"path", r.URL.Path,
+		// 	)
+		// 	http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
+		// },
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			DialContext: (&net.Dialer{
+				Timeout:   2 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			DisableCompression:  true,
+			TLSHandshakeTimeout: 2 * time.Second,
+			// ResponseHeaderTimeout: conf.TargetTimeout,
+			MaxIdleConnsPerHost: 20,
+		},
+		Rewrite: func(r *httputil.ProxyRequest) {
+			r.SetURL(conf.TargetUrl)
+			if len(conf.TargetHeaders) > 0 {
+				for k, v := range conf.TargetHeaders {
+					r.Out.Header.Add(k, v)
+				}
+			}
+			r.SetXForwarded()
+			if conf.TargetHost != "" {
+				r.Out.Host = conf.TargetHost
+			}
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			slog.Error("reverse proxy request failed",
-				"error", err,
-				"endpoint_id", endpointID,
-				"method", r.Method,
-				"path", r.URL.Path,
-			)
-			http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
+			if r.Context().Err() != nil {
+				return
+			}
+			w.WriteHeader(http.StatusBadGateway)
 		},
 	}
 
