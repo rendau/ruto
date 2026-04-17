@@ -22,14 +22,12 @@ func New() *Service {
 }
 
 func (s *Service) Build(conf *config.Root) error {
-	conf.Normalize()
-
 	var err error
 	var h http.Handler
 
-	err = conf.Validate()
+	err = conf.Normalize()
 	if err != nil {
-		return fmt.Errorf("config validate: %w", err)
+		return fmt.Errorf("config normalize: %w", err)
 	}
 
 	h, err = buildHandler(conf)
@@ -66,7 +64,7 @@ func buildHandler(conf *config.Root) (http.Handler, error) {
 			}
 
 			backendPath := joinPath(backendBaseURL.Path, app.Backend.Path, endpoint.Backend.Path)
-			endpointHandler := newReverseProxyHandler(backendBaseURL, backendPath, endpoint.Id)
+			endpointHandler := newProxy(conf, app)
 			endpointHandler = middleware.Chain(endpointHandler,
 				middleware.NewIPValidation(endpoint.IpValidation.AllowedIps),
 			)

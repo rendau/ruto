@@ -10,8 +10,8 @@ type Root struct {
 	PublicBaseUrl string
 	Timeout       RootTimeout
 	Cors          RootCors
-	Jwt           []RootJwt
-	Apps          []App
+	Jwt           []*RootJwt
+	Apps          []*App
 }
 
 type RootTimeout struct {

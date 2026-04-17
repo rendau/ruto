@@ -10,7 +10,7 @@ type App struct {
 	Id               string
 	PublicPathPrefix string
 	Backend          AppBackend
-	Endpoints        []Endpoint
+	Endpoints        []*Endpoint
 }
 
 type AppBackend struct {
@@ -27,9 +27,9 @@ func (m *App) Normalize() error {
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
 	}
-	for i := range m.Endpoints {
-		if err := m.Endpoints[i].Normalize(); err != nil {
-			return fmt.Errorf("endpoints[%d]: %w", i, err)
+	for _, endpoint := range m.Endpoints {
+		if err := endpoint.Normalize(); err != nil {
+			return fmt.Errorf("endpoints: %w", err)
 		}
 	}
 	return nil
