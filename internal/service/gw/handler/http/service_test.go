@@ -25,8 +25,8 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 		PublicBaseUrl: "https://public.example",
 		Apps: []config.App{
 			{
-				Id:         "users-app",
-				PublicPath: "api",
+				Id:               "users-app",
+				PublicPathPrefix: "api",
 				Backend: config.AppBackend{
 					Host: backend.URL,
 					Path: "svc",
@@ -78,8 +78,8 @@ func TestServiceBuild_IPValidationMiddleware(t *testing.T) {
 		PublicBaseUrl: "https://public.example",
 		Apps: []config.App{
 			{
-				Id:         "ip-app",
-				PublicPath: "api",
+				Id:               "ip-app",
+				PublicPathPrefix: "api",
 				Backend: config.AppBackend{
 					Host: backend.URL,
 					Path: "svc",
@@ -148,8 +148,8 @@ func TestServiceBuild_CorsPreflight(t *testing.T) {
 		},
 		Apps: []config.App{
 			{
-				Id:         "cors-app",
-				PublicPath: "api",
+				Id:               "cors-app",
+				PublicPathPrefix: "api",
 				Backend: config.AppBackend{
 					Host: backend.URL,
 					Path: "svc",
@@ -199,8 +199,8 @@ func TestServiceBuild_DuplicateRoute(t *testing.T) {
 		PublicBaseUrl: "https://public.example",
 		Apps: []config.App{
 			{
-				Id:         "app-1",
-				PublicPath: "api",
+				Id:               "app-1",
+				PublicPathPrefix: "api",
 				Backend: config.AppBackend{
 					Host: "http://example.local",
 					Path: "svc",
@@ -217,8 +217,8 @@ func TestServiceBuild_DuplicateRoute(t *testing.T) {
 				},
 			},
 			{
-				Id:         "app-2",
-				PublicPath: "api",
+				Id:               "app-2",
+				PublicPathPrefix: "api",
 				Backend: config.AppBackend{
 					Host: "http://example.local",
 					Path: "svc",
@@ -257,8 +257,8 @@ func TestServiceBuild_TimeoutMiddleware(t *testing.T) {
 		Timeout:       config.RootTimeout{Global: 5 * time.Millisecond},
 		Apps: []config.App{
 			{
-				Id:         "timeout-app",
-				PublicPath: "api",
+				Id:               "timeout-app",
+				PublicPathPrefix: "api",
 				Backend: config.AppBackend{
 					Host: backend.URL,
 					Path: "svc",

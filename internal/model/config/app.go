@@ -2,60 +2,48 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 )
 
 type App struct {
-	Id         string
-	PublicPath string
-	Backend    AppBackend
-	Endpoints  []Endpoint
+	Id               string
+	PublicPathPrefix string
+	Backend          AppBackend
+	Endpoints        []Endpoint
 }
 
 type AppBackend struct {
-	Host string
-	Path string
+	UrlStr string
+	Url    *url.URL
 }
 
-func (m *App) Normalize() {
+func (m *App) Normalize() error {
 	m.Id = strings.TrimSpace(m.Id)
-	m.PublicPath = strings.TrimPrefix(strings.TrimSpace(m.PublicPath), "/")
-
-	m.Backend.Normalize()
-	for i := range m.Endpoints {
-		m.Endpoints[i].Normalize()
+	m.PublicPathPrefix = strings.TrimPrefix(strings.TrimSpace(m.PublicPathPrefix), "/")
+	if err := validateNotEmpty(m.PublicPathPrefix); err != nil {
+		return fmt.Errorf("publicPathPrefix: %w", err)
 	}
-}
-
-func (m *AppBackend) Normalize() {
-	m.Host = strings.TrimSpace(m.Host)
-	m.Path = strings.TrimPrefix(strings.TrimSpace(m.Path), "/")
-}
-
-func (m *App) Validate() error {
-	if err := validateNotEmpty(m.Id); err != nil {
-		return fmt.Errorf("id: %w", err)
-	}
-	if err := validateNotEmpty(m.PublicPath); err != nil {
-		return fmt.Errorf("public_path: %w", err)
-	}
-	if err := m.Backend.Validate(); err != nil {
+	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
 	}
 	for i := range m.Endpoints {
-		if err := m.Endpoints[i].Validate(); err != nil {
+		if err := m.Endpoints[i].Normalize(); err != nil {
 			return fmt.Errorf("endpoints[%d]: %w", i, err)
 		}
 	}
 	return nil
 }
 
-func (m *AppBackend) Validate() error {
-	if err := validateNotEmpty(m.Host); err != nil {
-		return fmt.Errorf("host: %w", err)
+func (m *AppBackend) Normalize() error {
+	m.UrlStr = strings.TrimSpace(m.UrlStr)
+	err := validateNotEmpty(m.UrlStr)
+	if err != nil {
+		return fmt.Errorf("url: %w", err)
 	}
-	if err := validateNotEmpty(m.Path); err != nil {
-		return fmt.Errorf("path: %w", err)
+	m.Url, err = url.Parse(m.UrlStr)
+	if err != nil {
+		return fmt.Errorf("url: %w", err)
 	}
 	return nil
 }
