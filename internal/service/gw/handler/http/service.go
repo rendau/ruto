@@ -1,10 +1,8 @@
 package http
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/rendau/ruto/internal/model/config"
@@ -22,20 +20,15 @@ func New() *Service {
 }
 
 func (s *Service) Build(conf *config.Root) error {
-	var err error
-	var h http.Handler
-
-	err = conf.Normalize()
+	err := conf.Normalize()
 	if err != nil {
 		return fmt.Errorf("config normalize: %w", err)
 	}
 
-	h, err = buildHandler(conf)
+	s.h, err = buildHandler(conf)
 	if err != nil {
 		return fmt.Errorf("buildHandler: %w", err)
 	}
-
-	s.h = h
 
 	return nil
 }
@@ -50,10 +43,6 @@ func buildHandler(conf *config.Root) (http.Handler, error) {
 	routeToEndpoint := make(map[string]string)
 
 	for _, app := range conf.Apps {
-		backendBaseURL, err := parseBackendHost(app.Backend.Host)
-		if err != nil {
-			return nil, fmt.Errorf("apps.backend.host: %s %w", app.Backend.Host, err)
-		}
 
 		for _, endpoint := range app.Endpoints {
 			routePath := joinPath(app.PublicPathPrefix, endpoint.Path)
@@ -64,7 +53,7 @@ func buildHandler(conf *config.Root) (http.Handler, error) {
 			}
 
 			backendPath := joinPath(backendBaseURL.Path, app.Backend.Path, endpoint.Backend.Path)
-			endpointHandler := newProxy(conf, app)
+			endpointHandler := newProxy(app)
 			endpointHandler = middleware.Chain(endpointHandler,
 				middleware.NewIPValidation(endpoint.IpValidation.AllowedIps),
 			)
@@ -80,17 +69,6 @@ func buildHandler(conf *config.Root) (http.Handler, error) {
 	), nil
 }
 
-func parseBackendHost(rawHost string) (*url.URL, error) {
-	parsed, err := url.Parse(rawHost)
-	if err != nil {
-		return nil, err
-	}
-	if parsed.Scheme == "" || parsed.Host == "" {
-		return nil, errors.New("must include scheme and host")
-	}
-	return parsed, nil
-}
-
 func joinPath(parts ...string) string {
 	cleanParts := make([]string, 0, len(parts))
 	for _, part := range parts {
@@ -104,15 +82,4 @@ func joinPath(parts ...string) string {
 		return "/"
 	}
 	return "/" + strings.Join(cleanParts, "/")
-}
-
-func mergeRawQuery(baseQuery, requestQuery string) string {
-	switch {
-	case baseQuery == "":
-		return requestQuery
-	case requestQuery == "":
-		return baseQuery
-	default:
-		return baseQuery + "&" + requestQuery
-	}
 }

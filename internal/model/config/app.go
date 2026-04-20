@@ -45,5 +45,11 @@ func (m *AppBackend) Normalize() error {
 	if err != nil {
 		return fmt.Errorf("url: %w", err)
 	}
+	if m.Url.Scheme != "http" && m.Url.Scheme != "https" {
+		return fmt.Errorf("url: scheme must be http or https")
+	}
+	if m.Url.Host == "" {
+		return fmt.Errorf("url: host cannot be empty")
+	}
 	return nil
 }
