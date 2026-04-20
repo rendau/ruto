@@ -7,6 +7,7 @@ import (
 
 	"github.com/rendau/ruto/internal/model/config"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 )
 
 type Service struct {
@@ -40,26 +41,14 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func buildHandler(conf *config.Root) (http.Handler, error) {
 	mux := http.NewServeMux()
 
-	routeToEndpoint := make(map[string]string)
-
 	for _, app := range conf.Apps {
+		endpointHandler := proxy.NewProxy(app)
 
 		for _, endpoint := range app.Endpoints {
 			routePath := joinPath(app.PublicPathPrefix, endpoint.Path)
 			pattern := endpoint.Method + " " + routePath
 
-			if existingEndpointID, ok := routeToEndpoint[pattern]; ok {
-				return nil, fmt.Errorf("duplicate route %q for endpoints %q and %q", pattern, existingEndpointID, endpoint.Id)
-			}
-
-			backendPath := joinPath(backendBaseURL.Path, app.Backend.Path, endpoint.Backend.Path)
-			endpointHandler := newProxy(app)
-			endpointHandler = middleware.Chain(endpointHandler,
-				middleware.NewIPValidation(endpoint.IpValidation.AllowedIps),
-			)
-
 			mux.Handle(pattern, endpointHandler)
-			routeToEndpoint[pattern] = endpoint.Id
 		}
 	}
 

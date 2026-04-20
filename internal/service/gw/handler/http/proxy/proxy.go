@@ -1,4 +1,4 @@
-package http
+package proxy
 
 import (
 	"crypto/tls"
@@ -10,9 +10,7 @@ import (
 	"github.com/rendau/ruto/internal/model/config"
 )
 
-func newProxy(
-	app *config.App,
-) http.Handler {
+func NewProxy(app *config.App) http.Handler {
 	proxy := &httputil.ReverseProxy{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},

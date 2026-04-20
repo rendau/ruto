@@ -20,10 +20,11 @@ type AppBackend struct {
 
 func (m *App) Normalize() error {
 	m.Id = strings.TrimSpace(m.Id)
-	m.PublicPathPrefix = strings.TrimPrefix(strings.TrimSpace(m.PublicPathPrefix), "/")
+	m.PublicPathPrefix = strings.Trim(strings.TrimSpace(m.PublicPathPrefix), "/")
 	if err := validateNotEmpty(m.PublicPathPrefix); err != nil {
 		return fmt.Errorf("publicPathPrefix: %w", err)
 	}
+	m.PublicPathPrefix = "/" + m.PublicPathPrefix
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
 	}
