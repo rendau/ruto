@@ -36,14 +36,20 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(conf *config.Root) (http.Handler, error) {
+func buildHandler(conf *config.Root) (_ http.Handler, finalErr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			finalErr = fmt.Errorf("panic: %v", r)
+		}
+	}()
+
 	mux := http.NewServeMux()
 
 	for _, app := range conf.Apps {
-		endpointHandler := proxy.NewProxy(app)
+		appHandler := proxy.NewProxy(app)
 
 		for _, endpoint := range app.Endpoints {
-			mux.Handle(createRoute(app, endpoint), http.StripPrefix(app.PublicPathPrefix, endpointHandler))
+			mux.Handle(createRoute(app, endpoint), http.StripPrefix(app.PublicPathPrefix, appHandler))
 		}
 	}
 

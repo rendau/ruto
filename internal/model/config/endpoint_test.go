@@ -79,8 +79,11 @@ func TestEndpointBackendNormalize(t *testing.T) {
 	t.Run("error empty path", func(t *testing.T) {
 		m := EndpointBackend{Path: " / "}
 		err := m.Normalize()
-		if !errors.Is(err, errEmptyValue) {
-			t.Fatalf("Normalize() error = %v, want errEmptyValue", err)
+		if err != nil {
+			t.Fatalf("Normalize() error = %v", err)
+		}
+		if m.Path != "" {
+			t.Fatalf("Path = %q, want %q", m.Path, "")
 		}
 	})
 }

@@ -60,9 +60,6 @@ func (m *Endpoint) Normalize() error {
 
 func (m *EndpointBackend) Normalize() error {
 	m.Path = strings.TrimPrefix(strings.TrimSpace(m.Path), "/")
-	if err := validateNotEmpty(m.Path); err != nil {
-		return fmt.Errorf("path: %w", err)
-	}
 	return nil
 }
 
