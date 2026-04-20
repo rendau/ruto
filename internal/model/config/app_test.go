@@ -13,7 +13,7 @@ func TestAppNormalize(t *testing.T) {
 			Backend: AppBackend{
 				UrlStr: " https://example.com/base ",
 			},
-			Endpoints: []Endpoint{
+			Endpoints: []*Endpoint{
 				{
 					Method: " get ",
 					Path:   " /v1/ping ",
@@ -32,7 +32,7 @@ func TestAppNormalize(t *testing.T) {
 		if m.Id != "app-id" {
 			t.Fatalf("Id = %q, want %q", m.Id, "app-id")
 		}
-		if m.PublicPathPrefix != "public" {
+		if m.PublicPathPrefix != "/public" {
 			t.Fatalf("PublicPathPrefix = %q, want %q", m.PublicPathPrefix, "public")
 		}
 		if m.Backend.Url == nil || m.Backend.Url.String() != "https://example.com/base" {
@@ -58,7 +58,7 @@ func TestAppNormalize(t *testing.T) {
 		m := App{
 			PublicPathPrefix: "public",
 			Backend:          AppBackend{UrlStr: "https://example.com"},
-			Endpoints: []Endpoint{
+			Endpoints: []*Endpoint{
 				{
 					Method: " ",
 					Path:   "/ok",

@@ -22,7 +22,7 @@ func TestRootNormalize(t *testing.T) {
 				AllowMethods: []string{" GET ", "", "POST"},
 				AllowHeaders: []string{" Authorization ", "", "Content-Type"},
 			},
-			Jwt: []RootJwt{
+			Jwt: []*RootJwt{
 				{
 					JwkUrl:        " https://issuer.example/.well-known/jwks.json ",
 					Alg:           " rs256 ",
@@ -30,7 +30,7 @@ func TestRootNormalize(t *testing.T) {
 					RolesPath:     " roles.path ",
 				},
 			},
-			Apps: []App{
+			Apps: []*App{
 				{
 					PublicPathPrefix: " /api ",
 					Backend:          AppBackend{UrlStr: "https://backend.example"},
@@ -65,7 +65,7 @@ func TestRootNormalize(t *testing.T) {
 	t.Run("error nested app normalize", func(t *testing.T) {
 		m := Root{
 			PublicBaseUrl: "https://public.example.com",
-			Jwt: []RootJwt{
+			Jwt: []*RootJwt{
 				{
 					JwkUrl:        "https://issuer.example/jwks",
 					Alg:           "RS256",
@@ -73,7 +73,7 @@ func TestRootNormalize(t *testing.T) {
 					RolesPath:     "roles",
 				},
 			},
-			Apps: []App{
+			Apps: []*App{
 				{
 					PublicPathPrefix: "api",
 					Backend:          AppBackend{UrlStr: "://bad"},
