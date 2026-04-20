@@ -23,7 +23,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 	s := New()
 	err := s.Build(&config.Root{
 		PublicBaseUrl: "https://public.example",
-		Apps: []config.App{
+		Apps: []*config.App{
 			{
 				Id:               "users-app",
 				PublicPathPrefix: "api",
