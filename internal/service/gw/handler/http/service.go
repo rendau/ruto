@@ -49,7 +49,10 @@ func buildHandler(conf *config.Root) (_ http.Handler, finalErr error) {
 		appHandler := proxy.NewProxy(app)
 
 		for _, endpoint := range app.Endpoints {
-			mux.Handle(createRoute(app, endpoint), http.StripPrefix(app.PublicPathPrefix, appHandler))
+			mux.Handle(
+				createRoute(app, endpoint),
+				http.StripPrefix(app.PublicPathPrefix, appHandler),
+			)
 		}
 	}
 
