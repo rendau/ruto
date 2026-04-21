@@ -18,7 +18,7 @@ func TestAppNormalize(t *testing.T) {
 					Method: " get ",
 					Path:   " /v1/ping ",
 					Backend: EndpointBackend{
-						Path: " /ping ",
+						CustomPath: " /ping ",
 					},
 				},
 			},
@@ -63,7 +63,7 @@ func TestAppNormalize(t *testing.T) {
 					Method: " ",
 					Path:   "/ok",
 					Backend: EndpointBackend{
-						Path: "/ok",
+						CustomPath: "/ok",
 					},
 				},
 			},

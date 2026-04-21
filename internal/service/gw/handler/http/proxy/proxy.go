@@ -25,7 +25,6 @@ func NewProxy(app *config.App) http.Handler {
 		},
 		Rewrite: func(r *httputil.ProxyRequest) {
 			r.SetURL(backendUrl)
-			// r.Out.URL.Path = backendUrl.JoinPath(trimPathPrefix(r.In.URL.Path, app.PublicPathPrefix)).Path
 			// r.SetXForwarded()
 		},
 		// ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {

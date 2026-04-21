@@ -13,7 +13,7 @@ func TestEndpointNormalize(t *testing.T) {
 			Method: " post ",
 			Path:   " /v1/items ",
 			Backend: EndpointBackend{
-				Path: " /api/items ",
+				CustomPath: " /api/items ",
 			},
 			JwtValidation: EndpointJwtValidation{
 				Roles: []string{" admin ", "", " user "},
@@ -37,8 +37,8 @@ func TestEndpointNormalize(t *testing.T) {
 		if m.Path != "v1/items" {
 			t.Fatalf("Path = %q, want %q", m.Path, "v1/items")
 		}
-		if m.Backend.Path != "api/items" {
-			t.Fatalf("Backend.Path = %q, want %q", m.Backend.Path, "api/items")
+		if m.Backend.CustomPath != "api/items" {
+			t.Fatalf("Backend.Path = %q, want %q", m.Backend.CustomPath, "api/items")
 		}
 		if !reflect.DeepEqual(m.JwtValidation.Roles, []string{"admin", "user"}) {
 			t.Fatalf("JwtValidation.Roles = %#v, want %#v", m.JwtValidation.Roles, []string{"admin", "user"})
@@ -53,7 +53,7 @@ func TestEndpointNormalize(t *testing.T) {
 			Method: "   ",
 			Path:   "/ok",
 			Backend: EndpointBackend{
-				Path: "/ok",
+				CustomPath: "/ok",
 			},
 		}
 
@@ -66,24 +66,24 @@ func TestEndpointNormalize(t *testing.T) {
 
 func TestEndpointBackendNormalize(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		m := EndpointBackend{Path: " /backend/path "}
+		m := EndpointBackend{CustomPath: " /backend/path "}
 		err := m.Normalize()
 		if err != nil {
 			t.Fatalf("Normalize() error = %v", err)
 		}
-		if m.Path != "backend/path" {
-			t.Fatalf("Path = %q, want %q", m.Path, "backend/path")
+		if m.CustomPath != "backend/path" {
+			t.Fatalf("Path = %q, want %q", m.CustomPath, "backend/path")
 		}
 	})
 
 	t.Run("error empty path", func(t *testing.T) {
-		m := EndpointBackend{Path: " / "}
+		m := EndpointBackend{CustomPath: " / "}
 		err := m.Normalize()
 		if err != nil {
 			t.Fatalf("Normalize() error = %v", err)
 		}
-		if m.Path != "" {
-			t.Fatalf("Path = %q, want %q", m.Path, "")
+		if m.CustomPath != "" {
+			t.Fatalf("Path = %q, want %q", m.CustomPath, "")
 		}
 	})
 }

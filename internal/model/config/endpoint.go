@@ -15,7 +15,7 @@ type Endpoint struct {
 }
 
 type EndpointBackend struct {
-	Path string
+	CustomPath string
 }
 
 type EndpointJwtValidation struct {
@@ -59,7 +59,7 @@ func (m *Endpoint) Normalize() error {
 }
 
 func (m *EndpointBackend) Normalize() error {
-	m.Path = strings.TrimPrefix(strings.TrimSpace(m.Path), "/")
+	m.CustomPath = strings.TrimPrefix(strings.TrimSpace(m.CustomPath), "/")
 	return nil
 }
 

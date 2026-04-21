@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rendau/ruto/internal/model/config"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 )
 
@@ -51,7 +52,10 @@ func buildHandler(conf *config.Root) (_ http.Handler, finalErr error) {
 		for _, endpoint := range app.Endpoints {
 			mux.Handle(
 				createRoute(app, endpoint),
-				http.StripPrefix(app.PublicPathPrefix, appHandler),
+				middleware.Chain(
+					http.StripPrefix(app.PublicPathPrefix, appHandler),
+					middleware.NewWithEndpoint(endpoint),
+				),
 			)
 		}
 	}
