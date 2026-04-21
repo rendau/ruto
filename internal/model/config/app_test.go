@@ -1,8 +1,9 @@
 package config
 
 import (
-	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestAppNormalize(t *testing.T) {
@@ -25,22 +26,12 @@ func TestAppNormalize(t *testing.T) {
 		}
 
 		err := m.Normalize()
-		if err != nil {
-			t.Fatalf("Normalize() error = %v", err)
-		}
-
-		if m.Id != "app-id" {
-			t.Fatalf("Id = %q, want %q", m.Id, "app-id")
-		}
-		if m.PublicPathPrefix != "/public" {
-			t.Fatalf("PublicPathPrefix = %q, want %q", m.PublicPathPrefix, "public")
-		}
-		if m.Backend.Url == nil || m.Backend.Url.String() != "https://example.com/base" {
-			t.Fatalf("Backend.Url = %v, want %q", m.Backend.Url, "https://example.com/base")
-		}
-		if m.Endpoints[0].Method != "GET" {
-			t.Fatalf("Endpoints[0].Method = %q, want %q", m.Endpoints[0].Method, "GET")
-		}
+		require.NoError(t, err)
+		require.Equal(t, "app-id", m.Id)
+		require.Equal(t, "/public", m.PublicPathPrefix)
+		require.NotNil(t, m.Backend.Url)
+		require.Equal(t, "https://example.com/base", m.Backend.Url.String())
+		require.Equal(t, "GET", m.Endpoints[0].Method)
 	})
 
 	t.Run("error empty public path prefix", func(t *testing.T) {
@@ -49,9 +40,7 @@ func TestAppNormalize(t *testing.T) {
 			Backend:          AppBackend{UrlStr: "https://example.com"},
 		}
 		err := m.Normalize()
-		if !errors.Is(err, errEmptyValue) {
-			t.Fatalf("Normalize() error = %v, want errEmptyValue", err)
-		}
+		require.ErrorIs(t, err, errEmptyValue)
 	})
 
 	t.Run("error endpoint normalize", func(t *testing.T) {
@@ -69,9 +58,7 @@ func TestAppNormalize(t *testing.T) {
 			},
 		}
 		err := m.Normalize()
-		if !errors.Is(err, errEmptyValue) {
-			t.Fatalf("Normalize() error = %v, want errEmptyValue", err)
-		}
+		require.ErrorIs(t, err, errEmptyValue)
 	})
 }
 
@@ -79,30 +66,21 @@ func TestAppBackendNormalize(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		m := AppBackend{UrlStr: " https://example.com/api "}
 		err := m.Normalize()
-		if err != nil {
-			t.Fatalf("Normalize() error = %v", err)
-		}
-		if m.UrlStr != "https://example.com/api" {
-			t.Fatalf("UrlStr = %q, want %q", m.UrlStr, "https://example.com/api")
-		}
-		if m.Url == nil || m.Url.String() != "https://example.com/api" {
-			t.Fatalf("Url = %v, want %q", m.Url, "https://example.com/api")
-		}
+		require.NoError(t, err)
+		require.Equal(t, "https://example.com/api", m.UrlStr)
+		require.NotNil(t, m.Url)
+		require.Equal(t, "https://example.com/api", m.Url.String())
 	})
 
 	t.Run("error invalid url", func(t *testing.T) {
 		m := AppBackend{UrlStr: "://bad"}
 		err := m.Normalize()
-		if err == nil {
-			t.Fatal("Normalize() error = nil, want non-nil")
-		}
+		require.Error(t, err)
 	})
 
 	t.Run("error empty url", func(t *testing.T) {
 		m := AppBackend{UrlStr: "  "}
 		err := m.Normalize()
-		if !errors.Is(err, errEmptyValue) {
-			t.Fatalf("Normalize() error = %v, want errEmptyValue", err)
-		}
+		require.ErrorIs(t, err, errEmptyValue)
 	})
 }

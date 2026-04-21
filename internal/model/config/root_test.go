@@ -1,10 +1,10 @@
 package config
 
 import (
-	"errors"
-	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRootNormalize(t *testing.T) {
@@ -39,27 +39,16 @@ func TestRootNormalize(t *testing.T) {
 		}
 
 		err := m.Normalize()
-		if err != nil {
-			t.Fatalf("Normalize() error = %v", err)
-		}
-
-		if m.PublicBaseUrl != "https://public.example.com" {
-			t.Fatalf("PublicBaseUrl = %q, want %q", m.PublicBaseUrl, "https://public.example.com")
-		}
-		if m.Jwt[0].Alg != "RS256" {
-			t.Fatalf("Jwt[0].Alg = %q, want %q", m.Jwt[0].Alg, "RS256")
-		}
-		if !reflect.DeepEqual(m.Cors.AllowMethods, []string{"GET", "POST"}) {
-			t.Fatalf("Cors.AllowMethods = %#v, want %#v", m.Cors.AllowMethods, []string{"GET", "POST"})
-		}
+		require.NoError(t, err)
+		require.Equal(t, "https://public.example.com", m.PublicBaseUrl)
+		require.Equal(t, "RS256", m.Jwt[0].Alg)
+		require.Equal(t, []string{"GET", "POST"}, m.Cors.AllowMethods)
 	})
 
 	t.Run("error empty public base url", func(t *testing.T) {
 		m := Root{}
 		err := m.Normalize()
-		if !errors.Is(err, errEmptyValue) {
-			t.Fatalf("Normalize() error = %v, want errEmptyValue", err)
-		}
+		require.ErrorIs(t, err, errEmptyValue)
 	})
 
 	t.Run("error nested app normalize", func(t *testing.T) {
@@ -81,9 +70,7 @@ func TestRootNormalize(t *testing.T) {
 			},
 		}
 		err := m.Normalize()
-		if err == nil {
-			t.Fatal("Normalize() error = nil, want non-nil")
-		}
+		require.Error(t, err)
 	})
 }
 
@@ -95,17 +82,13 @@ func TestRootTimeoutNormalize(t *testing.T) {
 			Read:       3 * time.Second,
 		}
 		err := m.Normalize()
-		if err != nil {
-			t.Fatalf("Normalize() error = %v", err)
-		}
+		require.NoError(t, err)
 	})
 
 	t.Run("error negative value", func(t *testing.T) {
 		m := RootTimeout{Read: -1}
 		err := m.Normalize()
-		if !errors.Is(err, errNegativeValue) {
-			t.Fatalf("Normalize() error = %v, want errNegativeValue", err)
-		}
+		require.ErrorIs(t, err, errNegativeValue)
 	})
 }
 
@@ -118,22 +101,11 @@ func TestRootCorsNormalize(t *testing.T) {
 	}
 
 	err := m.Normalize()
-	if err != nil {
-		t.Fatalf("Normalize() error = %v", err)
-	}
-
-	if m.MaxAge != "30m" {
-		t.Fatalf("MaxAge = %q, want %q", m.MaxAge, "30m")
-	}
-	if !reflect.DeepEqual(m.AllowOrigins, []string{"https://a.example", "https://b.example"}) {
-		t.Fatalf("AllowOrigins = %#v, want %#v", m.AllowOrigins, []string{"https://a.example", "https://b.example"})
-	}
-	if !reflect.DeepEqual(m.AllowMethods, []string{"GET", "POST"}) {
-		t.Fatalf("AllowMethods = %#v, want %#v", m.AllowMethods, []string{"GET", "POST"})
-	}
-	if !reflect.DeepEqual(m.AllowHeaders, []string{"Authorization", "Content-Type"}) {
-		t.Fatalf("AllowHeaders = %#v, want %#v", m.AllowHeaders, []string{"Authorization", "Content-Type"})
-	}
+	require.NoError(t, err)
+	require.Equal(t, "30m", m.MaxAge)
+	require.Equal(t, []string{"https://a.example", "https://b.example"}, m.AllowOrigins)
+	require.Equal(t, []string{"GET", "POST"}, m.AllowMethods)
+	require.Equal(t, []string{"Authorization", "Content-Type"}, m.AllowHeaders)
 }
 
 func TestRootJwtNormalize(t *testing.T) {
@@ -145,18 +117,10 @@ func TestRootJwtNormalize(t *testing.T) {
 			RolesPath:     " roles ",
 		}
 		err := m.Normalize()
-		if err != nil {
-			t.Fatalf("Normalize() error = %v", err)
-		}
-		if m.JwkUrl != "https://issuer.example/jwks" {
-			t.Fatalf("JwkUrl = %q, want %q", m.JwkUrl, "https://issuer.example/jwks")
-		}
-		if m.Alg != "RS256" {
-			t.Fatalf("Alg = %q, want %q", m.Alg, "RS256")
-		}
-		if m.RolesPath != "roles" {
-			t.Fatalf("RolesPath = %q, want %q", m.RolesPath, "roles")
-		}
+		require.NoError(t, err)
+		require.Equal(t, "https://issuer.example/jwks", m.JwkUrl)
+		require.Equal(t, "RS256", m.Alg)
+		require.Equal(t, "roles", m.RolesPath)
 	})
 
 	t.Run("error empty roles path", func(t *testing.T) {
@@ -167,8 +131,6 @@ func TestRootJwtNormalize(t *testing.T) {
 			RolesPath:     " ",
 		}
 		err := m.Normalize()
-		if !errors.Is(err, errEmptyValue) {
-			t.Fatalf("Normalize() error = %v, want errEmptyValue", err)
-		}
+		require.ErrorIs(t, err, errEmptyValue)
 	})
 }

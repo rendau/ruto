@@ -35,7 +35,7 @@ func (m *Endpoint) Normalize() error {
 		return fmt.Errorf("method: %w", err)
 	}
 
-	m.Path = strings.TrimPrefix(strings.TrimSpace(m.Path), "/")
+	m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
 	if err := validateNotEmpty(m.Path); err != nil {
 		return fmt.Errorf("path: %w", err)
 	}

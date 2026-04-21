@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/rendau/ruto/internal/model/config"
 )
 
@@ -17,44 +19,78 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 	}))
 	defer backend.Close()
 
-	s := New()
-	err := s.Build(&config.Root{
-		PublicBaseUrl: "https://public.example",
-		Apps: []*config.App{
-			{
-				PublicPathPrefix: "api",
-				Backend: config.AppBackend{
-					UrlStr: backend.URL + "/svc",
-				},
-				Endpoints: []*config.Endpoint{
-					{
-						Method: http.MethodGet,
-						Path:   "users",
-					},
+	tests := []struct {
+		name                 string
+		appBackendPathPrefix string
+		endpoint             *config.Endpoint
+		requestURL           string
+		wantStatus           int
+		wantMethod           string
+		wantPath             string
+		wantRawQuery         string
+		checkBackend         bool
+	}{
+		{
+			name:                 "get with query",
+			appBackendPathPrefix: "/svc",
+			endpoint: &config.Endpoint{
+				Method: http.MethodGet,
+				Path:   "users",
+			},
+			requestURL:   "https://public.example/api/users?q=1",
+			wantStatus:   http.StatusNoContent,
+			wantMethod:   http.MethodGet,
+			wantPath:     "/svc/users",
+			wantRawQuery: "q=1",
+			checkBackend: true,
+		},
+		{
+			name:                 "get with custom backend path",
+			appBackendPathPrefix: "/svc",
+			endpoint: &config.Endpoint{
+				Method: http.MethodGet,
+				Path:   "users",
+				Backend: config.EndpointBackend{
+					CustomPath: "profiles",
 				},
 			},
+			requestURL:   "https://public.example/api/users?q=1",
+			wantStatus:   http.StatusNoContent,
+			wantMethod:   http.MethodGet,
+			wantPath:     "/svc/profiles",
+			wantRawQuery: "q=1",
+			checkBackend: false,
 		},
-	})
-	if err != nil {
-		t.Fatalf("Build() error = %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "https://public.example/api/users?q=1", nil)
-	rw := httptest.NewRecorder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := New()
+			err := s.Build(&config.Root{
+				PublicBaseUrl: "https://public.example",
+				Apps: []*config.App{
+					{
+						PublicPathPrefix: "api",
+						Backend: config.AppBackend{
+							UrlStr: backend.URL + tt.appBackendPathPrefix,
+						},
+						Endpoints: []*config.Endpoint{
+							tt.endpoint,
+						},
+					},
+				},
+			})
+			require.NoError(t, err)
 
-	s.ServeHTTP(rw, req)
+			rw := httptest.NewRecorder()
 
-	if got, want := rw.Code, http.StatusNoContent; got != want {
-		t.Fatalf("unexpected response status: got %d want %d", got, want)
-	}
-	if got, want := rw.Header().Get("X-Backend-Method"), http.MethodGet; got != want {
-		t.Fatalf("unexpected backend method: got %q want %q", got, want)
-	}
-	if got, want := rw.Header().Get("X-Backend-Path"), "/svc/users"; got != want {
-		t.Fatalf("unexpected backend path: got %q want %q", got, want)
-	}
-	if got, want := rw.Header().Get("X-Backend-Query"), "q=1"; got != want {
-		t.Fatalf("unexpected backend query: got %q want %q", got, want)
+			s.ServeHTTP(rw, httptest.NewRequest(tt.endpoint.Method, tt.requestURL, nil))
+
+			require.Equal(t, tt.wantStatus, rw.Code)
+			require.Equal(t, tt.wantMethod, rw.Header().Get("X-Backend-Method"))
+			require.Equal(t, tt.wantPath, rw.Header().Get("X-Backend-Path"))
+			require.Equal(t, tt.wantRawQuery, rw.Header().Get("X-Backend-Query"))
+		})
 	}
 }
 
@@ -82,8 +118,5 @@ func TestServiceBuild_DuplicateRoute(t *testing.T) {
 			},
 		},
 	})
-
-	if err == nil {
-		t.Fatalf("Build() error = %v, want errDuplicateRoute", err)
-	}
+	require.Error(t, err)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/rendau/ruto/internal/model/config"
 	localContext "github.com/rendau/ruto/internal/service/gw/handler/http/context"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewWithEndpoint(t *testing.T) {
@@ -20,9 +21,7 @@ func TestNewWithEndpoint(t *testing.T) {
 	handler := Chain(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			endpoint := localContext.ExtractEndpoint(r.Context())
-			if endpoint == nil {
-				t.Fatalf("EndpointFromRequest() found = false, want true")
-			}
+			require.NotNil(t, endpoint)
 			actual = endpoint
 			w.WriteHeader(http.StatusNoContent)
 		}),
@@ -33,17 +32,11 @@ func TestNewWithEndpoint(t *testing.T) {
 	rw := httptest.NewRecorder()
 	handler.ServeHTTP(rw, req)
 
-	if rw.Code != http.StatusNoContent {
-		t.Fatalf("unexpected status code: got %d want %d", rw.Code, http.StatusNoContent)
-	}
-	if actual != expected {
-		t.Fatalf("unexpected endpoint: got %p want %p", actual, expected)
-	}
+	require.Equal(t, http.StatusNoContent, rw.Code)
+	require.Same(t, expected, actual)
 }
 
 func TestEndpointFromRequest_Empty(t *testing.T) {
 	endpoint := localContext.ExtractEndpoint(httptest.NewRequest(http.MethodGet, "/", nil).Context())
-	if endpoint != nil {
-		t.Fatalf("EndpointFromRequest() found = true, want false")
-	}
+	require.Nil(t, endpoint)
 }
