@@ -53,8 +53,9 @@ func buildHandler(conf *config.Root) (_ http.Handler, finalErr error) {
 			mux.Handle(
 				createRoute(app, endpoint),
 				middleware.Chain(
-					http.StripPrefix(app.PublicPathPrefix, appHandler),
+					appHandler,
 					middleware.NewWithEndpoint(endpoint),
+					middleware.NewStripPrefix(app.PublicPathPrefix),
 				),
 			)
 		}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/rendau/ruto/internal/model/config"
+	localContext "github.com/rendau/ruto/internal/service/gw/handler/http/context"
 )
 
 func TestNewWithEndpoint(t *testing.T) {
@@ -18,7 +19,7 @@ func TestNewWithEndpoint(t *testing.T) {
 	var actual *config.Endpoint
 	handler := Chain(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			endpoint := EndpointFromRequest(r)
+			endpoint := localContext.ExtractEndpoint(r.Context())
 			if endpoint == nil {
 				t.Fatalf("EndpointFromRequest() found = false, want true")
 			}
@@ -41,7 +42,7 @@ func TestNewWithEndpoint(t *testing.T) {
 }
 
 func TestEndpointFromRequest_Empty(t *testing.T) {
-	endpoint := EndpointFromRequest(httptest.NewRequest(http.MethodGet, "/", nil))
+	endpoint := localContext.ExtractEndpoint(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	if endpoint != nil {
 		t.Fatalf("EndpointFromRequest() found = true, want false")
 	}

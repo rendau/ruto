@@ -1,26 +1,16 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/rendau/ruto/internal/model/config"
+	localContext "github.com/rendau/ruto/internal/service/gw/handler/http/context"
 )
 
-type endpointContextKey struct{}
-
-func NewWithEndpoint(endpoint *config.Endpoint) Middleware {
+func NewWithEndpoint(ep *config.Endpoint) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), endpointContextKey{}, endpoint)))
+			next.ServeHTTP(w, r.WithContext(localContext.WithEndpoint(r.Context(), ep)))
 		})
 	}
-}
-
-func EndpointFromRequest(r *http.Request) *config.Endpoint {
-	endpoint, ok := r.Context().Value(endpointContextKey{}).(*config.Endpoint)
-	if ok {
-		return endpoint
-	}
-	return nil
 }
