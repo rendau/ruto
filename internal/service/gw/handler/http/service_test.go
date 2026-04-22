@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/rendau/ruto/internal/model/config"
+	config2 "github.com/rendau/ruto/internal/service/gw/model/config"
 )
 
 func TestServiceBuild_ProxyByConfig(t *testing.T) {
@@ -22,7 +22,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 	tests := []struct {
 		name                 string
 		appBackendPathPrefix string
-		endpoint             *config.Endpoint
+		endpoint             *config2.Endpoint
 		requestURL           string
 		wantStatus           int
 		wantMethod           string
@@ -33,7 +33,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 		{
 			name:                 "get with query",
 			appBackendPathPrefix: "/svc",
-			endpoint: &config.Endpoint{
+			endpoint: &config2.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
 			},
@@ -47,10 +47,10 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 		{
 			name:                 "get with custom backend path",
 			appBackendPathPrefix: "/svc",
-			endpoint: &config.Endpoint{
+			endpoint: &config2.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
-				Backend: config.EndpointBackend{
+				Backend: config2.EndpointBackend{
 					CustomPath: "profiles",
 				},
 			},
@@ -66,15 +66,15 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := New()
-			err := s.Build(&config.Root{
+			err := s.Build(&config2.Root{
 				PublicBaseUrl: "https://public.example",
-				Apps: []*config.App{
+				Apps: []*config2.App{
 					{
 						PublicPathPrefix: "api",
-						Backend: config.AppBackend{
+						Backend: config2.AppBackend{
 							UrlStr: backend.URL + tt.appBackendPathPrefix,
 						},
-						Endpoints: []*config.Endpoint{
+						Endpoints: []*config2.Endpoint{
 							tt.endpoint,
 						},
 					},
@@ -97,15 +97,15 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 func TestServiceBuild_DuplicateRoute(t *testing.T) {
 	s := New()
 
-	err := s.Build(&config.Root{
+	err := s.Build(&config2.Root{
 		PublicBaseUrl: "https://public.example",
-		Apps: []*config.App{
+		Apps: []*config2.App{
 			{
 				PublicPathPrefix: "api",
-				Backend: config.AppBackend{
+				Backend: config2.AppBackend{
 					UrlStr: "http://example.local/svc",
 				},
-				Endpoints: []*config.Endpoint{
+				Endpoints: []*config2.Endpoint{
 					{
 						Method: http.MethodGet,
 						Path:   "users",

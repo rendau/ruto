@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rendau/ruto/internal/model/config"
+	"github.com/rendau/ruto/internal/service/gw/model/config"
 )
 
 func NewCors(conf config.RootCors) Middleware {

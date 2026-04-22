@@ -5,8 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/rendau/ruto/internal/model/config"
 	localContext "github.com/rendau/ruto/internal/service/gw/handler/http/context"
+	"github.com/rendau/ruto/internal/service/gw/model/config"
+
 	"github.com/stretchr/testify/require"
 )
 

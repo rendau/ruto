@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/rendau/ruto/internal/model/config"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
+	config2 "github.com/rendau/ruto/internal/service/gw/model/config"
 )
 
 type Service struct {
@@ -19,7 +19,7 @@ func New() *Service {
 	}
 }
 
-func (s *Service) Build(conf *config.Root) error {
+func (s *Service) Build(conf *config2.Root) error {
 	err := conf.Normalize()
 	if err != nil {
 		return fmt.Errorf("config normalize: %w", err)
@@ -37,7 +37,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(conf *config.Root) (_ http.Handler, finalErr error) {
+func buildHandler(conf *config2.Root) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)
@@ -46,12 +46,19 @@ func buildHandler(conf *config.Root) (_ http.Handler, finalErr error) {
 
 	mux := http.NewServeMux()
 
+	var routePattern string
+
 	for _, app := range conf.Apps {
 		appHandler := proxy.NewProxy(app)
 
 		for _, endpoint := range app.Endpoints {
+			if endpoint.Path == "" {
+				routePattern = endpoint.Method + " " + app.PublicPathPrefix
+			}
+			routePattern = endpoint.Method + " " + app.PublicPathPrefix + "/" + endpoint.Path
+
 			mux.Handle(
-				createRoute(app, endpoint),
+				routePattern,
 				middleware.Chain(
 					appHandler,
 					middleware.NewWithEndpoint(endpoint),
@@ -67,11 +74,4 @@ func buildHandler(conf *config.Root) (_ http.Handler, finalErr error) {
 	// ), nil
 
 	return mux, nil
-}
-
-func createRoute(app *config.App, endpoint *config.Endpoint) string {
-	if endpoint.Path == "" {
-		return endpoint.Method + " " + app.PublicPathPrefix
-	}
-	return endpoint.Method + " " + app.PublicPathPrefix + "/" + endpoint.Path
 }

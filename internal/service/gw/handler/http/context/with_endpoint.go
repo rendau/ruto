@@ -3,7 +3,7 @@ package context
 import (
 	"context"
 
-	"github.com/rendau/ruto/internal/model/config"
+	"github.com/rendau/ruto/internal/service/gw/model/config"
 )
 
 type endpointContextKey struct{}

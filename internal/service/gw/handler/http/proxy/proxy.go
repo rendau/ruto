@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/rendau/ruto/internal/model/config"
 	localContext "github.com/rendau/ruto/internal/service/gw/handler/http/context"
+	"github.com/rendau/ruto/internal/service/gw/model/config"
 )
 
 func NewProxy(app *config.App) http.Handler {
