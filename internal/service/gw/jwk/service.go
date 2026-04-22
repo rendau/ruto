@@ -3,6 +3,7 @@ package jwk
 import (
 	"context"
 	"log/slog"
+	"sync/atomic"
 	"time"
 )
 
@@ -12,7 +13,7 @@ const (
 
 type Service struct {
 	globalCtx context.Context
-	urls      []string
+	urlStore  atomic.Pointer[[]string]
 }
 
 func New(globalCtx context.Context) *Service {
@@ -26,7 +27,7 @@ func (s *Service) Start() {
 }
 
 func (s *Service) SetUrls(urls []string) {
-	s.urls = urls
+	s.urlStore.Store(&urls)
 }
 
 func (s *Service) worker() {
