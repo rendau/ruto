@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+const (
+	ReadHeaderTimeout = 5 * time.Second
+)
+
 type Service struct {
 	handlerWrapper *handlerWrapperT
 	server         *http.Server
@@ -21,7 +25,7 @@ func New(port int) *Service {
 	server := &http.Server{
 		Addr:              ":" + strconv.Itoa(port),
 		Handler:           handlerWrapper,
-		ReadHeaderTimeout: 4 * time.Second,
+		ReadHeaderTimeout: ReadHeaderTimeout,
 	}
 
 	return &Service{
