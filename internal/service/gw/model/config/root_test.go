@@ -25,7 +25,6 @@ func TestRootNormalize(t *testing.T) {
 			Jwt: []*RootJwt{
 				{
 					JwkUrl:        " https://issuer.example/.well-known/jwks.json ",
-					Alg:           " rs256 ",
 					CacheDuration: 1 * time.Minute,
 					RolesPath:     " roles.path ",
 				},
@@ -41,7 +40,6 @@ func TestRootNormalize(t *testing.T) {
 		err := m.Normalize()
 		require.NoError(t, err)
 		require.Equal(t, "https://public.example.com", m.PublicBaseUrl)
-		require.Equal(t, "RS256", m.Jwt[0].Alg)
 		require.Equal(t, []string{"GET", "POST"}, m.Cors.AllowMethods)
 	})
 
@@ -57,7 +55,6 @@ func TestRootNormalize(t *testing.T) {
 			Jwt: []*RootJwt{
 				{
 					JwkUrl:        "https://issuer.example/jwks",
-					Alg:           "RS256",
 					CacheDuration: time.Second,
 					RolesPath:     "roles",
 				},
@@ -112,21 +109,18 @@ func TestRootJwtNormalize(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		m := RootJwt{
 			JwkUrl:        " https://issuer.example/jwks ",
-			Alg:           " rs256 ",
 			CacheDuration: 5 * time.Minute,
 			RolesPath:     " roles ",
 		}
 		err := m.Normalize()
 		require.NoError(t, err)
 		require.Equal(t, "https://issuer.example/jwks", m.JwkUrl)
-		require.Equal(t, "RS256", m.Alg)
 		require.Equal(t, "roles", m.RolesPath)
 	})
 
 	t.Run("error empty roles path", func(t *testing.T) {
 		m := RootJwt{
 			JwkUrl:        "https://issuer.example/jwks",
-			Alg:           "RS256",
 			CacheDuration: time.Minute,
 			RolesPath:     " ",
 		}

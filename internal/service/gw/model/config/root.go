@@ -31,7 +31,6 @@ type RootCors struct {
 
 type RootJwt struct {
 	JwkUrl        string
-	Alg           string
 	CacheDuration time.Duration
 	RolesPath     string
 }
@@ -85,10 +84,6 @@ func (m *RootJwt) Normalize() error {
 	m.JwkUrl = strings.TrimSpace(m.JwkUrl)
 	if err := validateNotEmpty(m.JwkUrl); err != nil {
 		return fmt.Errorf("jwk_url: %w", err)
-	}
-	m.Alg = strings.ToUpper(strings.TrimSpace(m.Alg))
-	if err := validateNotEmpty(m.Alg); err != nil {
-		return fmt.Errorf("alg: %w", err)
 	}
 	if err := validateNonNegative(m.CacheDuration); err != nil {
 		return fmt.Errorf("cache_duration: %w", err)
