@@ -12,6 +12,8 @@ var Conf = struct {
 	HttpPort  int    `env:"HTTP_PORT" envDefault:"80"`
 	HttpCors  bool   `env:"HTTP_CORS" envDefault:"false"`
 	PgDsn     string `env:"PG_DSN"`
+
+	GwPort int `env:"GW_PORT" envDefault:"8000"`
 }{}
 
 func init() {

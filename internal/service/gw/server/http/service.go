@@ -34,9 +34,9 @@ func New(port int) *Service {
 	}
 }
 
-func (s *Service) Run() {
+func (s *Service) Start() {
 	go s.run()
-	slog.Info("http-server started " + s.server.Addr)
+	slog.Info("gw-server started " + s.server.Addr)
 }
 
 func (s *Service) run() {

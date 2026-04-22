@@ -136,6 +136,8 @@ func (s *Service) load() {
 		}
 	}
 
+	// slog.Debug("JWK items loaded", "key_count", len(result))
+
 	s.setItems(result)
 }
 

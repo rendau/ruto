@@ -1,8 +1,11 @@
 package gw
 
 import (
+	"context"
 	"fmt"
 	"time"
+
+	"github.com/samber/lo"
 
 	handlerHttp "github.com/rendau/ruto/internal/service/gw/handler/http"
 	"github.com/rendau/ruto/internal/service/gw/jwk"
@@ -11,19 +14,22 @@ import (
 )
 
 type Service struct {
-	server *localHttp.Service
-	jwk    *jwk.Service
+	globalCtx context.Context
+	server    *localHttp.Service
+	jwk       *jwk.Service
 }
 
-func New(serverPort int) *Service {
+func New(globalCtx context.Context, serverPort int) *Service {
 	return &Service{
-		server: localHttp.New(serverPort),
-		jwk:    jwk.New(),
+		globalCtx: globalCtx,
+		server:    localHttp.New(serverPort),
+		jwk:       jwk.New(globalCtx),
 	}
 }
 
-func (s *Service) Run() {
-	s.server.Run()
+func (s *Service) Start() {
+	s.jwk.Start()
+	s.server.Start()
 }
 
 func (s *Service) Stop(timeout time.Duration) error {
@@ -31,12 +37,23 @@ func (s *Service) Stop(timeout time.Duration) error {
 }
 
 func (s *Service) SetConfig(conf *config.Root) error {
+	err := conf.Normalize()
+	if err != nil {
+		return fmt.Errorf("config normalize: %w", err)
+	}
+
+	// set http handler
 	httpHandler, err := handlerHttp.New(conf)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}
-
 	s.server.SetHandler(httpHandler)
+
+	// set jwk URLs
+	jwkUrls := lo.Map(conf.Jwt, func(item *config.RootJwt, _ int) string {
+		return item.JwkUrl
+	})
+	s.jwk.SetUrls(jwkUrls)
 
 	return nil
 }

@@ -13,13 +13,14 @@ import (
 	_ "github.com/samber/lo"
 
 	"github.com/rendau/ruto/internal/config"
-	serviceGwServerHttpP "github.com/rendau/ruto/internal/service/gw/server/http"
+	serviceGwP "github.com/rendau/ruto/internal/service/gw"
+	gwConfig "github.com/rendau/ruto/internal/service/gw/model/config"
 )
 
 type App struct {
 	pgpool *pgxpool.Pool
 
-	serviceGwServerHttp *serviceGwServerHttpP.Service
+	gw *serviceGwP.Service
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -44,7 +45,33 @@ func (a *App) Init() {
 	errCheck(err, "pgpool init")
 
 	// gw-server-http
-	a.serviceGwServerHttp = serviceGwServerHttpP.New(config.Conf.HttpPort)
+	a.gw = serviceGwP.New(a.ctx, config.Conf.HttpPort)
+
+	err = a.gw.SetConfig(&gwConfig.Root{
+		PublicBaseUrl: "https://example.com",
+		Cors:          gwConfig.RootCors{},
+		Jwt: []*gwConfig.RootJwt{
+			{JwkUrl: "https://api.mdev.kz/jwts/jwk/set"},
+		},
+		Apps: []*gwConfig.App{
+			{
+				PublicPathPrefix: "/ep",
+				Backend: gwConfig.AppBackend{
+					UrlStr: "https://api.mdev.kz/ep",
+				},
+				Endpoints: []*gwConfig.Endpoint{
+					{
+						Method:        "GET",
+						Path:          "dict",
+						Backend:       gwConfig.EndpointBackend{},
+						JwtValidation: gwConfig.EndpointJwtValidation{},
+						IpValidation:  gwConfig.EndpointIpValidation{},
+					},
+				},
+			},
+		},
+	})
+	errCheck(err, "gw-server SetConfig")
 }
 
 func (a *App) PreStartHook() {
@@ -55,7 +82,7 @@ func (a *App) Start() {
 	slog.Info("Starting")
 
 	// gw-server-http
-	a.serviceGwServerHttp.Run()
+	a.gw.Start()
 }
 
 func (a *App) Listen() {
@@ -74,7 +101,7 @@ func (a *App) Stop() {
 
 	// // gw-server-http
 	{
-		err := a.serviceGwServerHttp.Stop(15 * time.Second)
+		err := a.gw.Stop(time.Minute)
 		if err != nil {
 			slog.Error("http-server Stop error", "error", err)
 			a.exitCode = 1
