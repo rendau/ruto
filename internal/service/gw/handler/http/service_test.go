@@ -65,8 +65,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := New()
-			err := s.Build(&config2.Root{
+			s, err := New(&config2.Root{
 				PublicBaseUrl: "https://public.example",
 				Apps: []*config2.App{
 					{
@@ -95,9 +94,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 }
 
 func TestServiceBuild_DuplicateRoute(t *testing.T) {
-	s := New()
-
-	err := s.Build(&config2.Root{
+	_, err := New(&config2.Root{
 		PublicBaseUrl: "https://public.example",
 		Apps: []*config2.App{
 			{
