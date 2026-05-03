@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "ruto_v1/root.proto",
+    "title": "ruto_v1/common.proto",
     "version": "version not set"
   },
   "tags": [

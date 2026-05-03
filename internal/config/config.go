@@ -14,9 +14,9 @@ var Conf = struct {
 	WithTracing   bool   `env:"WITH_TRACING" envDefault:"false"`
 	JaegerAddress string `env:"JAEGER_ADDRESS"`
 
-	GrpcPort string `env:"GRPC_PORT" envDefault:"5050"`
-	HttpPort string `env:"HTTP_PORT" envDefault:"80"`
-	HttpCors bool   `env:"HTTP_CORS" envDefault:"false"`
+	GrpcPort int  `env:"GRPC_PORT" envDefault:"5050"`
+	HttpPort int  `env:"HTTP_PORT" envDefault:"80"`
+	HttpCors bool `env:"HTTP_CORS" envDefault:"false"`
 
 	PgDsn string `env:"PG_DSN"`
 

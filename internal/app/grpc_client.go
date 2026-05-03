@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/rendau/ruto/internal/errs"
-
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
@@ -15,7 +13,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	"github.com/rendau/ruto/pkg/proto/common"
+	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
 
 func newGrpcClientConn(uri string, secure bool, username, password, errMessagePrefix string) (*grpc.ClientConn, error) {
@@ -71,7 +70,7 @@ func (o *grpcClientInterceptorErrorT) grpcClientInterceptorError(ctx context.Con
 	if ok {
 		if len(st.Details()) > 0 {
 			stDetail := st.Details()[0]
-			errObj, ok := stDetail.(*common.ErrorRep)
+			errObj, ok := stDetail.(*ruto_v1.ErrorRep)
 			if ok {
 				return errs.ErrFull{
 					Err:    errs.Err(errObj.Code),

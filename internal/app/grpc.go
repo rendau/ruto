@@ -9,12 +9,8 @@ import (
 	"net"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"time"
-
-	"github.com/rendau/ruto/pkg/proto/common"
-
-	"github.com/rendau/ruto/internal/config"
-	"github.com/rendau/ruto/internal/errs"
 
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
@@ -22,6 +18,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+
+	"github.com/rendau/ruto/internal/config"
+	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
 
 type GrpcServer struct {
@@ -73,7 +73,7 @@ func NewGrpcServer(name string, register func(*grpc.Server)) *GrpcServer {
 }
 
 func (s *GrpcServer) Start() error {
-	lis, err := net.Listen("tcp", ":"+config.Conf.GrpcPort)
+	lis, err := net.Listen("tcp", ":"+strconv.Itoa(config.Conf.GrpcPort))
 	if err != nil {
 		return fmt.Errorf("failed to listen grpc: %w", err)
 	}
@@ -154,7 +154,7 @@ func GrpcInterceptorError() grpc.UnaryServerInterceptor {
 			return h, nil
 		}
 
-		var ei *common.ErrorRep
+		var ei *ruto_v1.ErrorRep
 		errStr := err.Error()
 
 		if fullErr, ok := errors.AsType[errs.ErrFull](err); ok {
@@ -162,18 +162,18 @@ func GrpcInterceptorError() grpc.UnaryServerInterceptor {
 			if fullErr.Err != nil {
 				errCode = fullErr.Err.Error()
 			}
-			ei = &common.ErrorRep{
+			ei = &ruto_v1.ErrorRep{
 				Code:    errCode,
 				Message: fullErr.Desc,
 				Fields:  fullErr.Fields,
 			}
 		} else if baseErr, ok := errors.AsType[errs.Err](err); ok {
-			ei = &common.ErrorRep{
+			ei = &ruto_v1.ErrorRep{
 				Code:    baseErr.Error(),
 				Message: errStr,
 			}
 		} else {
-			ei = &common.ErrorRep{
+			ei = &ruto_v1.ErrorRep{
 				Code:    errs.ServiceNA.Error(),
 				Message: errStr,
 			}
