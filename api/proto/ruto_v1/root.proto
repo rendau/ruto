@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/ruto_v1";
+
+service Root {
+  rpc Get(google.protobuf.Empty) returns (RootMain) {
+    option (google.api.http) = {
+      get: "/root"
+    };
+  };
+  rpc Set(RootSetReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/root"
+      body: "*"
+    };
+  };
+}
+
+message RootMain {
+  string public_base_url = 1;
+  RootCors cors = 2;
+  repeated RootJwt jwt = 3;
+}
+
+message RootSetReq {
+  optional string public_base_url = 1;
+  optional RootCors cors = 2;
+  repeated RootJwt jwt = 3;
+}
+
+// children
+
+message RootCors {
+  bool enabled = 1;
+  bool allow_credentials = 2;
+  string max_age = 3;
+  repeated string allow_origins = 4;
+  repeated string allow_methods = 5;
+  repeated string allow_headers = 6;
+}
+
+message RootJwt {
+  string jwk_url = 1;
+}
