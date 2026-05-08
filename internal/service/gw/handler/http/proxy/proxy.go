@@ -9,11 +9,11 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/rendau/ruto/internal/domain/config/model"
 	localContext "github.com/rendau/ruto/internal/service/gw/handler/http/context"
-	"github.com/rendau/ruto/internal/service/gw/model/config"
 )
 
-func NewProxy(app *config.App) http.Handler {
+func NewProxy(app *model.App) http.Handler {
 	backendUrl := app.Backend.Url
 
 	proxy := &httputil.ReverseProxy{

@@ -5,20 +5,20 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	localContext "github.com/rendau/ruto/internal/service/gw/handler/http/context"
-	"github.com/rendau/ruto/internal/service/gw/model/config"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/rendau/ruto/internal/domain/config/model"
+	localContext "github.com/rendau/ruto/internal/service/gw/handler/http/context"
 )
 
 func TestNewWithEndpoint(t *testing.T) {
-	expected := &config.Endpoint{
+	expected := &model.Endpoint{
 		Id:     "users-list",
 		Method: http.MethodGet,
 		Path:   "users",
 	}
 
-	var actual *config.Endpoint
+	var actual *model.Endpoint
 	handler := Chain(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			endpoint := localContext.ExtractEndpoint(r.Context())
