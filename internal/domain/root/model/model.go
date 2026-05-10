@@ -28,9 +28,12 @@ type Jwt struct {
 func NewEmpty() *Main {
 	return &Main{
 		Cors: &Cors{
-			AllowOrigins: []string{},
-			AllowMethods: []string{},
-			AllowHeaders: []string{},
+			Enabled:          false,
+			AllowCredentials: false,
+			MaxAge:           "864000",
+			AllowOrigins:     []string{"*"},
+			AllowMethods:     []string{"*"},
+			AllowHeaders:     []string{"*"},
 		},
 		Jwt: []*Jwt{},
 	}
