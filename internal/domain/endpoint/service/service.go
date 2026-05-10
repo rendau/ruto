@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	domModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	"github.com/rendau/ruto/internal/domain/endpoint/model"
+	"github.com/rendau/ruto/internal/errs"
 )
 
 type Service struct {
@@ -13,40 +14,54 @@ type Service struct {
 
 func New(repoDb RepoDbI) *Service { return &Service{repoDb: repoDb} }
 
-func (s *Service) List(ctx context.Context, pars *domModel.ListReq) ([]*domModel.Main, int64, error) {
-	result, totalCount, err := s.repoDb.List(ctx, pars)
+func (s *Service) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error) {
+	items, tCount, err := s.repoDb.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("repoDb.List: %w", err)
 	}
-	return result, totalCount, nil
+
+	return items, tCount, nil
 }
 
-func (s *Service) Get(ctx context.Context, id string) (*domModel.Main, bool, error) {
+func (s *Service) Get(ctx context.Context, id string, errNE bool) (*model.Main, bool, error) {
 	result, found, err := s.repoDb.Get(ctx, id)
 	if err != nil {
 		return nil, false, fmt.Errorf("repoDb.Get: %w", err)
 	}
+
+	if !found {
+		if errNE {
+			return nil, false, errs.ObjectNotFound
+		}
+		return nil, false, nil
+	}
+
 	return result, found, nil
 }
 
-func (s *Service) Create(ctx context.Context, obj *domModel.Edit) error {
-	err := s.repoDb.Create(ctx, obj)
+func (s *Service) Create(ctx context.Context, obj *model.Edit) (string, error) {
+	newId, err := s.repoDb.Create(ctx, obj)
 	if err != nil {
-		return fmt.Errorf("repoDb.Create: %w", err)
+		return "", fmt.Errorf("repoDb.Create: %w", err)
 	}
-	return nil
+
+	return newId, nil
 }
 
-func (s *Service) Update(ctx context.Context, id string, obj *domModel.Edit) error {
-	if err := s.repoDb.Update(ctx, id, obj); err != nil {
+func (s *Service) Update(ctx context.Context, id string, obj *model.Edit) error {
+	err := s.repoDb.Update(ctx, id, obj)
+	if err != nil {
 		return fmt.Errorf("repoDb.Update: %w", err)
 	}
+
 	return nil
 }
 
 func (s *Service) Delete(ctx context.Context, id string) error {
-	if err := s.repoDb.Delete(ctx, id); err != nil {
+	err := s.repoDb.Delete(ctx, id)
+	if err != nil {
 		return fmt.Errorf("repoDb.Delete: %w", err)
 	}
+
 	return nil
 }

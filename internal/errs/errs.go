@@ -17,6 +17,8 @@ const (
 	NotAuthorized     = Err("not_authorized")
 	InvalidRequest    = Err("invalid_request")
 	IncorrectPageSize = Err("incorrect_page_size")
+
+	IdRequired = Err("id_required")
 )
 
 type ErrFull struct {

@@ -75,15 +75,15 @@ func (r *Repo) Get(ctx context.Context, id string) (*model.Main, bool, error) {
 	return repoModel.EncodeSelect(m, 0), true, nil
 }
 
-func (r *Repo) Create(ctx context.Context, obj *model.Edit) error {
+func (r *Repo) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	m := repoModel.DecodeUpsert(obj)
 
 	err := r.ModelStore.Create(ctx, m)
 	if err != nil {
-		return fmt.Errorf("ModelStore.Create: %w", err)
+		return "", fmt.Errorf("ModelStore.Create: %w", err)
 	}
 
-	return nil
+	return m.PKId, nil
 }
 
 func (r *Repo) Update(ctx context.Context, id string, obj *model.Edit) error {
