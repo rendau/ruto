@@ -3,41 +3,43 @@ package model
 import (
 	"fmt"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 type Endpoint struct {
-	Id            string
-	Method        string
-	Path          string
-	Backend       EndpointBackend
-	JwtValidation EndpointJwtValidation
-	IpValidation  EndpointIpValidation
+	Id            string                `json:"id"`
+	Method        string                `json:"method"`
+	Path          string                `json:"path"`
+	Backend       EndpointBackend       `json:"backend"`
+	JwtValidation EndpointJwtValidation `json:"jwt_validation"`
+	IpValidation  EndpointIpValidation  `json:"ip_validation"`
 }
 
 type EndpointBackend struct {
-	CustomPath string
+	CustomPath string `json:"custom_path"`
 }
 
 type EndpointJwtValidation struct {
-	Enabled bool
-	Roles   []string
+	Enabled bool     `json:"enabled"`
+	Roles   []string `json:"roles"`
 }
 
 type EndpointIpValidation struct {
-	AllowedIps []string
+	AllowedIps []string `json:"allowed_ips"`
 }
 
 func (m *Endpoint) Normalize() error {
 	m.Id = strings.TrimSpace(m.Id)
 
 	m.Method = strings.ToUpper(strings.TrimSpace(m.Method))
-	if err := validateNotEmpty(m.Method); err != nil {
-		return fmt.Errorf("method: %w", err)
+	if m.Method == "" {
+		return fmt.Errorf("method: empty")
 	}
 
 	m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
-	if err := validateNotEmpty(m.Path); err != nil {
-		return fmt.Errorf("path: %w", err)
+	if m.Path == "" {
+		return fmt.Errorf("path: empty")
 	}
 
 	err := m.Backend.Normalize()
@@ -64,11 +66,17 @@ func (m *EndpointBackend) Normalize() error {
 }
 
 func (m *EndpointJwtValidation) Normalize() error {
-	m.Roles = normalizeStringList(m.Roles)
+	m.Roles = lo.FilterMap(m.Roles, func(v string, _ int) (string, bool) {
+		v = strings.TrimSpace(v)
+		return v, v != ""
+	})
 	return nil
 }
 
 func (m *EndpointIpValidation) Normalize() error {
-	m.AllowedIps = normalizeStringList(m.AllowedIps)
+	m.AllowedIps = lo.FilterMap(m.AllowedIps, func(v string, _ int) (string, bool) {
+		v = strings.TrimSpace(v)
+		return v, v != ""
+	})
 	return nil
 }

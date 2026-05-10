@@ -3,33 +3,32 @@ package model
 import (
 	"fmt"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 type Root struct {
-	PublicBaseUrl string
-	Cors          RootCors
-	Jwt           []*RootJwt
-	Apps          []*App
+	PublicBaseUrl string     `json:"public_base_url"`
+	Cors          RootCors   `json:"cors"`
+	Jwt           []*RootJwt `json:"jwt"`
+	Apps          []*App     `json:"apps"`
 }
 
 type RootCors struct {
-	Enabled          bool
-	AllowCredentials bool
-	MaxAge           string
-	AllowOrigins     []string
-	AllowMethods     []string
-	AllowHeaders     []string
+	Enabled          bool     `json:"enabled"`
+	AllowCredentials bool     `json:"allow_credentials"`
+	MaxAge           string   `json:"max_age"`
+	AllowOrigins     []string `json:"allow_origins"`
+	AllowMethods     []string `json:"allow_methods"`
+	AllowHeaders     []string `json:"allow_headers"`
 }
 
 type RootJwt struct {
-	JwkUrl string
+	JwkUrl string `json:"jwk_url"`
 }
 
 func (m *Root) Normalize() error {
 	m.PublicBaseUrl = strings.TrimRight(strings.TrimSpace(m.PublicBaseUrl), "/")
-	if err := validateNotEmpty(m.PublicBaseUrl); err != nil {
-		return fmt.Errorf("public_base_url: %w", err)
-	}
 	if err := m.Cors.Normalize(); err != nil {
 		return fmt.Errorf("cors: %w", err)
 	}
@@ -48,16 +47,25 @@ func (m *Root) Normalize() error {
 
 func (m *RootCors) Normalize() error {
 	m.MaxAge = strings.TrimSpace(m.MaxAge)
-	m.AllowOrigins = normalizeStringList(m.AllowOrigins)
-	m.AllowMethods = normalizeStringList(m.AllowMethods)
-	m.AllowHeaders = normalizeStringList(m.AllowHeaders)
+	m.AllowOrigins = lo.FilterMap(m.AllowOrigins, func(v string, _ int) (string, bool) {
+		v = strings.TrimSpace(v)
+		return v, v != ""
+	})
+	m.AllowMethods = lo.FilterMap(m.AllowMethods, func(v string, _ int) (string, bool) {
+		v = strings.ToUpper(strings.TrimSpace(v))
+		return v, v != ""
+	})
+	m.AllowHeaders = lo.FilterMap(m.AllowHeaders, func(v string, _ int) (string, bool) {
+		v = strings.TrimSpace(v)
+		return v, v != ""
+	})
 	return nil
 }
 
 func (m *RootJwt) Normalize() error {
 	m.JwkUrl = strings.TrimSpace(m.JwkUrl)
-	if err := validateNotEmpty(m.JwkUrl); err != nil {
-		return fmt.Errorf("jwk_url: %w", err)
+	if m.JwkUrl == "" {
+		return fmt.Errorf("jwk_url: empty")
 	}
 	return nil
 }

@@ -7,22 +7,22 @@ import (
 )
 
 type App struct {
-	Id               string
-	PublicPathPrefix string
-	Backend          AppBackend
-	Endpoints        []*Endpoint
+	Id               string      `json:"id"`
+	PublicPathPrefix string      `json:"public_path_prefix"`
+	Backend          AppBackend  `json:"backend"`
+	Endpoints        []*Endpoint `json:"endpoints"`
 }
 
 type AppBackend struct {
-	UrlStr string
-	Url    *url.URL
+	UrlStr string   `json:"url"`
+	Url    *url.URL `json:"-"`
 }
 
 func (m *App) Normalize() error {
 	m.Id = strings.TrimSpace(m.Id)
 	m.PublicPathPrefix = strings.Trim(strings.TrimSpace(m.PublicPathPrefix), "/")
-	if err := validateNotEmpty(m.PublicPathPrefix); err != nil {
-		return fmt.Errorf("publicPathPrefix: %w", err)
+	if m.PublicPathPrefix == "" {
+		return fmt.Errorf("public_path_prefix: empty")
 	}
 	m.PublicPathPrefix = "/" + m.PublicPathPrefix
 	if err := m.Backend.Normalize(); err != nil {
@@ -37,10 +37,10 @@ func (m *App) Normalize() error {
 }
 
 func (m *AppBackend) Normalize() error {
+	var err error
 	m.UrlStr = strings.TrimSpace(m.UrlStr)
-	err := validateNotEmpty(m.UrlStr)
-	if err != nil {
-		return fmt.Errorf("url: %w", err)
+	if m.UrlStr == "" {
+		return fmt.Errorf("url: empty")
 	}
 	m.Url, err = url.Parse(m.UrlStr)
 	if err != nil {
