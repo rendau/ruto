@@ -69,7 +69,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 				PublicBaseUrl: "https://public.example",
 				Apps: []*model.App{
 					{
-						PublicPathPrefix: "api",
+						PathPrefix: "api",
 						Backend: model.AppBackend{
 							UrlStr: backend.URL + tt.appBackendPathPrefix,
 						},
@@ -98,7 +98,7 @@ func TestServiceBuild_DuplicateRoute(t *testing.T) {
 		PublicBaseUrl: "https://public.example",
 		Apps: []*model.App{
 			{
-				PublicPathPrefix: "api",
+				PathPrefix: "api",
 				Backend: model.AppBackend{
 					UrlStr: "http://example.local/svc",
 				},

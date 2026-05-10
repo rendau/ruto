@@ -8,7 +8,6 @@ import (
 )
 
 type Endpoint struct {
-	Id            string                `json:"id"`
 	Method        string                `json:"method"`
 	Path          string                `json:"path"`
 	Backend       EndpointBackend       `json:"backend"`
@@ -30,8 +29,6 @@ type EndpointIpValidation struct {
 }
 
 func (m *Endpoint) Normalize() error {
-	m.Id = strings.TrimSpace(m.Id)
-
 	m.Method = strings.ToUpper(strings.TrimSpace(m.Method))
 	if m.Method == "" {
 		return fmt.Errorf("method: empty")
@@ -58,6 +55,10 @@ func (m *Endpoint) Normalize() error {
 	}
 
 	return nil
+}
+
+func (m *Endpoint) String() string {
+	return fmt.Sprintf("endpoint{%s %s}", m.Method, m.Path)
 }
 
 func (m *EndpointBackend) Normalize() error {

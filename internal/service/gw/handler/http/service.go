@@ -49,16 +49,16 @@ func buildHandler(conf *model.Root) (_ http.Handler, finalErr error) {
 
 		for _, endpoint := range app.Endpoints {
 			if endpoint.Path == "" {
-				routePattern = endpoint.Method + " " + app.PublicPathPrefix
+				routePattern = endpoint.Method + " " + app.PathPrefix
 			}
-			routePattern = endpoint.Method + " " + app.PublicPathPrefix + "/" + endpoint.Path
+			routePattern = endpoint.Method + " " + app.PathPrefix + "/" + endpoint.Path
 
 			mux.Handle(
 				routePattern,
 				middleware.Chain(
 					appHandler,
 					middleware.NewWithEndpoint(endpoint),
-					middleware.NewStripPrefix(app.PublicPathPrefix),
+					middleware.NewStripPrefix(app.PathPrefix),
 				),
 			)
 		}

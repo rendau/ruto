@@ -7,10 +7,9 @@ import (
 )
 
 type App struct {
-	Id               string      `json:"id"`
-	PublicPathPrefix string      `json:"public_path_prefix"`
-	Backend          AppBackend  `json:"backend"`
-	Endpoints        []*Endpoint `json:"endpoints"`
+	PathPrefix string      `json:"path_prefix"`
+	Backend    AppBackend  `json:"backend"`
+	Endpoints  []*Endpoint `json:"endpoints"`
 }
 
 type AppBackend struct {
@@ -19,12 +18,11 @@ type AppBackend struct {
 }
 
 func (m *App) Normalize() error {
-	m.Id = strings.TrimSpace(m.Id)
-	m.PublicPathPrefix = strings.Trim(strings.TrimSpace(m.PublicPathPrefix), "/")
-	if m.PublicPathPrefix == "" {
+	m.PathPrefix = strings.Trim(strings.TrimSpace(m.PathPrefix), "/")
+	if m.PathPrefix == "" {
 		return fmt.Errorf("public_path_prefix: empty")
 	}
-	m.PublicPathPrefix = "/" + m.PublicPathPrefix
+	m.PathPrefix = "/" + m.PathPrefix
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
 	}
@@ -34,6 +32,10 @@ func (m *App) Normalize() error {
 		}
 	}
 	return nil
+}
+
+func (m *App) String() string {
+	return fmt.Sprintf("app{%s}", m.PathPrefix)
 }
 
 func (m *AppBackend) Normalize() error {
