@@ -25,7 +25,7 @@ const (
 
 type RootMain struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicBaseUrl string                 `protobuf:"bytes,1,opt,name=public_base_url,json=publicBaseUrl,proto3" json:"public_base_url,omitempty"`
+	BaseUrl       string                 `protobuf:"bytes,1,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
 	Cors          *RootCors              `protobuf:"bytes,2,opt,name=cors,proto3" json:"cors,omitempty"`
 	Jwt           []*RootJwt             `protobuf:"bytes,3,rep,name=jwt,proto3" json:"jwt,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -62,9 +62,9 @@ func (*RootMain) Descriptor() ([]byte, []int) {
 	return file_ruto_v1_root_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *RootMain) GetPublicBaseUrl() string {
+func (x *RootMain) GetBaseUrl() string {
 	if x != nil {
-		return x.PublicBaseUrl
+		return x.BaseUrl
 	}
 	return ""
 }
@@ -77,66 +77,6 @@ func (x *RootMain) GetCors() *RootCors {
 }
 
 func (x *RootMain) GetJwt() []*RootJwt {
-	if x != nil {
-		return x.Jwt
-	}
-	return nil
-}
-
-type RootSetReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicBaseUrl *string                `protobuf:"bytes,1,opt,name=public_base_url,json=publicBaseUrl,proto3,oneof" json:"public_base_url,omitempty"`
-	Cors          *RootCors              `protobuf:"bytes,2,opt,name=cors,proto3,oneof" json:"cors,omitempty"`
-	Jwt           []*RootJwt             `protobuf:"bytes,3,rep,name=jwt,proto3" json:"jwt,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RootSetReq) Reset() {
-	*x = RootSetReq{}
-	mi := &file_ruto_v1_root_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RootSetReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RootSetReq) ProtoMessage() {}
-
-func (x *RootSetReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RootSetReq.ProtoReflect.Descriptor instead.
-func (*RootSetReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *RootSetReq) GetPublicBaseUrl() string {
-	if x != nil && x.PublicBaseUrl != nil {
-		return *x.PublicBaseUrl
-	}
-	return ""
-}
-
-func (x *RootSetReq) GetCors() *RootCors {
-	if x != nil {
-		return x.Cors
-	}
-	return nil
-}
-
-func (x *RootSetReq) GetJwt() []*RootJwt {
 	if x != nil {
 		return x.Jwt
 	}
@@ -157,7 +97,7 @@ type RootCors struct {
 
 func (x *RootCors) Reset() {
 	*x = RootCors{}
-	mi := &file_ruto_v1_root_proto_msgTypes[2]
+	mi := &file_ruto_v1_root_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -169,7 +109,7 @@ func (x *RootCors) String() string {
 func (*RootCors) ProtoMessage() {}
 
 func (x *RootCors) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[2]
+	mi := &file_ruto_v1_root_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -182,7 +122,7 @@ func (x *RootCors) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RootCors.ProtoReflect.Descriptor instead.
 func (*RootCors) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{2}
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RootCors) GetEnabled() bool {
@@ -236,7 +176,7 @@ type RootJwt struct {
 
 func (x *RootJwt) Reset() {
 	*x = RootJwt{}
-	mi := &file_ruto_v1_root_proto_msgTypes[3]
+	mi := &file_ruto_v1_root_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -248,7 +188,7 @@ func (x *RootJwt) String() string {
 func (*RootJwt) ProtoMessage() {}
 
 func (x *RootJwt) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[3]
+	mi := &file_ruto_v1_root_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -261,7 +201,7 @@ func (x *RootJwt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RootJwt.ProtoReflect.Descriptor instead.
 func (*RootJwt) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{3}
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *RootJwt) GetJwkUrl() string {
@@ -275,18 +215,11 @@ var File_ruto_v1_root_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_root_proto_rawDesc = "" +
 	"\n" +
-	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"}\n" +
-	"\bRootMain\x12&\n" +
-	"\x0fpublic_base_url\x18\x01 \x01(\tR\rpublicBaseUrl\x12%\n" +
+	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"p\n" +
+	"\bRootMain\x12\x19\n" +
+	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12%\n" +
 	"\x04cors\x18\x02 \x01(\v2\x11.ruto_v1.RootCorsR\x04cors\x12\"\n" +
-	"\x03jwt\x18\x03 \x03(\v2\x10.ruto_v1.RootJwtR\x03jwt\"\xa6\x01\n" +
-	"\n" +
-	"RootSetReq\x12+\n" +
-	"\x0fpublic_base_url\x18\x01 \x01(\tH\x00R\rpublicBaseUrl\x88\x01\x01\x12*\n" +
-	"\x04cors\x18\x02 \x01(\v2\x11.ruto_v1.RootCorsH\x01R\x04cors\x88\x01\x01\x12\"\n" +
-	"\x03jwt\x18\x03 \x03(\v2\x10.ruto_v1.RootJwtR\x03jwtB\x12\n" +
-	"\x10_public_base_urlB\a\n" +
-	"\x05_cors\"\xd9\x01\n" +
+	"\x03jwt\x18\x03 \x03(\v2\x10.ruto_v1.RootJwtR\x03jwt\"\xd9\x01\n" +
 	"\bRootCors\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12+\n" +
 	"\x11allow_credentials\x18\x02 \x01(\bR\x10allowCredentials\x12\x17\n" +
@@ -295,10 +228,10 @@ const file_ruto_v1_root_proto_rawDesc = "" +
 	"\rallow_methods\x18\x05 \x03(\tR\fallowMethods\x12#\n" +
 	"\rallow_headers\x18\x06 \x03(\tR\fallowHeaders\"\"\n" +
 	"\aRootJwt\x12\x17\n" +
-	"\ajwk_url\x18\x01 \x01(\tR\x06jwkUrl2\x8d\x01\n" +
+	"\ajwk_url\x18\x01 \x01(\tR\x06jwkUrl2\x8b\x01\n" +
 	"\x04Root\x12?\n" +
-	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x11.ruto_v1.RootMain\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/root\x12D\n" +
-	"\x03Set\x12\x13.ruto_v1.RootSetReq\x1a\x16.google.protobuf.Empty\"\x10\x82\xd3\xe4\x93\x02\n" +
+	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x11.ruto_v1.RootMain\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/root\x12B\n" +
+	"\x03Set\x12\x11.ruto_v1.RootMain\x1a\x16.google.protobuf.Empty\"\x10\x82\xd3\xe4\x93\x02\n" +
 	":\x01*\"\x05/rootB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
@@ -314,28 +247,25 @@ func file_ruto_v1_root_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_root_proto_rawDescData
 }
 
-var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_ruto_v1_root_proto_goTypes = []any{
 	(*RootMain)(nil),      // 0: ruto_v1.RootMain
-	(*RootSetReq)(nil),    // 1: ruto_v1.RootSetReq
-	(*RootCors)(nil),      // 2: ruto_v1.RootCors
-	(*RootJwt)(nil),       // 3: ruto_v1.RootJwt
-	(*emptypb.Empty)(nil), // 4: google.protobuf.Empty
+	(*RootCors)(nil),      // 1: ruto_v1.RootCors
+	(*RootJwt)(nil),       // 2: ruto_v1.RootJwt
+	(*emptypb.Empty)(nil), // 3: google.protobuf.Empty
 }
 var file_ruto_v1_root_proto_depIdxs = []int32{
-	2, // 0: ruto_v1.RootMain.cors:type_name -> ruto_v1.RootCors
-	3, // 1: ruto_v1.RootMain.jwt:type_name -> ruto_v1.RootJwt
-	2, // 2: ruto_v1.RootSetReq.cors:type_name -> ruto_v1.RootCors
-	3, // 3: ruto_v1.RootSetReq.jwt:type_name -> ruto_v1.RootJwt
-	4, // 4: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
-	1, // 5: ruto_v1.Root.Set:input_type -> ruto_v1.RootSetReq
-	0, // 6: ruto_v1.Root.Get:output_type -> ruto_v1.RootMain
-	4, // 7: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	1, // 0: ruto_v1.RootMain.cors:type_name -> ruto_v1.RootCors
+	2, // 1: ruto_v1.RootMain.jwt:type_name -> ruto_v1.RootJwt
+	3, // 2: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
+	0, // 3: ruto_v1.Root.Set:input_type -> ruto_v1.RootMain
+	0, // 4: ruto_v1.Root.Get:output_type -> ruto_v1.RootMain
+	3, // 5: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_root_proto_init() }
@@ -343,14 +273,13 @@ func file_ruto_v1_root_proto_init() {
 	if File_ruto_v1_root_proto != nil {
 		return
 	}
-	file_ruto_v1_root_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_root_proto_rawDesc), len(file_ruto_v1_root_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

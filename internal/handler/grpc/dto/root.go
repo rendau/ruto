@@ -3,44 +3,36 @@ package dto
 import (
 	"github.com/samber/lo"
 
-	domModel "github.com/rendau/ruto/internal/domain/root/model"
+	"github.com/rendau/ruto/internal/domain/root/model"
 
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
 
-func EncodeRootMain(v *domModel.Main, _ int) *ruto_v1.RootMain {
+func EncodeRootMain(v *model.Root, _ int) *ruto_v1.RootMain {
 	if v == nil {
 		return nil
 	}
 
 	return &ruto_v1.RootMain{
-		PublicBaseUrl: v.PublicBaseUrl,
-		Cors:          EncodeRootCors(v.Cors),
-		Jwt:           lo.Map(v.Jwt, EncodeRootJwt),
+		BaseUrl: v.BaseUrl,
+		Cors:    EncodeRootCors(v.Cors),
+		Jwt:     lo.Map(v.Jwt, EncodeRootJwt),
 	}
 }
 
-func DecodeRootSetReq(v *ruto_v1.RootSetReq) *domModel.Edit {
+func DecodeRootMain(v *ruto_v1.RootMain) *model.Root {
 	if v == nil {
 		return nil
 	}
 
-	result := &domModel.Edit{
-		PublicBaseUrl: v.PublicBaseUrl,
-		Cors:          DecodeRootCors(v.Cors),
+	return &model.Root{
+		BaseUrl: v.BaseUrl,
+		Cors:    DecodeRootCors(v.Cors),
+		Jwt:     lo.FilterMap(v.Jwt, DecodeRootJwt),
 	}
-
-	if v.Jwt != nil {
-		result.Jwt = new(lo.Map(v.Jwt, DecodeRootJwt))
-	}
-
-	return result
 }
 
-func EncodeRootCors(x *domModel.Cors) *ruto_v1.RootCors {
-	if x == nil {
-		return nil
-	}
+func EncodeRootCors(x model.RootCors) *ruto_v1.RootCors {
 	return &ruto_v1.RootCors{
 		Enabled:          x.Enabled,
 		AllowCredentials: x.AllowCredentials,
@@ -51,11 +43,11 @@ func EncodeRootCors(x *domModel.Cors) *ruto_v1.RootCors {
 	}
 }
 
-func DecodeRootCors(x *ruto_v1.RootCors) *domModel.Cors {
+func DecodeRootCors(x *ruto_v1.RootCors) model.RootCors {
 	if x == nil {
-		return nil
+		return model.RootCors{}
 	}
-	return &domModel.Cors{
+	return model.RootCors{
 		Enabled:          x.Enabled,
 		AllowCredentials: x.AllowCredentials,
 		MaxAge:           x.MaxAge,
@@ -65,20 +57,17 @@ func DecodeRootCors(x *ruto_v1.RootCors) *domModel.Cors {
 	}
 }
 
-func EncodeRootJwt(x *domModel.Jwt, _ int) *ruto_v1.RootJwt {
-	if x == nil {
-		return nil
-	}
+func EncodeRootJwt(x model.RootJwt, _ int) *ruto_v1.RootJwt {
 	return &ruto_v1.RootJwt{
 		JwkUrl: x.JwkUrl,
 	}
 }
 
-func DecodeRootJwt(x *ruto_v1.RootJwt, _ int) *domModel.Jwt {
+func DecodeRootJwt(x *ruto_v1.RootJwt, _ int) (model.RootJwt, bool) {
 	if x == nil {
-		return nil
+		return model.RootJwt{}, false
 	}
-	return &domModel.Jwt{
+	return model.RootJwt{
 		JwkUrl: x.JwkUrl,
-	}
+	}, true
 }

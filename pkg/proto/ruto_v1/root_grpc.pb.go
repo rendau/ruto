@@ -29,7 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RootClient interface {
 	Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RootMain, error)
-	Set(ctx context.Context, in *RootSetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Set(ctx context.Context, in *RootMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type rootClient struct {
@@ -50,7 +50,7 @@ func (c *rootClient) Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.Ca
 	return out, nil
 }
 
-func (c *rootClient) Set(ctx context.Context, in *RootSetReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *rootClient) Set(ctx context.Context, in *RootMain, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Root_Set_FullMethodName, in, out, cOpts...)
@@ -65,7 +65,7 @@ func (c *rootClient) Set(ctx context.Context, in *RootSetReq, opts ...grpc.CallO
 // for forward compatibility.
 type RootServer interface {
 	Get(context.Context, *emptypb.Empty) (*RootMain, error)
-	Set(context.Context, *RootSetReq) (*emptypb.Empty, error)
+	Set(context.Context, *RootMain) (*emptypb.Empty, error)
 	mustEmbedUnimplementedRootServer()
 }
 
@@ -79,7 +79,7 @@ type UnimplementedRootServer struct{}
 func (UnimplementedRootServer) Get(context.Context, *emptypb.Empty) (*RootMain, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedRootServer) Set(context.Context, *RootSetReq) (*emptypb.Empty, error) {
+func (UnimplementedRootServer) Set(context.Context, *RootMain) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Set not implemented")
 }
 func (UnimplementedRootServer) mustEmbedUnimplementedRootServer() {}
@@ -122,7 +122,7 @@ func _Root_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{
 }
 
 func _Root_Set_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RootSetReq)
+	in := new(RootMain)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func _Root_Set_Handler(srv interface{}, ctx context.Context, dec func(interface{
 		FullMethod: Root_Set_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RootServer).Set(ctx, req.(*RootSetReq))
+		return srv.(RootServer).Set(ctx, req.(*RootMain))
 	}
 	return interceptor(ctx, in, info, handler)
 }

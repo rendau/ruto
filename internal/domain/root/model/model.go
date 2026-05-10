@@ -1,33 +1,27 @@
 package model
 
-type Main struct {
-	PublicBaseUrl string
-	Cors          *Cors
-	Jwt           []*Jwt
+type Root struct {
+	BaseUrl string    `json:"base_url"`
+	Cors    RootCors  `json:"cors"`
+	Jwt     []RootJwt `json:"jwt"`
 }
 
-type Edit struct {
-	PublicBaseUrl *string
-	Cors          *Cors
-	Jwt           *[]*Jwt
+type RootCors struct {
+	Enabled          bool     `json:"enabled"`
+	AllowCredentials bool     `json:"allow_credentials"`
+	MaxAge           string   `json:"max_age"`
+	AllowOrigins     []string `json:"allow_origins"`
+	AllowMethods     []string `json:"allow_methods"`
+	AllowHeaders     []string `json:"allow_headers"`
 }
 
-type Cors struct {
-	Enabled          bool
-	AllowCredentials bool
-	MaxAge           string
-	AllowOrigins     []string
-	AllowMethods     []string
-	AllowHeaders     []string
+type RootJwt struct {
+	JwkUrl string `json:"jwk_url"`
 }
 
-type Jwt struct {
-	JwkUrl string
-}
-
-func NewEmpty() *Main {
-	return &Main{
-		Cors: &Cors{
+func NewEmpty() *Root {
+	return &Root{
+		Cors: RootCors{
 			Enabled:          false,
 			AllowCredentials: false,
 			MaxAge:           "864000",
@@ -35,6 +29,6 @@ func NewEmpty() *Main {
 			AllowMethods:     []string{"*"},
 			AllowHeaders:     []string{"*"},
 		},
-		Jwt: []*Jwt{},
+		Jwt: []RootJwt{},
 	}
 }

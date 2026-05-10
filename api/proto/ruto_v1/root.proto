@@ -13,7 +13,7 @@ service Root {
       get: "/root"
     };
   };
-  rpc Set(RootSetReq) returns (google.protobuf.Empty) {
+  rpc Set(RootMain) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       post: "/root"
       body: "*"
@@ -22,14 +22,8 @@ service Root {
 }
 
 message RootMain {
-  string public_base_url = 1;
+  string base_url = 1;
   RootCors cors = 2;
-  repeated RootJwt jwt = 3;
-}
-
-message RootSetReq {
-  optional string public_base_url = 1;
-  optional RootCors cors = 2;
   repeated RootJwt jwt = 3;
 }
 

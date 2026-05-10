@@ -468,7 +468,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ruto_v1RootSetReq"
+              "$ref": "#/definitions/ruto_v1RootMain"
             }
           }
         ],
@@ -813,25 +813,7 @@
     "ruto_v1RootMain": {
       "type": "object",
       "properties": {
-        "public_base_url": {
-          "type": "string"
-        },
-        "cors": {
-          "$ref": "#/definitions/ruto_v1RootCors"
-        },
-        "jwt": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1RootJwt"
-          }
-        }
-      }
-    },
-    "ruto_v1RootSetReq": {
-      "type": "object",
-      "properties": {
-        "public_base_url": {
+        "base_url": {
           "type": "string"
         },
         "cors": {

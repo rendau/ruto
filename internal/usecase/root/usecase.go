@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	domModel "github.com/rendau/ruto/internal/domain/root/model"
+	"github.com/rendau/ruto/internal/domain/root/model"
 )
 
 type Usecase struct {
@@ -13,7 +13,7 @@ type Usecase struct {
 
 func New(srv ServiceI) *Usecase { return &Usecase{svc: srv} }
 
-func (u *Usecase) Get(ctx context.Context) (*domModel.Main, error) {
+func (u *Usecase) Get(ctx context.Context) (*model.Root, error) {
 	result, err := u.svc.Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
@@ -21,9 +21,9 @@ func (u *Usecase) Get(ctx context.Context) (*domModel.Main, error) {
 	return result, nil
 }
 
-func (u *Usecase) Set(ctx context.Context, obj *domModel.Edit) error {
+func (u *Usecase) Set(ctx context.Context, obj *model.Root) error {
 	if err := u.svc.Set(ctx, obj); err != nil {
-		return fmt.Errorf("svc.Update: %w", err)
+		return fmt.Errorf("svc.Set: %w", err)
 	}
 	return nil
 }

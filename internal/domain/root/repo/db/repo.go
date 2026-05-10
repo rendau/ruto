@@ -8,7 +8,7 @@ import (
 	"github.com/rendau/mobone/v2"
 
 	commonRepoPg "github.com/rendau/ruto/internal/domain/common/repo/pg"
-	domModel "github.com/rendau/ruto/internal/domain/root/model"
+	"github.com/rendau/ruto/internal/domain/root/model"
 	repoModel "github.com/rendau/ruto/internal/domain/root/repo/db/model"
 )
 
@@ -31,7 +31,7 @@ func New(con *pgxpool.Pool) *Repo {
 	}
 }
 
-func (r *Repo) Get(ctx context.Context) (*domModel.Main, error) {
+func (r *Repo) Get(ctx context.Context) (*model.Root, error) {
 	m := &repoModel.Select{PKId: rootId}
 	found, err := r.ModelStore.Get(ctx, m)
 	if err != nil {
@@ -43,7 +43,7 @@ func (r *Repo) Get(ctx context.Context) (*domModel.Main, error) {
 	return repoModel.EncodeSelect(m, 0), nil
 }
 
-func (r *Repo) Set(ctx context.Context, obj *domModel.Edit) error {
+func (r *Repo) Set(ctx context.Context, obj *model.Root) error {
 	m := repoModel.DecodeUpsert(obj)
 	m.PKId = rootId
 	if err := r.ModelStore.UpdateOrCreate(ctx, m); err != nil {

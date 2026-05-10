@@ -27,8 +27,8 @@ func (h *Root) Get(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.RootMain, er
 	return dto.EncodeRootMain(item, 0), nil
 }
 
-func (h *Root) Set(ctx context.Context, req *ruto_v1.RootSetReq) (*emptypb.Empty, error) {
-	if err := h.usecase.Set(ctx, dto.DecodeRootSetReq(req)); err != nil {
+func (h *Root) Set(ctx context.Context, req *ruto_v1.RootMain) (*emptypb.Empty, error) {
+	if err := h.usecase.Set(ctx, dto.DecodeRootMain(req)); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
