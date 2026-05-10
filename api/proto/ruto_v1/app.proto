@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "ruto_v1/common.proto";
+
+option go_package = "/ruto_v1";
+
+service App {
+  rpc List(AppListReq) returns (AppListRep) {
+    option (google.api.http) = { get: "/app" };
+  };
+  rpc Get(AppGetReq) returns (AppMain) {
+    option (google.api.http) = { get: "/app/{id}" };
+  };
+  rpc Create(AppCreateReq) returns (AppCreateRep) {
+    option (google.api.http) = { post: "/app" body: "*" };
+  };
+  rpc Update(AppUpdateReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { put: "/app/{id}" body: "*" };
+  };
+  rpc Delete(AppGetReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/app/{id}" };
+  };
+}
+
+message AppMain {
+  string id = 1;
+  bool active = 2;
+  string path_prefix = 3;
+  string name = 4;
+  AppBackend backend = 5;
+}
+
+message AppGetReq {
+  string id = 1;
+}
+
+message AppListReq {
+  ListParamsSt list_params = 1;
+  optional bool active = 2;
+}
+
+message AppListRep {
+  PaginationInfoSt pagination_info = 1;
+  repeated AppMain results = 2;
+}
+
+message AppCreateReq {
+  optional bool active = 1;
+  optional string path_prefix = 2;
+  optional string name = 3;
+  AppBackend backend = 4;
+}
+
+message AppCreateRep {
+  string id = 1;
+}
+
+message AppUpdateReq {
+  string id = 1;
+  optional bool active = 2;
+  optional string path_prefix = 3;
+  optional string name = 4;
+  AppBackend backend = 5;
+}
+
+message AppBackend {
+  string url = 1;
+}

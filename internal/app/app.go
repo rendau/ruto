@@ -30,6 +30,10 @@ import (
 	domainRootServiceP "github.com/rendau/ruto/internal/domain/root/service"
 	usecaseRootP "github.com/rendau/ruto/internal/usecase/root"
 
+	domainAppRepoDbP "github.com/rendau/ruto/internal/domain/app/repo/db"
+	domainAppServiceP "github.com/rendau/ruto/internal/domain/app/service"
+	usecaseAppP "github.com/rendau/ruto/internal/usecase/app"
+
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
 )
 
@@ -85,10 +89,17 @@ func (a *App) Init() {
 	usecaseRoot := usecaseRootP.New(domainRootService)
 	handlerGrpcRoot := handlerGrpcP.NewRoot(usecaseRoot)
 
+	// app
+	domainAppRepoDb := domainAppRepoDbP.New(a.pgpool)
+	domainAppService := domainAppServiceP.New(domainAppRepoDb)
+	usecaseApp := usecaseAppP.New(domainAppService)
+	handlerGrpcApp := handlerGrpcP.NewApp(usecaseApp)
+
 	// grpc server
 	{
 		a.grpcServer = NewGrpcServer("main", func(server *grpc.Server) {
 			ruto_v1.RegisterRootServer(server, handlerGrpcRoot)
+			ruto_v1.RegisterAppServer(server, handlerGrpcApp)
 		})
 	}
 
@@ -106,6 +117,7 @@ func (a *App) Init() {
 			// register grpc handlers
 			handlers := []func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error{
 				ruto_v1.RegisterRootHandler,
+				ruto_v1.RegisterAppHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)
