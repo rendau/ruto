@@ -247,74 +247,6 @@ func (x *AppListRep) GetResults() []*AppMain {
 	return nil
 }
 
-type AppCreateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Active        *bool                  `protobuf:"varint,1,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	PathPrefix    *string                `protobuf:"bytes,2,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
-	Name          *string                `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Backend       *AppBackend            `protobuf:"bytes,4,opt,name=backend,proto3" json:"backend,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AppCreateReq) Reset() {
-	*x = AppCreateReq{}
-	mi := &file_ruto_v1_app_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AppCreateReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AppCreateReq) ProtoMessage() {}
-
-func (x *AppCreateReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_app_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AppCreateReq.ProtoReflect.Descriptor instead.
-func (*AppCreateReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_app_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *AppCreateReq) GetActive() bool {
-	if x != nil && x.Active != nil {
-		return *x.Active
-	}
-	return false
-}
-
-func (x *AppCreateReq) GetPathPrefix() string {
-	if x != nil && x.PathPrefix != nil {
-		return *x.PathPrefix
-	}
-	return ""
-}
-
-func (x *AppCreateReq) GetName() string {
-	if x != nil && x.Name != nil {
-		return *x.Name
-	}
-	return ""
-}
-
-func (x *AppCreateReq) GetBackend() *AppBackend {
-	if x != nil {
-		return x.Backend
-	}
-	return nil
-}
-
 type AppCreateRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -324,7 +256,7 @@ type AppCreateRep struct {
 
 func (x *AppCreateRep) Reset() {
 	*x = AppCreateRep{}
-	mi := &file_ruto_v1_app_proto_msgTypes[5]
+	mi := &file_ruto_v1_app_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -336,7 +268,7 @@ func (x *AppCreateRep) String() string {
 func (*AppCreateRep) ProtoMessage() {}
 
 func (x *AppCreateRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_app_proto_msgTypes[5]
+	mi := &file_ruto_v1_app_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -349,7 +281,7 @@ func (x *AppCreateRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AppCreateRep.ProtoReflect.Descriptor instead.
 func (*AppCreateRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_app_proto_rawDescGZIP(), []int{5}
+	return file_ruto_v1_app_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AppCreateRep) GetId() string {
@@ -357,82 +289,6 @@ func (x *AppCreateRep) GetId() string {
 		return x.Id
 	}
 	return ""
-}
-
-type AppUpdateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	PathPrefix    *string                `protobuf:"bytes,3,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
-	Name          *string                `protobuf:"bytes,4,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Backend       *AppBackend            `protobuf:"bytes,5,opt,name=backend,proto3" json:"backend,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AppUpdateReq) Reset() {
-	*x = AppUpdateReq{}
-	mi := &file_ruto_v1_app_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AppUpdateReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AppUpdateReq) ProtoMessage() {}
-
-func (x *AppUpdateReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_app_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AppUpdateReq.ProtoReflect.Descriptor instead.
-func (*AppUpdateReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_app_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *AppUpdateReq) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *AppUpdateReq) GetActive() bool {
-	if x != nil && x.Active != nil {
-		return *x.Active
-	}
-	return false
-}
-
-func (x *AppUpdateReq) GetPathPrefix() string {
-	if x != nil && x.PathPrefix != nil {
-		return *x.PathPrefix
-	}
-	return ""
-}
-
-func (x *AppUpdateReq) GetName() string {
-	if x != nil && x.Name != nil {
-		return *x.Name
-	}
-	return ""
-}
-
-func (x *AppUpdateReq) GetBackend() *AppBackend {
-	if x != nil {
-		return x.Backend
-	}
-	return nil
 }
 
 type AppBackend struct {
@@ -444,7 +300,7 @@ type AppBackend struct {
 
 func (x *AppBackend) Reset() {
 	*x = AppBackend{}
-	mi := &file_ruto_v1_app_proto_msgTypes[7]
+	mi := &file_ruto_v1_app_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -456,7 +312,7 @@ func (x *AppBackend) String() string {
 func (*AppBackend) ProtoMessage() {}
 
 func (x *AppBackend) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_app_proto_msgTypes[7]
+	mi := &file_ruto_v1_app_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -469,7 +325,7 @@ func (x *AppBackend) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AppBackend.ProtoReflect.Descriptor instead.
 func (*AppBackend) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_app_proto_rawDescGZIP(), []int{7}
+	return file_ruto_v1_app_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AppBackend) GetUrl() string {
@@ -502,36 +358,17 @@ const file_ruto_v1_app_proto_rawDesc = "" +
 	"\n" +
 	"AppListRep\x12B\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x19.ruto_v1.PaginationInfoStR\x0epaginationInfo\x12*\n" +
-	"\aresults\x18\x02 \x03(\v2\x10.ruto_v1.AppMainR\aresults\"\xbd\x01\n" +
-	"\fAppCreateReq\x12\x1b\n" +
-	"\x06active\x18\x01 \x01(\bH\x00R\x06active\x88\x01\x01\x12$\n" +
-	"\vpath_prefix\x18\x02 \x01(\tH\x01R\n" +
-	"pathPrefix\x88\x01\x01\x12\x17\n" +
-	"\x04name\x18\x03 \x01(\tH\x02R\x04name\x88\x01\x01\x12-\n" +
-	"\abackend\x18\x04 \x01(\v2\x13.ruto_v1.AppBackendR\abackendB\t\n" +
-	"\a_activeB\x0e\n" +
-	"\f_path_prefixB\a\n" +
-	"\x05_name\"\x1e\n" +
+	"\aresults\x18\x02 \x03(\v2\x10.ruto_v1.AppMainR\aresults\"\x1e\n" +
 	"\fAppCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xcd\x01\n" +
-	"\fAppUpdateReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12$\n" +
-	"\vpath_prefix\x18\x03 \x01(\tH\x01R\n" +
-	"pathPrefix\x88\x01\x01\x12\x17\n" +
-	"\x04name\x18\x04 \x01(\tH\x02R\x04name\x88\x01\x01\x12-\n" +
-	"\abackend\x18\x05 \x01(\v2\x13.ruto_v1.AppBackendR\abackendB\t\n" +
-	"\a_activeB\x0e\n" +
-	"\f_path_prefixB\a\n" +
-	"\x05_name\"\x1e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x1e\n" +
 	"\n" +
 	"AppBackend\x12\x10\n" +
-	"\x03url\x18\x01 \x01(\tR\x03url2\xe6\x02\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url2\xdc\x02\n" +
 	"\x03App\x12>\n" +
 	"\x04List\x12\x13.ruto_v1.AppListReq\x1a\x13.ruto_v1.AppListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/app\x12>\n" +
-	"\x03Get\x12\x12.ruto_v1.AppGetReq\x1a\x10.ruto_v1.AppMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/app/{id}\x12G\n" +
-	"\x06Create\x12\x15.ruto_v1.AppCreateReq\x1a\x15.ruto_v1.AppCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/app\x12M\n" +
-	"\x06Update\x12\x15.ruto_v1.AppUpdateReq\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/app/{id}\x12G\n" +
+	"\x03Get\x12\x12.ruto_v1.AppGetReq\x1a\x10.ruto_v1.AppMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/app/{id}\x12B\n" +
+	"\x06Create\x12\x10.ruto_v1.AppMain\x1a\x15.ruto_v1.AppCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/app\x12H\n" +
+	"\x06Update\x12\x10.ruto_v1.AppMain\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/app/{id}\x12G\n" +
 	"\x06Delete\x12\x12.ruto_v1.AppGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/app/{id}B\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
@@ -547,42 +384,38 @@ func file_ruto_v1_app_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_app_proto_rawDescData
 }
 
-var file_ruto_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_ruto_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_ruto_v1_app_proto_goTypes = []any{
 	(*AppMain)(nil),          // 0: ruto_v1.AppMain
 	(*AppGetReq)(nil),        // 1: ruto_v1.AppGetReq
 	(*AppListReq)(nil),       // 2: ruto_v1.AppListReq
 	(*AppListRep)(nil),       // 3: ruto_v1.AppListRep
-	(*AppCreateReq)(nil),     // 4: ruto_v1.AppCreateReq
-	(*AppCreateRep)(nil),     // 5: ruto_v1.AppCreateRep
-	(*AppUpdateReq)(nil),     // 6: ruto_v1.AppUpdateReq
-	(*AppBackend)(nil),       // 7: ruto_v1.AppBackend
-	(*ListParamsSt)(nil),     // 8: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil), // 9: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),    // 10: google.protobuf.Empty
+	(*AppCreateRep)(nil),     // 4: ruto_v1.AppCreateRep
+	(*AppBackend)(nil),       // 5: ruto_v1.AppBackend
+	(*ListParamsSt)(nil),     // 6: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil), // 7: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),    // 8: google.protobuf.Empty
 }
 var file_ruto_v1_app_proto_depIdxs = []int32{
-	7,  // 0: ruto_v1.AppMain.backend:type_name -> ruto_v1.AppBackend
-	8,  // 1: ruto_v1.AppListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	9,  // 2: ruto_v1.AppListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
-	0,  // 3: ruto_v1.AppListRep.results:type_name -> ruto_v1.AppMain
-	7,  // 4: ruto_v1.AppCreateReq.backend:type_name -> ruto_v1.AppBackend
-	7,  // 5: ruto_v1.AppUpdateReq.backend:type_name -> ruto_v1.AppBackend
-	2,  // 6: ruto_v1.App.List:input_type -> ruto_v1.AppListReq
-	1,  // 7: ruto_v1.App.Get:input_type -> ruto_v1.AppGetReq
-	4,  // 8: ruto_v1.App.Create:input_type -> ruto_v1.AppCreateReq
-	6,  // 9: ruto_v1.App.Update:input_type -> ruto_v1.AppUpdateReq
-	1,  // 10: ruto_v1.App.Delete:input_type -> ruto_v1.AppGetReq
-	3,  // 11: ruto_v1.App.List:output_type -> ruto_v1.AppListRep
-	0,  // 12: ruto_v1.App.Get:output_type -> ruto_v1.AppMain
-	5,  // 13: ruto_v1.App.Create:output_type -> ruto_v1.AppCreateRep
-	10, // 14: ruto_v1.App.Update:output_type -> google.protobuf.Empty
-	10, // 15: ruto_v1.App.Delete:output_type -> google.protobuf.Empty
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	5, // 0: ruto_v1.AppMain.backend:type_name -> ruto_v1.AppBackend
+	6, // 1: ruto_v1.AppListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	7, // 2: ruto_v1.AppListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	0, // 3: ruto_v1.AppListRep.results:type_name -> ruto_v1.AppMain
+	2, // 4: ruto_v1.App.List:input_type -> ruto_v1.AppListReq
+	1, // 5: ruto_v1.App.Get:input_type -> ruto_v1.AppGetReq
+	0, // 6: ruto_v1.App.Create:input_type -> ruto_v1.AppMain
+	0, // 7: ruto_v1.App.Update:input_type -> ruto_v1.AppMain
+	1, // 8: ruto_v1.App.Delete:input_type -> ruto_v1.AppGetReq
+	3, // 9: ruto_v1.App.List:output_type -> ruto_v1.AppListRep
+	0, // 10: ruto_v1.App.Get:output_type -> ruto_v1.AppMain
+	4, // 11: ruto_v1.App.Create:output_type -> ruto_v1.AppCreateRep
+	8, // 12: ruto_v1.App.Update:output_type -> google.protobuf.Empty
+	8, // 13: ruto_v1.App.Delete:output_type -> google.protobuf.Empty
+	9, // [9:14] is the sub-list for method output_type
+	4, // [4:9] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_app_proto_init() }
@@ -592,15 +425,13 @@ func file_ruto_v1_app_proto_init() {
 	}
 	file_ruto_v1_common_proto_init()
 	file_ruto_v1_app_proto_msgTypes[2].OneofWrappers = []any{}
-	file_ruto_v1_app_proto_msgTypes[4].OneofWrappers = []any{}
-	file_ruto_v1_app_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_app_proto_rawDesc), len(file_ruto_v1_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

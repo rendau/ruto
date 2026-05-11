@@ -15,10 +15,10 @@ service App {
   rpc Get(AppGetReq) returns (AppMain) {
     option (google.api.http) = { get: "/app/{id}" };
   };
-  rpc Create(AppCreateReq) returns (AppCreateRep) {
+  rpc Create(AppMain) returns (AppCreateRep) {
     option (google.api.http) = { post: "/app" body: "*" };
   };
-  rpc Update(AppUpdateReq) returns (google.protobuf.Empty) {
+  rpc Update(AppMain) returns (google.protobuf.Empty) {
     option (google.api.http) = { put: "/app/{id}" body: "*" };
   };
   rpc Delete(AppGetReq) returns (google.protobuf.Empty) {
@@ -48,23 +48,8 @@ message AppListRep {
   repeated AppMain results = 2;
 }
 
-message AppCreateReq {
-  optional bool active = 1;
-  optional string path_prefix = 2;
-  optional string name = 3;
-  AppBackend backend = 4;
-}
-
 message AppCreateRep {
   string id = 1;
-}
-
-message AppUpdateReq {
-  string id = 1;
-  optional bool active = 2;
-  optional string path_prefix = 3;
-  optional string name = 4;
-  AppBackend backend = 5;
 }
 
 message AppBackend {

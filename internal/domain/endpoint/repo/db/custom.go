@@ -7,8 +7,8 @@ var (
 		"active": "active",
 		"id":     "id",
 		"app_id": "app_id",
-		"method": "method",
-		"path":   "path",
+		"method": "data ->> 'method'",
+		"path":   "data ->> 'path'",
 	}
 )
 

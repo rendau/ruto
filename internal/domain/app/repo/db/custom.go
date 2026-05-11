@@ -5,7 +5,7 @@ import "github.com/rendau/ruto/internal/domain/app/model"
 var (
 	allowedSortFields = map[string]string{
 		"id":   "id",
-		"name": "name",
+		"name": "data ->> 'name'",
 	}
 )
 

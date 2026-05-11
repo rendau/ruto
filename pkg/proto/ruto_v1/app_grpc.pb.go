@@ -33,8 +33,8 @@ const (
 type AppClient interface {
 	List(ctx context.Context, in *AppListReq, opts ...grpc.CallOption) (*AppListRep, error)
 	Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppMain, error)
-	Create(ctx context.Context, in *AppCreateReq, opts ...grpc.CallOption) (*AppCreateRep, error)
-	Update(ctx context.Context, in *AppUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Create(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*AppCreateRep, error)
+	Update(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -66,7 +66,7 @@ func (c *appClient) Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOpt
 	return out, nil
 }
 
-func (c *appClient) Create(ctx context.Context, in *AppCreateReq, opts ...grpc.CallOption) (*AppCreateRep, error) {
+func (c *appClient) Create(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*AppCreateRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AppCreateRep)
 	err := c.cc.Invoke(ctx, App_Create_FullMethodName, in, out, cOpts...)
@@ -76,7 +76,7 @@ func (c *appClient) Create(ctx context.Context, in *AppCreateReq, opts ...grpc.C
 	return out, nil
 }
 
-func (c *appClient) Update(ctx context.Context, in *AppUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *appClient) Update(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, App_Update_FullMethodName, in, out, cOpts...)
@@ -102,8 +102,8 @@ func (c *appClient) Delete(ctx context.Context, in *AppGetReq, opts ...grpc.Call
 type AppServer interface {
 	List(context.Context, *AppListReq) (*AppListRep, error)
 	Get(context.Context, *AppGetReq) (*AppMain, error)
-	Create(context.Context, *AppCreateReq) (*AppCreateRep, error)
-	Update(context.Context, *AppUpdateReq) (*emptypb.Empty, error)
+	Create(context.Context, *AppMain) (*AppCreateRep, error)
+	Update(context.Context, *AppMain) (*emptypb.Empty, error)
 	Delete(context.Context, *AppGetReq) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAppServer()
 }
@@ -121,10 +121,10 @@ func (UnimplementedAppServer) List(context.Context, *AppListReq) (*AppListRep, e
 func (UnimplementedAppServer) Get(context.Context, *AppGetReq) (*AppMain, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedAppServer) Create(context.Context, *AppCreateReq) (*AppCreateRep, error) {
+func (UnimplementedAppServer) Create(context.Context, *AppMain) (*AppCreateRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedAppServer) Update(context.Context, *AppUpdateReq) (*emptypb.Empty, error) {
+func (UnimplementedAppServer) Update(context.Context, *AppMain) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedAppServer) Delete(context.Context, *AppGetReq) (*emptypb.Empty, error) {
@@ -188,7 +188,7 @@ func _App_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 }
 
 func _App_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AppCreateReq)
+	in := new(AppMain)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -200,13 +200,13 @@ func _App_Create_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		FullMethod: App_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AppServer).Create(ctx, req.(*AppCreateReq))
+		return srv.(AppServer).Create(ctx, req.(*AppMain))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _App_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AppUpdateReq)
+	in := new(AppMain)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func _App_Update_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		FullMethod: App_Update_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AppServer).Update(ctx, req.(*AppUpdateReq))
+		return srv.(AppServer).Update(ctx, req.(*AppMain))
 	}
 	return interceptor(ctx, in, info, handler)
 }

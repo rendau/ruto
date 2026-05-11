@@ -9,10 +9,6 @@ import (
 )
 
 func EncodeRootMain(v *model.Root, _ int) *ruto_v1.RootMain {
-	if v == nil {
-		return nil
-	}
-
 	return &ruto_v1.RootMain{
 		BaseUrl: v.BaseUrl,
 		Cors:    EncodeRootCors(v.Cors),
@@ -21,10 +17,6 @@ func EncodeRootMain(v *model.Root, _ int) *ruto_v1.RootMain {
 }
 
 func DecodeRootMain(v *ruto_v1.RootMain) *model.Root {
-	if v == nil {
-		return nil
-	}
-
 	return &model.Root{
 		BaseUrl: v.BaseUrl,
 		Cors:    DecodeRootCors(v.Cors),

@@ -18,7 +18,7 @@ func New(srv ServiceI) *Usecase {
 	}
 }
 
-func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error) {
+func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Endpoint, int64, error) {
 	items, tCount, err := u.svc.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
@@ -27,7 +27,7 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 	return items, tCount, err
 }
 
-func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
+func (u *Usecase) Create(ctx context.Context, obj *model.Endpoint) (string, error) {
 	err := u.validateEdit(obj, true)
 	if err != nil {
 		return "", err
@@ -41,7 +41,7 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	return newId, nil
 }
 
-func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
+func (u *Usecase) Get(ctx context.Context, id string) (*model.Endpoint, error) {
 	result, _, err := u.svc.Get(ctx, id, true)
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
@@ -50,7 +50,7 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
 	return result, nil
 }
 
-func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error {
+func (u *Usecase) Update(ctx context.Context, id string, obj *model.Endpoint) error {
 	if id == "" {
 		return errs.IdRequired
 	}
@@ -79,6 +79,6 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
+func (u *Usecase) validateEdit(obj *model.Endpoint, forCreate bool) error {
 	return nil
 }

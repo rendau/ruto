@@ -14,7 +14,7 @@ type Service struct {
 
 func New(repoDb RepoDbI) *Service { return &Service{repoDb: repoDb} }
 
-func (s *Service) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error) {
+func (s *Service) List(ctx context.Context, pars *model.ListReq) ([]*model.Endpoint, int64, error) {
 	items, tCount, err := s.repoDb.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("repoDb.List: %w", err)
@@ -23,7 +23,7 @@ func (s *Service) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 	return items, tCount, nil
 }
 
-func (s *Service) Get(ctx context.Context, id string, errNE bool) (*model.Main, bool, error) {
+func (s *Service) Get(ctx context.Context, id string, errNE bool) (*model.Endpoint, bool, error) {
 	result, found, err := s.repoDb.Get(ctx, id)
 	if err != nil {
 		return nil, false, fmt.Errorf("repoDb.Get: %w", err)
@@ -39,7 +39,7 @@ func (s *Service) Get(ctx context.Context, id string, errNE bool) (*model.Main, 
 	return result, found, nil
 }
 
-func (s *Service) Create(ctx context.Context, obj *model.Edit) (string, error) {
+func (s *Service) Create(ctx context.Context, obj *model.Endpoint) (string, error) {
 	newId, err := s.repoDb.Create(ctx, obj)
 	if err != nil {
 		return "", fmt.Errorf("repoDb.Create: %w", err)
@@ -48,7 +48,7 @@ func (s *Service) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	return newId, nil
 }
 
-func (s *Service) Update(ctx context.Context, id string, obj *model.Edit) error {
+func (s *Service) Update(ctx context.Context, id string, obj *model.Endpoint) error {
 	err := s.repoDb.Update(ctx, id, obj)
 	if err != nil {
 		return fmt.Errorf("repoDb.Update: %w", err)

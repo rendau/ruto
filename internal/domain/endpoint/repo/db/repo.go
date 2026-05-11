@@ -31,7 +31,7 @@ func New(con *pgxpool.Pool) *Repo {
 	}
 }
 
-func (r *Repo) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error) {
+func (r *Repo) List(ctx context.Context, pars *model.ListReq) ([]*model.Endpoint, int64, error) {
 	conditions, conditionExps := r.getConditions(pars)
 	sort := moboneTools.ConstructSortColumns(allowedSortFields, pars.Sort)
 
@@ -59,7 +59,7 @@ func (r *Repo) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, in
 	return lo.Map(items, repoModel.EncodeSelect), totalCount, nil
 }
 
-func (r *Repo) Get(ctx context.Context, id string) (*model.Main, bool, error) {
+func (r *Repo) Get(ctx context.Context, id string) (*model.Endpoint, bool, error) {
 	m := &repoModel.Select{
 		PKId: id,
 	}
@@ -75,7 +75,7 @@ func (r *Repo) Get(ctx context.Context, id string) (*model.Main, bool, error) {
 	return repoModel.EncodeSelect(m, 0), true, nil
 }
 
-func (r *Repo) Create(ctx context.Context, obj *model.Edit) (string, error) {
+func (r *Repo) Create(ctx context.Context, obj *model.Endpoint) (string, error) {
 	m := repoModel.DecodeUpsert(obj)
 
 	err := r.ModelStore.Create(ctx, m)
@@ -86,7 +86,7 @@ func (r *Repo) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	return m.PKId, nil
 }
 
-func (r *Repo) Update(ctx context.Context, id string, obj *model.Edit) error {
+func (r *Repo) Update(ctx context.Context, id string, obj *model.Endpoint) error {
 	m := repoModel.DecodeUpsert(obj)
 	m.PKId = id
 

@@ -9,15 +9,10 @@ option go_package = "/ruto_v1";
 
 service Root {
   rpc Get(google.protobuf.Empty) returns (RootMain) {
-    option (google.api.http) = {
-      get: "/root"
-    };
+    option (google.api.http) = { get: "/root" };
   };
   rpc Set(RootMain) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/root"
-      body: "*"
-    };
+    option (google.api.http) = { post: "/root" body: "*" };
   };
 }
 

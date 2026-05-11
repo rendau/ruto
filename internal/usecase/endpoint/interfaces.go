@@ -7,9 +7,9 @@ import (
 )
 
 type ServiceI interface {
-	List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error)
-	Get(ctx context.Context, id string, errNE bool) (*model.Main, bool, error)
-	Create(ctx context.Context, obj *model.Edit) (string, error)
-	Update(ctx context.Context, id string, obj *model.Edit) error
+	List(ctx context.Context, pars *model.ListReq) ([]*model.Endpoint, int64, error)
+	Get(ctx context.Context, id string, errNE bool) (*model.Endpoint, bool, error)
+	Create(ctx context.Context, obj *model.Endpoint) (string, error)
+	Update(ctx context.Context, id string, obj *model.Endpoint) error
 	Delete(ctx context.Context, id string) error
 }

@@ -115,7 +115,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ruto_v1AppCreateReq"
+              "$ref": "#/definitions/ruto_v1AppMain"
             }
           }
         ],
@@ -319,7 +319,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ruto_v1EndpointCreateReq"
+              "$ref": "#/definitions/ruto_v1EndpointMain"
             }
           }
         ],
@@ -523,23 +523,6 @@
         }
       }
     },
-    "ruto_v1AppCreateReq": {
-      "type": "object",
-      "properties": {
-        "active": {
-          "type": "boolean"
-        },
-        "path_prefix": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "backend": {
-          "$ref": "#/definitions/ruto_v1AppBackend"
-        }
-      }
-    },
     "ruto_v1AppListRep": {
       "type": "object",
       "properties": {
@@ -608,40 +591,6 @@
         }
       }
     },
-    "ruto_v1EndpointCreateReq": {
-      "type": "object",
-      "properties": {
-        "app_id": {
-          "type": "string"
-        },
-        "active": {
-          "type": "boolean"
-        },
-        "method": {
-          "type": "string"
-        },
-        "path": {
-          "type": "string"
-        },
-        "data": {
-          "$ref": "#/definitions/ruto_v1EndpointData"
-        }
-      }
-    },
-    "ruto_v1EndpointData": {
-      "type": "object",
-      "properties": {
-        "backend": {
-          "$ref": "#/definitions/ruto_v1EndpointBackend"
-        },
-        "jwt_validation": {
-          "$ref": "#/definitions/ruto_v1EndpointJwtValidation"
-        },
-        "ip_validation": {
-          "$ref": "#/definitions/ruto_v1EndpointIpValidation"
-        }
-      }
-    },
     "ruto_v1EndpointIpValidation": {
       "type": "object",
       "properties": {
@@ -700,8 +649,14 @@
         "path": {
           "type": "string"
         },
-        "data": {
-          "$ref": "#/definitions/ruto_v1EndpointData"
+        "backend": {
+          "$ref": "#/definitions/ruto_v1EndpointBackend"
+        },
+        "jwt_validation": {
+          "$ref": "#/definitions/ruto_v1EndpointJwtValidation"
+        },
+        "ip_validation": {
+          "$ref": "#/definitions/ruto_v1EndpointIpValidation"
         }
       }
     },
@@ -720,8 +675,14 @@
         "path": {
           "type": "string"
         },
-        "data": {
-          "$ref": "#/definitions/ruto_v1EndpointData"
+        "backend": {
+          "$ref": "#/definitions/ruto_v1EndpointBackend"
+        },
+        "jwt_validation": {
+          "$ref": "#/definitions/ruto_v1EndpointJwtValidation"
+        },
+        "ip_validation": {
+          "$ref": "#/definitions/ruto_v1EndpointIpValidation"
         }
       }
     },

@@ -1,31 +1,29 @@
 package model
 
-import domModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+import (
+	"github.com/rendau/ruto/internal/domain/endpoint/model"
+)
 
 type Upsert struct {
 	PKId string
 
+	Id     *string
 	AppId  *string
 	Active *bool
-	Method *string
-	Path   *string
-	Data   *Data
+	Data   *model.Endpoint
 }
 
 func (m *Upsert) CreateColumnMap() map[string]any {
 	result := map[string]any{}
 
+	if m.Id != nil {
+		result["id"] = *m.Id
+	}
 	if m.AppId != nil {
 		result["app_id"] = *m.AppId
 	}
 	if m.Active != nil {
 		result["active"] = *m.Active
-	}
-	if m.Method != nil {
-		result["method"] = *m.Method
-	}
-	if m.Path != nil {
-		result["path"] = *m.Path
 	}
 	if m.Data != nil {
 		result["data"] = *m.Data
@@ -40,19 +38,26 @@ func (m *Upsert) ReturningColumnMap() map[string]any {
 	}
 }
 
-func (m *Upsert) UpdateColumnMap() map[string]any { return m.CreateColumnMap() }
-
-func (m *Upsert) PKColumnMap() map[string]any { return map[string]any{"id": m.PKId} }
-
-func DecodeUpsert(v *domModel.Edit) *Upsert {
-	if v == nil {
-		return nil
+func (m *Upsert) UpdateColumnMap() map[string]any {
+	result := m.CreateColumnMap()
+	for k, _ := range m.PKColumnMap() {
+		delete(result, k)
 	}
-	return &Upsert{
-		AppId:  v.AppId,
-		Active: v.Active,
-		Method: v.Method,
-		Path:   v.Path,
-		Data:   DecodeData(v.Data),
+	return result
+}
+
+func (m *Upsert) PKColumnMap() map[string]any {
+	return map[string]any{"id": m.PKId}
+}
+
+func DecodeUpsert(v *model.Endpoint) *Upsert {
+	result := &Upsert{
+		AppId:  &v.AppId,
+		Active: &v.Active,
+		Data:   v,
 	}
+	if v.Id != "" {
+		result.Id = &v.Id
+	}
+	return result
 }

@@ -15,10 +15,10 @@ service Endpoint {
   rpc Get(EndpointGetReq) returns (EndpointMain) {
     option (google.api.http) = { get: "/endpoint/{id}" };
   };
-  rpc Create(EndpointCreateReq) returns (EndpointCreateRep) {
+  rpc Create(EndpointMain) returns (EndpointCreateRep) {
     option (google.api.http) = { post: "/endpoint" body: "*" };
   };
-  rpc Update(EndpointUpdateReq) returns (google.protobuf.Empty) {
+  rpc Update(EndpointMain) returns (google.protobuf.Empty) {
     option (google.api.http) = { put: "/endpoint/{id}" body: "*" };
   };
   rpc Delete(EndpointGetReq) returns (google.protobuf.Empty) {
@@ -32,7 +32,9 @@ message EndpointMain {
   bool active = 3;
   string method = 4;
   string path = 5;
-  EndpointData data = 6;
+  EndpointBackend backend = 6;
+  EndpointJwtValidation jwt_validation = 7;
+  EndpointIpValidation ip_validation = 8;
 }
 
 message EndpointGetReq {
@@ -50,31 +52,8 @@ message EndpointListRep {
   repeated EndpointMain results = 2;
 }
 
-message EndpointCreateReq {
-  optional string app_id = 1;
-  optional bool active = 2;
-  optional string method = 3;
-  optional string path = 4;
-  EndpointData data = 5;
-}
-
 message EndpointCreateRep {
   string id = 1;
-}
-
-message EndpointUpdateReq {
-  string id = 1;
-  optional string app_id = 2;
-  optional bool active = 3;
-  optional string method = 4;
-  optional string path = 5;
-  EndpointData data = 6;
-}
-
-message EndpointData {
-  EndpointBackend backend = 1;
-  EndpointJwtValidation jwt_validation = 2;
-  EndpointIpValidation ip_validation = 3;
 }
 
 message EndpointBackend {

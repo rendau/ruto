@@ -111,7 +111,7 @@ func local_request_Endpoint_Get_0(ctx context.Context, marshaler runtime.Marshal
 
 func request_Endpoint_Create_0(ctx context.Context, marshaler runtime.Marshaler, client EndpointClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq EndpointCreateReq
+		protoReq EndpointMain
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -126,7 +126,7 @@ func request_Endpoint_Create_0(ctx context.Context, marshaler runtime.Marshaler,
 
 func local_request_Endpoint_Create_0(ctx context.Context, marshaler runtime.Marshaler, server EndpointServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq EndpointCreateReq
+		protoReq EndpointMain
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -138,7 +138,7 @@ func local_request_Endpoint_Create_0(ctx context.Context, marshaler runtime.Mars
 
 func request_Endpoint_Update_0(ctx context.Context, marshaler runtime.Marshaler, client EndpointClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq EndpointUpdateReq
+		protoReq EndpointMain
 		metadata runtime.ServerMetadata
 		err      error
 	)
@@ -162,7 +162,7 @@ func request_Endpoint_Update_0(ctx context.Context, marshaler runtime.Marshaler,
 
 func local_request_Endpoint_Update_0(ctx context.Context, marshaler runtime.Marshaler, server EndpointServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq EndpointUpdateReq
+		protoReq EndpointMain
 		metadata runtime.ServerMetadata
 		err      error
 	)

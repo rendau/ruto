@@ -33,8 +33,8 @@ const (
 type EndpointClient interface {
 	List(ctx context.Context, in *EndpointListReq, opts ...grpc.CallOption) (*EndpointListRep, error)
 	Get(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*EndpointMain, error)
-	Create(ctx context.Context, in *EndpointCreateReq, opts ...grpc.CallOption) (*EndpointCreateRep, error)
-	Update(ctx context.Context, in *EndpointUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Create(ctx context.Context, in *EndpointMain, opts ...grpc.CallOption) (*EndpointCreateRep, error)
+	Update(ctx context.Context, in *EndpointMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -66,7 +66,7 @@ func (c *endpointClient) Get(ctx context.Context, in *EndpointGetReq, opts ...gr
 	return out, nil
 }
 
-func (c *endpointClient) Create(ctx context.Context, in *EndpointCreateReq, opts ...grpc.CallOption) (*EndpointCreateRep, error) {
+func (c *endpointClient) Create(ctx context.Context, in *EndpointMain, opts ...grpc.CallOption) (*EndpointCreateRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EndpointCreateRep)
 	err := c.cc.Invoke(ctx, Endpoint_Create_FullMethodName, in, out, cOpts...)
@@ -76,7 +76,7 @@ func (c *endpointClient) Create(ctx context.Context, in *EndpointCreateReq, opts
 	return out, nil
 }
 
-func (c *endpointClient) Update(ctx context.Context, in *EndpointUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *endpointClient) Update(ctx context.Context, in *EndpointMain, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Endpoint_Update_FullMethodName, in, out, cOpts...)
@@ -102,8 +102,8 @@ func (c *endpointClient) Delete(ctx context.Context, in *EndpointGetReq, opts ..
 type EndpointServer interface {
 	List(context.Context, *EndpointListReq) (*EndpointListRep, error)
 	Get(context.Context, *EndpointGetReq) (*EndpointMain, error)
-	Create(context.Context, *EndpointCreateReq) (*EndpointCreateRep, error)
-	Update(context.Context, *EndpointUpdateReq) (*emptypb.Empty, error)
+	Create(context.Context, *EndpointMain) (*EndpointCreateRep, error)
+	Update(context.Context, *EndpointMain) (*emptypb.Empty, error)
 	Delete(context.Context, *EndpointGetReq) (*emptypb.Empty, error)
 	mustEmbedUnimplementedEndpointServer()
 }
@@ -121,10 +121,10 @@ func (UnimplementedEndpointServer) List(context.Context, *EndpointListReq) (*End
 func (UnimplementedEndpointServer) Get(context.Context, *EndpointGetReq) (*EndpointMain, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedEndpointServer) Create(context.Context, *EndpointCreateReq) (*EndpointCreateRep, error) {
+func (UnimplementedEndpointServer) Create(context.Context, *EndpointMain) (*EndpointCreateRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedEndpointServer) Update(context.Context, *EndpointUpdateReq) (*emptypb.Empty, error) {
+func (UnimplementedEndpointServer) Update(context.Context, *EndpointMain) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedEndpointServer) Delete(context.Context, *EndpointGetReq) (*emptypb.Empty, error) {
@@ -188,7 +188,7 @@ func _Endpoint_Get_Handler(srv interface{}, ctx context.Context, dec func(interf
 }
 
 func _Endpoint_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EndpointCreateReq)
+	in := new(EndpointMain)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -200,13 +200,13 @@ func _Endpoint_Create_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Endpoint_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EndpointServer).Create(ctx, req.(*EndpointCreateReq))
+		return srv.(EndpointServer).Create(ctx, req.(*EndpointMain))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Endpoint_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EndpointUpdateReq)
+	in := new(EndpointMain)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func _Endpoint_Update_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Endpoint_Update_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EndpointServer).Update(ctx, req.(*EndpointUpdateReq))
+		return srv.(EndpointServer).Update(ctx, req.(*EndpointMain))
 	}
 	return interceptor(ctx, in, info, handler)
 }

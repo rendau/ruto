@@ -3,14 +3,10 @@ package dto
 import (
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
-	domModel "github.com/rendau/ruto/internal/domain/app/model"
+	"github.com/rendau/ruto/internal/domain/app/model"
 )
 
-func EncodeAppMain(v *domModel.Main, _ int) *ruto_v1.AppMain {
-	if v == nil {
-		return nil
-	}
-
+func EncodeAppMain(v *model.App, _ int) *ruto_v1.AppMain {
 	return &ruto_v1.AppMain{
 		Id:         v.Id,
 		Active:     v.Active,
@@ -20,35 +16,16 @@ func EncodeAppMain(v *domModel.Main, _ int) *ruto_v1.AppMain {
 	}
 }
 
-func DecodeAppListReq(v *ruto_v1.AppListReq) *domModel.ListReq {
-	if v == nil {
-		return nil
-	}
-	return &domModel.ListReq{
+func DecodeAppListReq(v *ruto_v1.AppListReq) *model.ListReq {
+	return &model.ListReq{
 		ListParams: DecodeListParams(v.ListParams),
 		Active:     v.Active,
 	}
 }
 
-func DecodeAppCreateReq(v *ruto_v1.AppCreateReq) *domModel.Edit {
-	if v == nil {
-		return nil
-	}
-
-	return &domModel.Edit{
-		Active:     v.Active,
-		PathPrefix: v.PathPrefix,
-		Name:       v.Name,
-		Backend:    DecodeAppBackend(v.Backend),
-	}
-}
-
-func DecodeAppUpdateReq(v *ruto_v1.AppUpdateReq) *domModel.Edit {
-	if v == nil {
-		return nil
-	}
-
-	return &domModel.Edit{
+func DecodeAppMain(v *ruto_v1.AppMain) *model.App {
+	return &model.App{
+		Id:         v.Id,
 		Active:     v.Active,
 		PathPrefix: v.PathPrefix,
 		Name:       v.Name,
@@ -58,20 +35,17 @@ func DecodeAppUpdateReq(v *ruto_v1.AppUpdateReq) *domModel.Edit {
 
 // AppBackend
 
-func EncodeAppBackend(x *domModel.Backend) *ruto_v1.AppBackend {
-	if x == nil {
-		return nil
-	}
+func EncodeAppBackend(x model.AppBackend) *ruto_v1.AppBackend {
 	return &ruto_v1.AppBackend{
 		Url: x.Url,
 	}
 }
 
-func DecodeAppBackend(x *ruto_v1.AppBackend) *domModel.Backend {
+func DecodeAppBackend(x *ruto_v1.AppBackend) model.AppBackend {
 	if x == nil {
-		return nil
+		return model.AppBackend{}
 	}
-	return &domModel.Backend{
+	return model.AppBackend{
 		Url: x.Url,
 	}
 }

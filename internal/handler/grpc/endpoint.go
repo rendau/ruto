@@ -46,16 +46,16 @@ func (h *Endpoint) Get(ctx context.Context, req *ruto_v1.EndpointGetReq) (*ruto_
 	return dto.EncodeEndpointMain(item, 0), nil
 }
 
-func (h *Endpoint) Create(ctx context.Context, req *ruto_v1.EndpointCreateReq) (*ruto_v1.EndpointCreateRep, error) {
-	newId, err := h.usecase.Create(ctx, dto.DecodeEndpointCreateReq(req))
+func (h *Endpoint) Create(ctx context.Context, req *ruto_v1.EndpointMain) (*ruto_v1.EndpointCreateRep, error) {
+	newId, err := h.usecase.Create(ctx, dto.DecodeEndpointMain(req))
 	if err != nil {
 		return nil, err
 	}
 	return &ruto_v1.EndpointCreateRep{Id: newId}, nil
 }
 
-func (h *Endpoint) Update(ctx context.Context, req *ruto_v1.EndpointUpdateReq) (*emptypb.Empty, error) {
-	if err := h.usecase.Update(ctx, req.Id, dto.DecodeEndpointUpdateReq(req)); err != nil {
+func (h *Endpoint) Update(ctx context.Context, req *ruto_v1.EndpointMain) (*emptypb.Empty, error) {
+	if err := h.usecase.Update(ctx, req.Id, dto.DecodeEndpointMain(req)); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
