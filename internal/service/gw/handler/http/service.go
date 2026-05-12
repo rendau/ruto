@@ -13,13 +13,13 @@ type Service struct {
 	h http.Handler
 }
 
-func New(conf *rootModel.Root) (*Service, error) {
-	err := conf.Normalize()
+func New(snapshot *rootModel.Root) (*Service, error) {
+	err := snapshot.Normalize()
 	if err != nil {
-		return nil, fmt.Errorf("config normalize: %w", err)
+		return nil, fmt.Errorf("snapshot normalize: %w", err)
 	}
 
-	handler, err := buildHandler(conf)
+	handler, err := buildHandler(snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -33,7 +33,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(conf *rootModel.Root) (_ http.Handler, finalErr error) {
+func buildHandler(snapshot *rootModel.Root) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)
@@ -44,7 +44,7 @@ func buildHandler(conf *rootModel.Root) (_ http.Handler, finalErr error) {
 
 	var routePattern string
 
-	for _, app := range conf.Apps {
+	for _, app := range snapshot.Apps {
 		appHandler := proxy.NewProxy(app)
 
 		for _, endpoint := range app.Endpoints {
@@ -57,7 +57,7 @@ func buildHandler(conf *rootModel.Root) (_ http.Handler, finalErr error) {
 				routePattern,
 				middleware.Chain(
 					appHandler,
-					middleware.NewWithEndpoint(endpoint),
+					middleware.NewWithRequest(snapshot, app, endpoint),
 					middleware.NewStripPrefix(app.PathPrefix),
 				),
 			)
@@ -65,8 +65,8 @@ func buildHandler(conf *rootModel.Root) (_ http.Handler, finalErr error) {
 	}
 
 	// return middleware.Chain(mux,
-	// 	middleware.NewTimeout(conf.Timeout.Global),
-	// 	middleware.NewCors(conf.Cors),
+	// 	middleware.NewTimeout(snapshot.Timeout.Global),
+	// 	middleware.NewCors(snapshot.Cors),
 	// ), nil
 
 	return mux, nil

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
-	localContext "github.com/rendau/ruto/internal/service/gw/handler/http/context"
+	requestModel "github.com/rendau/ruto/internal/service/gw/handler/http/request"
 )
 
 func NewProxy(app *appModel.App) http.Handler {
@@ -27,12 +27,13 @@ func NewProxy(app *appModel.App) http.Handler {
 			MaxIdleConnsPerHost: 50,
 		},
 		Rewrite: func(r *httputil.ProxyRequest) {
-			endpoint := localContext.ExtractEndpoint(r.In.Context())
-			if endpoint == nil {
-				slog.Error("context.ExtractEndpoint() error", "error", "Endpoint not found in context")
+			req := requestModel.Extract(r.In.Context())
+			if req == nil || req.Endpoint == nil {
+				slog.Error("request.Extract() error", "error", "Request/Endpoint not found in context")
 				r.SetURL(&url.URL{Scheme: "http", Host: "invalid-host"})
 				return
 			}
+			endpoint := req.Endpoint
 
 			r.SetURL(backendUrl)
 
