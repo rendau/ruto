@@ -77,13 +77,6 @@ func (s *Service) worker() {
 	}
 }
 
-func (s *Service) sleepOrDone(d time.Duration) {
-	select {
-	case <-time.After(d):
-	case <-s.globalCtx.Done():
-	}
-}
-
 func (s *Service) refresh() {
 	serverVersion, err := s.fetchVersion()
 	if err != nil {
@@ -94,15 +87,13 @@ func (s *Service) refresh() {
 		return
 	}
 
-	slog.Info("config-client: new version", "version", serverVersion)
-
 	err = s.fetchAndApplyConfig()
 	if err != nil {
-		slog.Error("config-client: fetchAndApplyConfig failed", "error", err)
+		slog.Error("config-client: fetchAndApplyConfig failed", "error", err, "version", serverVersion)
 		return
 	}
 
-	slog.Info("  config-client: config applied", "version", serverVersion)
+	slog.Info("config-client: config applied", "version", serverVersion)
 
 	s.currentVersion = serverVersion
 }
