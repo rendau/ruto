@@ -501,6 +501,28 @@
           "Snapshot"
         ]
       }
+    },
+    "/snapshot/version": {
+      "get": {
+        "operationId": "Snapshot_GetVersion",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1SnapshotVersion"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Snapshot"
+        ]
+      }
     }
   },
   "definitions": {

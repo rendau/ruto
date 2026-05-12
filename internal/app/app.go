@@ -41,6 +41,7 @@ import (
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
 
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
+	serviceSnapshotVersionP "github.com/rendau/ruto/internal/service/snapshot"
 )
 
 type App struct {
@@ -51,6 +52,7 @@ type App struct {
 	grpcServer *GrpcServer
 	httpServer *http.Server
 	gw         *serviceGwP.Service
+	snapshotV  *serviceSnapshotVersionP.Service
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -109,6 +111,8 @@ func (a *App) Init() {
 
 	// snapshot
 	usecaseSnapshot := usecaseSnapshotP.New(domainRootService, domainAppService, domainEndpointService)
+	a.snapshotV = serviceSnapshotVersionP.New(a.ctx, domainRootService, domainAppService, domainEndpointService)
+	usecaseSnapshot.SetVersionService(a.snapshotV)
 	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
 
 	// grpc server
@@ -216,6 +220,10 @@ func (a *App) Start() {
 
 	// gw-server-http
 	a.gw.Start()
+
+	if a.snapshotV != nil {
+		a.snapshotV.Start()
+	}
 }
 
 func (a *App) Listen() {

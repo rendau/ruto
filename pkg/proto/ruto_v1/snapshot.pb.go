@@ -120,10 +120,11 @@ const file_ruto_v1_snapshot_proto_rawDesc = "" +
 	"\x10SnapshotResponse\x12+\n" +
 	"\x04data\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x04data\"+\n" +
 	"\x0fSnapshotVersion\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\tR\aversion2\xa2\x01\n" +
-	"\bSnapshot\x12K\n" +
-	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x19.ruto_v1.SnapshotResponse\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/snapshot\x12I\n" +
-	"\x11SubscribeVersions\x12\x16.google.protobuf.Empty\x1a\x18.ruto_v1.SnapshotVersion\"\x000\x01B\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion2\xb2\x01\n" +
+	"\bSnapshot\x12Y\n" +
+	"\n" +
+	"GetVersion\x12\x16.google.protobuf.Empty\x1a\x18.ruto_v1.SnapshotVersion\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/snapshot/version\x12K\n" +
+	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x19.ruto_v1.SnapshotResponse\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/snapshotB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
 var (
@@ -147,10 +148,10 @@ var file_ruto_v1_snapshot_proto_goTypes = []any{
 }
 var file_ruto_v1_snapshot_proto_depIdxs = []int32{
 	2, // 0: ruto_v1.SnapshotResponse.data:type_name -> google.protobuf.Struct
-	3, // 1: ruto_v1.Snapshot.Get:input_type -> google.protobuf.Empty
-	3, // 2: ruto_v1.Snapshot.SubscribeVersions:input_type -> google.protobuf.Empty
-	0, // 3: ruto_v1.Snapshot.Get:output_type -> ruto_v1.SnapshotResponse
-	1, // 4: ruto_v1.Snapshot.SubscribeVersions:output_type -> ruto_v1.SnapshotVersion
+	3, // 1: ruto_v1.Snapshot.GetVersion:input_type -> google.protobuf.Empty
+	3, // 2: ruto_v1.Snapshot.Get:input_type -> google.protobuf.Empty
+	1, // 3: ruto_v1.Snapshot.GetVersion:output_type -> ruto_v1.SnapshotVersion
+	0, // 4: ruto_v1.Snapshot.Get:output_type -> ruto_v1.SnapshotResponse
 	3, // [3:5] is the sub-list for method output_type
 	1, // [1:3] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
