@@ -57,6 +57,7 @@ func (u *Usecase) Get(ctx context.Context) ([]byte, error) {
 
 	rootObj.Apps = apps
 
+	// marshal
 	result, err := json.Marshal(rootObj)
 	if err != nil {
 		return nil, fmt.Errorf("json.Marshal: %w", err)

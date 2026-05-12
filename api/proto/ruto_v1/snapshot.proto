@@ -9,7 +9,11 @@ import "google/protobuf/struct.proto";
 option go_package = "/ruto_v1";
 
 service Snapshot {
-  rpc Get(google.protobuf.Empty) returns (google.protobuf.Struct) {
+  rpc Get(google.protobuf.Empty) returns (SnapshotResponse) {
     option (google.api.http) = { get: "/snapshot" };
   };
+}
+
+message SnapshotResponse {
+  google.protobuf.Struct data = 1;
 }

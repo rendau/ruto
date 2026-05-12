@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/rendau/ruto/internal/handler/grpc/dto"
 	usecase "github.com/rendau/ruto/internal/usecase/snapshot"
@@ -20,10 +19,12 @@ func NewSnapshot(usecase *usecase.Usecase) *Snapshot {
 	return &Snapshot{usecase: usecase}
 }
 
-func (h *Snapshot) Get(ctx context.Context, _ *emptypb.Empty) (*structpb.Struct, error) {
+func (h *Snapshot) Get(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.SnapshotResponse, error) {
 	result, err := h.usecase.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return dto.JsonObjToGrpcStruct(result), nil
+	return &ruto_v1.SnapshotResponse{
+		Data: dto.JsonObjToGrpcStruct(result),
+	}, nil
 }

@@ -12,7 +12,6 @@ import (
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -28,7 +27,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SnapshotClient interface {
-	Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*structpb.Struct, error)
+	Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SnapshotResponse, error)
 }
 
 type snapshotClient struct {
@@ -39,9 +38,9 @@ func NewSnapshotClient(cc grpc.ClientConnInterface) SnapshotClient {
 	return &snapshotClient{cc}
 }
 
-func (c *snapshotClient) Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*structpb.Struct, error) {
+func (c *snapshotClient) Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SnapshotResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(structpb.Struct)
+	out := new(SnapshotResponse)
 	err := c.cc.Invoke(ctx, Snapshot_Get_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -53,7 +52,7 @@ func (c *snapshotClient) Get(ctx context.Context, in *emptypb.Empty, opts ...grp
 // All implementations must embed UnimplementedSnapshotServer
 // for forward compatibility.
 type SnapshotServer interface {
-	Get(context.Context, *emptypb.Empty) (*structpb.Struct, error)
+	Get(context.Context, *emptypb.Empty) (*SnapshotResponse, error)
 	mustEmbedUnimplementedSnapshotServer()
 }
 
@@ -64,7 +63,7 @@ type SnapshotServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSnapshotServer struct{}
 
-func (UnimplementedSnapshotServer) Get(context.Context, *emptypb.Empty) (*structpb.Struct, error) {
+func (UnimplementedSnapshotServer) Get(context.Context, *emptypb.Empty) (*SnapshotResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
 func (UnimplementedSnapshotServer) mustEmbedUnimplementedSnapshotServer() {}

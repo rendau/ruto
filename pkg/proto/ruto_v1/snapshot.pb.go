@@ -13,6 +13,7 @@ import (
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
+	sync "sync"
 	unsafe "unsafe"
 )
 
@@ -23,27 +24,88 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type SnapshotResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          *structpb.Struct       `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SnapshotResponse) Reset() {
+	*x = SnapshotResponse{}
+	mi := &file_ruto_v1_snapshot_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SnapshotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SnapshotResponse) ProtoMessage() {}
+
+func (x *SnapshotResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_snapshot_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SnapshotResponse.ProtoReflect.Descriptor instead.
+func (*SnapshotResponse) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_snapshot_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *SnapshotResponse) GetData() *structpb.Struct {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
 var File_ruto_v1_snapshot_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_snapshot_proto_rawDesc = "" +
 	"\n" +
-	"\x16ruto_v1/snapshot.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto2U\n" +
-	"\bSnapshot\x12I\n" +
-	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x17.google.protobuf.Struct\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/snapshotB\n" +
+	"\x16ruto_v1/snapshot.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"?\n" +
+	"\x10SnapshotResponse\x12+\n" +
+	"\x04data\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x04data2W\n" +
+	"\bSnapshot\x12K\n" +
+	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x19.ruto_v1.SnapshotResponse\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/snapshotB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
+var (
+	file_ruto_v1_snapshot_proto_rawDescOnce sync.Once
+	file_ruto_v1_snapshot_proto_rawDescData []byte
+)
+
+func file_ruto_v1_snapshot_proto_rawDescGZIP() []byte {
+	file_ruto_v1_snapshot_proto_rawDescOnce.Do(func() {
+		file_ruto_v1_snapshot_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_ruto_v1_snapshot_proto_rawDesc), len(file_ruto_v1_snapshot_proto_rawDesc)))
+	})
+	return file_ruto_v1_snapshot_proto_rawDescData
+}
+
+var file_ruto_v1_snapshot_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_ruto_v1_snapshot_proto_goTypes = []any{
-	(*emptypb.Empty)(nil),   // 0: google.protobuf.Empty
-	(*structpb.Struct)(nil), // 1: google.protobuf.Struct
+	(*SnapshotResponse)(nil), // 0: ruto_v1.SnapshotResponse
+	(*structpb.Struct)(nil),  // 1: google.protobuf.Struct
+	(*emptypb.Empty)(nil),    // 2: google.protobuf.Empty
 }
 var file_ruto_v1_snapshot_proto_depIdxs = []int32{
-	0, // 0: ruto_v1.Snapshot.Get:input_type -> google.protobuf.Empty
-	1, // 1: ruto_v1.Snapshot.Get:output_type -> google.protobuf.Struct
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: ruto_v1.SnapshotResponse.data:type_name -> google.protobuf.Struct
+	2, // 1: ruto_v1.Snapshot.Get:input_type -> google.protobuf.Empty
+	0, // 2: ruto_v1.Snapshot.Get:output_type -> ruto_v1.SnapshotResponse
+	2, // [2:3] is the sub-list for method output_type
+	1, // [1:2] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_snapshot_proto_init() }
@@ -57,12 +119,13 @@ func file_ruto_v1_snapshot_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_snapshot_proto_rawDesc), len(file_ruto_v1_snapshot_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   0,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_ruto_v1_snapshot_proto_goTypes,
 		DependencyIndexes: file_ruto_v1_snapshot_proto_depIdxs,
+		MessageInfos:      file_ruto_v1_snapshot_proto_msgTypes,
 	}.Build()
 	File_ruto_v1_snapshot_proto = out.File
 	file_ruto_v1_snapshot_proto_goTypes = nil
