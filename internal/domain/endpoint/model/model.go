@@ -1,7 +1,11 @@
 package model
 
 import (
+	"fmt"
+	"strings"
+
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
+	"github.com/samber/lo"
 )
 
 type Endpoint struct {
@@ -26,6 +30,55 @@ type JwtValidation struct {
 
 type IpValidation struct {
 	AllowedIps []string `json:"allowed_ips"`
+}
+
+func (m *Endpoint) Normalize() error {
+	m.Method = strings.ToUpper(strings.TrimSpace(m.Method))
+	if m.Method == "" {
+		return fmt.Errorf("method: empty")
+	}
+
+	m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
+	if m.Path == "" {
+		return fmt.Errorf("path: empty")
+	}
+
+	if err := m.Backend.Normalize(); err != nil {
+		return fmt.Errorf("backend: %w", err)
+	}
+	if err := m.JwtValidation.Normalize(); err != nil {
+		return fmt.Errorf("jwt_validation: %w", err)
+	}
+	if err := m.IpValidation.Normalize(); err != nil {
+		return fmt.Errorf("ip_validation: %w", err)
+	}
+
+	return nil
+}
+
+func (m *Endpoint) String() string {
+	return fmt.Sprintf("endpoint{%s %s}", m.Method, m.Path)
+}
+
+func (m *Backend) Normalize() error {
+	m.CustomPath = strings.TrimPrefix(strings.TrimSpace(m.CustomPath), "/")
+	return nil
+}
+
+func (m *JwtValidation) Normalize() error {
+	m.Roles = lo.FilterMap(m.Roles, func(v string, _ int) (string, bool) {
+		v = strings.TrimSpace(v)
+		return v, v != ""
+	})
+	return nil
+}
+
+func (m *IpValidation) Normalize() error {
+	m.AllowedIps = lo.FilterMap(m.AllowedIps, func(v string, _ int) (string, bool) {
+		v = strings.TrimSpace(v)
+		return v, v != ""
+	})
+	return nil
 }
 
 type ListReq struct {

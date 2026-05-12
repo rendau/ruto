@@ -3,17 +3,17 @@ package context
 import (
 	"context"
 
-	"github.com/rendau/ruto/internal/domain/config/model"
+	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 )
 
 type endpointContextKey struct{}
 
-func WithEndpoint(ctx context.Context, endpoint *model.Endpoint) context.Context {
+func WithEndpoint(ctx context.Context, endpoint *endpointModel.Endpoint) context.Context {
 	return context.WithValue(ctx, endpointContextKey{}, endpoint)
 }
 
-func ExtractEndpoint(ctx context.Context) *model.Endpoint {
-	endpoint, ok := ctx.Value(endpointContextKey{}).(*model.Endpoint)
+func ExtractEndpoint(ctx context.Context) *endpointModel.Endpoint {
+	endpoint, ok := ctx.Value(endpointContextKey{}).(*endpointModel.Endpoint)
 	if ok {
 		return endpoint
 	}

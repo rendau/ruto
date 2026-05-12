@@ -7,7 +7,7 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/rendau/ruto/internal/domain/config/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	handlerHttp "github.com/rendau/ruto/internal/service/gw/handler/http"
 	"github.com/rendau/ruto/internal/service/gw/jwk"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
@@ -36,7 +36,7 @@ func (s *Service) Stop(timeout time.Duration) error {
 	return s.server.Stop(timeout)
 }
 
-func (s *Service) SetConfig(conf *model.Root) error {
+func (s *Service) SetConfig(conf *rootModel.Root) error {
 	err := conf.Normalize()
 	if err != nil {
 		return fmt.Errorf("config normalize: %w", err)
@@ -50,7 +50,7 @@ func (s *Service) SetConfig(conf *model.Root) error {
 	s.server.SetHandler(httpHandler)
 
 	// set jwk URLs
-	jwkUrls := lo.Map(conf.Jwt, func(item *model.RootJwt, _ int) string {
+	jwkUrls := lo.Map(conf.Jwt, func(item rootModel.RootJwt, _ int) string {
 		return item.JwkUrl
 	})
 	s.jwk.SetUrls(jwkUrls)

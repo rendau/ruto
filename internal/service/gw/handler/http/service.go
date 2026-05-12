@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/rendau/ruto/internal/domain/config/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 )
@@ -13,7 +13,7 @@ type Service struct {
 	h http.Handler
 }
 
-func New(conf *model.Root) (*Service, error) {
+func New(conf *rootModel.Root) (*Service, error) {
 	err := conf.Normalize()
 	if err != nil {
 		return nil, fmt.Errorf("config normalize: %w", err)
@@ -33,7 +33,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(conf *model.Root) (_ http.Handler, finalErr error) {
+func buildHandler(conf *rootModel.Root) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)

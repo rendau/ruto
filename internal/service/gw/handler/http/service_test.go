@@ -7,7 +7,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/rendau/ruto/internal/domain/config/model"
+	appModel "github.com/rendau/ruto/internal/domain/app/model"
+	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 )
 
 func TestServiceBuild_ProxyByConfig(t *testing.T) {
@@ -22,7 +24,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 	tests := []struct {
 		name                 string
 		appBackendPathPrefix string
-		endpoint             *model.Endpoint
+		endpoint             *endpointModel.Endpoint
 		requestURL           string
 		wantStatus           int
 		wantMethod           string
@@ -33,7 +35,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 		{
 			name:                 "get with query",
 			appBackendPathPrefix: "/svc",
-			endpoint: &model.Endpoint{
+			endpoint: &endpointModel.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
 			},
@@ -47,10 +49,10 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 		{
 			name:                 "get with custom backend path",
 			appBackendPathPrefix: "/svc",
-			endpoint: &model.Endpoint{
+			endpoint: &endpointModel.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
-				Backend: model.EndpointBackend{
+				Backend: endpointModel.Backend{
 					CustomPath: "profiles",
 				},
 			},
@@ -65,15 +67,15 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := New(&model.Root{
-				PublicBaseUrl: "https://public.example",
-				Apps: []*model.App{
+			s, err := New(&rootModel.Root{
+				BaseUrl: "https://public.example",
+				Apps: []*appModel.App{
 					{
 						PathPrefix: "api",
-						Backend: model.AppBackend{
-							UrlStr: backend.URL + tt.appBackendPathPrefix,
+						Backend: appModel.AppBackend{
+							Url: backend.URL + tt.appBackendPathPrefix,
 						},
-						Endpoints: []*model.Endpoint{
+						Endpoints: []*endpointModel.Endpoint{
 							tt.endpoint,
 						},
 					},
@@ -94,15 +96,15 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 }
 
 func TestServiceBuild_DuplicateRoute(t *testing.T) {
-	_, err := New(&model.Root{
-		PublicBaseUrl: "https://public.example",
-		Apps: []*model.App{
+	_, err := New(&rootModel.Root{
+		BaseUrl: "https://public.example",
+		Apps: []*appModel.App{
 			{
 				PathPrefix: "api",
-				Backend: model.AppBackend{
-					UrlStr: "http://example.local/svc",
+				Backend: appModel.AppBackend{
+					Url: "http://example.local/svc",
 				},
-				Endpoints: []*model.Endpoint{
+				Endpoints: []*endpointModel.Endpoint{
 					{
 						Method: http.MethodGet,
 						Path:   "users",

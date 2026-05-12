@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rendau/ruto/internal/domain/config/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 )
 
-func NewCors(conf model.RootCors) Middleware {
+func NewCors(conf rootModel.RootCors) Middleware {
 	if !conf.Enabled {
 		return func(next http.Handler) http.Handler {
 			return next
