@@ -20,7 +20,8 @@ var Conf = struct {
 
 	PgDsn string `env:"PG_DSN"`
 
-	GwPort int `env:"GW_PORT" envDefault:"8000"`
+	GwPort              int    `env:"GW_PORT" envDefault:"8000"`
+	SnapshotGrpcAddress string `env:"SNAPSHOT_GRPC_ADDRESS" envDefault:"localhost:5050"`
 }{}
 
 func init() {

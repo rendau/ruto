@@ -68,15 +68,62 @@ func (x *SnapshotResponse) GetData() *structpb.Struct {
 	return nil
 }
 
+type SnapshotVersion struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SnapshotVersion) Reset() {
+	*x = SnapshotVersion{}
+	mi := &file_ruto_v1_snapshot_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SnapshotVersion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SnapshotVersion) ProtoMessage() {}
+
+func (x *SnapshotVersion) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_snapshot_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SnapshotVersion.ProtoReflect.Descriptor instead.
+func (*SnapshotVersion) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_snapshot_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *SnapshotVersion) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
 var File_ruto_v1_snapshot_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_snapshot_proto_rawDesc = "" +
 	"\n" +
 	"\x16ruto_v1/snapshot.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"?\n" +
 	"\x10SnapshotResponse\x12+\n" +
-	"\x04data\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x04data2W\n" +
+	"\x04data\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x04data\"+\n" +
+	"\x0fSnapshotVersion\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion2\xa2\x01\n" +
 	"\bSnapshot\x12K\n" +
-	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x19.ruto_v1.SnapshotResponse\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/snapshotB\n" +
+	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x19.ruto_v1.SnapshotResponse\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/snapshot\x12I\n" +
+	"\x11SubscribeVersions\x12\x16.google.protobuf.Empty\x1a\x18.ruto_v1.SnapshotVersion\"\x000\x01B\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
 var (
@@ -91,18 +138,21 @@ func file_ruto_v1_snapshot_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_snapshot_proto_rawDescData
 }
 
-var file_ruto_v1_snapshot_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_ruto_v1_snapshot_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_ruto_v1_snapshot_proto_goTypes = []any{
 	(*SnapshotResponse)(nil), // 0: ruto_v1.SnapshotResponse
-	(*structpb.Struct)(nil),  // 1: google.protobuf.Struct
-	(*emptypb.Empty)(nil),    // 2: google.protobuf.Empty
+	(*SnapshotVersion)(nil),  // 1: ruto_v1.SnapshotVersion
+	(*structpb.Struct)(nil),  // 2: google.protobuf.Struct
+	(*emptypb.Empty)(nil),    // 3: google.protobuf.Empty
 }
 var file_ruto_v1_snapshot_proto_depIdxs = []int32{
-	1, // 0: ruto_v1.SnapshotResponse.data:type_name -> google.protobuf.Struct
-	2, // 1: ruto_v1.Snapshot.Get:input_type -> google.protobuf.Empty
-	0, // 2: ruto_v1.Snapshot.Get:output_type -> ruto_v1.SnapshotResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
+	2, // 0: ruto_v1.SnapshotResponse.data:type_name -> google.protobuf.Struct
+	3, // 1: ruto_v1.Snapshot.Get:input_type -> google.protobuf.Empty
+	3, // 2: ruto_v1.Snapshot.SubscribeVersions:input_type -> google.protobuf.Empty
+	0, // 3: ruto_v1.Snapshot.Get:output_type -> ruto_v1.SnapshotResponse
+	1, // 4: ruto_v1.Snapshot.SubscribeVersions:output_type -> ruto_v1.SnapshotVersion
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -119,7 +169,7 @@ func file_ruto_v1_snapshot_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_snapshot_proto_rawDesc), len(file_ruto_v1_snapshot_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -829,6 +829,14 @@
           "type": "object"
         }
       }
+    },
+    "ruto_v1SnapshotVersion": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      }
     }
   }
 }

@@ -161,7 +161,7 @@ func (a *App) Init() {
 	}
 
 	// gw-server-http
-	a.gw = serviceGwP.New(a.ctx, config.Conf.GwPort)
+	a.gw = serviceGwP.New(a.ctx, config.Conf.GwPort, config.Conf.SnapshotGrpcAddress)
 
 	// err = a.gw.SetConfig(&gwConfig.Root{
 	// 	PublicBaseUrl: "https://example.com",

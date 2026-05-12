@@ -3,11 +3,13 @@ package gw
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/samber/lo"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	"github.com/rendau/ruto/internal/service/gw/client"
 	handlerHttp "github.com/rendau/ruto/internal/service/gw/handler/http"
 	"github.com/rendau/ruto/internal/service/gw/jwk"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
@@ -17,18 +19,29 @@ type Service struct {
 	globalCtx context.Context
 	server    *localHttp.Service
 	jwk       *jwk.Service
+	client    *client.Service
 }
 
-func New(globalCtx context.Context, serverPort int) *Service {
-	return &Service{
+func New(globalCtx context.Context, serverPort int, snapshotGrpcAddress string) *Service {
+	srv := &Service{
 		globalCtx: globalCtx,
 		server:    localHttp.New(serverPort),
 		jwk:       jwk.New(globalCtx),
 	}
+	srv.client = client.New(globalCtx, snapshotGrpcAddress, func(conf *rootModel.Root) error {
+		if err := srv.SetConfig(conf); err != nil {
+			slog.Error("gw snapshot-client: apply config", "error", err)
+			return err
+		}
+		slog.Info("gw config updated", "apps_count", len(conf.Apps))
+		return nil
+	})
+	return srv
 }
 
 func (s *Service) Start() {
 	s.jwk.Start()
+	s.client.Start()
 	s.server.Start()
 }
 

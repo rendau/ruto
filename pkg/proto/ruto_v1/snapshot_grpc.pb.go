@@ -20,7 +20,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Snapshot_Get_FullMethodName = "/ruto_v1.Snapshot/Get"
+	Snapshot_Get_FullMethodName               = "/ruto_v1.Snapshot/Get"
+	Snapshot_SubscribeVersions_FullMethodName = "/ruto_v1.Snapshot/SubscribeVersions"
 )
 
 // SnapshotClient is the client API for Snapshot service.
@@ -28,6 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SnapshotClient interface {
 	Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SnapshotResponse, error)
+	SubscribeVersions(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SnapshotVersion], error)
 }
 
 type snapshotClient struct {
@@ -48,11 +50,31 @@ func (c *snapshotClient) Get(ctx context.Context, in *emptypb.Empty, opts ...grp
 	return out, nil
 }
 
+func (c *snapshotClient) SubscribeVersions(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SnapshotVersion], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Snapshot_ServiceDesc.Streams[0], Snapshot_SubscribeVersions_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[emptypb.Empty, SnapshotVersion]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Snapshot_SubscribeVersionsClient = grpc.ServerStreamingClient[SnapshotVersion]
+
 // SnapshotServer is the server API for Snapshot service.
 // All implementations must embed UnimplementedSnapshotServer
 // for forward compatibility.
 type SnapshotServer interface {
 	Get(context.Context, *emptypb.Empty) (*SnapshotResponse, error)
+	SubscribeVersions(*emptypb.Empty, grpc.ServerStreamingServer[SnapshotVersion]) error
 	mustEmbedUnimplementedSnapshotServer()
 }
 
@@ -65,6 +87,9 @@ type UnimplementedSnapshotServer struct{}
 
 func (UnimplementedSnapshotServer) Get(context.Context, *emptypb.Empty) (*SnapshotResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedSnapshotServer) SubscribeVersions(*emptypb.Empty, grpc.ServerStreamingServer[SnapshotVersion]) error {
+	return status.Errorf(codes.Unimplemented, "method SubscribeVersions not implemented")
 }
 func (UnimplementedSnapshotServer) mustEmbedUnimplementedSnapshotServer() {}
 func (UnimplementedSnapshotServer) testEmbeddedByValue()                  {}
@@ -105,6 +130,17 @@ func _Snapshot_Get_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Snapshot_SubscribeVersions_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(emptypb.Empty)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SnapshotServer).SubscribeVersions(m, &grpc.GenericServerStream[emptypb.Empty, SnapshotVersion]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Snapshot_SubscribeVersionsServer = grpc.ServerStreamingServer[SnapshotVersion]
+
 // Snapshot_ServiceDesc is the grpc.ServiceDesc for Snapshot service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -117,6 +153,12 @@ var Snapshot_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Snapshot_Get_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SubscribeVersions",
+			Handler:       _Snapshot_SubscribeVersions_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "ruto_v1/snapshot.proto",
 }

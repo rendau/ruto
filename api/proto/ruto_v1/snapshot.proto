@@ -12,8 +12,13 @@ service Snapshot {
   rpc Get(google.protobuf.Empty) returns (SnapshotResponse) {
     option (google.api.http) = { get: "/snapshot" };
   };
+  rpc SubscribeVersions(google.protobuf.Empty) returns (stream SnapshotVersion) {};
 }
 
 message SnapshotResponse {
   google.protobuf.Struct data = 1;
+}
+
+message SnapshotVersion {
+  string version = 1;
 }
