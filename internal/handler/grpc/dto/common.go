@@ -23,7 +23,7 @@ func DecodeListParams(listParams *ruto_v1.ListParamsSt) commonModel.ListParams {
 	}
 }
 
-func jsonObjToGrpcStruct(v []byte) *structpb.Struct {
+func JsonObjToGrpcStruct(v []byte) *structpb.Struct {
 	var result *structpb.Struct
 
 	if len(v) == 0 {
@@ -42,7 +42,7 @@ func jsonObjToGrpcStruct(v []byte) *structpb.Struct {
 	return result
 }
 
-func grpcStructToJsonObj(v *structpb.Struct) []byte {
+func GrpcStructToJsonObj(v *structpb.Struct) []byte {
 	if v == nil {
 		return nil
 	}

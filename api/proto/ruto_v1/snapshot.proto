@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "/ruto_v1";
+
+service Snapshot {
+  rpc Get(google.protobuf.Empty) returns (google.protobuf.Struct) {
+    option (google.api.http) = { get: "/snapshot" };
+  };
+}

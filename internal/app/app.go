@@ -38,6 +38,8 @@ import (
 	domainEndpointServiceP "github.com/rendau/ruto/internal/domain/endpoint/service"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 
+	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
+
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
 )
 
@@ -105,12 +107,17 @@ func (a *App) Init() {
 	usecaseEndpoint := usecaseEndpointP.New(domainEndpointService)
 	handlerGrpcEndpoint := handlerGrpcP.NewEndpoint(usecaseEndpoint)
 
+	// snapshot
+	usecaseSnapshot := usecaseSnapshotP.New(domainRootService, domainAppService, domainEndpointService)
+	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
+
 	// grpc server
 	{
 		a.grpcServer = NewGrpcServer("main", func(server *grpc.Server) {
 			ruto_v1.RegisterRootServer(server, handlerGrpcRoot)
 			ruto_v1.RegisterAppServer(server, handlerGrpcApp)
 			ruto_v1.RegisterEndpointServer(server, handlerGrpcEndpoint)
+			ruto_v1.RegisterSnapshotServer(server, handlerGrpcSnapshot)
 		})
 	}
 
@@ -130,6 +137,7 @@ func (a *App) Init() {
 				ruto_v1.RegisterRootHandler,
 				ruto_v1.RegisterAppHandler,
 				ruto_v1.RegisterEndpointHandler,
+				ruto_v1.RegisterSnapshotHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)
