@@ -50,13 +50,13 @@ func buildHandler(snapshot *rootModel.Root) (_ http.Handler, finalErr error) {
 		for _, endpoint := range app.Endpoints {
 			if endpoint.Path == "" {
 				routePattern = endpoint.Method + " " + app.PathPrefix
+			} else {
+				routePattern = endpoint.Method + " " + app.PathPrefix + "/" + endpoint.Path
 			}
-			routePattern = endpoint.Method + " " + app.PathPrefix + "/" + endpoint.Path
 
 			mux.Handle(
 				routePattern,
-				middleware.Chain(
-					appHandler,
+				middleware.Chain(appHandler,
 					middleware.NewWithRequest(snapshot, app, endpoint),
 					middleware.NewStripPrefix(app.PathPrefix),
 				),
