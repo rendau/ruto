@@ -10,7 +10,7 @@ import (
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
-	requestModel "github.com/rendau/ruto/internal/service/gw/handler/http/request"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/request"
 )
 
 func TestNewWithRequest(t *testing.T) {
@@ -27,10 +27,10 @@ func TestNewWithRequest(t *testing.T) {
 		Path:   "users",
 	}
 
-	var actual *requestModel.Request
+	var actual *request.Request
 	handler := Chain(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			actual = requestModel.Extract(r.Context())
+			actual = request.Extract(r.Context())
 			require.NotNil(t, actual)
 			w.WriteHeader(http.StatusNoContent)
 		}),
@@ -48,6 +48,6 @@ func TestNewWithRequest(t *testing.T) {
 }
 
 func TestEndpointFromRequest_Empty(t *testing.T) {
-	req := requestModel.Extract(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+	req := request.Extract(httptest.NewRequest(http.MethodGet, "/", nil).Context())
 	require.Nil(t, req)
 }
