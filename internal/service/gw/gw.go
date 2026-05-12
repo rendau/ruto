@@ -21,16 +21,21 @@ type Service struct {
 	client    *config_client.Service
 }
 
-func New(globalCtx context.Context, serverPort int, configAddress string) *Service {
+func New(globalCtx context.Context, serverPort int, configAddress string) (*Service, error) {
+	var err error
+
 	service := &Service{
 		globalCtx: globalCtx,
 		server:    localHttp.New(serverPort),
 		jwk:       jwk.New(globalCtx),
 	}
 
-	service.client = config_client.New(globalCtx, configAddress, service.SetConfig)
+	service.client, err = config_client.New(globalCtx, configAddress, service.SetConfig)
+	if err != nil {
+		return nil, fmt.Errorf("config_client.New: %w", err)
+	}
 
-	return service
+	return service, nil
 }
 
 func (s *Service) Start() {

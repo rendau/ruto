@@ -3,14 +3,20 @@ package config_client
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/goccy/go-json"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
+)
+
+const (
+	CheckInterval = 10 * time.Second
 )
 
 type configCallback func(*rootModel.Root) error
@@ -19,9 +25,9 @@ type Service struct {
 	globalCtx context.Context
 	onConfig  configCallback
 
-	conn    *grpc.ClientConn
-	client  ruto_v1.SnapshotClient
-	version string
+	conn           *grpc.ClientConn
+	client         ruto_v1.SnapshotClient
+	currentVersion string
 }
 
 func New(
@@ -57,6 +63,18 @@ func (s *Service) Start() {
 }
 
 func (s *Service) worker() {
+	ticker := time.NewTicker(CheckInterval)
+	defer ticker.Stop()
+
+	for s.globalCtx.Err() == nil {
+		s.refresh()
+
+		select {
+		case <-s.globalCtx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }
 
 func (s *Service) sleepOrDone(d time.Duration) {
@@ -64,6 +82,69 @@ func (s *Service) sleepOrDone(d time.Duration) {
 	case <-time.After(d):
 	case <-s.globalCtx.Done():
 	}
+}
+
+func (s *Service) refresh() {
+	serverVersion, err := s.fetchVersion()
+	if err != nil {
+		slog.Error("config-client: fetchVersion failed", "error", err)
+		return
+	}
+	if serverVersion == "" || serverVersion == s.currentVersion {
+		return
+	}
+
+	slog.Info("config-client: new version", "version", serverVersion)
+
+	err = s.fetchAndApplyConfig()
+	if err != nil {
+		slog.Error("config-client: fetchAndApplyConfig failed", "error", err)
+		return
+	}
+
+	slog.Info("  config-client: config applied", "version", serverVersion)
+
+	s.currentVersion = serverVersion
+}
+
+func (s *Service) fetchVersion() (string, error) {
+	ctx, cancel := context.WithTimeout(s.globalCtx, 5*time.Second)
+	defer cancel()
+
+	versionRep, err := s.client.GetVersion(ctx, &emptypb.Empty{})
+	if err != nil {
+		if s.globalCtx.Err() == nil {
+			return "", fmt.Errorf("client.GetVersion: %w", err)
+		}
+		return "", nil
+	}
+
+	return versionRep.GetVersion(), nil
+}
+
+func (s *Service) fetchAndApplyConfig() error {
+	ctx, cancel := context.WithTimeout(s.globalCtx, 5*time.Second)
+	defer cancel()
+
+	configRep, err := s.client.Get(ctx, &emptypb.Empty{})
+	if err != nil {
+		if s.globalCtx.Err() == nil {
+			return fmt.Errorf("client.Get: %w", err)
+		}
+		return nil
+	}
+
+	conf, err := decodeConfig(configRep)
+	if err != nil {
+		return fmt.Errorf("decodeConfig: %w", err)
+	}
+
+	err = s.onConfig(conf)
+	if err != nil {
+		return fmt.Errorf("onConfig: %w", err)
+	}
+
+	return nil
 }
 
 func decodeConfig(rep *ruto_v1.SnapshotResponse) (*rootModel.Root, error) {

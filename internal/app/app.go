@@ -38,10 +38,10 @@ import (
 	domainEndpointServiceP "github.com/rendau/ruto/internal/domain/endpoint/service"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 
-	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
-
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
-	serviceSnapshotVersionP "github.com/rendau/ruto/internal/service/snapshot"
+
+	serviceSnapshotP "github.com/rendau/ruto/internal/service/snapshot"
+	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
 )
 
 type App struct {
@@ -51,8 +51,8 @@ type App struct {
 
 	grpcServer *GrpcServer
 	httpServer *http.Server
-	gw         *serviceGwP.Service
-	snapshotV  *serviceSnapshotVersionP.Service
+
+	gw *serviceGwP.Service
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -110,9 +110,8 @@ func (a *App) Init() {
 	handlerGrpcEndpoint := handlerGrpcP.NewEndpoint(usecaseEndpoint)
 
 	// snapshot
-	usecaseSnapshot := usecaseSnapshotP.New(domainRootService, domainAppService, domainEndpointService)
-	a.snapshotV = serviceSnapshotVersionP.New(a.ctx, domainRootService, domainAppService, domainEndpointService)
-	usecaseSnapshot.SetVersionService(a.snapshotV)
+	snapshotService := serviceSnapshotP.New(a.ctx, domainRootService, domainAppService, domainEndpointService)
+	usecaseSnapshot := usecaseSnapshotP.New(snapshotService)
 	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
 
 	// grpc server
@@ -165,7 +164,8 @@ func (a *App) Init() {
 	}
 
 	// gw-server-http
-	a.gw = serviceGwP.New(a.ctx, config.Conf.GwPort, config.Conf.SnapshotGrpcAddress)
+	a.gw, err = serviceGwP.New(a.ctx, config.Conf.GwPort, config.Conf.SnapshotGrpcAddress)
+	errCheck(err, "gw-server New")
 
 	// err = a.gw.SetConfig(&gwConfig.Root{
 	// 	PublicBaseUrl: "https://example.com",
@@ -220,10 +220,6 @@ func (a *App) Start() {
 
 	// gw-server-http
 	a.gw.Start()
-
-	if a.snapshotV != nil {
-		a.snapshotV.Start()
-	}
 }
 
 func (a *App) Listen() {
