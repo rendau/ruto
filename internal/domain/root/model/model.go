@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"strings"
 
-	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	"github.com/samber/lo"
+
+	appModel "github.com/rendau/ruto/internal/domain/app/model"
 )
 
 type Root struct {
 	BaseUrl string          `json:"base_url"`
 	Cors    RootCors        `json:"cors"`
 	Jwt     []RootJwt       `json:"jwt"`
-	Apps    []*appModel.App `json:"-"`
+	Apps    []*appModel.App `json:"apps"`
 }
 
 type RootCors struct {
@@ -26,6 +27,10 @@ type RootCors struct {
 
 type RootJwt struct {
 	JwkUrl string `json:"jwk_url"`
+}
+
+func (m *Root) String() string {
+	return fmt.Sprintf("root{%s}", m.BaseUrl)
 }
 
 func (m *Root) Normalize() error {

@@ -40,6 +40,12 @@ func (s *Service) Get(ctx context.Context, id string, errNE bool) (*model.App, b
 }
 
 func (s *Service) Create(ctx context.Context, obj *model.App) (string, error) {
+	endpoints := obj.Endpoints
+	obj.Endpoints = nil
+	defer func() {
+		obj.Endpoints = endpoints
+	}()
+
 	newId, err := s.repoDb.Create(ctx, obj)
 	if err != nil {
 		return "", fmt.Errorf("repoDb.Create: %w", err)
@@ -49,6 +55,12 @@ func (s *Service) Create(ctx context.Context, obj *model.App) (string, error) {
 }
 
 func (s *Service) Update(ctx context.Context, id string, obj *model.App) error {
+	endpoints := obj.Endpoints
+	obj.Endpoints = nil
+	defer func() {
+		obj.Endpoints = endpoints
+	}()
+
 	err := s.repoDb.Update(ctx, id, obj)
 	if err != nil {
 		return fmt.Errorf("repoDb.Update: %w", err)

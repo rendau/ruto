@@ -15,12 +15,16 @@ type App struct {
 	PathPrefix string                    `json:"path_prefix"`
 	Name       string                    `json:"name"`
 	Backend    AppBackend                `json:"backend"`
-	Endpoints  []*endpointModel.Endpoint `json:"-"`
+	Endpoints  []*endpointModel.Endpoint `json:"endpoints"`
 }
 
 type AppBackend struct {
 	Url       string   `json:"url"`
 	ParsedUrl *url.URL `json:"-"`
+}
+
+func (m *App) String() string {
+	return fmt.Sprintf("app{%s}", m.PathPrefix)
 }
 
 func (m *App) Normalize() error {
@@ -38,10 +42,6 @@ func (m *App) Normalize() error {
 		}
 	}
 	return nil
-}
-
-func (m *App) String() string {
-	return fmt.Sprintf("app{%s}", m.PathPrefix)
 }
 
 func (m *AppBackend) Normalize() error {

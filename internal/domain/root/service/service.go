@@ -21,15 +21,20 @@ func (s *Service) Get(ctx context.Context) (*model.Root, error) {
 	if result == nil {
 		return model.NewEmpty(), nil
 	}
+
 	return result, nil
 }
 
 func (s *Service) Set(ctx context.Context, obj *model.Root) error {
-	if obj == nil {
-		return nil
-	}
+	apps := obj.Apps
+	obj.Apps = nil
+	defer func() {
+		obj.Apps = apps
+	}()
+
 	if err := s.repoDb.Set(ctx, obj); err != nil {
 		return fmt.Errorf("repoDb.Set: %w", err)
 	}
+
 	return nil
 }

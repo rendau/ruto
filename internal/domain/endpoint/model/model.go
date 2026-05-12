@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	"github.com/samber/lo"
+
+	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 )
 
 type Endpoint struct {
@@ -32,6 +33,10 @@ type IpValidation struct {
 	AllowedIps []string `json:"allowed_ips"`
 }
 
+func (m *Endpoint) String() string {
+	return fmt.Sprintf("endpoint{%s %s}", m.Method, m.Path)
+}
+
 func (m *Endpoint) Normalize() error {
 	m.Method = strings.ToUpper(strings.TrimSpace(m.Method))
 	if m.Method == "" {
@@ -54,10 +59,6 @@ func (m *Endpoint) Normalize() error {
 	}
 
 	return nil
-}
-
-func (m *Endpoint) String() string {
-	return fmt.Sprintf("endpoint{%s %s}", m.Method, m.Path)
 }
 
 func (m *Backend) Normalize() error {
