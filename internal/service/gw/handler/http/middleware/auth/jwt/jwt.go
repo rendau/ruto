@@ -31,9 +31,6 @@ func (a Jwt) Authorize(r *http.Request) bool {
 	if ctxReq == nil {
 		return false
 	}
-	if ctxReq.JwkService == nil {
-		return false
-	}
 
 	token := extractToken(r)
 	if token == "" {
