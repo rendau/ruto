@@ -1,4 +1,4 @@
-package auth
+package basic
 
 import (
 	"crypto/subtle"
@@ -7,20 +7,16 @@ import (
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 )
 
-type basicAuthorizer struct {
+type Authorizer struct {
 	conf *endpointModel.AuthMethodBasic
 }
 
-func newBasicAuthorizer(conf *endpointModel.AuthMethodBasic) authorizerI {
-	return basicAuthorizer{conf: conf}
+func New(conf *endpointModel.AuthMethodBasic) *Authorizer {
+	return &Authorizer{conf: conf}
 }
 
-func (a basicAuthorizer) Authorize(r *http.Request) bool {
-	return authorizeBasic(r, a.conf)
-}
-
-func authorizeBasic(r *http.Request, conf *endpointModel.AuthMethodBasic) bool {
-	if len(conf.Users) == 0 {
+func (a Authorizer) Authorize(r *http.Request) bool {
+	if len(a.conf.Users) == 0 {
 		return false
 	}
 
@@ -29,7 +25,7 @@ func authorizeBasic(r *http.Request, conf *endpointModel.AuthMethodBasic) bool {
 		return false
 	}
 
-	for _, user := range conf.Users {
+	for _, user := range a.conf.Users {
 		if subtle.ConstantTimeCompare([]byte(username), []byte(user.Username)) != 1 {
 			continue
 		}

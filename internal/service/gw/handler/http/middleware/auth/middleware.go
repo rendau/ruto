@@ -3,14 +3,14 @@ package auth
 import (
 	"net/http"
 
+	"github.com/samber/lo"
+
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth/api_key"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth/basic"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth/jwt"
 )
-
-type authorizerI interface {
-	Authorize(r *http.Request) bool
-}
 
 func New(endpoint *endpointModel.Endpoint) middleware.Middleware {
 	if !endpoint.Auth.Enabled {
@@ -19,17 +19,7 @@ func New(endpoint *endpointModel.Endpoint) middleware.Middleware {
 		}
 	}
 
-	authorizers := make([]authorizerI, 0, len(endpoint.Auth.Methods))
-	for _, method := range endpoint.Auth.Methods {
-		switch {
-		case method.Basic != nil:
-			authorizers = append(authorizers, newBasicAuthorizer(method.Basic))
-		case method.APIKey != nil:
-			authorizers = append(authorizers, newAPIKeyAuthorizer(method.APIKey))
-		case method.JWT != nil:
-			authorizers = append(authorizers, jwt.New(method.JWT))
-		}
-	}
+	authorizers := buildAuthorizers(endpoint)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -43,4 +33,19 @@ func New(endpoint *endpointModel.Endpoint) middleware.Middleware {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		})
 	}
+}
+
+func buildAuthorizers(endpoint *endpointModel.Endpoint) []authorizerI {
+	return lo.FilterMap(endpoint.Auth.Methods, func(v endpointModel.AuthMethod, _ int) (authorizerI, bool) {
+		switch {
+		case v.Basic != nil:
+			return basic.New(v.Basic), true
+		case v.APIKey != nil:
+			return api_key.New(v.APIKey), true
+		case v.JWT != nil:
+			return jwt.New(v.JWT), true
+		}
+		return nil, false
+	})
+
 }
