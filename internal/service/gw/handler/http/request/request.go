@@ -6,12 +6,14 @@ import (
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	"github.com/rendau/ruto/internal/service/gw/jwk"
 )
 
 type Request struct {
-	Root     *rootModel.Root
-	App      *appModel.App
-	Endpoint *endpointModel.Endpoint
+	Root       *rootModel.Root
+	App        *appModel.App
+	Endpoint   *endpointModel.Endpoint
+	JwkService *jwk.Service
 }
 
 type contextKey struct{}

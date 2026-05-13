@@ -55,7 +55,7 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf)
+	httpHandler, err := handlerHttp.New(conf, s.jwk)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}

@@ -28,7 +28,7 @@ func NewProxy(app *appModel.App) http.Handler {
 		},
 		Rewrite: func(r *httputil.ProxyRequest) {
 			ctxReq := request.Extract(r.In.Context())
-			if ctxReq == nil || ctxReq.Endpoint == nil {
+			if ctxReq == nil {
 				slog.Error("request.Extract() error", "error", "Request/Endpoint not found in context")
 				r.SetURL(&url.URL{Scheme: "http", Host: "invalid-host"})
 				return
