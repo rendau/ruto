@@ -31,7 +31,7 @@ type EndpointMain struct {
 	Method        string                 `protobuf:"bytes,4,opt,name=method,proto3" json:"method,omitempty"`
 	Path          string                 `protobuf:"bytes,5,opt,name=path,proto3" json:"path,omitempty"`
 	Backend       *EndpointBackend       `protobuf:"bytes,6,opt,name=backend,proto3" json:"backend,omitempty"`
-	JwtValidation *EndpointJwtValidation `protobuf:"bytes,7,opt,name=jwt_validation,json=jwtValidation,proto3" json:"jwt_validation,omitempty"`
+	Auth          *EndpointAuth          `protobuf:"bytes,7,opt,name=auth,proto3" json:"auth,omitempty"`
 	IpValidation  *EndpointIpValidation  `protobuf:"bytes,8,opt,name=ip_validation,json=ipValidation,proto3" json:"ip_validation,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -109,9 +109,9 @@ func (x *EndpointMain) GetBackend() *EndpointBackend {
 	return nil
 }
 
-func (x *EndpointMain) GetJwtValidation() *EndpointJwtValidation {
+func (x *EndpointMain) GetAuth() *EndpointAuth {
 	if x != nil {
-		return x.JwtValidation
+		return x.Auth
 	}
 	return nil
 }
@@ -367,28 +367,28 @@ func (x *EndpointBackend) GetCustomPath() string {
 	return ""
 }
 
-type EndpointJwtValidation struct {
+type EndpointAuth struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	Roles         []string               `protobuf:"bytes,2,rep,name=roles,proto3" json:"roles,omitempty"`
+	Methods       []*EndpointAuthMethod  `protobuf:"bytes,2,rep,name=methods,proto3" json:"methods,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *EndpointJwtValidation) Reset() {
-	*x = EndpointJwtValidation{}
+func (x *EndpointAuth) Reset() {
+	*x = EndpointAuth{}
 	mi := &file_ruto_v1_endpoint_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *EndpointJwtValidation) String() string {
+func (x *EndpointAuth) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*EndpointJwtValidation) ProtoMessage() {}
+func (*EndpointAuth) ProtoMessage() {}
 
-func (x *EndpointJwtValidation) ProtoReflect() protoreflect.Message {
+func (x *EndpointAuth) ProtoReflect() protoreflect.Message {
 	mi := &file_ruto_v1_endpoint_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -400,19 +400,317 @@ func (x *EndpointJwtValidation) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use EndpointJwtValidation.ProtoReflect.Descriptor instead.
-func (*EndpointJwtValidation) Descriptor() ([]byte, []int) {
+// Deprecated: Use EndpointAuth.ProtoReflect.Descriptor instead.
+func (*EndpointAuth) Descriptor() ([]byte, []int) {
 	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *EndpointJwtValidation) GetEnabled() bool {
+func (x *EndpointAuth) GetEnabled() bool {
 	if x != nil {
 		return x.Enabled
 	}
 	return false
 }
 
-func (x *EndpointJwtValidation) GetRoles() []string {
+func (x *EndpointAuth) GetMethods() []*EndpointAuthMethod {
+	if x != nil {
+		return x.Methods
+	}
+	return nil
+}
+
+type EndpointAuthMethod struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Method:
+	//
+	//	*EndpointAuthMethod_Basic
+	//	*EndpointAuthMethod_ApiKey
+	//	*EndpointAuthMethod_Jwt
+	Method        isEndpointAuthMethod_Method `protobuf_oneof:"method"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointAuthMethod) Reset() {
+	*x = EndpointAuthMethod{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointAuthMethod) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointAuthMethod) ProtoMessage() {}
+
+func (x *EndpointAuthMethod) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointAuthMethod.ProtoReflect.Descriptor instead.
+func (*EndpointAuthMethod) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *EndpointAuthMethod) GetMethod() isEndpointAuthMethod_Method {
+	if x != nil {
+		return x.Method
+	}
+	return nil
+}
+
+func (x *EndpointAuthMethod) GetBasic() *EndpointAuthMethodBasic {
+	if x != nil {
+		if x, ok := x.Method.(*EndpointAuthMethod_Basic); ok {
+			return x.Basic
+		}
+	}
+	return nil
+}
+
+func (x *EndpointAuthMethod) GetApiKey() *EndpointAuthMethodAPIKey {
+	if x != nil {
+		if x, ok := x.Method.(*EndpointAuthMethod_ApiKey); ok {
+			return x.ApiKey
+		}
+	}
+	return nil
+}
+
+func (x *EndpointAuthMethod) GetJwt() *EndpointAuthMethodJWT {
+	if x != nil {
+		if x, ok := x.Method.(*EndpointAuthMethod_Jwt); ok {
+			return x.Jwt
+		}
+	}
+	return nil
+}
+
+type isEndpointAuthMethod_Method interface {
+	isEndpointAuthMethod_Method()
+}
+
+type EndpointAuthMethod_Basic struct {
+	Basic *EndpointAuthMethodBasic `protobuf:"bytes,1,opt,name=basic,proto3,oneof"`
+}
+
+type EndpointAuthMethod_ApiKey struct {
+	ApiKey *EndpointAuthMethodAPIKey `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3,oneof"`
+}
+
+type EndpointAuthMethod_Jwt struct {
+	Jwt *EndpointAuthMethodJWT `protobuf:"bytes,3,opt,name=jwt,proto3,oneof"`
+}
+
+func (*EndpointAuthMethod_Basic) isEndpointAuthMethod_Method() {}
+
+func (*EndpointAuthMethod_ApiKey) isEndpointAuthMethod_Method() {}
+
+func (*EndpointAuthMethod_Jwt) isEndpointAuthMethod_Method() {}
+
+type EndpointAuthMethodBasic struct {
+	state         protoimpl.MessageState         `protogen:"open.v1"`
+	Users         []*EndpointAuthMethodBasicUser `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointAuthMethodBasic) Reset() {
+	*x = EndpointAuthMethodBasic{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointAuthMethodBasic) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointAuthMethodBasic) ProtoMessage() {}
+
+func (x *EndpointAuthMethodBasic) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointAuthMethodBasic.ProtoReflect.Descriptor instead.
+func (*EndpointAuthMethodBasic) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *EndpointAuthMethodBasic) GetUsers() []*EndpointAuthMethodBasicUser {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+type EndpointAuthMethodBasicUser struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointAuthMethodBasicUser) Reset() {
+	*x = EndpointAuthMethodBasicUser{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointAuthMethodBasicUser) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointAuthMethodBasicUser) ProtoMessage() {}
+
+func (x *EndpointAuthMethodBasicUser) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointAuthMethodBasicUser.ProtoReflect.Descriptor instead.
+func (*EndpointAuthMethodBasicUser) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *EndpointAuthMethodBasicUser) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *EndpointAuthMethodBasicUser) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+type EndpointAuthMethodAPIKey struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Header        string                 `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	Keys          []string               `protobuf:"bytes,2,rep,name=keys,proto3" json:"keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointAuthMethodAPIKey) Reset() {
+	*x = EndpointAuthMethodAPIKey{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointAuthMethodAPIKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointAuthMethodAPIKey) ProtoMessage() {}
+
+func (x *EndpointAuthMethodAPIKey) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointAuthMethodAPIKey.ProtoReflect.Descriptor instead.
+func (*EndpointAuthMethodAPIKey) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *EndpointAuthMethodAPIKey) GetHeader() string {
+	if x != nil {
+		return x.Header
+	}
+	return ""
+}
+
+func (x *EndpointAuthMethodAPIKey) GetKeys() []string {
+	if x != nil {
+		return x.Keys
+	}
+	return nil
+}
+
+type EndpointAuthMethodJWT struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kids          []string               `protobuf:"bytes,1,rep,name=kids,proto3" json:"kids,omitempty"`
+	Roles         []string               `protobuf:"bytes,2,rep,name=roles,proto3" json:"roles,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointAuthMethodJWT) Reset() {
+	*x = EndpointAuthMethodJWT{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointAuthMethodJWT) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointAuthMethodJWT) ProtoMessage() {}
+
+func (x *EndpointAuthMethodJWT) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointAuthMethodJWT.ProtoReflect.Descriptor instead.
+func (*EndpointAuthMethodJWT) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *EndpointAuthMethodJWT) GetKids() []string {
+	if x != nil {
+		return x.Kids
+	}
+	return nil
+}
+
+func (x *EndpointAuthMethodJWT) GetRoles() []string {
 	if x != nil {
 		return x.Roles
 	}
@@ -428,7 +726,7 @@ type EndpointIpValidation struct {
 
 func (x *EndpointIpValidation) Reset() {
 	*x = EndpointIpValidation{}
-	mi := &file_ruto_v1_endpoint_proto_msgTypes[7]
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -440,7 +738,7 @@ func (x *EndpointIpValidation) String() string {
 func (*EndpointIpValidation) ProtoMessage() {}
 
 func (x *EndpointIpValidation) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_endpoint_proto_msgTypes[7]
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -453,7 +751,7 @@ func (x *EndpointIpValidation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndpointIpValidation.ProtoReflect.Descriptor instead.
 func (*EndpointIpValidation) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{7}
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *EndpointIpValidation) GetAllowedIps() []string {
@@ -467,15 +765,15 @@ var File_ruto_v1_endpoint_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_endpoint_proto_rawDesc = "" +
 	"\n" +
-	"\x16ruto_v1/endpoint.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x14ruto_v1/common.proto\"\xb8\x02\n" +
+	"\x16ruto_v1/endpoint.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x14ruto_v1/common.proto\"\x9c\x02\n" +
 	"\fEndpointMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06app_id\x18\x02 \x01(\tR\x05appId\x12\x16\n" +
 	"\x06active\x18\x03 \x01(\bR\x06active\x12\x16\n" +
 	"\x06method\x18\x04 \x01(\tR\x06method\x12\x12\n" +
 	"\x04path\x18\x05 \x01(\tR\x04path\x122\n" +
-	"\abackend\x18\x06 \x01(\v2\x18.ruto_v1.EndpointBackendR\abackend\x12E\n" +
-	"\x0ejwt_validation\x18\a \x01(\v2\x1e.ruto_v1.EndpointJwtValidationR\rjwtValidation\x12B\n" +
+	"\abackend\x18\x06 \x01(\v2\x18.ruto_v1.EndpointBackendR\abackend\x12)\n" +
+	"\x04auth\x18\a \x01(\v2\x15.ruto_v1.EndpointAuthR\x04auth\x12B\n" +
 	"\rip_validation\x18\b \x01(\v2\x1d.ruto_v1.EndpointIpValidationR\fipValidation\" \n" +
 	"\x0eEndpointGetReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x98\x01\n" +
@@ -493,9 +791,25 @@ const file_ruto_v1_endpoint_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"2\n" +
 	"\x0fEndpointBackend\x12\x1f\n" +
 	"\vcustom_path\x18\x01 \x01(\tR\n" +
-	"customPath\"G\n" +
-	"\x15EndpointJwtValidation\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x14\n" +
+	"customPath\"_\n" +
+	"\fEndpointAuth\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x125\n" +
+	"\amethods\x18\x02 \x03(\v2\x1b.ruto_v1.EndpointAuthMethodR\amethods\"\xca\x01\n" +
+	"\x12EndpointAuthMethod\x128\n" +
+	"\x05basic\x18\x01 \x01(\v2 .ruto_v1.EndpointAuthMethodBasicH\x00R\x05basic\x12<\n" +
+	"\aapi_key\x18\x02 \x01(\v2!.ruto_v1.EndpointAuthMethodAPIKeyH\x00R\x06apiKey\x122\n" +
+	"\x03jwt\x18\x03 \x01(\v2\x1e.ruto_v1.EndpointAuthMethodJWTH\x00R\x03jwtB\b\n" +
+	"\x06method\"U\n" +
+	"\x17EndpointAuthMethodBasic\x12:\n" +
+	"\x05users\x18\x01 \x03(\v2$.ruto_v1.EndpointAuthMethodBasicUserR\x05users\"U\n" +
+	"\x1bEndpointAuthMethodBasicUser\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"F\n" +
+	"\x18EndpointAuthMethodAPIKey\x12\x16\n" +
+	"\x06header\x18\x01 \x01(\tR\x06header\x12\x12\n" +
+	"\x04keys\x18\x02 \x03(\tR\x04keys\"A\n" +
+	"\x15EndpointAuthMethodJWT\x12\x12\n" +
+	"\x04kids\x18\x01 \x03(\tR\x04kids\x12\x14\n" +
 	"\x05roles\x18\x02 \x03(\tR\x05roles\"7\n" +
 	"\x14EndpointIpValidation\x12\x1f\n" +
 	"\vallowed_ips\x18\x01 \x03(\tR\n" +
@@ -520,42 +834,52 @@ func file_ruto_v1_endpoint_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_endpoint_proto_rawDescData
 }
 
-var file_ruto_v1_endpoint_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_ruto_v1_endpoint_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_ruto_v1_endpoint_proto_goTypes = []any{
-	(*EndpointMain)(nil),          // 0: ruto_v1.EndpointMain
-	(*EndpointGetReq)(nil),        // 1: ruto_v1.EndpointGetReq
-	(*EndpointListReq)(nil),       // 2: ruto_v1.EndpointListReq
-	(*EndpointListRep)(nil),       // 3: ruto_v1.EndpointListRep
-	(*EndpointCreateRep)(nil),     // 4: ruto_v1.EndpointCreateRep
-	(*EndpointBackend)(nil),       // 5: ruto_v1.EndpointBackend
-	(*EndpointJwtValidation)(nil), // 6: ruto_v1.EndpointJwtValidation
-	(*EndpointIpValidation)(nil),  // 7: ruto_v1.EndpointIpValidation
-	(*ListParamsSt)(nil),          // 8: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),      // 9: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),         // 10: google.protobuf.Empty
+	(*EndpointMain)(nil),                // 0: ruto_v1.EndpointMain
+	(*EndpointGetReq)(nil),              // 1: ruto_v1.EndpointGetReq
+	(*EndpointListReq)(nil),             // 2: ruto_v1.EndpointListReq
+	(*EndpointListRep)(nil),             // 3: ruto_v1.EndpointListRep
+	(*EndpointCreateRep)(nil),           // 4: ruto_v1.EndpointCreateRep
+	(*EndpointBackend)(nil),             // 5: ruto_v1.EndpointBackend
+	(*EndpointAuth)(nil),                // 6: ruto_v1.EndpointAuth
+	(*EndpointAuthMethod)(nil),          // 7: ruto_v1.EndpointAuthMethod
+	(*EndpointAuthMethodBasic)(nil),     // 8: ruto_v1.EndpointAuthMethodBasic
+	(*EndpointAuthMethodBasicUser)(nil), // 9: ruto_v1.EndpointAuthMethodBasicUser
+	(*EndpointAuthMethodAPIKey)(nil),    // 10: ruto_v1.EndpointAuthMethodAPIKey
+	(*EndpointAuthMethodJWT)(nil),       // 11: ruto_v1.EndpointAuthMethodJWT
+	(*EndpointIpValidation)(nil),        // 12: ruto_v1.EndpointIpValidation
+	(*ListParamsSt)(nil),                // 13: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),            // 14: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),               // 15: google.protobuf.Empty
 }
 var file_ruto_v1_endpoint_proto_depIdxs = []int32{
 	5,  // 0: ruto_v1.EndpointMain.backend:type_name -> ruto_v1.EndpointBackend
-	6,  // 1: ruto_v1.EndpointMain.jwt_validation:type_name -> ruto_v1.EndpointJwtValidation
-	7,  // 2: ruto_v1.EndpointMain.ip_validation:type_name -> ruto_v1.EndpointIpValidation
-	8,  // 3: ruto_v1.EndpointListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	9,  // 4: ruto_v1.EndpointListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	6,  // 1: ruto_v1.EndpointMain.auth:type_name -> ruto_v1.EndpointAuth
+	12, // 2: ruto_v1.EndpointMain.ip_validation:type_name -> ruto_v1.EndpointIpValidation
+	13, // 3: ruto_v1.EndpointListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	14, // 4: ruto_v1.EndpointListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
 	0,  // 5: ruto_v1.EndpointListRep.results:type_name -> ruto_v1.EndpointMain
-	2,  // 6: ruto_v1.Endpoint.List:input_type -> ruto_v1.EndpointListReq
-	1,  // 7: ruto_v1.Endpoint.Get:input_type -> ruto_v1.EndpointGetReq
-	0,  // 8: ruto_v1.Endpoint.Create:input_type -> ruto_v1.EndpointMain
-	0,  // 9: ruto_v1.Endpoint.Update:input_type -> ruto_v1.EndpointMain
-	1,  // 10: ruto_v1.Endpoint.Delete:input_type -> ruto_v1.EndpointGetReq
-	3,  // 11: ruto_v1.Endpoint.List:output_type -> ruto_v1.EndpointListRep
-	0,  // 12: ruto_v1.Endpoint.Get:output_type -> ruto_v1.EndpointMain
-	4,  // 13: ruto_v1.Endpoint.Create:output_type -> ruto_v1.EndpointCreateRep
-	10, // 14: ruto_v1.Endpoint.Update:output_type -> google.protobuf.Empty
-	10, // 15: ruto_v1.Endpoint.Delete:output_type -> google.protobuf.Empty
-	11, // [11:16] is the sub-list for method output_type
-	6,  // [6:11] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	7,  // 6: ruto_v1.EndpointAuth.methods:type_name -> ruto_v1.EndpointAuthMethod
+	8,  // 7: ruto_v1.EndpointAuthMethod.basic:type_name -> ruto_v1.EndpointAuthMethodBasic
+	10, // 8: ruto_v1.EndpointAuthMethod.api_key:type_name -> ruto_v1.EndpointAuthMethodAPIKey
+	11, // 9: ruto_v1.EndpointAuthMethod.jwt:type_name -> ruto_v1.EndpointAuthMethodJWT
+	9,  // 10: ruto_v1.EndpointAuthMethodBasic.users:type_name -> ruto_v1.EndpointAuthMethodBasicUser
+	2,  // 11: ruto_v1.Endpoint.List:input_type -> ruto_v1.EndpointListReq
+	1,  // 12: ruto_v1.Endpoint.Get:input_type -> ruto_v1.EndpointGetReq
+	0,  // 13: ruto_v1.Endpoint.Create:input_type -> ruto_v1.EndpointMain
+	0,  // 14: ruto_v1.Endpoint.Update:input_type -> ruto_v1.EndpointMain
+	1,  // 15: ruto_v1.Endpoint.Delete:input_type -> ruto_v1.EndpointGetReq
+	3,  // 16: ruto_v1.Endpoint.List:output_type -> ruto_v1.EndpointListRep
+	0,  // 17: ruto_v1.Endpoint.Get:output_type -> ruto_v1.EndpointMain
+	4,  // 18: ruto_v1.Endpoint.Create:output_type -> ruto_v1.EndpointCreateRep
+	15, // 19: ruto_v1.Endpoint.Update:output_type -> google.protobuf.Empty
+	15, // 20: ruto_v1.Endpoint.Delete:output_type -> google.protobuf.Empty
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_endpoint_proto_init() }
@@ -565,13 +889,18 @@ func file_ruto_v1_endpoint_proto_init() {
 	}
 	file_ruto_v1_common_proto_init()
 	file_ruto_v1_endpoint_proto_msgTypes[2].OneofWrappers = []any{}
+	file_ruto_v1_endpoint_proto_msgTypes[7].OneofWrappers = []any{
+		(*EndpointAuthMethod_Basic)(nil),
+		(*EndpointAuthMethod_ApiKey)(nil),
+		(*EndpointAuthMethod_Jwt)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_endpoint_proto_rawDesc), len(file_ruto_v1_endpoint_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

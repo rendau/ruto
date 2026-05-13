@@ -630,6 +630,89 @@
         }
       }
     },
+    "ruto_v1EndpointAuth": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1EndpointAuthMethod"
+          }
+        }
+      }
+    },
+    "ruto_v1EndpointAuthMethod": {
+      "type": "object",
+      "properties": {
+        "basic": {
+          "$ref": "#/definitions/ruto_v1EndpointAuthMethodBasic"
+        },
+        "api_key": {
+          "$ref": "#/definitions/ruto_v1EndpointAuthMethodAPIKey"
+        },
+        "jwt": {
+          "$ref": "#/definitions/ruto_v1EndpointAuthMethodJWT"
+        }
+      }
+    },
+    "ruto_v1EndpointAuthMethodAPIKey": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "type": "string"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ruto_v1EndpointAuthMethodBasic": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1EndpointAuthMethodBasicUser"
+          }
+        }
+      }
+    },
+    "ruto_v1EndpointAuthMethodBasicUser": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "ruto_v1EndpointAuthMethodJWT": {
+      "type": "object",
+      "properties": {
+        "kids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "ruto_v1EndpointBackend": {
       "type": "object",
       "properties": {
@@ -650,20 +733,6 @@
       "type": "object",
       "properties": {
         "allowed_ips": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "ruto_v1EndpointJwtValidation": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
-        "roles": {
           "type": "array",
           "items": {
             "type": "string"
@@ -707,8 +776,8 @@
         "backend": {
           "$ref": "#/definitions/ruto_v1EndpointBackend"
         },
-        "jwt_validation": {
-          "$ref": "#/definitions/ruto_v1EndpointJwtValidation"
+        "auth": {
+          "$ref": "#/definitions/ruto_v1EndpointAuth"
         },
         "ip_validation": {
           "$ref": "#/definitions/ruto_v1EndpointIpValidation"
@@ -733,8 +802,8 @@
         "backend": {
           "$ref": "#/definitions/ruto_v1EndpointBackend"
         },
-        "jwt_validation": {
-          "$ref": "#/definitions/ruto_v1EndpointJwtValidation"
+        "auth": {
+          "$ref": "#/definitions/ruto_v1EndpointAuth"
         },
         "ip_validation": {
           "$ref": "#/definitions/ruto_v1EndpointIpValidation"
