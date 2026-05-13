@@ -10,32 +10,73 @@ import (
 )
 
 type Endpoint struct {
-	Id            string        `json:"id"`
-	AppId         string        `json:"app_id"`
-	Active        bool          `json:"active"`
-	Method        string        `json:"method"`
-	Path          string        `json:"path"`
-	Backend       Backend       `json:"backend"`
-	JwtValidation JwtValidation `json:"jwt_validation"`
-	IpValidation  IpValidation  `json:"ip_validation"`
+	Id            string       `json:"id"`
+	AppId         string       `json:"app_id"`
+	Active        bool         `json:"active"`
+	Method        string       `json:"method"`
+	Path          string       `json:"path"`
+	Backend       Backend      `json:"backend"`
+	JwtValidation Auth         `json:"jwt_validation"`
+	IpValidation  IpValidation `json:"ip_validation"`
 }
 
-type Backend struct {
-	CustomPath string `json:"custom_path"`
-}
+// backend
 
-type JwtValidation struct {
-	Enabled bool     `json:"enabled"`
-	Roles   []string `json:"roles"`
-}
+type (
+	Backend struct {
+		CustomPath string `json:"custom_path"`
+	}
+)
 
-type IpValidation struct {
-	AllowedIps []string `json:"allowed_ips"`
-}
+// auth
+
+type (
+	Auth struct {
+		Enabled bool         `json:"enabled"`
+		Methods []AuthMethod `json:"methods"`
+	}
+
+	AuthMethod struct {
+		Basic  *AuthMethodBasic  `json:"basic,omitempty"`
+		APIKey *AuthMethodAPIKey `json:"apiKey,omitempty"`
+		JWT    *AuthMethodJWT    `json:"jwt,omitempty"`
+	}
+
+	AuthMethodBasic struct {
+		Users []AuthMethodBasicUser `json:"users"`
+	}
+
+	AuthMethodBasicUser struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+
+	AuthMethodAPIKey struct {
+		Header string   `json:"header"`
+		Keys   []string `json:"keys"`
+	}
+
+	AuthMethodJWT struct {
+		Kids  []string `json:"kids"`
+		Roles []string `json:"roles"`
+	}
+)
+
+// ip validation
+
+type (
+	IpValidation struct {
+		AllowedIps []string `json:"allowed_ips"`
+	}
+)
+
+// string
 
 func (m *Endpoint) String() string {
 	return fmt.Sprintf("endpoint{%s %s}", m.Method, m.Path)
 }
+
+// normalize
 
 func (m *Endpoint) Normalize() error {
 	m.Method = strings.ToUpper(strings.TrimSpace(m.Method))
