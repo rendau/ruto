@@ -15,7 +15,7 @@ func NewCors(conf rootModel.RootCors) Middleware {
 	}
 
 	allowedOrigins := make(map[string]struct{}, len(conf.AllowOrigins))
-	allowAnyOrigin := len(conf.AllowOrigins) == 0
+	allowAnyOrigin := false
 	for _, origin := range conf.AllowOrigins {
 		if origin == "*" {
 			allowAnyOrigin = true
@@ -30,8 +30,13 @@ func NewCors(conf rootModel.RootCors) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
-			allowedOrigin, originAllowed := resolveAllowedOrigin(origin, conf.AllowCredentials, allowAnyOrigin, allowedOrigins)
-			if originAllowed {
+			allowedOrigin, originIsAllowed := resolveAllowedOrigin(
+				origin,
+				conf.AllowCredentials,
+				allowAnyOrigin,
+				allowedOrigins,
+			)
+			if originIsAllowed {
 				h := w.Header()
 				h.Add("Vary", "Origin")
 				h.Set("Access-Control-Allow-Origin", allowedOrigin)
@@ -40,8 +45,8 @@ func NewCors(conf rootModel.RootCors) Middleware {
 				}
 			}
 
-			if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
-				if origin != "" && !originAllowed {
+			if r.Method == http.MethodOptions {
+				if origin != "" && !originIsAllowed {
 					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 					return
 				}
@@ -66,6 +71,7 @@ func NewCors(conf rootModel.RootCors) Middleware {
 				}
 
 				w.WriteHeader(http.StatusNoContent)
+
 				return
 			}
 
