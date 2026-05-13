@@ -1,12 +1,11 @@
 package jwt
 
 import (
-	"encoding/base64"
+	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/goccy/go-json"
+	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/samber/lo"
 
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -21,14 +20,18 @@ func New(conf *endpointModel.AuthMethodJWT) *Jwt {
 	return &Jwt{conf: conf}
 }
 
-type header struct {
-	Alg string `json:"alg"`
-	Kid string `json:"kid"`
+var validJWTMethods = []string{
+	jwtv5.SigningMethodRS256.Alg(),
+	jwtv5.SigningMethodRS384.Alg(),
+	jwtv5.SigningMethodRS512.Alg(),
 }
 
 func (a Jwt) Authorize(r *http.Request) bool {
 	ctxReq := request.Extract(r.Context())
 	if ctxReq == nil {
+		return false
+	}
+	if ctxReq.JwkService == nil {
 		return false
 	}
 
@@ -37,55 +40,38 @@ func (a Jwt) Authorize(r *http.Request) bool {
 		return false
 	}
 
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return false
-	}
+	claims := jwtv5.MapClaims{}
+	parsed, err := jwtv5.ParseWithClaims(token, claims,
+		func(tokenObj *jwtv5.Token) (any, error) {
+			alg := strings.TrimSpace(tokenObj.Method.Alg())
+			if !lo.Contains(validJWTMethods, alg) {
+				return nil, fmt.Errorf("invalid jwt algorithm: %s", alg)
+			}
 
-	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
-	if err != nil {
-		return false
-	}
+			var kid string
+			if rawKid, ok := tokenObj.Header["kid"].(string); ok {
+				kid = strings.TrimSpace(rawKid)
+			}
+			if kid == "" {
+				return nil, fmt.Errorf("missing kid in JWT header")
+			}
+			if len(a.conf.Kids) > 0 && !lo.Contains(a.conf.Kids, kid) {
+				return nil, fmt.Errorf("kid not allowed: %s", kid)
+			}
 
-	var tokenHeader header
-	if err = json.Unmarshal(headerBytes, &tokenHeader); err != nil {
-		return false
-	}
-	if tokenHeader.Kid == "" {
-		return false
-	}
-	if len(a.conf.Kids) > 0 && !lo.Contains(a.conf.Kids, tokenHeader.Kid) {
-		return false
-	}
+			keyItem := ctxReq.JwkService.Get(kid)
+			if keyItem == nil {
+				return nil, fmt.Errorf("JWK not found for kid: %s", kid)
+			}
+			if keyItem.Alg != "" && keyItem.Alg != alg {
+				return nil, fmt.Errorf("JWK alg does not match JWT alg: %s != %s", keyItem.Alg, alg)
+			}
 
-	keyItem := ctxReq.JwkService.Get(tokenHeader.Kid)
-	if keyItem == nil {
-		return false
-	}
-
-	if !verifySignature(parts, tokenHeader.Alg, keyItem) {
-		return false
-	}
-
-	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return false
-	}
-
-	claims := make(map[string]any)
-	if err = json.Unmarshal(payloadBytes, &claims); err != nil {
-		return false
-	}
-
-	now := time.Now().UTC()
-
-	expValue, hasExp, ok := getNumericClaim(claims["exp"])
-	if hasExp && (!ok || now.Unix() >= int64(expValue)) {
-		return false
-	}
-
-	nbfValue, hasNbf, ok := getNumericClaim(claims["nbf"])
-	if hasNbf && (!ok || now.Unix() < int64(nbfValue)) {
+			return jwkToRSAPublicKey(keyItem)
+		},
+		jwtv5.WithValidMethods(validJWTMethods),
+	)
+	if err != nil || parsed == nil || !parsed.Valid {
 		return false
 	}
 

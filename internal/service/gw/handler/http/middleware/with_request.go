@@ -7,14 +7,13 @@ import (
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	requestModel "github.com/rendau/ruto/internal/service/gw/handler/http/request"
-	"github.com/rendau/ruto/internal/service/gw/jwk"
 )
 
 func NewWithRequest(
 	root *rootModel.Root,
 	app *appModel.App,
 	ep *endpointModel.Endpoint,
-	jwkService *jwk.Service,
+	jwkService requestModel.JwkServiceI,
 ) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

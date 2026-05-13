@@ -13,7 +13,11 @@ type Request struct {
 	Root       *rootModel.Root
 	App        *appModel.App
 	Endpoint   *endpointModel.Endpoint
-	JwkService *jwk.Service
+	JwkService JwkServiceI
+}
+
+type JwkServiceI interface {
+	Get(kid string) *jwk.Item
 }
 
 type contextKey struct{}
