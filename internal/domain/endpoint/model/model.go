@@ -38,7 +38,7 @@ type (
 
 	AuthMethod struct {
 		Basic  *AuthMethodBasic  `json:"basic,omitempty"`
-		APIKey *AuthMethodAPIKey `json:"apiKey,omitempty"`
+		APIKey *AuthMethodAPIKey `json:"api_key,omitempty"`
 		JWT    *AuthMethodJWT    `json:"jwt,omitempty"`
 	}
 
