@@ -63,6 +63,12 @@ func (s *Service) Start() {
 }
 
 func (s *Service) worker() {
+	select {
+	case <-s.globalCtx.Done():
+		return
+	case <-time.After(time.Second):
+	}
+
 	ticker := time.NewTicker(CheckInterval)
 	defer ticker.Stop()
 
