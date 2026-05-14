@@ -3,8 +3,25 @@ package jwt
 import (
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
+
+type requiredRoleStoreT struct {
+	roles map[string]bool
+}
+
+func newRequiredRoleStore(roles []string) *requiredRoleStoreT {
+	return &requiredRoleStoreT{
+		roles: lo.SliceToMap(roles, func(role string) (string, bool) {
+			return role, true
+		}),
+	}
+}
+
+func (r requiredRoleStoreT) hasRole(role string) bool {
+	return r.roles[role]
+}
 
 func TestHasAnyRole(t *testing.T) {
 	tests := []struct {
@@ -13,12 +30,6 @@ func TestHasAnyRole(t *testing.T) {
 		requiredRoles []string
 		want          bool
 	}{
-		{
-			name:          "no required roles",
-			claims:        map[string]any{},
-			requiredRoles: nil,
-			want:          true,
-		},
 		{
 			name: "top-level roles array",
 			claims: map[string]any{
@@ -33,16 +44,6 @@ func TestHasAnyRole(t *testing.T) {
 				"role": "user manager",
 			},
 			requiredRoles: []string{"manager"},
-			want:          true,
-		},
-		{
-			name: "realm access roles",
-			claims: map[string]any{
-				"realm_access": map[string]any{
-					"roles": []any{"viewer", "operator"},
-				},
-			},
-			requiredRoles: []string{"operator"},
 			want:          true,
 		},
 		{
@@ -68,7 +69,8 @@ func TestHasAnyRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := hasAnyRole(tt.claims, tt.requiredRoles)
+			rrStore := newRequiredRoleStore(tt.requiredRoles)
+			got := hasAnyRole(tt.claims, rrStore.hasRole)
 			require.Equal(t, tt.want, got)
 		})
 	}

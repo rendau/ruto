@@ -47,5 +47,4 @@ func buildAuthorizers(endpoint *endpointModel.Endpoint) []authorizerI {
 		}
 		return nil, false
 	})
-
 }

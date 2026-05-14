@@ -13,18 +13,42 @@ import (
 )
 
 type Jwt struct {
-	conf *endpointModel.AuthMethodJWT
+	conf            *endpointModel.AuthMethodJWT
+	requiredKidMap  map[string]bool
+	requiredRoleMap map[string]bool
 }
 
 func New(conf *endpointModel.AuthMethodJWT) *Jwt {
-	return &Jwt{conf: conf}
+	return &Jwt{
+		conf: conf,
+		requiredKidMap: lo.SliceToMap(
+			conf.Kids,
+			func(kid string) (string, bool) {
+				return kid, true
+			},
+		),
+		requiredRoleMap: lo.SliceToMap(
+			conf.Roles,
+			func(role string) (string, bool) {
+				return role, true
+			},
+		),
+	}
 }
 
-var validJWTMethods = []string{
-	jwtv5.SigningMethodRS256.Alg(),
-	jwtv5.SigningMethodRS384.Alg(),
-	jwtv5.SigningMethodRS512.Alg(),
-}
+var (
+	validJWTAlg = []string{
+		jwtv5.SigningMethodRS256.Alg(),
+		jwtv5.SigningMethodRS384.Alg(),
+		jwtv5.SigningMethodRS512.Alg(),
+	}
+	validJWTAlgMap = lo.SliceToMap(
+		validJWTAlg,
+		func(method string) (string, bool) {
+			return method, true
+		},
+	)
+)
 
 func (a Jwt) Authorize(r *http.Request) bool {
 	ctxReq := request.Extract(r.Context())
@@ -41,7 +65,7 @@ func (a Jwt) Authorize(r *http.Request) bool {
 	parsed, err := jwtv5.ParseWithClaims(token, claims,
 		func(tokenObj *jwtv5.Token) (any, error) {
 			alg := strings.TrimSpace(tokenObj.Method.Alg())
-			if !lo.Contains(validJWTMethods, alg) {
+			if !a.checkAlg(alg) {
 				return nil, fmt.Errorf("invalid jwt algorithm: %s", alg)
 			}
 
@@ -52,7 +76,7 @@ func (a Jwt) Authorize(r *http.Request) bool {
 			if kid == "" {
 				return nil, fmt.Errorf("missing kid in JWT header")
 			}
-			if len(a.conf.Kids) > 0 && !lo.Contains(a.conf.Kids, kid) {
+			if len(a.requiredKidMap) > 0 && !a.checkKid(kid) {
 				return nil, fmt.Errorf("kid not allowed: %s", kid)
 			}
 
@@ -66,15 +90,27 @@ func (a Jwt) Authorize(r *http.Request) bool {
 
 			return jwkToRSAPublicKey(keyItem)
 		},
-		jwtv5.WithValidMethods(validJWTMethods),
+		jwtv5.WithValidMethods(validJWTAlg),
 	)
 	if err != nil || parsed == nil || !parsed.Valid {
 		return false
 	}
 
-	if len(a.conf.Roles) > 0 && !hasAnyRole(claims, a.conf.Roles) {
+	if len(a.requiredRoleMap) > 0 && !hasAnyRole(claims, a.checkRole) {
 		return false
 	}
 
 	return true
+}
+
+func (a Jwt) checkAlg(alg string) bool {
+	return validJWTAlgMap[alg]
+}
+
+func (a Jwt) checkKid(kid string) bool {
+	return a.requiredKidMap[kid]
+}
+
+func (a Jwt) checkRole(role string) bool {
+	return a.requiredRoleMap[role]
 }

@@ -2,20 +2,8 @@ package jwt
 
 import "strings"
 
-func hasAnyRole(claims map[string]any, requiredRoles []string) bool {
-	if len(requiredRoles) == 0 {
-		return true
-	}
-
-	required := make(map[string]struct{}, len(requiredRoles))
-	for _, role := range requiredRoles {
-		required[role] = struct{}{}
-	}
-
-	return visitRoles(claims, func(role string) bool {
-		_, ok := required[role]
-		return ok
-	})
+func hasAnyRole(claims map[string]any, requiredRoleCheck func(role string) bool) bool {
+	return visitRoles(claims, requiredRoleCheck)
 }
 
 func visitRoles(claims map[string]any, fn func(role string) bool) bool {
@@ -27,15 +15,10 @@ func visitRoles(claims map[string]any, fn func(role string) bool) bool {
 		return true
 	}
 
-	if realmAccess, ok := claims["realm_access"].(map[string]any); ok {
-		if visitAny(realmAccess["roles"], fn) {
-			return true
-		}
-	}
-
 	if resourceAccess, ok := claims["resource_access"].(map[string]any); ok {
+		var clientRoles map[string]any
 		for _, raw := range resourceAccess {
-			clientRoles, ok := raw.(map[string]any)
+			clientRoles, ok = raw.(map[string]any)
 			if !ok {
 				continue
 			}
