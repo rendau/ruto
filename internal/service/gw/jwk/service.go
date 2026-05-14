@@ -132,6 +132,16 @@ func (s *Service) load() {
 		}
 
 		for _, item = range itemSet.Keys {
+			item.RSAPublicKey, err = toRSAPublicKey(item)
+			if err != nil {
+				slog.Error(
+					"jwk-scrapper: invalid key",
+					"error", fmt.Errorf("ToRSAPublicKey: %w", err),
+					"kid", item.Kid,
+					"uri", uri,
+				)
+				continue
+			}
 			result[item.Kid] = item
 		}
 	}

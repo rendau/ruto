@@ -31,10 +31,11 @@ func TestAuthorize(t *testing.T) {
 	publicKey := privateKey.PublicKey
 
 	item := &jwk.Item{
-		Kid: "kid-1",
-		Alg: jwtv5.SigningMethodRS256.Alg(),
-		N:   base64.RawURLEncoding.EncodeToString(publicKey.N.Bytes()),
-		E:   base64.RawURLEncoding.EncodeToString(big.NewInt(int64(publicKey.E)).Bytes()),
+		E:            base64.RawURLEncoding.EncodeToString(big.NewInt(int64(publicKey.E)).Bytes()),
+		Kid:          "kid-1",
+		Alg:          jwtv5.SigningMethodRS256.Alg(),
+		N:            base64.RawURLEncoding.EncodeToString(publicKey.N.Bytes()),
+		RSAPublicKey: &publicKey,
 	}
 
 	signToken := func(method jwtv5.SigningMethod, kid string, claims jwtv5.MapClaims, key any) string {

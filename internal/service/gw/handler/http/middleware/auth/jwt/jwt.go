@@ -88,7 +88,11 @@ func (a Jwt) Authorize(r *http.Request) bool {
 				return nil, fmt.Errorf("JWK alg does not match JWT alg: %s != %s", keyItem.Alg, alg)
 			}
 
-			return jwkToRSAPublicKey(keyItem)
+			if keyItem.RSAPublicKey == nil {
+				return nil, fmt.Errorf("JWK does not contain public key")
+			}
+
+			return keyItem.RSAPublicKey, nil
 		},
 		jwtv5.WithValidMethods(validJWTAlg),
 	)

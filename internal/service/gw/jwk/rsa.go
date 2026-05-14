@@ -1,15 +1,13 @@
-package jwt
+package jwk
 
 import (
 	"crypto/rsa"
 	"encoding/base64"
 	"fmt"
 	"math/big"
-
-	"github.com/rendau/ruto/internal/service/gw/jwk"
 )
 
-func jwkToRSAPublicKey(item *jwk.Item) (*rsa.PublicKey, error) {
+func toRSAPublicKey(item *Item) (*rsa.PublicKey, error) {
 	nBytes, err := base64.RawURLEncoding.DecodeString(item.N)
 	if err != nil {
 		return nil, err
