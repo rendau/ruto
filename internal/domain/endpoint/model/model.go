@@ -164,9 +164,6 @@ func (m *AuthMethodBasicUser) Normalize() error {
 	}
 
 	m.Password = strings.TrimSpace(m.Password)
-	if m.Password == "" {
-		return fmt.Errorf("password: empty")
-	}
 
 	return nil
 }
