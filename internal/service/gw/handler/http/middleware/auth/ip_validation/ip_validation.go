@@ -24,7 +24,7 @@ func New(conf *authModel.AuthMethodIPValidation) *Authorizer {
 	}
 }
 
-func (a Authorizer) Authorize(r *http.Request) bool {
+func (a *Authorizer) Authorize(r *http.Request) bool {
 	if len(a.allowedIPMap) == 0 {
 		return true
 	}
@@ -39,6 +39,6 @@ func extractRemoteIP(remoteAddr string) string {
 	return host
 }
 
-func (a Authorizer) checkIP(ip string) bool {
+func (a *Authorizer) checkIP(ip string) bool {
 	return a.allowedIPMap[ip]
 }

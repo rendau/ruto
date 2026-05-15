@@ -5,8 +5,10 @@ import (
 
 	"github.com/samber/lo"
 
+	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth/api_key"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth/basic"
@@ -14,14 +16,36 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth/jwt"
 )
 
-func New(endpoint *endpointModel.Endpoint) middleware.Middleware {
-	if !endpoint.Auth.Enabled {
+func New(
+	root *rootModel.Root,
+	app *appModel.App,
+	ep *endpointModel.Endpoint,
+	jwkGetter jwt.JwkGetterI,
+) middleware.Middleware {
+	if !ep.Auth.Enabled {
 		return func(next http.Handler) http.Handler {
 			return next
 		}
 	}
 
-	methodsAuthorizers := buildAuthorizers(endpoint)
+	methodsAuthorizers := lo.FilterMap(ep.Auth.Methods, func(v authModel.AuthMethod, _ int) ([]authorizerI, bool) {
+		result := make([]authorizerI, 0, 4)
+
+		if v.Basic != nil {
+			result = append(result, basic.New(v.Basic))
+		}
+		if v.APIKey != nil {
+			result = append(result, api_key.New(v.APIKey))
+		}
+		if v.JWT != nil {
+			result = append(result, jwt.New(jwkGetter, v.JWT))
+		}
+		if v.IPValidation != nil {
+			result = append(result, ip_validation.New(v.IPValidation))
+		}
+
+		return result, len(result) > 0
+	})
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -35,27 +59,6 @@ func New(endpoint *endpointModel.Endpoint) middleware.Middleware {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		})
 	}
-}
-
-func buildAuthorizers(endpoint *endpointModel.Endpoint) [][]authorizerI {
-	return lo.FilterMap(endpoint.Auth.Methods, func(v authModel.AuthMethod, _ int) ([]authorizerI, bool) {
-		result := make([]authorizerI, 0, 4)
-
-		if v.Basic != nil {
-			result = append(result, basic.New(v.Basic))
-		}
-		if v.APIKey != nil {
-			result = append(result, api_key.New(v.APIKey))
-		}
-		if v.JWT != nil {
-			result = append(result, jwt.New(v.JWT))
-		}
-		if v.IPValidation != nil {
-			result = append(result, ip_validation.New(v.IPValidation))
-		}
-
-		return result, len(result) > 0
-	})
 }
 
 func authorizeMethod(authorizers []authorizerI, r *http.Request) bool {

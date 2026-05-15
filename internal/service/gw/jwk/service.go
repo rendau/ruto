@@ -2,6 +2,7 @@ package jwk
 
 import (
 	"context"
+	"crypto/rsa"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -56,9 +57,11 @@ func (s *Service) SetUrls(urls []string) {
 	go s.load()
 }
 
-func (s *Service) Get(kid string) *Item {
-	items := s.getItems()
-	return items[kid]
+func (s *Service) GetPublicKey(kid string) (*rsa.PublicKey, string) {
+	if item := s.getItems()[kid]; item != nil {
+		return &item.RSAPublicKey, item.Alg
+	}
+	return nil, ""
 }
 
 func (s *Service) getUrls() []string {

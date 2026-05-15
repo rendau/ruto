@@ -13,15 +13,13 @@ func NewWithRequest(
 	root *rootModel.Root,
 	app *appModel.App,
 	ep *endpointModel.Endpoint,
-	jwkService requestModel.JwkServiceI,
 ) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r.WithContext(requestModel.Inject(r.Context(), &requestModel.Request{
-				Root:       root,
-				App:        app,
-				Endpoint:   ep,
-				JwkService: jwkService,
+				Root:     root,
+				App:      app,
+				Endpoint: ep,
 			})))
 		})
 	}

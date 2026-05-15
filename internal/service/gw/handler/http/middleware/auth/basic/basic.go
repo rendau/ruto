@@ -15,7 +15,7 @@ func New(conf *authModel.AuthMethodBasic) *Authorizer {
 	return &Authorizer{conf: conf}
 }
 
-func (a Authorizer) Authorize(r *http.Request) bool {
+func (a *Authorizer) Authorize(r *http.Request) bool {
 	if len(a.conf.Users) == 0 {
 		return false
 	}

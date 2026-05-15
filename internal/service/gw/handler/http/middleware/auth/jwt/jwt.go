@@ -9,31 +9,13 @@ import (
 	"github.com/samber/lo"
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
-	"github.com/rendau/ruto/internal/service/gw/handler/http/request"
 )
 
 type Jwt struct {
+	jwkGetter       JwkGetterI
 	conf            *authModel.AuthMethodJWT
 	requiredKidMap  map[string]bool
 	requiredRoleMap map[string]bool
-}
-
-func New(conf *authModel.AuthMethodJWT) *Jwt {
-	return &Jwt{
-		conf: conf,
-		requiredKidMap: lo.SliceToMap(
-			conf.Kids,
-			func(kid string) (string, bool) {
-				return kid, true
-			},
-		),
-		requiredRoleMap: lo.SliceToMap(
-			conf.Roles,
-			func(role string) (string, bool) {
-				return role, true
-			},
-		),
-	}
 }
 
 var (
@@ -50,12 +32,26 @@ var (
 	)
 )
 
-func (a Jwt) Authorize(r *http.Request) bool {
-	ctxReq := request.Extract(r.Context())
-	if ctxReq == nil {
-		return false
+func New(jwkGetter JwkGetterI, conf *authModel.AuthMethodJWT) *Jwt {
+	return &Jwt{
+		jwkGetter: jwkGetter,
+		conf:      conf,
+		requiredKidMap: lo.SliceToMap(
+			conf.Kids,
+			func(kid string) (string, bool) {
+				return kid, true
+			},
+		),
+		requiredRoleMap: lo.SliceToMap(
+			conf.Roles,
+			func(role string) (string, bool) {
+				return role, true
+			},
+		),
 	}
+}
 
+func (a *Jwt) Authorize(r *http.Request) bool {
 	token := extractToken(r)
 	if token == "" {
 		return false
@@ -64,9 +60,9 @@ func (a Jwt) Authorize(r *http.Request) bool {
 	claims := jwtv5.MapClaims{}
 	parsed, err := jwtv5.ParseWithClaims(token, claims,
 		func(tokenObj *jwtv5.Token) (any, error) {
-			alg := strings.TrimSpace(tokenObj.Method.Alg())
-			if !a.checkAlg(alg) {
-				return nil, fmt.Errorf("invalid jwt algorithm: %s", alg)
+			jwtAlg := strings.TrimSpace(tokenObj.Method.Alg())
+			if !a.checkAlg(jwtAlg) {
+				return nil, fmt.Errorf("invalid jwt algorithm: %s", jwtAlg)
 			}
 
 			var kid string
@@ -80,19 +76,15 @@ func (a Jwt) Authorize(r *http.Request) bool {
 				return nil, fmt.Errorf("kid not allowed: %s", kid)
 			}
 
-			keyItem := ctxReq.JwkService.Get(kid)
-			if keyItem == nil {
+			jwk, jwkAlg := a.jwkGetter.GetPublicKey(kid)
+			if jwk == nil {
 				return nil, fmt.Errorf("JWK not found for kid: %s", kid)
 			}
-			if keyItem.Alg != "" && keyItem.Alg != alg {
-				return nil, fmt.Errorf("JWK alg does not match JWT alg: %s != %s", keyItem.Alg, alg)
+			if jwkAlg != jwtAlg {
+				return nil, fmt.Errorf("JWK alg does not match JWT alg: %s != %s", jwkAlg, jwtAlg)
 			}
 
-			if keyItem.RSAPublicKey == nil {
-				return nil, fmt.Errorf("JWK does not contain public key")
-			}
-
-			return keyItem.RSAPublicKey, nil
+			return &jwk, nil
 		},
 		jwtv5.WithValidMethods(validJWTAlg),
 	)
@@ -107,18 +99,18 @@ func (a Jwt) Authorize(r *http.Request) bool {
 	return true
 }
 
-func (a Jwt) checkAlg(alg string) bool {
+func (a *Jwt) checkAlg(alg string) bool {
 	return validJWTAlgMap[alg]
 }
 
-func (a Jwt) checkKid(kid string) bool {
+func (a *Jwt) checkKid(kid string) bool {
 	if len(a.requiredKidMap) == 0 {
 		return true
 	}
 	return a.requiredKidMap[kid]
 }
 
-func (a Jwt) checkRole(role string) bool {
+func (a *Jwt) checkRole(role string) bool {
 	if len(a.requiredRoleMap) == 0 {
 		return true
 	}

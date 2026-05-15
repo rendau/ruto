@@ -10,21 +10,21 @@ import (
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth/jwt"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
-	"github.com/rendau/ruto/internal/service/gw/jwk"
 )
 
 type Service struct {
 	h http.Handler
 }
 
-func New(snapshot *rootModel.Root, jwkService *jwk.Service) (*Service, error) {
+func New(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI) (*Service, error) {
 	err := snapshot.Normalize()
 	if err != nil {
 		return nil, fmt.Errorf("snapshot normalize: %w", err)
 	}
 
-	handler, err := buildHandler(snapshot, jwkService)
+	handler, err := buildHandler(snapshot, jwkGetter)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -38,7 +38,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(snapshot *rootModel.Root, jwkService *jwk.Service) (_ http.Handler, finalErr error) {
+func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)
@@ -75,8 +75,8 @@ func buildHandler(snapshot *rootModel.Root, jwkService *jwk.Service) (_ http.Han
 			mux.Handle(
 				routePattern,
 				middleware.Chain(appHandler,
-					middleware.NewWithRequest(snapshot, app, endpoint, jwkService),
-					auth.New(endpoint),
+					middleware.NewWithRequest(snapshot, app, endpoint),
+					auth.New(snapshot, app, endpoint, jwkGetter),
 					middleware.NewStripPrefix(app.PathPrefix),
 				),
 			)

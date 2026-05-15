@@ -33,7 +33,7 @@ func New(conf *authModel.AuthMethodAPIKey) *Authorizer {
 	}
 }
 
-func (a Authorizer) Authorize(r *http.Request) bool {
+func (a *Authorizer) Authorize(r *http.Request) bool {
 	if len(a.allowedKeyMap) == 0 {
 		return false
 	}
@@ -46,6 +46,6 @@ func (a Authorizer) Authorize(r *http.Request) bool {
 	return a.checkKey(clientKey)
 }
 
-func (a Authorizer) checkKey(key string) bool {
+func (a *Authorizer) checkKey(key string) bool {
 	return a.allowedKeyMap[key]
 }
