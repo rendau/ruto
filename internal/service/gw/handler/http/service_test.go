@@ -37,6 +37,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 			name:                 "get with query",
 			appBackendPathPrefix: "/svc",
 			endpoint: &endpointModel.Endpoint{
+				Active: true,
 				Method: http.MethodGet,
 				Path:   "users",
 			},
@@ -51,6 +52,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 			name:                 "get with custom backend path",
 			appBackendPathPrefix: "/svc",
 			endpoint: &endpointModel.Endpoint{
+				Active: true,
 				Method: http.MethodGet,
 				Path:   "users",
 				Backend: endpointModel.Backend{
@@ -72,6 +74,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 				BaseUrl: "https://public.example",
 				Apps: []*appModel.App{
 					{
+						Active:     true,
 						PathPrefix: "api",
 						Backend: appModel.AppBackend{
 							Url: backend.URL + tt.appBackendPathPrefix,
@@ -101,16 +104,19 @@ func TestServiceBuild_DuplicateRoute(t *testing.T) {
 		BaseUrl: "https://public.example",
 		Apps: []*appModel.App{
 			{
+				Active:     true,
 				PathPrefix: "api",
 				Backend: appModel.AppBackend{
 					Url: "http://example.local/svc",
 				},
 				Endpoints: []*endpointModel.Endpoint{
 					{
+						Active: true,
 						Method: http.MethodGet,
 						Path:   "users",
 					},
 					{
+						Active: true,
 						Method: http.MethodGet,
 						Path:   "users",
 					},
@@ -136,6 +142,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 		{
 			name: "auth disabled",
 			endpoint: &endpointModel.Endpoint{
+				Active: true,
 				Method: http.MethodGet,
 				Path:   "users",
 				Auth: authModel.Auth{
@@ -150,6 +157,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 		{
 			name: "basic auth success",
 			endpoint: &endpointModel.Endpoint{
+				Active: true,
 				Method: http.MethodGet,
 				Path:   "users",
 				Auth: authModel.Auth{
@@ -175,6 +183,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 		{
 			name: "auth required and all methods failed",
 			endpoint: &endpointModel.Endpoint{
+				Active: true,
 				Method: http.MethodGet,
 				Path:   "users",
 				Auth: authModel.Auth{
@@ -204,6 +213,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 		{
 			name: "auth required and one of methods succeeded",
 			endpoint: &endpointModel.Endpoint{
+				Active: true,
 				Method: http.MethodGet,
 				Path:   "users",
 				Auth: authModel.Auth{
@@ -235,6 +245,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 		{
 			name: "api key default header",
 			endpoint: &endpointModel.Endpoint{
+				Active: true,
 				Method: http.MethodGet,
 				Path:   "users",
 				Auth: authModel.Auth{
@@ -258,6 +269,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 		{
 			name: "api key and ip validation success",
 			endpoint: &endpointModel.Endpoint{
+				Active: true,
 				Method: http.MethodGet,
 				Path:   "users",
 				Auth: authModel.Auth{
@@ -285,6 +297,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 		{
 			name: "api key and ip validation fail by ip",
 			endpoint: &endpointModel.Endpoint{
+				Active: true,
 				Method: http.MethodGet,
 				Path:   "users",
 				Auth: authModel.Auth{
@@ -317,6 +330,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 				BaseUrl: "https://public.example",
 				Apps: []*appModel.App{
 					{
+						Active:     true,
 						PathPrefix: "api",
 						Backend: appModel.AppBackend{
 							Url: backend.URL + "/svc",

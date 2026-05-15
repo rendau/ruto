@@ -84,7 +84,7 @@ func (a *Jwt) Authorize(r *http.Request) bool {
 				return nil, fmt.Errorf("JWK alg does not match JWT alg: %s != %s", jwkAlg, jwtAlg)
 			}
 
-			return &jwk, nil
+			return jwk, nil
 		},
 		jwtv5.WithValidMethods(validJWTAlg),
 	)

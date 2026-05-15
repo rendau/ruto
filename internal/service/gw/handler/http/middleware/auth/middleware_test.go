@@ -167,7 +167,7 @@ func TestNew_ORAndANDCases(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			})
 
-			h := New(tt.endpoint)(next)
+			h := New(nil, nil, tt.endpoint, nil)(next)
 			h.ServeHTTP(rw, tt.request())
 
 			require.Equal(t, tt.wantStatus, rw.Code)

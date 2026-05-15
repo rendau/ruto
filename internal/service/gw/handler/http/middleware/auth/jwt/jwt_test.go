@@ -1,11 +1,8 @@
 package jwt
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
-	"math/big"
 	"net/http/httptest"
 	"testing"
 
@@ -13,16 +10,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
-	"github.com/rendau/ruto/internal/service/gw/handler/http/request"
-	"github.com/rendau/ruto/internal/service/gw/jwk"
 )
 
-type testJWKServiceT struct {
-	items map[string]*jwk.Item
+type testJWKGetterT struct {
+	keys map[string]struct {
+		publicKey *rsa.PublicKey
+		alg       string
+	}
 }
 
-func (s *testJWKServiceT) Get(kid string) *jwk.Item {
-	return s.items[kid]
+func (s *testJWKGetterT) GetPublicKey(kid string) (*rsa.PublicKey, string) {
+	item := s.keys[kid]
+	return item.publicKey, item.alg
 }
 
 func TestAuthorize(t *testing.T) {
@@ -30,13 +29,8 @@ func TestAuthorize(t *testing.T) {
 	require.NoError(t, err)
 	publicKey := privateKey.PublicKey
 
-	item := &jwk.Item{
-		E:            base64.RawURLEncoding.EncodeToString(big.NewInt(int64(publicKey.E)).Bytes()),
-		Kid:          "kid-1",
-		Alg:          jwtv5.SigningMethodRS256.Alg(),
-		N:            base64.RawURLEncoding.EncodeToString(publicKey.N.Bytes()),
-		RSAPublicKey: &publicKey,
-	}
+	itemKid := "kid-1"
+	itemAlg := jwtv5.SigningMethodRS256.Alg()
 
 	signToken := func(method jwtv5.SigningMethod, kid string, claims jwtv5.MapClaims, key any) string {
 		tokenObj := jwtv5.NewWithClaims(method, claims)
@@ -51,13 +45,13 @@ func TestAuthorize(t *testing.T) {
 
 	validToken := signToken(
 		jwtv5.SigningMethodRS256,
-		item.Kid,
+		itemKid,
 		jwtv5.MapClaims{"sub": "u1", "roles": []string{"moderator", "admin"}},
 		privateKey,
 	)
 	keycloakResourceAccessToken := signToken(
 		jwtv5.SigningMethodRS256,
-		item.Kid,
+		itemKid,
 		jwtv5.MapClaims{
 			"sub": "u1",
 			"resource_access": map[string]any{
@@ -73,7 +67,7 @@ func TestAuthorize(t *testing.T) {
 	require.NoError(t, err)
 	badSignatureToken := signToken(
 		jwtv5.SigningMethodRS256,
-		item.Kid,
+		itemKid,
 		jwtv5.MapClaims{"sub": "u1"},
 		wrongKey,
 	)
@@ -87,96 +81,109 @@ func TestAuthorize(t *testing.T) {
 
 	hsToken := signToken(
 		jwtv5.SigningMethodHS256,
-		item.Kid,
+		itemKid,
 		jwtv5.MapClaims{"sub": "u1"},
 		[]byte("secret"),
 	)
 
-	testJWKService := &testJWKServiceT{items: map[string]*jwk.Item{item.Kid: item}}
+	testJWKGetter := &testJWKGetterT{
+		keys: map[string]struct {
+			publicKey *rsa.PublicKey
+			alg       string
+		}{
+			itemKid: {
+				publicKey: &publicKey,
+				alg:       itemAlg,
+			},
+		},
+	}
 
 	tests := []struct {
-		name   string
-		conf   *authModel.AuthMethodJWT
-		header string
-		ctxReq *request.Request
-		want   bool
+		name      string
+		conf      *authModel.AuthMethodJWT
+		header    string
+		jwkGetter JwkGetterI
+		want      bool
 	}{
 		{
-			name:   "missing token",
-			conf:   &authModel.AuthMethodJWT{},
-			header: "",
-			ctxReq: &request.Request{JwkService: testJWKService},
-			want:   false,
+			name:      "missing token",
+			conf:      &authModel.AuthMethodJWT{},
+			header:    "",
+			jwkGetter: testJWKGetter,
+			want:      false,
 		},
 		{
-			name:   "invalid algorithm",
-			conf:   &authModel.AuthMethodJWT{},
-			header: "Bearer " + hsToken,
-			ctxReq: &request.Request{JwkService: testJWKService},
-			want:   false,
+			name:      "invalid algorithm",
+			conf:      &authModel.AuthMethodJWT{},
+			header:    "Bearer " + hsToken,
+			jwkGetter: testJWKGetter,
+			want:      false,
 		},
 		{
-			name:   "missing kid",
-			conf:   &authModel.AuthMethodJWT{},
-			header: "Bearer " + missingKidToken,
-			ctxReq: &request.Request{JwkService: testJWKService},
-			want:   false,
+			name:      "missing kid",
+			conf:      &authModel.AuthMethodJWT{},
+			header:    "Bearer " + missingKidToken,
+			jwkGetter: testJWKGetter,
+			want:      false,
 		},
 		{
-			name:   "kid is not allowed by config",
-			conf:   &authModel.AuthMethodJWT{Kids: []string{"kid-2"}},
-			header: "Bearer " + validToken,
-			ctxReq: &request.Request{JwkService: testJWKService},
-			want:   false,
+			name:      "kid is not allowed by config",
+			conf:      &authModel.AuthMethodJWT{Kids: []string{"kid-2"}},
+			header:    "Bearer " + validToken,
+			jwkGetter: testJWKGetter,
+			want:      false,
 		},
 		{
-			name:   "kid not found in jwk service",
-			conf:   &authModel.AuthMethodJWT{},
-			header: "Bearer " + validToken,
-			ctxReq: &request.Request{JwkService: &testJWKServiceT{items: map[string]*jwk.Item{}}},
-			want:   false,
+			name:      "kid not found in jwk service",
+			conf:      &authModel.AuthMethodJWT{},
+			header:    "Bearer " + validToken,
+			jwkGetter: &testJWKGetterT{},
+			want:      false,
 		},
 		{
 			name:   "jwk alg mismatch",
 			conf:   &authModel.AuthMethodJWT{},
 			header: "Bearer " + validToken,
-			ctxReq: &request.Request{JwkService: &testJWKServiceT{items: map[string]*jwk.Item{
-				item.Kid: {
-					Kid: item.Kid,
-					Alg: jwtv5.SigningMethodRS384.Alg(),
-					N:   item.N,
-					E:   item.E,
+			jwkGetter: &testJWKGetterT{
+				keys: map[string]struct {
+					publicKey *rsa.PublicKey
+					alg       string
+				}{
+					itemKid: {
+						publicKey: &publicKey,
+						alg:       jwtv5.SigningMethodRS384.Alg(),
+					},
 				},
-			}}},
+			},
 			want: false,
 		},
 		{
-			name:   "invalid signature",
-			conf:   &authModel.AuthMethodJWT{},
-			header: "Bearer " + badSignatureToken,
-			ctxReq: &request.Request{JwkService: testJWKService},
-			want:   false,
+			name:      "invalid signature",
+			conf:      &authModel.AuthMethodJWT{},
+			header:    "Bearer " + badSignatureToken,
+			jwkGetter: testJWKGetter,
+			want:      false,
 		},
 		{
-			name:   "required role missing",
-			conf:   &authModel.AuthMethodJWT{Roles: []string{"super-admin"}},
-			header: "Bearer " + validToken,
-			ctxReq: &request.Request{JwkService: testJWKService},
-			want:   false,
+			name:      "required role missing",
+			conf:      &authModel.AuthMethodJWT{Roles: []string{"super-admin"}},
+			header:    "Bearer " + validToken,
+			jwkGetter: testJWKGetter,
+			want:      false,
 		},
 		{
-			name:   "authorized",
-			conf:   &authModel.AuthMethodJWT{Roles: []string{"moderator"}},
-			header: "Bearer " + validToken,
-			ctxReq: &request.Request{JwkService: testJWKService},
-			want:   true,
+			name:      "authorized",
+			conf:      &authModel.AuthMethodJWT{Roles: []string{"moderator"}},
+			header:    "Bearer " + validToken,
+			jwkGetter: testJWKGetter,
+			want:      true,
 		},
 		{
-			name:   "authorized by keycloak resource_access roles",
-			conf:   &authModel.AuthMethodJWT{Roles: []string{"admin"}},
-			header: "Bearer " + keycloakResourceAccessToken,
-			ctxReq: &request.Request{JwkService: testJWKService},
-			want:   true,
+			name:      "authorized by keycloak resource_access roles",
+			conf:      &authModel.AuthMethodJWT{Roles: []string{"admin"}},
+			header:    "Bearer " + keycloakResourceAccessToken,
+			jwkGetter: testJWKGetter,
+			want:      true,
 		},
 	}
 
@@ -186,11 +193,8 @@ func TestAuthorize(t *testing.T) {
 			if tt.header != "" {
 				req.Header.Set("Authorization", tt.header)
 			}
-			if tt.ctxReq != nil {
-				req = req.WithContext(request.Inject(context.Background(), tt.ctxReq))
-			}
 
-			got := New(tt.conf).Authorize(req)
+			got := New(tt.jwkGetter, tt.conf).Authorize(req)
 			require.Equal(t, tt.want, got)
 		})
 	}
