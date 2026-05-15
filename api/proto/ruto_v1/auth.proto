@@ -6,7 +6,8 @@ option go_package = "/ruto_v1";
 
 message Auth {
   bool enabled = 1;
-  repeated AuthMethod methods = 2;
+  string mode = 2;
+  repeated AuthMethod methods = 3;
 }
 
 message AuthMethod {

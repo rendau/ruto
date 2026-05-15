@@ -2,6 +2,9 @@ package constant
 
 const (
 	ServiceName = "ruto"
+)
 
-	MaxPageSize = 1000
+const (
+	AuthModeExtend  = "extend"
+	AuthModeReplace = "replace"
 )

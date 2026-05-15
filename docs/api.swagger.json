@@ -648,6 +648,9 @@
             "type": "object",
             "$ref": "#/definitions/ruto_v1AuthMethod"
           }
+        },
+        "mode": {
+          "type": "string"
         }
       }
     },

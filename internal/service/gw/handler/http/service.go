@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/samber/lo"
+
+	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth"
@@ -47,9 +50,22 @@ func buildHandler(snapshot *rootModel.Root, jwkService *jwk.Service) (_ http.Han
 	var routePattern string
 
 	for _, app := range snapshot.Apps {
+		if !app.Active {
+			continue
+		}
+
+		// filter endpoints
+		filteredEndpoints := lo.Filter(app.Endpoints, func(endpoint *endpointModel.Endpoint, _ int) bool {
+			return endpoint.Active
+		})
+		if len(filteredEndpoints) == 0 {
+			continue
+		}
+
+		// proxy
 		appHandler := proxy.NewProxy(app)
 
-		for _, endpoint := range app.Endpoints {
+		for _, endpoint := range filteredEndpoints {
 			if endpoint.Path == "" {
 				routePattern = endpoint.Method + " " + app.PathPrefix
 			} else {

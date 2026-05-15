@@ -25,6 +25,7 @@ type Auth struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	Methods       []*AuthMethod          `protobuf:"bytes,2,rep,name=methods,proto3" json:"methods,omitempty"`
+	Mode          string                 `protobuf:"bytes,3,opt,name=mode,proto3" json:"mode,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -71,6 +72,13 @@ func (x *Auth) GetMethods() []*AuthMethod {
 		return x.Methods
 	}
 	return nil
+}
+
+func (x *Auth) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
 }
 
 type AuthMethod struct {
@@ -389,10 +397,11 @@ var File_ruto_v1_auth_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x12ruto_v1/auth.proto\x12\aruto_v1\"O\n" +
+	"\x12ruto_v1/auth.proto\x12\aruto_v1\"c\n" +
 	"\x04Auth\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12-\n" +
-	"\amethods\x18\x02 \x03(\v2\x13.ruto_v1.AuthMethodR\amethods\"\xe0\x01\n" +
+	"\amethods\x18\x02 \x03(\v2\x13.ruto_v1.AuthMethodR\amethods\x12\x12\n" +
+	"\x04mode\x18\x03 \x01(\tR\x04mode\"\xe0\x01\n" +
 	"\n" +
 	"AuthMethod\x12.\n" +
 	"\x05basic\x18\x01 \x01(\v2\x18.ruto_v1.AuthMethodBasicR\x05basic\x122\n" +

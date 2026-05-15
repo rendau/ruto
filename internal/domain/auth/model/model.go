@@ -9,6 +9,7 @@ import (
 
 type Auth struct {
 	Enabled bool         `json:"enabled"`
+	Mode    string       `json:"mode"` // "extend" | "replace"
 	Methods []AuthMethod `json:"methods"`
 }
 

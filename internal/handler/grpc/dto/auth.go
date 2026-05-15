@@ -10,6 +10,7 @@ import (
 func EncodeEndpointAuth(x authModel.Auth) *ruto_v1.Auth {
 	return &ruto_v1.Auth{
 		Enabled: x.Enabled,
+		Mode:    x.Mode,
 		Methods: lo.Map(x.Methods, EncodeEndpointAuthMethod),
 	}
 }
@@ -20,6 +21,7 @@ func DecodeEndpointAuth(x *ruto_v1.Auth) authModel.Auth {
 	}
 	return authModel.Auth{
 		Enabled: x.Enabled,
+		Mode:    x.Mode,
 		Methods: lo.FilterMap(x.Methods, DecodeEndpointAuthMethod),
 	}
 }
