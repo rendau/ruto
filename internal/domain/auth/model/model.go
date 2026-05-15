@@ -5,12 +5,14 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+
+	"github.com/rendau/ruto/internal/constant"
 )
 
 type Auth struct {
-	Enabled bool         `json:"enabled"`
-	Mode    string       `json:"mode"` // "extend" | "replace"
-	Methods []AuthMethod `json:"methods"`
+	Enabled bool          `json:"enabled"`
+	Mode    string        `json:"mode"` // "extend" | "replace"
+	Methods []*AuthMethod `json:"methods"`
 }
 
 type AuthMethod struct {
@@ -44,12 +46,53 @@ type AuthMethodIPValidation struct {
 }
 
 func (m *Auth) Normalize() error {
+	m.Mode = strings.ToLower(strings.TrimSpace(m.Mode))
+	if m.Mode == "" {
+		m.Mode = constant.AuthModeExtend
+	}
+	if !constant.AuthModeIsValid(m.Mode) {
+		return fmt.Errorf("mode: is invalid")
+	}
+
+	if m.Methods == nil {
+		m.Methods = []*AuthMethod{}
+	}
 	for i := range m.Methods {
 		if err := m.Methods[i].Normalize(); err != nil {
 			return fmt.Errorf("methods[%d]: %w", i, err)
 		}
 	}
+
 	return nil
+}
+
+func (m *Auth) Merge(rootAuth, appAuth *Auth) {
+	result := Auth{}
+
+	result.mergeOne(rootAuth)
+	result.mergeOne(appAuth)
+	result.mergeOne(m)
+
+	*m = result
+}
+
+func (m *Auth) mergeOne(child *Auth) {
+	if child == nil {
+		return
+	}
+
+	switch child.Mode {
+	case constant.AuthModeReplace:
+		*m = Auth{
+			Enabled: child.Enabled,
+			Mode:    child.Mode,
+			Methods: append(make([]*AuthMethod, 0, len(child.Methods)), child.Methods...),
+		}
+	case constant.AuthModeExtend:
+		m.Enabled = child.Enabled
+		m.Mode = child.Mode
+		m.Methods = append(m.Methods, child.Methods...)
+	}
 }
 
 func (m *AuthMethod) Normalize() error {

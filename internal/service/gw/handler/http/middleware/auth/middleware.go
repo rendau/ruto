@@ -22,13 +22,25 @@ func New(
 	ep *endpointModel.Endpoint,
 	jwkGetter jwt.JwkGetterI,
 ) middleware.Middleware {
-	if !ep.Auth.Enabled {
+	mergedAuth := ep.Auth
+	if root != nil || app != nil {
+		var rootAuth, appAuth *authModel.Auth
+		if root != nil {
+			rootAuth = &root.Auth
+		}
+		if app != nil {
+			appAuth = &app.Auth
+		}
+		mergedAuth.Merge(rootAuth, appAuth)
+	}
+
+	if !mergedAuth.Enabled {
 		return func(next http.Handler) http.Handler {
 			return next
 		}
 	}
 
-	methodsAuthorizers := lo.FilterMap(ep.Auth.Methods, func(v authModel.AuthMethod, _ int) ([]authorizerI, bool) {
+	methodsAuthorizers := lo.FilterMap(mergedAuth.Methods, func(v *authModel.AuthMethod, _ int) ([]authorizerI, bool) {
 		result := make([]authorizerI, 0, 4)
 
 		if v.Basic != nil {

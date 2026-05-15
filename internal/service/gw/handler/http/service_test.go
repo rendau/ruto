@@ -162,7 +162,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 				Path:   "users",
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							Basic: &authModel.AuthMethodBasic{
 								Users: []authModel.AuthMethodBasicUser{
@@ -188,7 +188,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 				Path:   "users",
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							Basic: &authModel.AuthMethodBasic{
 								Users: []authModel.AuthMethodBasicUser{
@@ -218,7 +218,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 				Path:   "users",
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							Basic: &authModel.AuthMethodBasic{
 								Users: []authModel.AuthMethodBasicUser{
@@ -250,7 +250,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 				Path:   "users",
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							APIKey: &authModel.AuthMethodAPIKey{
 								Keys: []string{"k-1"},
@@ -274,7 +274,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 				Path:   "users",
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
@@ -302,7 +302,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 				Path:   "users",
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",

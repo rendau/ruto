@@ -7,8 +7,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 )
 
 func TestNew_ORAndANDCases(t *testing.T) {
@@ -23,7 +25,7 @@ func TestNew_ORAndANDCases(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
@@ -52,7 +54,7 @@ func TestNew_ORAndANDCases(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
@@ -78,7 +80,7 @@ func TestNew_ORAndANDCases(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
@@ -104,7 +106,7 @@ func TestNew_ORAndANDCases(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
@@ -130,7 +132,7 @@ func TestNew_ORAndANDCases(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []authModel.AuthMethod{
+					Methods: []*authModel.AuthMethod{
 						{
 							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
@@ -173,4 +175,68 @@ func TestNew_ORAndANDCases(t *testing.T) {
 			require.Equal(t, tt.wantStatus, rw.Code)
 		})
 	}
+}
+
+func TestNew_AuthMergeByMode(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	t.Run("inherit from app by default extend mode", func(t *testing.T) {
+		root := &rootModel.Root{}
+		app := &appModel.App{
+			Auth: authModel.Auth{
+				Enabled: true,
+				Methods: []*authModel.AuthMethod{
+					{
+						APIKey: &authModel.AuthMethodAPIKey{
+							Header: "X-API-Key",
+							Keys:   []string{"k-1"},
+						},
+					},
+				},
+			},
+		}
+		ep := &endpointModel.Endpoint{
+			Auth: authModel.Auth{},
+		}
+
+		rw := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "https://public.example/test", nil)
+		req.Header.Set("X-API-Key", "k-1")
+
+		New(root, app, ep, nil)(next).ServeHTTP(rw, req)
+
+		require.Equal(t, http.StatusNoContent, rw.Code)
+	})
+
+	t.Run("replace mode on endpoint disables inherited auth", func(t *testing.T) {
+		root := &rootModel.Root{}
+		app := &appModel.App{
+			Auth: authModel.Auth{
+				Enabled: true,
+				Methods: []*authModel.AuthMethod{
+					{
+						APIKey: &authModel.AuthMethodAPIKey{
+							Header: "X-API-Key",
+							Keys:   []string{"k-1"},
+						},
+					},
+				},
+			},
+		}
+		ep := &endpointModel.Endpoint{
+			Auth: authModel.Auth{
+				Enabled: false,
+				Mode:    "replace",
+			},
+		}
+
+		rw := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "https://public.example/test", nil)
+
+		New(root, app, ep, nil)(next).ServeHTTP(rw, req)
+
+		require.Equal(t, http.StatusNoContent, rw.Code)
+	})
 }
