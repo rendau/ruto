@@ -28,6 +28,7 @@ type RootMain struct {
 	BaseUrl       string                 `protobuf:"bytes,1,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
 	Cors          *RootCors              `protobuf:"bytes,2,opt,name=cors,proto3" json:"cors,omitempty"`
 	Jwt           []*RootJwt             `protobuf:"bytes,3,rep,name=jwt,proto3" json:"jwt,omitempty"`
+	Auth          *Auth                  `protobuf:"bytes,4,opt,name=auth,proto3" json:"auth,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -79,6 +80,13 @@ func (x *RootMain) GetCors() *RootCors {
 func (x *RootMain) GetJwt() []*RootJwt {
 	if x != nil {
 		return x.Jwt
+	}
+	return nil
+}
+
+func (x *RootMain) GetAuth() *Auth {
+	if x != nil {
+		return x.Auth
 	}
 	return nil
 }
@@ -215,11 +223,12 @@ var File_ruto_v1_root_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_root_proto_rawDesc = "" +
 	"\n" +
-	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"p\n" +
+	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12ruto_v1/auth.proto\"\x93\x01\n" +
 	"\bRootMain\x12\x19\n" +
 	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12%\n" +
 	"\x04cors\x18\x02 \x01(\v2\x11.ruto_v1.RootCorsR\x04cors\x12\"\n" +
-	"\x03jwt\x18\x03 \x03(\v2\x10.ruto_v1.RootJwtR\x03jwt\"\xd9\x01\n" +
+	"\x03jwt\x18\x03 \x03(\v2\x10.ruto_v1.RootJwtR\x03jwt\x12!\n" +
+	"\x04auth\x18\x04 \x01(\v2\r.ruto_v1.AuthR\x04auth\"\xd9\x01\n" +
 	"\bRootCors\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12+\n" +
 	"\x11allow_credentials\x18\x02 \x01(\bR\x10allowCredentials\x12\x17\n" +
@@ -252,20 +261,22 @@ var file_ruto_v1_root_proto_goTypes = []any{
 	(*RootMain)(nil),      // 0: ruto_v1.RootMain
 	(*RootCors)(nil),      // 1: ruto_v1.RootCors
 	(*RootJwt)(nil),       // 2: ruto_v1.RootJwt
-	(*emptypb.Empty)(nil), // 3: google.protobuf.Empty
+	(*Auth)(nil),          // 3: ruto_v1.Auth
+	(*emptypb.Empty)(nil), // 4: google.protobuf.Empty
 }
 var file_ruto_v1_root_proto_depIdxs = []int32{
 	1, // 0: ruto_v1.RootMain.cors:type_name -> ruto_v1.RootCors
 	2, // 1: ruto_v1.RootMain.jwt:type_name -> ruto_v1.RootJwt
-	3, // 2: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
-	0, // 3: ruto_v1.Root.Set:input_type -> ruto_v1.RootMain
-	0, // 4: ruto_v1.Root.Get:output_type -> ruto_v1.RootMain
-	3, // 5: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
-	4, // [4:6] is the sub-list for method output_type
-	2, // [2:4] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: ruto_v1.RootMain.auth:type_name -> ruto_v1.Auth
+	4, // 3: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
+	0, // 4: ruto_v1.Root.Set:input_type -> ruto_v1.RootMain
+	0, // 5: ruto_v1.Root.Get:output_type -> ruto_v1.RootMain
+	4, // 6: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_root_proto_init() }
@@ -273,6 +284,7 @@ func file_ruto_v1_root_proto_init() {
 	if File_ruto_v1_root_proto != nil {
 		return
 	}
+	file_ruto_v1_auth_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

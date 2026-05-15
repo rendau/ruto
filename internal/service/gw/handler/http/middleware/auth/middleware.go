@@ -5,6 +5,7 @@ import (
 
 	"github.com/samber/lo"
 
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth/api_key"
@@ -37,7 +38,7 @@ func New(endpoint *endpointModel.Endpoint) middleware.Middleware {
 }
 
 func buildAuthorizers(endpoint *endpointModel.Endpoint) [][]authorizerI {
-	return lo.FilterMap(endpoint.Auth.Methods, func(v endpointModel.AuthMethod, _ int) ([]authorizerI, bool) {
+	return lo.FilterMap(endpoint.Auth.Methods, func(v authModel.AuthMethod, _ int) ([]authorizerI, bool) {
 		result := make([]authorizerI, 0, 4)
 
 		if v.Basic != nil {

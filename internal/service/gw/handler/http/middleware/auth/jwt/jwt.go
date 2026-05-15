@@ -8,17 +8,17 @@ import (
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/samber/lo"
 
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/request"
 )
 
 type Jwt struct {
-	conf            *endpointModel.AuthMethodJWT
+	conf            *authModel.AuthMethodJWT
 	requiredKidMap  map[string]bool
 	requiredRoleMap map[string]bool
 }
 
-func New(conf *endpointModel.AuthMethodJWT) *Jwt {
+func New(conf *authModel.AuthMethodJWT) *Jwt {
 	return &Jwt{
 		conf: conf,
 		requiredKidMap: lo.SliceToMap(

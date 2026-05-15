@@ -6,7 +6,7 @@ import (
 
 	"github.com/samber/lo"
 
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 )
 
 const defaultHeader = "X-API-Key"
@@ -16,7 +16,7 @@ type Authorizer struct {
 	allowedKeyMap map[string]bool
 }
 
-func New(conf *endpointModel.AuthMethodAPIKey) *Authorizer {
+func New(conf *authModel.AuthMethodAPIKey) *Authorizer {
 	headerName := strings.TrimSpace(conf.Header)
 	if headerName == "" {
 		headerName = defaultHeader

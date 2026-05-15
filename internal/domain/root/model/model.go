@@ -7,12 +7,14 @@ import (
 	"github.com/samber/lo"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 )
 
 type Root struct {
 	BaseUrl string          `json:"base_url"`
 	Cors    RootCors        `json:"cors"`
 	Jwt     []RootJwt       `json:"jwt"`
+	Auth    authModel.Auth  `json:"auth"`
 	Apps    []*appModel.App `json:"apps"`
 }
 
@@ -42,6 +44,9 @@ func (m *Root) Normalize() error {
 		if err := m.Jwt[i].Normalize(); err != nil {
 			return fmt.Errorf("jwt[%d]: %w", i, err)
 		}
+	}
+	if err := m.Auth.Normalize(); err != nil {
+		return fmt.Errorf("auth: %w", err)
 	}
 	for i := range m.Apps {
 		if err := m.Apps[i].Normalize(); err != nil {

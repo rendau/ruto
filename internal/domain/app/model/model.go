@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 )
@@ -15,6 +16,7 @@ type App struct {
 	PathPrefix string                    `json:"path_prefix"`
 	Name       string                    `json:"name"`
 	Backend    AppBackend                `json:"backend"`
+	Auth       authModel.Auth            `json:"auth"`
 	Endpoints  []*endpointModel.Endpoint `json:"endpoints"`
 }
 
@@ -35,6 +37,9 @@ func (m *App) Normalize() error {
 	m.PathPrefix = "/" + m.PathPrefix
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
+	}
+	if err := m.Auth.Normalize(); err != nil {
+		return fmt.Errorf("auth: %w", err)
 	}
 	for i := range m.Endpoints {
 		if err := m.Endpoints[i].Normalize(); err != nil {

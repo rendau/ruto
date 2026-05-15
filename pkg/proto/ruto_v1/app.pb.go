@@ -30,6 +30,7 @@ type AppMain struct {
 	PathPrefix    string                 `protobuf:"bytes,3,opt,name=path_prefix,json=pathPrefix,proto3" json:"path_prefix,omitempty"`
 	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Backend       *AppBackend            `protobuf:"bytes,5,opt,name=backend,proto3" json:"backend,omitempty"`
+	Auth          *Auth                  `protobuf:"bytes,6,opt,name=auth,proto3" json:"auth,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -95,6 +96,13 @@ func (x *AppMain) GetName() string {
 func (x *AppMain) GetBackend() *AppBackend {
 	if x != nil {
 		return x.Backend
+	}
+	return nil
+}
+
+func (x *AppMain) GetAuth() *Auth {
+	if x != nil {
+		return x.Auth
 	}
 	return nil
 }
@@ -339,14 +347,15 @@ var File_ruto_v1_app_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_app_proto_rawDesc = "" +
 	"\n" +
-	"\x11ruto_v1/app.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x14ruto_v1/common.proto\"\x95\x01\n" +
+	"\x11ruto_v1/app.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12ruto_v1/auth.proto\x1a\x14ruto_v1/common.proto\"\xb8\x01\n" +
 	"\aAppMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x1f\n" +
 	"\vpath_prefix\x18\x03 \x01(\tR\n" +
 	"pathPrefix\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12-\n" +
-	"\abackend\x18\x05 \x01(\v2\x13.ruto_v1.AppBackendR\abackend\"\x1b\n" +
+	"\abackend\x18\x05 \x01(\v2\x13.ruto_v1.AppBackendR\abackend\x12!\n" +
+	"\x04auth\x18\x06 \x01(\v2\r.ruto_v1.AuthR\x04auth\"\x1b\n" +
 	"\tAppGetReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"l\n" +
 	"\n" +
@@ -392,30 +401,32 @@ var file_ruto_v1_app_proto_goTypes = []any{
 	(*AppListRep)(nil),       // 3: ruto_v1.AppListRep
 	(*AppCreateRep)(nil),     // 4: ruto_v1.AppCreateRep
 	(*AppBackend)(nil),       // 5: ruto_v1.AppBackend
-	(*ListParamsSt)(nil),     // 6: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil), // 7: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),    // 8: google.protobuf.Empty
+	(*Auth)(nil),             // 6: ruto_v1.Auth
+	(*ListParamsSt)(nil),     // 7: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil), // 8: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),    // 9: google.protobuf.Empty
 }
 var file_ruto_v1_app_proto_depIdxs = []int32{
-	5, // 0: ruto_v1.AppMain.backend:type_name -> ruto_v1.AppBackend
-	6, // 1: ruto_v1.AppListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	7, // 2: ruto_v1.AppListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
-	0, // 3: ruto_v1.AppListRep.results:type_name -> ruto_v1.AppMain
-	2, // 4: ruto_v1.App.List:input_type -> ruto_v1.AppListReq
-	1, // 5: ruto_v1.App.Get:input_type -> ruto_v1.AppGetReq
-	0, // 6: ruto_v1.App.Create:input_type -> ruto_v1.AppMain
-	0, // 7: ruto_v1.App.Update:input_type -> ruto_v1.AppMain
-	1, // 8: ruto_v1.App.Delete:input_type -> ruto_v1.AppGetReq
-	3, // 9: ruto_v1.App.List:output_type -> ruto_v1.AppListRep
-	0, // 10: ruto_v1.App.Get:output_type -> ruto_v1.AppMain
-	4, // 11: ruto_v1.App.Create:output_type -> ruto_v1.AppCreateRep
-	8, // 12: ruto_v1.App.Update:output_type -> google.protobuf.Empty
-	8, // 13: ruto_v1.App.Delete:output_type -> google.protobuf.Empty
-	9, // [9:14] is the sub-list for method output_type
-	4, // [4:9] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5,  // 0: ruto_v1.AppMain.backend:type_name -> ruto_v1.AppBackend
+	6,  // 1: ruto_v1.AppMain.auth:type_name -> ruto_v1.Auth
+	7,  // 2: ruto_v1.AppListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	8,  // 3: ruto_v1.AppListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	0,  // 4: ruto_v1.AppListRep.results:type_name -> ruto_v1.AppMain
+	2,  // 5: ruto_v1.App.List:input_type -> ruto_v1.AppListReq
+	1,  // 6: ruto_v1.App.Get:input_type -> ruto_v1.AppGetReq
+	0,  // 7: ruto_v1.App.Create:input_type -> ruto_v1.AppMain
+	0,  // 8: ruto_v1.App.Update:input_type -> ruto_v1.AppMain
+	1,  // 9: ruto_v1.App.Delete:input_type -> ruto_v1.AppGetReq
+	3,  // 10: ruto_v1.App.List:output_type -> ruto_v1.AppListRep
+	0,  // 11: ruto_v1.App.Get:output_type -> ruto_v1.AppMain
+	4,  // 12: ruto_v1.App.Create:output_type -> ruto_v1.AppCreateRep
+	9,  // 13: ruto_v1.App.Update:output_type -> google.protobuf.Empty
+	9,  // 14: ruto_v1.App.Delete:output_type -> google.protobuf.Empty
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_app_proto_init() }
@@ -423,6 +434,7 @@ func file_ruto_v1_app_proto_init() {
 	if File_ruto_v1_app_proto != nil {
 		return
 	}
+	file_ruto_v1_auth_proto_init()
 	file_ruto_v1_common_proto_init()
 	file_ruto_v1_app_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}

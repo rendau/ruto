@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 )
@@ -137,7 +138,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: false,
 				},
 			},
@@ -151,12 +152,12 @@ func TestServiceBuild_Auth(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							Basic: &endpointModel.AuthMethodBasic{
-								Users: []endpointModel.AuthMethodBasicUser{
+							Basic: &authModel.AuthMethodBasic{
+								Users: []authModel.AuthMethodBasicUser{
 									{Username: "admin", Password: "qwerty"},
 								},
 							},
@@ -176,18 +177,18 @@ func TestServiceBuild_Auth(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							Basic: &endpointModel.AuthMethodBasic{
-								Users: []endpointModel.AuthMethodBasicUser{
+							Basic: &authModel.AuthMethodBasic{
+								Users: []authModel.AuthMethodBasicUser{
 									{Username: "admin", Password: "qwerty"},
 								},
 							},
 						},
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
 								Keys:   []string{"k-1"},
 							},
@@ -205,18 +206,18 @@ func TestServiceBuild_Auth(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							Basic: &endpointModel.AuthMethodBasic{
-								Users: []endpointModel.AuthMethodBasicUser{
+							Basic: &authModel.AuthMethodBasic{
+								Users: []authModel.AuthMethodBasicUser{
 									{Username: "admin", Password: "qwerty"},
 								},
 							},
 						},
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
 								Keys:   []string{"k-1"},
 							},
@@ -236,11 +237,11 @@ func TestServiceBuild_Auth(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Keys: []string{"k-1"},
 							},
 						},
@@ -259,15 +260,15 @@ func TestServiceBuild_Auth(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
 								Keys:   []string{"k-1"},
 							},
-							IPValidation: &endpointModel.AuthMethodIPValidation{
+							IPValidation: &authModel.AuthMethodIPValidation{
 								AllowedIps: []string{"192.0.2.1"},
 							},
 						},
@@ -286,15 +287,15 @@ func TestServiceBuild_Auth(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Method: http.MethodGet,
 				Path:   "users",
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
 								Keys:   []string{"k-1"},
 							},
-							IPValidation: &endpointModel.AuthMethodIPValidation{
+							IPValidation: &authModel.AuthMethodIPValidation{
 								AllowedIps: []string{"10.0.0.1"},
 							},
 						},

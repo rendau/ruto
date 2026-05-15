@@ -610,6 +610,9 @@
         },
         "backend": {
           "$ref": "#/definitions/ruto_v1AppBackend"
+        },
+        "auth": {
+          "$ref": "#/definitions/ruto_v1Auth"
         }
       }
     },
@@ -627,10 +630,13 @@
         },
         "backend": {
           "$ref": "#/definitions/ruto_v1AppBackend"
+        },
+        "auth": {
+          "$ref": "#/definitions/ruto_v1Auth"
         }
       }
     },
-    "ruto_v1EndpointAuth": {
+    "ruto_v1Auth": {
       "type": "object",
       "properties": {
         "enabled": {
@@ -640,29 +646,29 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/ruto_v1EndpointAuthMethod"
+            "$ref": "#/definitions/ruto_v1AuthMethod"
           }
         }
       }
     },
-    "ruto_v1EndpointAuthMethod": {
+    "ruto_v1AuthMethod": {
       "type": "object",
       "properties": {
         "basic": {
-          "$ref": "#/definitions/ruto_v1EndpointAuthMethodBasic"
+          "$ref": "#/definitions/ruto_v1AuthMethodBasic"
         },
         "api_key": {
-          "$ref": "#/definitions/ruto_v1EndpointAuthMethodAPIKey"
+          "$ref": "#/definitions/ruto_v1AuthMethodAPIKey"
         },
         "jwt": {
-          "$ref": "#/definitions/ruto_v1EndpointAuthMethodJWT"
+          "$ref": "#/definitions/ruto_v1AuthMethodJWT"
         },
         "ip_validation": {
-          "$ref": "#/definitions/ruto_v1EndpointAuthMethodIPValidation"
+          "$ref": "#/definitions/ruto_v1AuthMethodIPValidation"
         }
       }
     },
-    "ruto_v1EndpointAuthMethodAPIKey": {
+    "ruto_v1AuthMethodAPIKey": {
       "type": "object",
       "properties": {
         "header": {
@@ -676,19 +682,19 @@
         }
       }
     },
-    "ruto_v1EndpointAuthMethodBasic": {
+    "ruto_v1AuthMethodBasic": {
       "type": "object",
       "properties": {
         "users": {
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/ruto_v1EndpointAuthMethodBasicUser"
+            "$ref": "#/definitions/ruto_v1AuthMethodBasicUser"
           }
         }
       }
     },
-    "ruto_v1EndpointAuthMethodBasicUser": {
+    "ruto_v1AuthMethodBasicUser": {
       "type": "object",
       "properties": {
         "username": {
@@ -699,7 +705,7 @@
         }
       }
     },
-    "ruto_v1EndpointAuthMethodIPValidation": {
+    "ruto_v1AuthMethodIPValidation": {
       "type": "object",
       "properties": {
         "allowed_ips": {
@@ -710,7 +716,7 @@
         }
       }
     },
-    "ruto_v1EndpointAuthMethodJWT": {
+    "ruto_v1AuthMethodJWT": {
       "type": "object",
       "properties": {
         "kids": {
@@ -780,7 +786,7 @@
           "$ref": "#/definitions/ruto_v1EndpointBackend"
         },
         "auth": {
-          "$ref": "#/definitions/ruto_v1EndpointAuth"
+          "$ref": "#/definitions/ruto_v1Auth"
         }
       }
     },
@@ -803,7 +809,7 @@
           "$ref": "#/definitions/ruto_v1EndpointBackend"
         },
         "auth": {
-          "$ref": "#/definitions/ruto_v1EndpointAuth"
+          "$ref": "#/definitions/ruto_v1Auth"
         }
       }
     },
@@ -907,6 +913,9 @@
             "type": "object",
             "$ref": "#/definitions/ruto_v1RootJwt"
           }
+        },
+        "auth": {
+          "$ref": "#/definitions/ruto_v1Auth"
         }
       }
     },

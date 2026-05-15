@@ -6,14 +6,14 @@ import (
 
 	"github.com/samber/lo"
 
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 )
 
 type Authorizer struct {
 	allowedIPMap map[string]bool
 }
 
-func New(conf *endpointModel.AuthMethodIPValidation) *Authorizer {
+func New(conf *authModel.AuthMethodIPValidation) *Authorizer {
 	return &Authorizer{
 		allowedIPMap: lo.SliceToMap(
 			conf.AllowedIps,

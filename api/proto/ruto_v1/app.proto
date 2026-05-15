@@ -4,6 +4,7 @@ package ruto_v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "ruto_v1/auth.proto";
 import "ruto_v1/common.proto";
 
 option go_package = "/ruto_v1";
@@ -32,6 +33,7 @@ message AppMain {
   string path_prefix = 3;
   string name = 4;
   AppBackend backend = 5;
+  Auth auth = 6;
 }
 
 message AppGetReq {

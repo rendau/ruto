@@ -4,14 +4,14 @@ import (
 	"crypto/subtle"
 	"net/http"
 
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 )
 
 type Authorizer struct {
-	conf *endpointModel.AuthMethodBasic
+	conf *authModel.AuthMethodBasic
 }
 
-func New(conf *endpointModel.AuthMethodBasic) *Authorizer {
+func New(conf *authModel.AuthMethodBasic) *Authorizer {
 	return &Authorizer{conf: conf}
 }
 

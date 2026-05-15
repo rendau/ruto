@@ -13,6 +13,7 @@ func EncodeRootMain(v *model.Root, _ int) *ruto_v1.RootMain {
 		BaseUrl: v.BaseUrl,
 		Cors:    EncodeRootCors(v.Cors),
 		Jwt:     lo.Map(v.Jwt, EncodeRootJwt),
+		Auth:    EncodeEndpointAuth(v.Auth),
 	}
 }
 
@@ -21,6 +22,7 @@ func DecodeRootMain(v *ruto_v1.RootMain) *model.Root {
 		BaseUrl: v.BaseUrl,
 		Cors:    DecodeRootCors(v.Cors),
 		Jwt:     lo.FilterMap(v.Jwt, DecodeRootJwt),
+		Auth:    DecodeEndpointAuth(v.Auth),
 	}
 }
 

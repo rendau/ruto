@@ -13,6 +13,7 @@ func EncodeAppMain(v *model.App, _ int) *ruto_v1.AppMain {
 		PathPrefix: v.PathPrefix,
 		Name:       v.Name,
 		Backend:    EncodeAppBackend(v.Backend),
+		Auth:       EncodeEndpointAuth(v.Auth),
 	}
 }
 
@@ -30,6 +31,7 @@ func DecodeAppMain(v *ruto_v1.AppMain) *model.App {
 		PathPrefix: v.PathPrefix,
 		Name:       v.Name,
 		Backend:    DecodeAppBackend(v.Backend),
+		Auth:       DecodeEndpointAuth(v.Auth),
 	}
 }
 

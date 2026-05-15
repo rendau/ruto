@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 )
 
@@ -20,18 +21,18 @@ func TestNew_ORAndANDCases(t *testing.T) {
 		{
 			name: "or second method passes",
 			endpoint: &endpointModel.Endpoint{
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
 								Keys:   []string{"k-1"},
 							},
 						},
 						{
-							Basic: &endpointModel.AuthMethodBasic{
-								Users: []endpointModel.AuthMethodBasicUser{
+							Basic: &authModel.AuthMethodBasic{
+								Users: []authModel.AuthMethodBasicUser{
 									{Username: "admin", Password: "qwerty"},
 								},
 							},
@@ -49,15 +50,15 @@ func TestNew_ORAndANDCases(t *testing.T) {
 		{
 			name: "and passes when all checks pass",
 			endpoint: &endpointModel.Endpoint{
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
 								Keys:   []string{"k-1"},
 							},
-							IPValidation: &endpointModel.AuthMethodIPValidation{
+							IPValidation: &authModel.AuthMethodIPValidation{
 								AllowedIps: []string{"192.0.2.1"},
 							},
 						},
@@ -75,15 +76,15 @@ func TestNew_ORAndANDCases(t *testing.T) {
 		{
 			name: "and fails when api key fails",
 			endpoint: &endpointModel.Endpoint{
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
 								Keys:   []string{"k-1"},
 							},
-							IPValidation: &endpointModel.AuthMethodIPValidation{
+							IPValidation: &authModel.AuthMethodIPValidation{
 								AllowedIps: []string{"192.0.2.1"},
 							},
 						},
@@ -101,15 +102,15 @@ func TestNew_ORAndANDCases(t *testing.T) {
 		{
 			name: "and fails when ip check fails",
 			endpoint: &endpointModel.Endpoint{
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
 								Keys:   []string{"k-1"},
 							},
-							IPValidation: &endpointModel.AuthMethodIPValidation{
+							IPValidation: &authModel.AuthMethodIPValidation{
 								AllowedIps: []string{"10.0.0.1"},
 							},
 						},
@@ -127,21 +128,21 @@ func TestNew_ORAndANDCases(t *testing.T) {
 		{
 			name: "or with composite first method failed but second passed",
 			endpoint: &endpointModel.Endpoint{
-				Auth: endpointModel.Auth{
+				Auth: authModel.Auth{
 					Enabled: true,
-					Methods: []endpointModel.AuthMethod{
+					Methods: []authModel.AuthMethod{
 						{
-							APIKey: &endpointModel.AuthMethodAPIKey{
+							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
 								Keys:   []string{"k-1"},
 							},
-							IPValidation: &endpointModel.AuthMethodIPValidation{
+							IPValidation: &authModel.AuthMethodIPValidation{
 								AllowedIps: []string{"10.0.0.1"},
 							},
 						},
 						{
-							Basic: &endpointModel.AuthMethodBasic{
-								Users: []endpointModel.AuthMethodBasicUser{
+							Basic: &authModel.AuthMethodBasic{
+								Users: []authModel.AuthMethodBasicUser{
 									{Username: "admin", Password: "qwerty"},
 								},
 							},

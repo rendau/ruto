@@ -12,7 +12,7 @@ import (
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/request"
 	"github.com/rendau/ruto/internal/service/gw/jwk"
 )
@@ -96,49 +96,49 @@ func TestAuthorize(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		conf   *endpointModel.AuthMethodJWT
+		conf   *authModel.AuthMethodJWT
 		header string
 		ctxReq *request.Request
 		want   bool
 	}{
 		{
 			name:   "missing token",
-			conf:   &endpointModel.AuthMethodJWT{},
+			conf:   &authModel.AuthMethodJWT{},
 			header: "",
 			ctxReq: &request.Request{JwkService: testJWKService},
 			want:   false,
 		},
 		{
 			name:   "invalid algorithm",
-			conf:   &endpointModel.AuthMethodJWT{},
+			conf:   &authModel.AuthMethodJWT{},
 			header: "Bearer " + hsToken,
 			ctxReq: &request.Request{JwkService: testJWKService},
 			want:   false,
 		},
 		{
 			name:   "missing kid",
-			conf:   &endpointModel.AuthMethodJWT{},
+			conf:   &authModel.AuthMethodJWT{},
 			header: "Bearer " + missingKidToken,
 			ctxReq: &request.Request{JwkService: testJWKService},
 			want:   false,
 		},
 		{
 			name:   "kid is not allowed by config",
-			conf:   &endpointModel.AuthMethodJWT{Kids: []string{"kid-2"}},
+			conf:   &authModel.AuthMethodJWT{Kids: []string{"kid-2"}},
 			header: "Bearer " + validToken,
 			ctxReq: &request.Request{JwkService: testJWKService},
 			want:   false,
 		},
 		{
 			name:   "kid not found in jwk service",
-			conf:   &endpointModel.AuthMethodJWT{},
+			conf:   &authModel.AuthMethodJWT{},
 			header: "Bearer " + validToken,
 			ctxReq: &request.Request{JwkService: &testJWKServiceT{items: map[string]*jwk.Item{}}},
 			want:   false,
 		},
 		{
 			name:   "jwk alg mismatch",
-			conf:   &endpointModel.AuthMethodJWT{},
+			conf:   &authModel.AuthMethodJWT{},
 			header: "Bearer " + validToken,
 			ctxReq: &request.Request{JwkService: &testJWKServiceT{items: map[string]*jwk.Item{
 				item.Kid: {
@@ -152,28 +152,28 @@ func TestAuthorize(t *testing.T) {
 		},
 		{
 			name:   "invalid signature",
-			conf:   &endpointModel.AuthMethodJWT{},
+			conf:   &authModel.AuthMethodJWT{},
 			header: "Bearer " + badSignatureToken,
 			ctxReq: &request.Request{JwkService: testJWKService},
 			want:   false,
 		},
 		{
 			name:   "required role missing",
-			conf:   &endpointModel.AuthMethodJWT{Roles: []string{"super-admin"}},
+			conf:   &authModel.AuthMethodJWT{Roles: []string{"super-admin"}},
 			header: "Bearer " + validToken,
 			ctxReq: &request.Request{JwkService: testJWKService},
 			want:   false,
 		},
 		{
 			name:   "authorized",
-			conf:   &endpointModel.AuthMethodJWT{Roles: []string{"moderator"}},
+			conf:   &authModel.AuthMethodJWT{Roles: []string{"moderator"}},
 			header: "Bearer " + validToken,
 			ctxReq: &request.Request{JwkService: testJWKService},
 			want:   true,
 		},
 		{
 			name:   "authorized by keycloak resource_access roles",
-			conf:   &endpointModel.AuthMethodJWT{Roles: []string{"admin"}},
+			conf:   &authModel.AuthMethodJWT{Roles: []string{"admin"}},
 			header: "Bearer " + keycloakResourceAccessToken,
 			ctxReq: &request.Request{JwkService: testJWKService},
 			want:   true,

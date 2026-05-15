@@ -4,6 +4,7 @@ package ruto_v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
+import "ruto_v1/auth.proto";
 
 option go_package = "/ruto_v1";
 
@@ -20,6 +21,7 @@ message RootMain {
   string base_url = 1;
   RootCors cors = 2;
   repeated RootJwt jwt = 3;
+  Auth auth = 4;
 }
 
 // children

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+option go_package = "/ruto_v1";
+
+message Auth {
+  bool enabled = 1;
+  repeated AuthMethod methods = 2;
+}
+
+message AuthMethod {
+  AuthMethodBasic basic = 1;
+  AuthMethodAPIKey api_key = 2;
+  AuthMethodJWT jwt = 3;
+  AuthMethodIPValidation ip_validation = 4;
+}
+
+message AuthMethodBasic {
+  repeated AuthMethodBasicUser users = 1;
+}
+
+message AuthMethodBasicUser {
+  string username = 1;
+  string password = 2;
+}
+
+message AuthMethodAPIKey {
+  string header = 1;
+  repeated string keys = 2;
+}
+
+message AuthMethodJWT {
+  repeated string kids = 1;
+  repeated string roles = 2;
+}
+
+message AuthMethodIPValidation {
+  repeated string allowed_ips = 1;
+}
