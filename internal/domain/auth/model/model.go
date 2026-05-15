@@ -7,42 +7,40 @@ import (
 	"github.com/samber/lo"
 )
 
-type (
-	Auth struct {
-		Enabled bool         `json:"enabled"`
-		Methods []AuthMethod `json:"methods"`
-	}
+type Auth struct {
+	Enabled bool         `json:"enabled"`
+	Methods []AuthMethod `json:"methods"`
+}
 
-	AuthMethod struct {
-		Basic        *AuthMethodBasic        `json:"basic,omitempty"`
-		APIKey       *AuthMethodAPIKey       `json:"api_key,omitempty"`
-		JWT          *AuthMethodJWT          `json:"jwt,omitempty"`
-		IPValidation *AuthMethodIPValidation `json:"ip_validation,omitempty"`
-	}
+type AuthMethod struct {
+	Basic        *AuthMethodBasic        `json:"basic,omitempty"`
+	APIKey       *AuthMethodAPIKey       `json:"api_key,omitempty"`
+	JWT          *AuthMethodJWT          `json:"jwt,omitempty"`
+	IPValidation *AuthMethodIPValidation `json:"ip_validation,omitempty"`
+}
 
-	AuthMethodBasic struct {
-		Users []AuthMethodBasicUser `json:"users"`
-	}
+type AuthMethodBasic struct {
+	Users []AuthMethodBasicUser `json:"users"`
+}
 
-	AuthMethodBasicUser struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
+type AuthMethodBasicUser struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
-	AuthMethodAPIKey struct {
-		Header string   `json:"header"`
-		Keys   []string `json:"keys"`
-	}
+type AuthMethodAPIKey struct {
+	Header string   `json:"header"`
+	Keys   []string `json:"keys"`
+}
 
-	AuthMethodJWT struct {
-		Kids  []string `json:"kids"`
-		Roles []string `json:"roles"`
-	}
+type AuthMethodJWT struct {
+	Kids  []string `json:"kids"`
+	Roles []string `json:"roles"`
+}
 
-	AuthMethodIPValidation struct {
-		AllowedIps []string `json:"allowed_ips"`
-	}
-)
+type AuthMethodIPValidation struct {
+	AllowedIps []string `json:"allowed_ips"`
+}
 
 func (m *Auth) Normalize() error {
 	for i := range m.Methods {
