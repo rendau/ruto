@@ -254,6 +254,60 @@ func TestServiceBuild_Auth(t *testing.T) {
 			},
 			wantStatus: http.StatusNoContent,
 		},
+		{
+			name: "api key and ip validation success",
+			endpoint: &endpointModel.Endpoint{
+				Method: http.MethodGet,
+				Path:   "users",
+				Auth: endpointModel.Auth{
+					Enabled: true,
+					Methods: []endpointModel.AuthMethod{
+						{
+							APIKey: &endpointModel.AuthMethodAPIKey{
+								Header: "X-API-Key",
+								Keys:   []string{"k-1"},
+							},
+							IPValidation: &endpointModel.AuthMethodIPValidation{
+								AllowedIps: []string{"192.0.2.1"},
+							},
+						},
+					},
+				},
+			},
+			request: func() *http.Request {
+				req := httptest.NewRequest(http.MethodGet, "https://public.example/api/users", nil)
+				req.Header.Set("X-API-Key", "k-1")
+				return req
+			},
+			wantStatus: http.StatusNoContent,
+		},
+		{
+			name: "api key and ip validation fail by ip",
+			endpoint: &endpointModel.Endpoint{
+				Method: http.MethodGet,
+				Path:   "users",
+				Auth: endpointModel.Auth{
+					Enabled: true,
+					Methods: []endpointModel.AuthMethod{
+						{
+							APIKey: &endpointModel.AuthMethodAPIKey{
+								Header: "X-API-Key",
+								Keys:   []string{"k-1"},
+							},
+							IPValidation: &endpointModel.AuthMethodIPValidation{
+								AllowedIps: []string{"10.0.0.1"},
+							},
+						},
+					},
+				},
+			},
+			request: func() *http.Request {
+				req := httptest.NewRequest(http.MethodGet, "https://public.example/api/users", nil)
+				req.Header.Set("X-API-Key", "k-1")
+				return req
+			},
+			wantStatus: http.StatusUnauthorized,
+		},
 	}
 
 	for _, tt := range tests {

@@ -1,9 +1,10 @@
 package api_key
 
 import (
-	"crypto/subtle"
 	"net/http"
 	"strings"
+
+	"github.com/samber/lo"
 
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 )
@@ -11,33 +12,40 @@ import (
 const defaultHeader = "X-API-Key"
 
 type Authorizer struct {
-	conf *endpointModel.AuthMethodAPIKey
+	headerName    string
+	allowedKeyMap map[string]bool
 }
 
 func New(conf *endpointModel.AuthMethodAPIKey) *Authorizer {
-	return &Authorizer{conf: conf}
-}
-
-func (a Authorizer) Authorize(r *http.Request) bool {
-	if len(a.conf.Keys) == 0 {
-		return false
-	}
-
-	headerName := a.conf.Header
+	headerName := strings.TrimSpace(conf.Header)
 	if headerName == "" {
 		headerName = defaultHeader
 	}
 
-	clientKey := strings.TrimSpace(r.Header.Get(headerName))
+	return &Authorizer{
+		headerName: headerName,
+		allowedKeyMap: lo.SliceToMap(
+			conf.Keys,
+			func(key string) (string, bool) {
+				return key, true
+			},
+		),
+	}
+}
+
+func (a Authorizer) Authorize(r *http.Request) bool {
+	if len(a.allowedKeyMap) == 0 {
+		return false
+	}
+
+	clientKey := strings.TrimSpace(r.Header.Get(a.headerName))
 	if clientKey == "" {
 		return false
 	}
 
-	for _, key := range a.conf.Keys {
-		if subtle.ConstantTimeCompare([]byte(clientKey), []byte(key)) == 1 {
-			return true
-		}
-	}
+	return a.checkKey(clientKey)
+}
 
-	return false
+func (a Authorizer) checkKey(key string) bool {
+	return a.allowedKeyMap[key]
 }

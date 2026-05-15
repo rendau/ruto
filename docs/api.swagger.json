@@ -656,6 +656,9 @@
         },
         "jwt": {
           "$ref": "#/definitions/ruto_v1EndpointAuthMethodJWT"
+        },
+        "ip_validation": {
+          "$ref": "#/definitions/ruto_v1EndpointAuthMethodIPValidation"
         }
       }
     },
@@ -696,6 +699,17 @@
         }
       }
     },
+    "ruto_v1EndpointAuthMethodIPValidation": {
+      "type": "object",
+      "properties": {
+        "allowed_ips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "ruto_v1EndpointAuthMethodJWT": {
       "type": "object",
       "properties": {
@@ -726,17 +740,6 @@
       "properties": {
         "id": {
           "type": "string"
-        }
-      }
-    },
-    "ruto_v1EndpointIpValidation": {
-      "type": "object",
-      "properties": {
-        "allowed_ips": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -778,9 +781,6 @@
         },
         "auth": {
           "$ref": "#/definitions/ruto_v1EndpointAuth"
-        },
-        "ip_validation": {
-          "$ref": "#/definitions/ruto_v1EndpointIpValidation"
         }
       }
     },
@@ -804,9 +804,6 @@
         },
         "auth": {
           "$ref": "#/definitions/ruto_v1EndpointAuth"
-        },
-        "ip_validation": {
-          "$ref": "#/definitions/ruto_v1EndpointIpValidation"
         }
       }
     },

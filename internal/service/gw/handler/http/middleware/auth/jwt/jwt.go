@@ -76,7 +76,7 @@ func (a Jwt) Authorize(r *http.Request) bool {
 			if kid == "" {
 				return nil, fmt.Errorf("missing kid in JWT header")
 			}
-			if len(a.requiredKidMap) > 0 && !a.checkKid(kid) {
+			if !a.checkKid(kid) {
 				return nil, fmt.Errorf("kid not allowed: %s", kid)
 			}
 
@@ -100,7 +100,7 @@ func (a Jwt) Authorize(r *http.Request) bool {
 		return false
 	}
 
-	if len(a.requiredRoleMap) > 0 && !hasAnyRole(claims, a.checkRole) {
+	if !hasAnyRole(claims, a.checkRole) {
 		return false
 	}
 
@@ -112,9 +112,15 @@ func (a Jwt) checkAlg(alg string) bool {
 }
 
 func (a Jwt) checkKid(kid string) bool {
+	if len(a.requiredKidMap) == 0 {
+		return true
+	}
 	return a.requiredKidMap[kid]
 }
 
 func (a Jwt) checkRole(role string) bool {
+	if len(a.requiredRoleMap) == 0 {
+		return true
+	}
 	return a.requiredRoleMap[role]
 }

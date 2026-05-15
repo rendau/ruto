@@ -34,7 +34,6 @@ message EndpointMain {
   string path = 5;
   EndpointBackend backend = 6;
   EndpointAuth auth = 7;
-  EndpointIpValidation ip_validation = 8;
 }
 
 message EndpointGetReq {
@@ -66,11 +65,10 @@ message EndpointAuth {
 }
 
 message EndpointAuthMethod {
-  oneof method {
-    EndpointAuthMethodBasic basic = 1;
-    EndpointAuthMethodAPIKey api_key = 2;
-    EndpointAuthMethodJWT jwt = 3;
-  }
+  EndpointAuthMethodBasic basic = 1;
+  EndpointAuthMethodAPIKey api_key = 2;
+  EndpointAuthMethodJWT jwt = 3;
+  EndpointAuthMethodIPValidation ip_validation = 4;
 }
 
 message EndpointAuthMethodBasic {
@@ -92,6 +90,6 @@ message EndpointAuthMethodJWT {
   repeated string roles = 2;
 }
 
-message EndpointIpValidation {
+message EndpointAuthMethodIPValidation {
   repeated string allowed_ips = 1;
 }

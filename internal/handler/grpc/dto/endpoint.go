@@ -10,27 +10,25 @@ import (
 
 func EncodeEndpointMain(v *model.Endpoint, _ int) *ruto_v1.EndpointMain {
 	return &ruto_v1.EndpointMain{
-		Id:           v.Id,
-		AppId:        v.AppId,
-		Active:       v.Active,
-		Method:       v.Method,
-		Path:         v.Path,
-		Backend:      EncodeEndpointBackend(v.Backend),
-		Auth:         EncodeEndpointAuth(v.Auth),
-		IpValidation: EncodeEndpointIpValidation(v.IpValidation),
+		Id:      v.Id,
+		AppId:   v.AppId,
+		Active:  v.Active,
+		Method:  v.Method,
+		Path:    v.Path,
+		Backend: EncodeEndpointBackend(v.Backend),
+		Auth:    EncodeEndpointAuth(v.Auth),
 	}
 }
 
 func DecodeEndpointMain(v *ruto_v1.EndpointMain) *model.Endpoint {
 	return &model.Endpoint{
-		Id:           v.Id,
-		AppId:        v.AppId,
-		Active:       v.Active,
-		Method:       v.Method,
-		Path:         v.Path,
-		Backend:      DecodeEndpointBackend(v.Backend),
-		Auth:         DecodeEndpointAuth(v.Auth),
-		IpValidation: DecodeEndpointIpValidation(v.IpValidation),
+		Id:      v.Id,
+		AppId:   v.AppId,
+		Active:  v.Active,
+		Method:  v.Method,
+		Path:    v.Path,
+		Backend: DecodeEndpointBackend(v.Backend),
+		Auth:    DecodeEndpointAuth(v.Auth),
 	}
 }
 
@@ -75,21 +73,41 @@ func DecodeEndpointAuth(x *ruto_v1.EndpointAuth) model.Auth {
 }
 
 func EncodeEndpointAuthMethod(x model.AuthMethod, _ int) *ruto_v1.EndpointAuthMethod {
-	result := &ruto_v1.EndpointAuthMethod{}
-	if x.Basic != nil {
-		result.Method = &ruto_v1.EndpointAuthMethod_Basic{
-			Basic: EncodeEndpointAuthMethodBasic(*x.Basic),
-		}
-	} else if x.APIKey != nil {
-		result.Method = &ruto_v1.EndpointAuthMethod_ApiKey{
-			ApiKey: EncodeEndpointAuthMethodAPIKey(*x.APIKey),
-		}
-	} else if x.JWT != nil {
-		result.Method = &ruto_v1.EndpointAuthMethod_Jwt{
-			Jwt: EncodeEndpointAuthMethodJWT(*x.JWT),
-		}
+	result := &ruto_v1.EndpointAuthMethod{
+		Basic:        EncodeEndpointAuthMethodBasicPtr(x.Basic),
+		ApiKey:       EncodeEndpointAuthMethodAPIKeyPtr(x.APIKey),
+		Jwt:          EncodeEndpointAuthMethodJWTPtr(x.JWT),
+		IpValidation: EncodeEndpointAuthMethodIPValidationPtr(x.IPValidation),
 	}
 	return result
+}
+
+func EncodeEndpointAuthMethodBasicPtr(x *model.AuthMethodBasic) *ruto_v1.EndpointAuthMethodBasic {
+	if x != nil {
+		return EncodeEndpointAuthMethodBasic(*x)
+	}
+	return nil
+}
+
+func EncodeEndpointAuthMethodAPIKeyPtr(x *model.AuthMethodAPIKey) *ruto_v1.EndpointAuthMethodAPIKey {
+	if x != nil {
+		return EncodeEndpointAuthMethodAPIKey(*x)
+	}
+	return nil
+}
+
+func EncodeEndpointAuthMethodJWTPtr(x *model.AuthMethodJWT) *ruto_v1.EndpointAuthMethodJWT {
+	if x != nil {
+		return EncodeEndpointAuthMethodJWT(*x)
+	}
+	return nil
+}
+
+func EncodeEndpointAuthMethodIPValidationPtr(x *model.AuthMethodIPValidation) *ruto_v1.EndpointAuthMethodIPValidation {
+	if x != nil {
+		return EncodeEndpointAuthMethodIPValidation(*x)
+	}
+	return nil
 }
 
 func DecodeEndpointAuthMethod(x *ruto_v1.EndpointAuthMethod, _ int) (model.AuthMethod, bool) {
@@ -97,22 +115,43 @@ func DecodeEndpointAuthMethod(x *ruto_v1.EndpointAuthMethod, _ int) (model.AuthM
 		return model.AuthMethod{}, false
 	}
 
-	switch v := x.Method.(type) {
-	case *ruto_v1.EndpointAuthMethod_Basic:
-		return model.AuthMethod{
-			Basic: new(DecodeEndpointAuthMethodBasic(v.Basic)),
-		}, true
-	case *ruto_v1.EndpointAuthMethod_ApiKey:
-		return model.AuthMethod{
-			APIKey: new(DecodeEndpointAuthMethodAPIKey(v.ApiKey)),
-		}, true
-	case *ruto_v1.EndpointAuthMethod_Jwt:
-		return model.AuthMethod{
-			JWT: new(DecodeEndpointAuthMethodJWT(v.Jwt)),
-		}, true
-	default:
-		return model.AuthMethod{}, false
+	result := model.AuthMethod{
+		Basic:        DecodeEndpointAuthMethodBasicPtr(x.Basic),
+		APIKey:       DecodeEndpointAuthMethodAPIKeyPtr(x.ApiKey),
+		JWT:          DecodeEndpointAuthMethodJWTPtr(x.Jwt),
+		IPValidation: DecodeEndpointAuthMethodIPValidationPtr(x.IpValidation),
 	}
+
+	hasAny := result.Basic != nil || result.APIKey != nil || result.JWT != nil || result.IPValidation != nil
+	return result, hasAny
+}
+
+func DecodeEndpointAuthMethodBasicPtr(x *ruto_v1.EndpointAuthMethodBasic) *model.AuthMethodBasic {
+	if x == nil {
+		return nil
+	}
+	return new(DecodeEndpointAuthMethodBasic(x))
+}
+
+func DecodeEndpointAuthMethodAPIKeyPtr(x *ruto_v1.EndpointAuthMethodAPIKey) *model.AuthMethodAPIKey {
+	if x == nil {
+		return nil
+	}
+	return new(DecodeEndpointAuthMethodAPIKey(x))
+}
+
+func DecodeEndpointAuthMethodJWTPtr(x *ruto_v1.EndpointAuthMethodJWT) *model.AuthMethodJWT {
+	if x == nil {
+		return nil
+	}
+	return new(DecodeEndpointAuthMethodJWT(x))
+}
+
+func DecodeEndpointAuthMethodIPValidationPtr(x *ruto_v1.EndpointAuthMethodIPValidation) *model.AuthMethodIPValidation {
+	if x == nil {
+		return nil
+	}
+	return new(DecodeEndpointAuthMethodIPValidation(x))
 }
 
 func EncodeEndpointAuthMethodBasic(x model.AuthMethodBasic) *ruto_v1.EndpointAuthMethodBasic {
@@ -181,17 +220,17 @@ func DecodeEndpointAuthMethodJWT(x *ruto_v1.EndpointAuthMethodJWT) model.AuthMet
 	}
 }
 
-func EncodeEndpointIpValidation(x model.IpValidation) *ruto_v1.EndpointIpValidation {
-	return &ruto_v1.EndpointIpValidation{
+func EncodeEndpointAuthMethodIPValidation(x model.AuthMethodIPValidation) *ruto_v1.EndpointAuthMethodIPValidation {
+	return &ruto_v1.EndpointAuthMethodIPValidation{
 		AllowedIps: x.AllowedIps,
 	}
 }
 
-func DecodeEndpointIpValidation(x *ruto_v1.EndpointIpValidation) model.IpValidation {
+func DecodeEndpointAuthMethodIPValidation(x *ruto_v1.EndpointAuthMethodIPValidation) model.AuthMethodIPValidation {
 	if x == nil {
-		return model.IpValidation{}
+		return model.AuthMethodIPValidation{}
 	}
-	return model.IpValidation{
+	return model.AuthMethodIPValidation{
 		AllowedIps: x.AllowedIps,
 	}
 }

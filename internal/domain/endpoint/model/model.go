@@ -10,14 +10,13 @@ import (
 )
 
 type Endpoint struct {
-	Id           string       `json:"id"`
-	AppId        string       `json:"app_id"`
-	Active       bool         `json:"active"`
-	Method       string       `json:"method"`
-	Path         string       `json:"path"`
-	Backend      Backend      `json:"backend"`
-	Auth         Auth         `json:"auth"`
-	IpValidation IpValidation `json:"ip_validation"`
+	Id      string  `json:"id"`
+	AppId   string  `json:"app_id"`
+	Active  bool    `json:"active"`
+	Method  string  `json:"method"`
+	Path    string  `json:"path"`
+	Backend Backend `json:"backend"`
+	Auth    Auth    `json:"auth"`
 }
 
 // backend
@@ -37,9 +36,10 @@ type (
 	}
 
 	AuthMethod struct {
-		Basic  *AuthMethodBasic  `json:"basic,omitempty"`
-		APIKey *AuthMethodAPIKey `json:"api_key,omitempty"`
-		JWT    *AuthMethodJWT    `json:"jwt,omitempty"`
+		Basic        *AuthMethodBasic        `json:"basic,omitempty"`
+		APIKey       *AuthMethodAPIKey       `json:"api_key,omitempty"`
+		JWT          *AuthMethodJWT          `json:"jwt,omitempty"`
+		IPValidation *AuthMethodIPValidation `json:"ip_validation,omitempty"`
 	}
 
 	AuthMethodBasic struct {
@@ -60,12 +60,8 @@ type (
 		Kids  []string `json:"kids"`
 		Roles []string `json:"roles"`
 	}
-)
 
-// ip validation
-
-type (
-	IpValidation struct {
+	AuthMethodIPValidation struct {
 		AllowedIps []string `json:"allowed_ips"`
 	}
 )
@@ -94,9 +90,6 @@ func (m *Endpoint) Normalize() error {
 	}
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
-	}
-	if err := m.IpValidation.Normalize(); err != nil {
-		return fmt.Errorf("ip_validation: %w", err)
 	}
 
 	return nil
@@ -137,12 +130,15 @@ func (m *AuthMethod) Normalize() error {
 			return fmt.Errorf("jwt: %w", err)
 		}
 	}
+	if m.IPValidation != nil {
+		methodsCount++
+		if err := m.IPValidation.Normalize(); err != nil {
+			return fmt.Errorf("ip_validation: %w", err)
+		}
+	}
 
 	if methodsCount == 0 {
 		return fmt.Errorf("empty")
-	}
-	if methodsCount > 1 {
-		return fmt.Errorf("must contain exactly one auth method")
 	}
 
 	return nil
@@ -189,7 +185,7 @@ func (m *AuthMethodJWT) Normalize() error {
 	return nil
 }
 
-func (m *IpValidation) Normalize() error {
+func (m *AuthMethodIPValidation) Normalize() error {
 	m.AllowedIps = lo.FilterMap(m.AllowedIps, func(v string, _ int) (string, bool) {
 		v = strings.TrimSpace(v)
 		return v, v != ""
