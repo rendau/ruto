@@ -169,7 +169,13 @@ func TestNew_ORAndANDCases(t *testing.T) {
 				w.WriteHeader(http.StatusNoContent)
 			})
 
-			h := New(nil, nil, tt.endpoint, nil)(next)
+			root := &rootModel.Root{}
+			app := &appModel.App{}
+			require.NoError(t, root.Auth.Normalize())
+			require.NoError(t, app.Auth.Normalize())
+			require.NoError(t, tt.endpoint.Auth.Normalize())
+
+			h := New(root, app, tt.endpoint, nil)(next)
 			h.ServeHTTP(rw, tt.request())
 
 			require.Equal(t, tt.wantStatus, rw.Code)
@@ -200,6 +206,9 @@ func TestNew_AuthMergeByMode(t *testing.T) {
 		ep := &endpointModel.Endpoint{
 			Auth: authModel.Auth{},
 		}
+		require.NoError(t, root.Auth.Normalize())
+		require.NoError(t, app.Auth.Normalize())
+		require.NoError(t, ep.Auth.Normalize())
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "https://public.example/test", nil)
@@ -231,6 +240,9 @@ func TestNew_AuthMergeByMode(t *testing.T) {
 				Mode:    "replace",
 			},
 		}
+		require.NoError(t, root.Auth.Normalize())
+		require.NoError(t, app.Auth.Normalize())
+		require.NoError(t, ep.Auth.Normalize())
 
 		rw := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "https://public.example/test", nil)

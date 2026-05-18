@@ -96,11 +96,17 @@ func mergeMethods(parent, child []*AuthMethod) []*AuthMethod {
 		if method.JWT == nil || method.JWT.Kid == "" {
 			continue
 		}
+
+		// Skip JWT merging if method has other auth types
+		if *method != (AuthMethod{JWT: method.JWT}) {
+			continue
+		}
+
 		jwtMethodByKid[method.JWT.Kid] = method
 	}
 
 	for _, method := range child {
-		if method.JWT == nil {
+		if method.JWT == nil || method.JWT.Kid == "" {
 			result = append(result, method)
 			continue
 		}

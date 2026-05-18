@@ -3,6 +3,7 @@ package endpoint
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/rendau/ruto/internal/domain/endpoint/model"
 	"github.com/rendau/ruto/internal/errs"
@@ -80,5 +81,14 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 }
 
 func (u *Usecase) validateEdit(obj *model.Endpoint, forCreate bool) error {
+	obj.AppId = strings.TrimSpace(obj.AppId)
+	if obj.AppId == "" {
+		return fmt.Errorf("app_id: empty")
+	}
+
+	if err := obj.Normalize(); err != nil {
+		return fmt.Errorf("normalize: %w", err)
+	}
+
 	return nil
 }
