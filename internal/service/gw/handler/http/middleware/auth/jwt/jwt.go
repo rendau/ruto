@@ -14,7 +14,7 @@ import (
 type Jwt struct {
 	jwkGetter       JwkGetterI
 	conf            *authModel.AuthMethodJWT
-	requiredKidMap  map[string]bool
+	requiredKid     string
 	requiredRoleMap map[string]bool
 }
 
@@ -34,14 +34,9 @@ var (
 
 func New(jwkGetter JwkGetterI, conf *authModel.AuthMethodJWT) *Jwt {
 	return &Jwt{
-		jwkGetter: jwkGetter,
-		conf:      conf,
-		requiredKidMap: lo.SliceToMap(
-			conf.Kids,
-			func(kid string) (string, bool) {
-				return kid, true
-			},
-		),
+		jwkGetter:   jwkGetter,
+		conf:        conf,
+		requiredKid: strings.TrimSpace(conf.Kid),
 		requiredRoleMap: lo.SliceToMap(
 			conf.Roles,
 			func(role string) (string, bool) {
@@ -104,10 +99,10 @@ func (a *Jwt) checkAlg(alg string) bool {
 }
 
 func (a *Jwt) checkKid(kid string) bool {
-	if len(a.requiredKidMap) == 0 {
-		return true
+	if a.requiredKid == "" {
+		return false
 	}
-	return a.requiredKidMap[kid]
+	return a.requiredKid == kid
 }
 
 func (a *Jwt) checkRole(role string) bool {

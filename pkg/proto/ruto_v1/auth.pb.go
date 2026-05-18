@@ -24,8 +24,8 @@ const (
 type Auth struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	Methods       []*AuthMethod          `protobuf:"bytes,2,rep,name=methods,proto3" json:"methods,omitempty"`
-	Mode          string                 `protobuf:"bytes,3,opt,name=mode,proto3" json:"mode,omitempty"`
+	Mode          string                 `protobuf:"bytes,2,opt,name=mode,proto3" json:"mode,omitempty"`
+	Methods       []*AuthMethod          `protobuf:"bytes,3,rep,name=methods,proto3" json:"methods,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -67,18 +67,18 @@ func (x *Auth) GetEnabled() bool {
 	return false
 }
 
-func (x *Auth) GetMethods() []*AuthMethod {
-	if x != nil {
-		return x.Methods
-	}
-	return nil
-}
-
 func (x *Auth) GetMode() string {
 	if x != nil {
 		return x.Mode
 	}
 	return ""
+}
+
+func (x *Auth) GetMethods() []*AuthMethod {
+	if x != nil {
+		return x.Methods
+	}
+	return nil
 }
 
 type AuthMethod struct {
@@ -299,7 +299,7 @@ func (x *AuthMethodAPIKey) GetKeys() []string {
 
 type AuthMethodJWT struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Kids          []string               `protobuf:"bytes,1,rep,name=kids,proto3" json:"kids,omitempty"`
+	Kid           string                 `protobuf:"bytes,1,opt,name=kid,proto3" json:"kid,omitempty"`
 	Roles         []string               `protobuf:"bytes,2,rep,name=roles,proto3" json:"roles,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -335,11 +335,11 @@ func (*AuthMethodJWT) Descriptor() ([]byte, []int) {
 	return file_ruto_v1_auth_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *AuthMethodJWT) GetKids() []string {
+func (x *AuthMethodJWT) GetKid() string {
 	if x != nil {
-		return x.Kids
+		return x.Kid
 	}
-	return nil
+	return ""
 }
 
 func (x *AuthMethodJWT) GetRoles() []string {
@@ -399,9 +399,9 @@ const file_ruto_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x12ruto_v1/auth.proto\x12\aruto_v1\"c\n" +
 	"\x04Auth\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12-\n" +
-	"\amethods\x18\x02 \x03(\v2\x13.ruto_v1.AuthMethodR\amethods\x12\x12\n" +
-	"\x04mode\x18\x03 \x01(\tR\x04mode\"\xe0\x01\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x12\n" +
+	"\x04mode\x18\x02 \x01(\tR\x04mode\x12-\n" +
+	"\amethods\x18\x03 \x03(\v2\x13.ruto_v1.AuthMethodR\amethods\"\xe0\x01\n" +
 	"\n" +
 	"AuthMethod\x12.\n" +
 	"\x05basic\x18\x01 \x01(\v2\x18.ruto_v1.AuthMethodBasicR\x05basic\x122\n" +
@@ -415,9 +415,9 @@ const file_ruto_v1_auth_proto_rawDesc = "" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\">\n" +
 	"\x10AuthMethodAPIKey\x12\x16\n" +
 	"\x06header\x18\x01 \x01(\tR\x06header\x12\x12\n" +
-	"\x04keys\x18\x02 \x03(\tR\x04keys\"9\n" +
-	"\rAuthMethodJWT\x12\x12\n" +
-	"\x04kids\x18\x01 \x03(\tR\x04kids\x12\x14\n" +
+	"\x04keys\x18\x02 \x03(\tR\x04keys\"7\n" +
+	"\rAuthMethodJWT\x12\x10\n" +
+	"\x03kid\x18\x01 \x01(\tR\x03kid\x12\x14\n" +
 	"\x05roles\x18\x02 \x03(\tR\x05roles\"9\n" +
 	"\x16AuthMethodIPValidation\x12\x1f\n" +
 	"\vallowed_ips\x18\x01 \x03(\tR\n" +

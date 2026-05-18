@@ -32,7 +32,7 @@ message AuthMethodAPIKey {
 }
 
 message AuthMethodJWT {
-  repeated string kids = 1;
+  string kid = 1;
   repeated string roles = 2;
 }
 

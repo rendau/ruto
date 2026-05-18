@@ -642,15 +642,15 @@
         "enabled": {
           "type": "boolean"
         },
+        "mode": {
+          "type": "string"
+        },
         "methods": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/ruto_v1AuthMethod"
           }
-        },
-        "mode": {
-          "type": "string"
         }
       }
     },
@@ -722,11 +722,8 @@
     "ruto_v1AuthMethodJWT": {
       "type": "object",
       "properties": {
-        "kids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "kid": {
+          "type": "string"
         },
         "roles": {
           "type": "array",

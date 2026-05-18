@@ -23,16 +23,7 @@ func New(
 	jwkGetter jwt.JwkGetterI,
 ) middleware.Middleware {
 	mergedAuth := ep.Auth
-	if root != nil || app != nil {
-		var rootAuth, appAuth *authModel.Auth
-		if root != nil {
-			rootAuth = &root.Auth
-		}
-		if app != nil {
-			appAuth = &app.Auth
-		}
-		mergedAuth.Merge(rootAuth, appAuth)
-	}
+	mergedAuth.Merge(&root.Auth, &app.Auth)
 
 	if !mergedAuth.Enabled {
 		return func(next http.Handler) http.Handler {

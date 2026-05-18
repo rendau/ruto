@@ -37,7 +37,7 @@ type AuthMethodAPIKey struct {
 }
 
 type AuthMethodJWT struct {
-	Kids  []string `json:"kids"`
+	Kid   string   `json:"kid"`
 	Roles []string `json:"roles"`
 }
 
@@ -77,22 +77,51 @@ func (m *Auth) Merge(rootAuth, appAuth *Auth) {
 }
 
 func (m *Auth) mergeOne(child *Auth) {
-	if child == nil {
-		return
-	}
+	m.Enabled = child.Enabled
+	m.Mode = child.Mode
 
 	switch child.Mode {
 	case constant.AuthModeReplace:
-		*m = Auth{
-			Enabled: child.Enabled,
-			Mode:    child.Mode,
-			Methods: append(make([]*AuthMethod, 0, len(child.Methods)), child.Methods...),
-		}
+		m.Methods = append(make([]*AuthMethod, 0, len(child.Methods)), child.Methods...)
 	case constant.AuthModeExtend:
-		m.Enabled = child.Enabled
-		m.Mode = child.Mode
-		m.Methods = append(m.Methods, child.Methods...)
+		m.Methods = mergeMethods(m.Methods, child.Methods)
 	}
+}
+
+func mergeMethods(parent, child []*AuthMethod) []*AuthMethod {
+	result := append(make([]*AuthMethod, 0, len(parent)+len(child)), parent...)
+	jwtMethodByKid := make(map[string]*AuthMethod, len(parent))
+
+	for _, method := range result {
+		if method.JWT == nil || method.JWT.Kid == "" {
+			continue
+		}
+		jwtMethodByKid[method.JWT.Kid] = method
+	}
+
+	for _, method := range child {
+		if method.JWT == nil {
+			result = append(result, method)
+			continue
+		}
+
+		// Skip JWT merging if method has other auth types
+		if *method != (AuthMethod{JWT: method.JWT}) {
+			result = append(result, method)
+			continue
+		}
+
+		if parentMethod, ok := jwtMethodByKid[method.JWT.Kid]; ok {
+			parentMethod.JWT.Roles = lo.Uniq(append(parentMethod.JWT.Roles, method.JWT.Roles...))
+			continue
+		}
+
+		jwtMethodByKid[method.JWT.Kid] = method
+
+		result = append(result, method)
+	}
+
+	return result
 }
 
 func (m *AuthMethod) Normalize() error {
@@ -160,14 +189,15 @@ func (m *AuthMethodAPIKey) Normalize() error {
 }
 
 func (m *AuthMethodJWT) Normalize() error {
-	m.Kids = lo.FilterMap(m.Kids, func(v string, _ int) (string, bool) {
-		v = strings.TrimSpace(v)
-		return v, v != ""
-	})
+	m.Kid = strings.TrimSpace(m.Kid)
+	if m.Kid == "" {
+		return fmt.Errorf("kid: empty")
+	}
 	m.Roles = lo.FilterMap(m.Roles, func(v string, _ int) (string, bool) {
 		v = strings.TrimSpace(v)
 		return v, v != ""
 	})
+	m.Roles = lo.Uniq(m.Roles)
 	return nil
 }
 

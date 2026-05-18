@@ -160,7 +160,7 @@ func DecodeEndpointAuthMethodAPIKey(x *ruto_v1.AuthMethodAPIKey) authModel.AuthM
 
 func EncodeEndpointAuthMethodJWT(x authModel.AuthMethodJWT) *ruto_v1.AuthMethodJWT {
 	return &ruto_v1.AuthMethodJWT{
-		Kids:  x.Kids,
+		Kid:   x.Kid,
 		Roles: x.Roles,
 	}
 }
@@ -170,7 +170,7 @@ func DecodeEndpointAuthMethodJWT(x *ruto_v1.AuthMethodJWT) authModel.AuthMethodJ
 		return authModel.AuthMethodJWT{}
 	}
 	return authModel.AuthMethodJWT{
-		Kids:  x.Kids,
+		Kid:   x.Kid,
 		Roles: x.Roles,
 	}
 }
