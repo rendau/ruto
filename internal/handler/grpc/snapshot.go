@@ -32,3 +32,8 @@ func (h *Snapshot) Get(_ context.Context, _ *emptypb.Empty) (*ruto_v1.SnapshotRe
 		Data: dto.JsonObjToGrpcStruct(result),
 	}, nil
 }
+
+func (h *Snapshot) Deploy(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	h.usecase.Refresh()
+	return &emptypb.Empty{}, nil
+}

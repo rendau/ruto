@@ -127,7 +127,7 @@ onMounted(() => {
     </label>
     <label class="field">
       <span>Custom Backend Path</span>
-      <input v-model="form.backend.custom_path" placeholder="internal/path" />
+      <input v-model="form.backend.custom_path" />
     </label>
     <div class="field">
       <span>Auth</span>

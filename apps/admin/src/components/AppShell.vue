@@ -3,6 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { useAppsStore } from "../stores/apps";
+import { ApiError, deploySnapshot } from "../lib/api";
+import { notifyError, notifySuccess } from "../lib/notify";
 
 const route = useRoute();
 const router = useRouter();
@@ -12,6 +14,7 @@ const layoutRef = ref<HTMLElement | null>(null);
 const userMenuOpen = ref(false);
 const userMenuRef = ref<HTMLElement | null>(null);
 const mobileSidebarOpen = ref(false);
+const deploying = ref(false);
 const sidebarWidth = ref(290);
 const minSidebarWidth = 220;
 const maxSidebarWidth = 420;
@@ -123,6 +126,25 @@ function closeMobileSidebar() {
   mobileSidebarOpen.value = false;
 }
 
+async function deploy() {
+  if (deploying.value) {
+    return;
+  }
+  deploying.value = true;
+  try {
+    await deploySnapshot();
+    notifySuccess("Deploy started");
+  } catch (error) {
+    if (error instanceof ApiError) {
+      notifyError(error.message);
+    } else {
+      notifyError("Unable to start deploy");
+    }
+  } finally {
+    deploying.value = false;
+  }
+}
+
 onMounted(() => {
   const stored = Number(localStorage.getItem("ruto_admin_sidebar_width") || "");
   if (Number.isFinite(stored) && stored >= minSidebarWidth && stored <= maxSidebarWidth) {
@@ -155,10 +177,22 @@ onBeforeUnmount(() => {
         <span class="brand-text">Ruto Admin</span>
       </RouterLink>
       <nav class="nav">
-        <RouterLink class="nav-link with-icon" to="/root/edit">
-          <span class="icon" aria-hidden="true">⚙</span>
-          <span>Root Settings</span>
-        </RouterLink>
+        <div class="nav-row">
+          <RouterLink class="nav-link with-icon" to="/root/edit">
+            <span class="icon" aria-hidden="true">⚙</span>
+            <span>Root Settings</span>
+          </RouterLink>
+          <button
+            class="nav-icon-button"
+            type="button"
+            :disabled="deploying"
+            title="Deploy"
+            aria-label="Deploy"
+            @click="deploy"
+          >
+            <span aria-hidden="true">{{ deploying ? "⏳" : "🚀" }}</span>
+          </button>
+        </div>
       </nav>
 
       <div class="menu-block-head">

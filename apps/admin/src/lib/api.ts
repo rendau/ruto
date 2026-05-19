@@ -219,3 +219,9 @@ export function getRootJwtKids(): Promise<RootJwtKidsRep> {
 export function getStats(): Promise<StatsResponse> {
   return apiFetch<StatsResponse>("/stats");
 }
+
+export function deploySnapshot(): Promise<void> {
+  return apiFetch<void>("/snapshot/deploy", {
+    method: "POST"
+  });
+}
