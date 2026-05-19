@@ -10,16 +10,20 @@ import (
 	"os"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"time"
 
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
 	"github.com/rendau/ruto/internal/config"
+	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
+	sessionService "github.com/rendau/ruto/internal/domain/session/service"
 	"github.com/rendau/ruto/internal/errs"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
@@ -29,11 +33,14 @@ type GrpcServer struct {
 	server *grpc.Server
 }
 
-func NewGrpcServer(name string, register func(*grpc.Server)) *GrpcServer {
+func NewGrpcServer(name string, sessionSvc *sessionService.Service, register func(*grpc.Server)) *GrpcServer {
 	interceptors := make([]grpc.UnaryServerInterceptor, 0, 5)
 
 	// ctx without cancel
 	interceptors = append(interceptors, GrpcInterceptorCtxWithoutCancel())
+
+	// session from jwt
+	interceptors = append(interceptors, GrpcInterceptorSession(sessionSvc))
 
 	// recovery
 	interceptors = append(interceptors, GrpcInterceptorRecovery())
@@ -96,6 +103,49 @@ func GrpcInterceptorCtxWithoutCancel() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		return handler(context.WithoutCancel(ctx), req)
 	}
+}
+
+func GrpcInterceptorSession(sessionSvc *sessionService.Service) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+		var session *sessionModel.Session
+
+		token := grpcExtractBearerToken(ctx)
+		if token != "" {
+			parsedSession, parseErr := sessionSvc.FromToken(token)
+			if parseErr == nil && parsedSession != nil && parsedSession.Id != 0 {
+				session = parsedSession
+			}
+		}
+
+		return handler(sessionSvc.WithContext(ctx, session), req)
+	}
+}
+
+func grpcExtractBearerToken(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+
+	values := md.Get("authorization")
+	if len(values) == 0 {
+		return ""
+	}
+
+	value := strings.TrimSpace(values[0])
+	if value == "" {
+		return ""
+	}
+
+	parts := strings.Fields(value)
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") {
+		return parts[1]
+	}
+
+	return ""
 }
 
 func GrpcInterceptorTracing() grpc.UnaryServerInterceptor {

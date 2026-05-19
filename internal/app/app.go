@@ -36,12 +36,17 @@ import (
 
 	domainEndpointRepoDbP "github.com/rendau/ruto/internal/domain/endpoint/repo/db"
 	domainEndpointServiceP "github.com/rendau/ruto/internal/domain/endpoint/service"
+	domainSessionServiceP "github.com/rendau/ruto/internal/domain/session/service"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
 
 	serviceSnapshotP "github.com/rendau/ruto/internal/service/snapshot"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
+
+	domainUsrRepoDbP "github.com/rendau/ruto/internal/domain/usr/repo/db"
+	domainUsrServiceP "github.com/rendau/ruto/internal/domain/usr/service"
+	usecaseUsrP "github.com/rendau/ruto/internal/usecase/usr"
 )
 
 type App struct {
@@ -91,22 +96,25 @@ func (a *App) Init() {
 		slog.Info("PG-migrations have been successfully applied")
 	}
 
+	// session
+	sessionService := domainSessionServiceP.New(config.Conf.AdminJWTSecret)
+
 	// root
 	domainRootRepoDb := domainRootRepoDbP.New(a.pgpool)
 	domainRootService := domainRootServiceP.New(domainRootRepoDb)
-	usecaseRoot := usecaseRootP.New(domainRootService)
+	usecaseRoot := usecaseRootP.New(domainRootService, sessionService)
 	handlerGrpcRoot := handlerGrpcP.NewRoot(usecaseRoot)
 
 	// app
 	domainAppRepoDb := domainAppRepoDbP.New(a.pgpool)
 	domainAppService := domainAppServiceP.New(domainAppRepoDb)
-	usecaseApp := usecaseAppP.New(domainAppService)
+	usecaseApp := usecaseAppP.New(domainAppService, sessionService)
 	handlerGrpcApp := handlerGrpcP.NewApp(usecaseApp)
 
 	// endpoint
 	domainEndpointRepoDb := domainEndpointRepoDbP.New(a.pgpool)
 	domainEndpointService := domainEndpointServiceP.New(domainEndpointRepoDb)
-	usecaseEndpoint := usecaseEndpointP.New(domainEndpointService)
+	usecaseEndpoint := usecaseEndpointP.New(domainEndpointService, sessionService)
 	handlerGrpcEndpoint := handlerGrpcP.NewEndpoint(usecaseEndpoint)
 
 	// snapshot
@@ -114,13 +122,20 @@ func (a *App) Init() {
 	usecaseSnapshot := usecaseSnapshotP.New(snapshotService)
 	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
 
+	// usr
+	domainUsrRepoDb := domainUsrRepoDbP.New(a.pgpool)
+	domainUsrService := domainUsrServiceP.New(domainUsrRepoDb)
+	usecaseUsr := usecaseUsrP.New(domainUsrService, sessionService)
+	handlerGrpcUsr := handlerGrpcP.NewUsr(usecaseUsr)
+
 	// grpc server
 	{
-		a.grpcServer = NewGrpcServer("main", func(server *grpc.Server) {
+		a.grpcServer = NewGrpcServer("main", sessionService, func(server *grpc.Server) {
 			ruto_v1.RegisterRootServer(server, handlerGrpcRoot)
 			ruto_v1.RegisterAppServer(server, handlerGrpcApp)
 			ruto_v1.RegisterEndpointServer(server, handlerGrpcEndpoint)
 			ruto_v1.RegisterSnapshotServer(server, handlerGrpcSnapshot)
+			ruto_v1.RegisterUsrServer(server, handlerGrpcUsr)
 		})
 	}
 
@@ -141,6 +156,7 @@ func (a *App) Init() {
 				ruto_v1.RegisterAppHandler,
 				ruto_v1.RegisterEndpointHandler,
 				ruto_v1.RegisterSnapshotHandler,
+				ruto_v1.RegisterUsrHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)

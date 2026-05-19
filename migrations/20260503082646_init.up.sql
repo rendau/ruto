@@ -22,3 +22,12 @@ create table endpoint
     active boolean not null default true,
     data   jsonb   not null default '{}'
 );
+
+create table usr
+(
+    id       bigserial not null
+        primary key,
+    name     text      not null default '',
+    username text      not null default '',
+    password text      not null default ''
+);

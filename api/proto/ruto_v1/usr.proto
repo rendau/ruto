@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "ruto_v1/common.proto";
+
+option go_package = "/ruto_v1";
+
+service Usr {
+  rpc List(UsrListReq) returns (UsrListRep) {
+    option (google.api.http) = { get: "/usr" };
+  };
+  rpc Get(UsrGetReq) returns (UsrMain) {
+    option (google.api.http) = { get: "/usr/{id}" };
+  };
+  rpc Create(UsrMain) returns (UsrCreateRep) {
+    option (google.api.http) = { post: "/usr" body: "*" };
+  };
+  rpc Update(UsrMain) returns (google.protobuf.Empty) {
+    option (google.api.http) = { put: "/usr/{id}" body: "*" };
+  };
+  rpc Delete(UsrGetReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/usr/{id}" };
+  };
+  rpc Login(UsrLoginReq) returns (UsrLoginRep) {
+    option (google.api.http) = { post: "/usr/login" body: "*" };
+  };
+  rpc GetProfile(google.protobuf.Empty) returns (UsrMain) {
+    option (google.api.http) = { get: "/usr/profile" };
+  };
+}
+
+message UsrMain {
+  int64 id = 1;
+  string name = 2;
+  string username = 3;
+  string password = 4;
+}
+
+message UsrGetReq {
+  int64 id = 1;
+}
+
+message UsrListReq {
+  ListParamsSt list_params = 1;
+  optional string username = 2;
+}
+
+message UsrListRep {
+  PaginationInfoSt pagination_info = 1;
+  repeated UsrMain results = 2;
+}
+
+message UsrCreateRep {
+  int64 id = 1;
+}
+
+message UsrLoginReq {
+  string username = 1;
+  string password = 2;
+}
+
+message UsrLoginRep {
+  string jwt = 1;
+}

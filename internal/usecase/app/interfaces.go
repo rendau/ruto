@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/rendau/ruto/internal/domain/app/model"
+	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 )
 
 type ServiceI interface {
@@ -12,4 +13,8 @@ type ServiceI interface {
 	Create(ctx context.Context, obj *model.App) (string, error)
 	Update(ctx context.Context, id string, obj *model.App) error
 	Delete(ctx context.Context, id string) error
+}
+
+type SessionServiceI interface {
+	FromContext(ctx context.Context) *sessionModel.Session
 }

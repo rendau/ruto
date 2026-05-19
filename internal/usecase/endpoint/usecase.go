@@ -10,16 +10,23 @@ import (
 )
 
 type Usecase struct {
-	svc ServiceI
+	svc        ServiceI
+	sessionSvc SessionServiceI
 }
 
-func New(srv ServiceI) *Usecase {
+func New(srv ServiceI, sessionSvc SessionServiceI) *Usecase {
 	return &Usecase{
-		svc: srv,
+		svc:        srv,
+		sessionSvc: sessionSvc,
 	}
 }
 
 func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Endpoint, int64, error) {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return nil, 0, errs.NotAuthorized
+	}
+
 	items, tCount, err := u.svc.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
@@ -29,6 +36,11 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Endpo
 }
 
 func (u *Usecase) Create(ctx context.Context, obj *model.Endpoint) (string, error) {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return "", errs.NotAuthorized
+	}
+
 	err := u.validateEdit(obj, true)
 	if err != nil {
 		return "", err
@@ -43,6 +55,11 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Endpoint) (string, erro
 }
 
 func (u *Usecase) Get(ctx context.Context, id string) (*model.Endpoint, error) {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return nil, errs.NotAuthorized
+	}
+
 	result, _, err := u.svc.Get(ctx, id, true)
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
@@ -52,6 +69,11 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Endpoint, error) {
 }
 
 func (u *Usecase) Update(ctx context.Context, id string, obj *model.Endpoint) error {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return errs.NotAuthorized
+	}
+
 	if id == "" {
 		return errs.IdRequired
 	}
@@ -69,6 +91,11 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Endpoint) er
 }
 
 func (u *Usecase) Delete(ctx context.Context, id string) error {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return errs.NotAuthorized
+	}
+
 	if id == "" {
 		return errs.IdRequired
 	}
