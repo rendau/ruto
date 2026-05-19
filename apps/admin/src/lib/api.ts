@@ -6,7 +6,6 @@ import type {
   EndpointListRep,
   EndpointMain,
   ErrorRep,
-  ListParamsSt,
   StatsResponse,
   RootMain,
   UsrLoginRep,
@@ -136,21 +135,9 @@ export function updateProfile(req: { name?: string; password?: string }): Promis
   });
 }
 
-function listParamsQuery(listParams?: ListParamsSt): Record<string, string | number | boolean | undefined | string[]> {
-  return {
-    "list_params.page": listParams?.page,
-    "list_params.page_size": listParams?.page_size,
-    "list_params.with_total_count": listParams?.with_total_count,
-    "list_params.only_count": listParams?.only_count,
-    "list_params.sort_name": listParams?.sort_name,
-    "list_params.sort": listParams?.sort
-  };
-}
-
-export function listApps(req?: { list_params?: ListParamsSt; active?: boolean }): Promise<AppListRep> {
+export function listApps(req?: { active?: boolean }): Promise<AppListRep> {
   return apiFetch<AppListRep>(
     withQuery("/app", {
-      ...listParamsQuery(req?.list_params),
       active: req?.active
     })
   );
@@ -180,10 +167,9 @@ export function deleteApp(id: string): Promise<void> {
   });
 }
 
-export function listEndpoints(req?: { list_params?: ListParamsSt; app_id?: string; active?: boolean }): Promise<EndpointListRep> {
+export function listEndpoints(req?: { app_id?: string; active?: boolean }): Promise<EndpointListRep> {
   return apiFetch<EndpointListRep>(
     withQuery("/endpoint", {
-      ...listParamsQuery(req?.list_params),
       app_id: req?.app_id,
       active: req?.active
     })

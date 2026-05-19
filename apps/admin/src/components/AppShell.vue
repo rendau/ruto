@@ -24,8 +24,6 @@ const pageTitle = computed(() => {
   switch (route.name) {
     case "dashboard":
       return "Dashboard";
-    case "apps":
-      return "Applications";
     case "app-create":
       return "Create Application";
     case "app-details":

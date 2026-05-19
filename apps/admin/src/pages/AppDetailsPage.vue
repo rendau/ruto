@@ -25,12 +25,7 @@ async function load() {
   try {
     app.value = await getApp(id.value);
     const endpointList = await listEndpoints({
-      app_id: id.value,
-      list_params: {
-        page: 1,
-        page_size: 200,
-        sort: ["method", "path"]
-      }
+      app_id: id.value
     });
     endpoints.value = endpointList.results;
   } catch (error) {
@@ -74,7 +69,7 @@ async function removeApp() {
     await deleteApp(app.value.id);
     await appsStore.loadMenuApps();
     notifySuccess("Application deleted");
-    await router.push({ name: "apps" });
+    await router.push({ name: "dashboard" });
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to delete app";
     notifyError(errorMessage.value);

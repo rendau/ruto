@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from "vue-router";
 import LoginPage from "../pages/LoginPage.vue";
 import AppShell from "../components/AppShell.vue";
 import DashboardPage from "../pages/DashboardPage.vue";
-import AppsListPage from "../pages/AppsListPage.vue";
 import AppFormPage from "../pages/AppFormPage.vue";
 import AppDetailsPage from "../pages/AppDetailsPage.vue";
 import EndpointFormPage from "../pages/EndpointFormPage.vue";
@@ -28,11 +27,6 @@ export const router = createRouter({
           path: "",
           name: "dashboard",
           component: DashboardPage
-        },
-        {
-          path: "apps",
-          name: "apps",
-          component: AppsListPage
         },
         {
           path: "apps/new",
@@ -86,7 +80,7 @@ router.beforeEach(async (to) => {
 
   if (to.meta.public as boolean | undefined) {
     if (authStore.isAuthenticated) {
-      return { name: "apps" };
+      return { name: "dashboard" };
     }
     return true;
   }

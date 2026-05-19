@@ -11,13 +11,7 @@ export const useAppsStore = defineStore("apps", {
     async loadMenuApps() {
       this.loading = true;
       try {
-        const rep = await listApps({
-          list_params: {
-            page: 1,
-            page_size: 100,
-            sort: ["name"]
-          }
-        });
+        const rep = await listApps();
         this.items = rep.results;
       } finally {
         this.loading = false;
