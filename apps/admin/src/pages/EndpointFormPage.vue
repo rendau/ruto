@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createEndpoint, getEndpoint, updateEndpoint } from "../lib/api";
+import { createEndpoint, getApp, getEndpoint, updateEndpoint } from "../lib/api";
 import { emptyAuth, parseAuthFromJson, prettyJson } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { EndpointMain } from "../types/api";
@@ -16,6 +16,7 @@ const appIdFromRoute = computed(() => (typeof route.params.appId === "string" ? 
 const loading = ref(false);
 const saving = ref(false);
 const errorMessage = ref("");
+const appName = ref("");
 
 const form = ref<EndpointMain>({
   id: "",
@@ -31,9 +32,24 @@ const form = ref<EndpointMain>({
   }
 });
 const authJson = ref(prettyJson(emptyAuth));
+const appDisplayName = computed(() => appName.value || form.value.app_id || "-");
+
+async function loadAppName() {
+  if (!form.value.app_id) {
+    appName.value = "";
+    return;
+  }
+  try {
+    const app = await getApp(form.value.app_id);
+    appName.value = app.name;
+  } catch {
+    appName.value = "";
+  }
+}
 
 async function load() {
   if (!isEdit.value) {
+    await loadAppName();
     return;
   }
   loading.value = true;
@@ -42,6 +58,7 @@ async function load() {
     const item = await getEndpoint(endpointId.value);
     form.value = item;
     authJson.value = prettyJson(item.auth || emptyAuth);
+    await loadAppName();
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load endpoint";
   } finally {
@@ -86,10 +103,10 @@ onMounted(() => {
   <p v-if="loading" class="muted">Loading...</p>
 
   <form v-else class="stack" @submit.prevent="submit">
-    <label class="field">
-      <span>App ID</span>
-      <input v-model="form.app_id" required />
-    </label>
+    <div class="field">
+      <span>Application</span>
+      <div class="field-readonly">{{ appDisplayName }}</div>
+    </div>
     <label class="field">
       <span>Method</span>
       <input v-model="form.method" placeholder="GET" required />

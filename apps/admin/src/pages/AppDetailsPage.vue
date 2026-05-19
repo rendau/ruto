@@ -88,9 +88,22 @@ onMounted(() => {
     <h2>Application</h2>
     <div class="actions">
       <RouterLink class="primary-button" :to="{ name: 'endpoint-create', params: { appId: id } }">Create Endpoint</RouterLink>
-      <RouterLink class="secondary-button" :to="{ name: 'app-edit', params: { id } }">Edit App</RouterLink>
-      <button class="danger-button" :disabled="deletingApp || deletingEndpointId !== ''" @click="removeApp">
-        {{ deletingApp ? "Deleting..." : "Delete App" }}
+      <RouterLink
+        class="icon-action-button secondary"
+        :to="{ name: 'app-edit', params: { id } }"
+        title="Edit App"
+        aria-label="Edit App"
+      >
+        <span class="icon-action-glyph">✎</span>
+      </RouterLink>
+      <button
+        class="icon-action-button danger"
+        :disabled="deletingApp || deletingEndpointId !== ''"
+        title="Delete App"
+        aria-label="Delete App"
+        @click="removeApp"
+      >
+        <span class="icon-action-glyph">✕</span>
       </button>
     </div>
   </div>
@@ -142,13 +155,22 @@ onMounted(() => {
             </span>
           </td>
           <td class="actions">
-            <RouterLink class="link-button" :to="{ name: 'endpoint-edit', params: { id: endpoint.id } }">Edit</RouterLink>
+            <RouterLink
+              class="icon-action-button secondary"
+              :to="{ name: 'endpoint-edit', params: { id: endpoint.id } }"
+              title="Edit Endpoint"
+              aria-label="Edit Endpoint"
+            >
+              <span class="icon-action-glyph">✎</span>
+            </RouterLink>
             <button
-              class="danger-text-button"
+              class="icon-action-button danger"
               :disabled="deletingApp || deletingEndpointId !== ''"
+              title="Delete Endpoint"
+              aria-label="Delete Endpoint"
               @click="removeEndpoint(endpoint)"
             >
-              {{ deletingEndpointId === endpoint.id ? "Deleting..." : "Delete" }}
+              <span class="icon-action-glyph">{{ deletingEndpointId === endpoint.id ? "…" : "✕" }}</span>
             </button>
           </td>
         </tr>
