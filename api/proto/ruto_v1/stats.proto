@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/ruto_v1";
+
+service Stats {
+  rpc Get(google.protobuf.Empty) returns (StatsResponse) {
+    option (google.api.http) = { get: "/stats" };
+  };
+}
+
+message StatsResponse {
+  int64 apps_total = 1;
+  int64 apps_active = 2;
+  int64 apps_inactive = 3;
+
+  int64 endpoints_total = 4;
+  int64 endpoints_active = 5;
+  int64 endpoints_inactive = 6;
+
+  int64 users_total = 7;
+  int64 users_active = 8;
+  int64 users_admin = 9;
+
+  int64 root_jwt_providers = 10;
+  bool root_auth_enabled = 11;
+  bool root_cors_enabled = 12;
+
+  repeated StatsMethodStats methods = 13;
+}
+
+message StatsMethodStats {
+  string method = 1;
+  int64 total = 2;
+  int64 active = 3;
+}
