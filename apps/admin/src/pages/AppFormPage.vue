@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createApp, getApp, updateApp } from "../lib/api";
+import { createApp, getApp, getRootJwtKids, updateApp } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
 import { emptyAuth, normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
@@ -18,6 +18,7 @@ const entityId = computed(() => (typeof route.params.id === "string" ? route.par
 const loading = ref(false);
 const saving = ref(false);
 const errorMessage = ref("");
+const jwtKidOptions = ref<string[]>([]);
 
 const form = ref<AppMain>({
   id: "",
@@ -52,6 +53,15 @@ async function load() {
   }
 }
 
+async function loadJwtKidOptions() {
+  try {
+    const rep = await getRootJwtKids();
+    jwtKidOptions.value = rep.kids || [];
+  } catch {
+    jwtKidOptions.value = [];
+  }
+}
+
 async function submit() {
   saving.value = true;
   errorMessage.value = "";
@@ -77,7 +87,7 @@ async function submit() {
 }
 
 onMounted(() => {
-  void load();
+  void Promise.all([load(), loadJwtKidOptions()]);
 });
 </script>
 
@@ -104,7 +114,7 @@ onMounted(() => {
     </label>
     <div class="field">
       <span>Auth</span>
-      <AuthEditor v-model="form.auth" />
+      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" />
     </div>
 
     <div class="actions">

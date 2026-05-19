@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { arrayToLines, cloneAuthMethod, createEmptyAuthMethod, linesToArray, normalizeAuth } from "../lib/forms";
 import type { Auth, AuthMethod } from "../types/api";
 
 const props = defineProps<{
   modelValue: Auth;
+  jwtKidOptions?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -18,6 +19,11 @@ const methodText = ref<
 const pushingToParent = ref(false);
 const methodKeys = ref<string[]>([]);
 let nextMethodKey = 0;
+
+const jwtKidOptions = computed(() => {
+  const source = props.jwtKidOptions || [];
+  return Array.from(new Set(source.map((v) => v.trim()).filter(Boolean))).sort();
+});
 
 watch(
   () => props.modelValue,
@@ -306,7 +312,17 @@ function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "all
       <div v-if="method.jwt" class="auth-type-block">
         <label class="field">
           <span>KID</span>
-          <input :value="method.jwt.kid" placeholder="provider-main-key" @input="setJwtKid(methodIndex, ($event.target as HTMLInputElement).value)" />
+          <select v-if="jwtKidOptions.length > 0" :value="method.jwt.kid" @change="setJwtKid(methodIndex, ($event.target as HTMLSelectElement).value)">
+            <option value="" disabled>Select KID</option>
+            <option v-for="kid in jwtKidOptions" :key="kid" :value="kid">{{ kid }}</option>
+            <option v-if="method.jwt.kid && !jwtKidOptions.includes(method.jwt.kid)" :value="method.jwt.kid">{{ method.jwt.kid }} (current)</option>
+          </select>
+          <input
+            v-else
+            :value="method.jwt.kid"
+            placeholder="provider-main-key"
+            @input="setJwtKid(methodIndex, ($event.target as HTMLInputElement).value)"
+          />
         </label>
         <label class="field">
           <span>Roles (one per line)</span>

@@ -486,6 +486,28 @@
         ]
       }
     },
+    "/root/jwt/kids": {
+      "get": {
+        "operationId": "Root_GetJwtKids",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1RootJwtKidsRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Root"
+        ]
+      }
+    },
     "/snapshot": {
       "get": {
         "operationId": "Snapshot_Get",
@@ -1209,6 +1231,17 @@
       "properties": {
         "jwk_url": {
           "type": "string"
+        }
+      }
+    },
+    "ruto_v1RootJwtKidsRep": {
+      "type": "object",
+      "properties": {
+        "kids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

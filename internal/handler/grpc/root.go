@@ -33,3 +33,11 @@ func (h *Root) Set(ctx context.Context, req *ruto_v1.RootMain) (*emptypb.Empty, 
 	}
 	return &emptypb.Empty{}, nil
 }
+
+func (h *Root) GetJwtKids(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.RootJwtKidsRep, error) {
+	kids, err := h.usecase.GetJwtKids(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &ruto_v1.RootJwtKidsRep{Kids: kids}, nil
+}

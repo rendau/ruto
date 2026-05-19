@@ -75,6 +75,10 @@ export interface RootMain {
   auth: Auth;
 }
 
+export interface RootJwtKidsRep {
+  kids: string[];
+}
+
 export interface AppBackend {
   url: string;
 }

@@ -219,6 +219,50 @@ func (x *RootJwt) GetJwkUrl() string {
 	return ""
 }
 
+type RootJwtKidsRep struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kids          []string               `protobuf:"bytes,1,rep,name=kids,proto3" json:"kids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RootJwtKidsRep) Reset() {
+	*x = RootJwtKidsRep{}
+	mi := &file_ruto_v1_root_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RootJwtKidsRep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RootJwtKidsRep) ProtoMessage() {}
+
+func (x *RootJwtKidsRep) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_root_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RootJwtKidsRep.ProtoReflect.Descriptor instead.
+func (*RootJwtKidsRep) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *RootJwtKidsRep) GetKids() []string {
+	if x != nil {
+		return x.Kids
+	}
+	return nil
+}
+
 var File_ruto_v1_root_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_root_proto_rawDesc = "" +
@@ -237,11 +281,15 @@ const file_ruto_v1_root_proto_rawDesc = "" +
 	"\rallow_methods\x18\x05 \x03(\tR\fallowMethods\x12#\n" +
 	"\rallow_headers\x18\x06 \x03(\tR\fallowHeaders\"\"\n" +
 	"\aRootJwt\x12\x17\n" +
-	"\ajwk_url\x18\x01 \x01(\tR\x06jwkUrl2\x8b\x01\n" +
+	"\ajwk_url\x18\x01 \x01(\tR\x06jwkUrl\"$\n" +
+	"\x0eRootJwtKidsRep\x12\x12\n" +
+	"\x04kids\x18\x01 \x03(\tR\x04kids2\xe2\x01\n" +
 	"\x04Root\x12?\n" +
 	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x11.ruto_v1.RootMain\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/root\x12B\n" +
 	"\x03Set\x12\x11.ruto_v1.RootMain\x1a\x16.google.protobuf.Empty\"\x10\x82\xd3\xe4\x93\x02\n" +
-	":\x01*\"\x05/rootB\n" +
+	":\x01*\"\x05/root\x12U\n" +
+	"\n" +
+	"GetJwtKids\x12\x16.google.protobuf.Empty\x1a\x17.ruto_v1.RootJwtKidsRep\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/root/jwt/kidsB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
 var (
@@ -256,24 +304,27 @@ func file_ruto_v1_root_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_root_proto_rawDescData
 }
 
-var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_ruto_v1_root_proto_goTypes = []any{
-	(*RootMain)(nil),      // 0: ruto_v1.RootMain
-	(*RootCors)(nil),      // 1: ruto_v1.RootCors
-	(*RootJwt)(nil),       // 2: ruto_v1.RootJwt
-	(*Auth)(nil),          // 3: ruto_v1.Auth
-	(*emptypb.Empty)(nil), // 4: google.protobuf.Empty
+	(*RootMain)(nil),       // 0: ruto_v1.RootMain
+	(*RootCors)(nil),       // 1: ruto_v1.RootCors
+	(*RootJwt)(nil),        // 2: ruto_v1.RootJwt
+	(*RootJwtKidsRep)(nil), // 3: ruto_v1.RootJwtKidsRep
+	(*Auth)(nil),           // 4: ruto_v1.Auth
+	(*emptypb.Empty)(nil),  // 5: google.protobuf.Empty
 }
 var file_ruto_v1_root_proto_depIdxs = []int32{
 	1, // 0: ruto_v1.RootMain.cors:type_name -> ruto_v1.RootCors
 	2, // 1: ruto_v1.RootMain.jwt:type_name -> ruto_v1.RootJwt
-	3, // 2: ruto_v1.RootMain.auth:type_name -> ruto_v1.Auth
-	4, // 3: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
+	4, // 2: ruto_v1.RootMain.auth:type_name -> ruto_v1.Auth
+	5, // 3: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
 	0, // 4: ruto_v1.Root.Set:input_type -> ruto_v1.RootMain
-	0, // 5: ruto_v1.Root.Get:output_type -> ruto_v1.RootMain
-	4, // 6: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
+	5, // 5: ruto_v1.Root.GetJwtKids:input_type -> google.protobuf.Empty
+	0, // 6: ruto_v1.Root.Get:output_type -> ruto_v1.RootMain
+	5, // 7: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
+	3, // 8: ruto_v1.Root.GetJwtKids:output_type -> ruto_v1.RootJwtKidsRep
+	6, // [6:9] is the sub-list for method output_type
+	3, // [3:6] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
 	3, // [3:3] is the sub-list for extension extendee
 	0, // [0:3] is the sub-list for field type_name
@@ -291,7 +342,7 @@ func file_ruto_v1_root_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_root_proto_rawDesc), len(file_ruto_v1_root_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

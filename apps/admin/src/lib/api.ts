@@ -8,6 +8,7 @@ import type {
   ErrorRep,
   StatsResponse,
   RootMain,
+  RootJwtKidsRep,
   UsrLoginRep,
   UsrMain
 } from "../types/api";
@@ -209,6 +210,10 @@ export function setRoot(req: RootMain): Promise<void> {
     method: "POST",
     body: JSON.stringify(req)
   });
+}
+
+export function getRootJwtKids(): Promise<RootJwtKidsRep> {
+  return apiFetch<RootJwtKidsRep>("/root/jwt/kids");
 }
 
 export function getStats(): Promise<StatsResponse> {
