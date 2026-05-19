@@ -20,12 +20,14 @@ a {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid #cdd7e6;
   background: #fff;
@@ -372,6 +374,11 @@ h3 {
   flex-wrap: wrap;
 }
 
+.page-top-actions {
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
 .stack {
   display: grid;
   gap: 12px;
@@ -381,6 +388,10 @@ h3 {
 .field {
   display: grid;
   gap: 6px;
+}
+
+.field.compact {
+  max-width: 180px;
 }
 
 .field-readonly {
@@ -593,6 +604,129 @@ h3 {
 
 .section-title {
   margin-top: 10px;
+}
+
+.auth-editor {
+  border: 1px solid #d8e1ef;
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.auth-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e7edf7;
+}
+
+.auth-method-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auth-method-add .secondary-button {
+  padding: 7px 10px;
+}
+
+.auth-method-list {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-control {
+  margin: 0;
+}
+
+.auth-mode-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-control-label {
+  font-size: 13px;
+  color: #647089;
+}
+
+.auth-mode-control select {
+  width: 130px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.auth-empty {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed #cfd9ea;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.auth-method-card {
+  border: 1px solid #d8e1ef;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.auth-method-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-type-toggle {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.auth-type-block {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #dce5f3;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.field-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.auth-basic-user-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.auth-method-enter-active,
+.auth-method-leave-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.auth-method-enter-from,
+.auth-method-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.auth-method-move {
+  transition: transform 0.16s ease;
 }
 
 .dashboard-kpis {

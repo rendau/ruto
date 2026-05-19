@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { createApp, getApp, updateApp } from "../lib/api";
-import { emptyAuth, parseAuthFromJson, prettyJson } from "../lib/forms";
+import AuthEditor from "../components/AuthEditor.vue";
+import { emptyAuth, normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain } from "../types/api";
 import { useAppsStore } from "../stores/apps";
@@ -30,7 +31,6 @@ const form = ref<AppMain>({
     ...emptyAuth
   }
 });
-const authJson = ref(prettyJson(emptyAuth));
 
 async function load() {
   if (!isEdit.value) {
@@ -41,8 +41,10 @@ async function load() {
   errorMessage.value = "";
   try {
     const item = await getApp(entityId.value);
-    form.value = item;
-    authJson.value = prettyJson(item.auth || emptyAuth);
+    form.value = {
+      ...item,
+      auth: normalizeAuth(item.auth)
+    };
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load app";
   } finally {
@@ -54,8 +56,6 @@ async function submit() {
   saving.value = true;
   errorMessage.value = "";
   try {
-    form.value.auth = parseAuthFromJson(authJson.value);
-
     if (isEdit.value) {
       await updateApp(form.value);
       await appsStore.loadMenuApps();
@@ -82,14 +82,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page-header">
-    <h2>{{ isEdit ? "Edit Application" : "Create Application" }}</h2>
-  </div>
-
   <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   <p v-if="loading" class="muted">Loading...</p>
 
   <form v-else class="stack" @submit.prevent="submit">
+    <label class="check">
+      <input v-model="form.active" type="checkbox" />
+      <span>Active</span>
+    </label>
     <label class="field">
       <span>Name</span>
       <input v-model="form.name" required />
@@ -102,14 +102,10 @@ onMounted(() => {
       <span>Backend URL</span>
       <input v-model="form.backend.url" placeholder="https://example.com" required />
     </label>
-    <label class="check">
-      <input v-model="form.active" type="checkbox" />
-      <span>Active</span>
-    </label>
-    <label class="field">
-      <span>Auth JSON</span>
-      <textarea v-model="authJson" rows="14" spellcheck="false"></textarea>
-    </label>
+    <div class="field">
+      <span>Auth</span>
+      <AuthEditor v-model="form.auth" />
+    </div>
 
     <div class="actions">
       <button class="primary-button" type="submit" :disabled="saving">

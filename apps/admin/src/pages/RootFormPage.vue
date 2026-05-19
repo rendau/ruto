@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import AuthEditor from "../components/AuthEditor.vue";
 import { getRoot, setRoot } from "../lib/api";
-import { arrayToLines, emptyAuth, linesToArray, parseAuthFromJson, prettyJson } from "../lib/forms";
+import { arrayToLines, emptyAuth, linesToArray, normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { RootMain } from "../types/api";
 
@@ -27,19 +28,20 @@ const allowOriginsText = ref("*");
 const allowMethodsText = ref("*");
 const allowHeadersText = ref("*");
 const jwkUrlsText = ref("");
-const authJson = ref(prettyJson(emptyAuth));
 
 async function load() {
   loading.value = true;
   errorMessage.value = "";
   try {
     const root = await getRoot();
-    form.value = root;
+    form.value = {
+      ...root,
+      auth: normalizeAuth(root.auth)
+    };
     allowOriginsText.value = arrayToLines(root.cors?.allow_origins);
     allowMethodsText.value = arrayToLines(root.cors?.allow_methods);
     allowHeadersText.value = arrayToLines(root.cors?.allow_headers);
     jwkUrlsText.value = arrayToLines((root.jwt || []).map((x) => x.jwk_url));
-    authJson.value = prettyJson(root.auth || emptyAuth);
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load root settings";
   } finally {
@@ -55,7 +57,6 @@ async function submit() {
     form.value.cors.allow_methods = linesToArray(allowMethodsText.value);
     form.value.cors.allow_headers = linesToArray(allowHeadersText.value);
     form.value.jwt = linesToArray(jwkUrlsText.value).map((jwk_url) => ({ jwk_url }));
-    form.value.auth = parseAuthFromJson(authJson.value);
 
     await setRoot(form.value);
     notifySuccess("Root settings updated");
@@ -73,9 +74,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page-header">
-    <h2>Root Settings</h2>
-  </div>
   <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   <p v-if="loading" class="muted">Loading...</p>
 
@@ -118,10 +116,10 @@ onMounted(() => {
     </label>
 
     <h3 class="section-title">Auth</h3>
-    <label class="field">
-      <span>Auth JSON</span>
-      <textarea v-model="authJson" rows="14" spellcheck="false"></textarea>
-    </label>
+    <div class="field">
+      <span>Auth</span>
+      <AuthEditor v-model="form.auth" />
+    </div>
 
     <div class="actions">
       <button class="primary-button" type="submit" :disabled="saving">

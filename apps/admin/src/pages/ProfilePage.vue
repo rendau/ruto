@@ -38,10 +38,6 @@ async function submit() {
 </script>
 
 <template>
-  <div class="page-header">
-    <h2>Profile</h2>
-  </div>
-
   <section v-if="info" class="summary-grid">
     <div>
       <span class="label">Username</span>

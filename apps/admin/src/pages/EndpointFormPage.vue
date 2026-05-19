@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { createEndpoint, getApp, getEndpoint, updateEndpoint } from "../lib/api";
-import { emptyAuth, parseAuthFromJson, prettyJson } from "../lib/forms";
+import AuthEditor from "../components/AuthEditor.vue";
+import { emptyAuth, normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { EndpointMain } from "../types/api";
 
@@ -31,7 +32,6 @@ const form = ref<EndpointMain>({
     ...emptyAuth
   }
 });
-const authJson = ref(prettyJson(emptyAuth));
 const appDisplayName = computed(() => appName.value || form.value.app_id || "-");
 
 async function loadAppName() {
@@ -56,8 +56,10 @@ async function load() {
   errorMessage.value = "";
   try {
     const item = await getEndpoint(endpointId.value);
-    form.value = item;
-    authJson.value = prettyJson(item.auth || emptyAuth);
+    form.value = {
+      ...item,
+      auth: normalizeAuth(item.auth)
+    };
     await loadAppName();
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load endpoint";
@@ -70,8 +72,6 @@ async function submit() {
   saving.value = true;
   errorMessage.value = "";
   try {
-    form.value.auth = parseAuthFromJson(authJson.value);
-
     if (isEdit.value) {
       await updateEndpoint(form.value);
       notifySuccess("Endpoint updated");
@@ -95,10 +95,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page-header">
-    <h2>{{ isEdit ? "Edit Endpoint" : "Create Endpoint" }}</h2>
-  </div>
-
   <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
   <p v-if="loading" class="muted">Loading...</p>
 
@@ -107,6 +103,10 @@ onMounted(() => {
       <span>Application</span>
       <div class="field-readonly">{{ appDisplayName }}</div>
     </div>
+    <label class="check">
+      <input v-model="form.active" type="checkbox" />
+      <span>Active</span>
+    </label>
     <label class="field">
       <span>Method</span>
       <input v-model="form.method" placeholder="GET" required />
@@ -119,14 +119,10 @@ onMounted(() => {
       <span>Custom Backend Path</span>
       <input v-model="form.backend.custom_path" placeholder="internal/path" />
     </label>
-    <label class="check">
-      <input v-model="form.active" type="checkbox" />
-      <span>Active</span>
-    </label>
-    <label class="field">
-      <span>Auth JSON</span>
-      <textarea v-model="authJson" rows="14" spellcheck="false"></textarea>
-    </label>
+    <div class="field">
+      <span>Auth</span>
+      <AuthEditor v-model="form.auth" />
+    </div>
 
     <div class="actions">
       <button class="primary-button" type="submit" :disabled="saving">

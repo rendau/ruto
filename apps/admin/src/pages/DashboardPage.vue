@@ -52,8 +52,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page-header">
-    <h2>Dashboard</h2>
+  <div class="actions">
     <button class="secondary-button" :disabled="loading" @click="loadStats">
       {{ loading ? "Refreshing..." : "Refresh" }}
     </button>

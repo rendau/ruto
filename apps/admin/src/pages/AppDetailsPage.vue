@@ -84,28 +84,25 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page-header">
-    <h2>Application</h2>
-    <div class="actions">
-      <RouterLink class="primary-button" :to="{ name: 'endpoint-create', params: { appId: id } }">Create Endpoint</RouterLink>
-      <RouterLink
-        class="icon-action-button secondary"
-        :to="{ name: 'app-edit', params: { id } }"
-        title="Edit App"
-        aria-label="Edit App"
-      >
-        <span class="icon-action-glyph">✎</span>
-      </RouterLink>
-      <button
-        class="icon-action-button danger"
-        :disabled="deletingApp || deletingEndpointId !== ''"
-        title="Delete App"
-        aria-label="Delete App"
-        @click="removeApp"
-      >
-        <span class="icon-action-glyph">✕</span>
-      </button>
-    </div>
+  <div class="actions page-top-actions">
+    <RouterLink class="primary-button" :to="{ name: 'endpoint-create', params: { appId: id } }">Create Endpoint</RouterLink>
+    <RouterLink
+      class="icon-action-button secondary"
+      :to="{ name: 'app-edit', params: { id } }"
+      title="Edit App"
+      aria-label="Edit App"
+    >
+      <span class="icon-action-glyph">✎</span>
+    </RouterLink>
+    <button
+      class="icon-action-button danger"
+      :disabled="deletingApp || deletingEndpointId !== ''"
+      title="Delete App"
+      aria-label="Delete App"
+      @click="removeApp"
+    >
+      <span class="icon-action-glyph">✕</span>
+    </button>
   </div>
 
   <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
