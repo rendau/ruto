@@ -43,6 +43,7 @@ import (
 
 	serviceSnapshotP "github.com/rendau/ruto/internal/service/snapshot"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
+	usecaseStatsP "github.com/rendau/ruto/internal/usecase/stats"
 
 	domainUsrRepoDbP "github.com/rendau/ruto/internal/domain/usr/repo/db"
 	domainUsrServiceP "github.com/rendau/ruto/internal/domain/usr/service"
@@ -117,16 +118,20 @@ func (a *App) Init() {
 	usecaseEndpoint := usecaseEndpointP.New(domainEndpointService, sessionService)
 	handlerGrpcEndpoint := handlerGrpcP.NewEndpoint(usecaseEndpoint)
 
-	// snapshot
-	snapshotService := serviceSnapshotP.New(a.ctx, domainRootService, domainAppService, domainEndpointService)
-	usecaseSnapshot := usecaseSnapshotP.New(snapshotService)
-	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
-
 	// usr
 	domainUsrRepoDb := domainUsrRepoDbP.New(a.pgpool)
 	domainUsrService := domainUsrServiceP.New(domainUsrRepoDb)
 	usecaseUsr := usecaseUsrP.New(domainUsrService, sessionService)
 	handlerGrpcUsr := handlerGrpcP.NewUsr(usecaseUsr)
+
+	// snapshot
+	snapshotService := serviceSnapshotP.New(a.ctx, domainRootService, domainAppService, domainEndpointService)
+	usecaseSnapshot := usecaseSnapshotP.New(snapshotService)
+	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
+
+	// stats
+	usecaseStats := usecaseStatsP.New(domainRootService, domainAppService, domainEndpointService, domainUsrService)
+	handlerGrpcStats := handlerGrpcP.NewStats(usecaseStats)
 
 	// grpc server
 	{
@@ -135,6 +140,7 @@ func (a *App) Init() {
 			ruto_v1.RegisterAppServer(server, handlerGrpcApp)
 			ruto_v1.RegisterEndpointServer(server, handlerGrpcEndpoint)
 			ruto_v1.RegisterSnapshotServer(server, handlerGrpcSnapshot)
+			ruto_v1.RegisterStatsServer(server, handlerGrpcStats)
 			ruto_v1.RegisterUsrServer(server, handlerGrpcUsr)
 		})
 	}
@@ -156,6 +162,7 @@ func (a *App) Init() {
 				ruto_v1.RegisterAppHandler,
 				ruto_v1.RegisterEndpointHandler,
 				ruto_v1.RegisterSnapshotHandler,
+				ruto_v1.RegisterStatsHandler,
 				ruto_v1.RegisterUsrHandler,
 			}
 			for _, h := range handlers {

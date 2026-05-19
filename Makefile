@@ -3,15 +3,28 @@
 BINARY_NAME = ruto
 BUILD_PATH = cmd/build
 SERVICE_NAME = ruto_v1
+ADMIN_PATH = apps/admin
 
 .SILENT:
 
 run:
 	go run cmd/main.go
 
+run-admin:
+	pnpm --dir $(ADMIN_PATH) dev
+
+run-local:
+	go run cmd/main.go
+
 build:
 	mkdir -p $(BUILD_PATH)
 	CGO_ENABLED=0 go build -o $(BUILD_PATH)/$(BINARY_NAME) cmd/main.go
+
+build-admin:
+	pnpm --dir $(ADMIN_PATH) install
+	pnpm --dir $(ADMIN_PATH) build
+
+build-prod: build build-admin
 
 clean:
 	rm -rf $(BUILD_PATH)

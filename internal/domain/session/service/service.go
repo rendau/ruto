@@ -13,7 +13,7 @@ import (
 	"github.com/rendau/ruto/internal/errs"
 )
 
-const tokenTTL = 5 * time.Minute
+const tokenTTL = 12 * time.Hour
 
 type contextKey string
 

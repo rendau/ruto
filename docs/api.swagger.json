@@ -18,6 +18,9 @@
       "name": "Snapshot"
     },
     {
+      "name": "Stats"
+    },
+    {
       "name": "Usr"
     }
   ],
@@ -524,6 +527,28 @@
         },
         "tags": [
           "Snapshot"
+        ]
+      }
+    },
+    "/stats": {
+      "get": {
+        "operationId": "Stats_Get",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1StatsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Stats"
         ]
       }
     },
@@ -1221,6 +1246,80 @@
       "properties": {
         "version": {
           "type": "string"
+        }
+      }
+    },
+    "ruto_v1StatsMethodStats": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "active": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "ruto_v1StatsResponse": {
+      "type": "object",
+      "properties": {
+        "apps_total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "apps_active": {
+          "type": "string",
+          "format": "int64"
+        },
+        "apps_inactive": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endpoints_total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endpoints_active": {
+          "type": "string",
+          "format": "int64"
+        },
+        "endpoints_inactive": {
+          "type": "string",
+          "format": "int64"
+        },
+        "users_total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "users_active": {
+          "type": "string",
+          "format": "int64"
+        },
+        "users_admin": {
+          "type": "string",
+          "format": "int64"
+        },
+        "root_jwt_providers": {
+          "type": "string",
+          "format": "int64"
+        },
+        "root_auth_enabled": {
+          "type": "boolean"
+        },
+        "root_cors_enabled": {
+          "type": "boolean"
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1StatsMethodStats"
+          }
         }
       }
     },
