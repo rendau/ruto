@@ -5,6 +5,8 @@ import domainModel "github.com/rendau/ruto/internal/domain/usr/model"
 type Select struct {
 	PKId int64
 
+	Active   bool
+	IsAdmin  bool
 	Name     string
 	Username string
 	Password string
@@ -13,6 +15,8 @@ type Select struct {
 func (m *Select) ListColumnMap() map[string]any {
 	return map[string]any{
 		"id":       &m.PKId,
+		"active":   &m.Active,
+		"is_admin": &m.IsAdmin,
 		"name":     &m.Name,
 		"username": &m.Username,
 		"password": &m.Password,
@@ -35,6 +39,8 @@ func EncodeSelect(v *Select, _ int) *domainModel.Usr {
 	}
 	return &domainModel.Usr{
 		Id:       v.PKId,
+		Active:   v.Active,
+		IsAdmin:  v.IsAdmin,
 		Name:     v.Name,
 		Username: v.Username,
 		Password: v.Password,

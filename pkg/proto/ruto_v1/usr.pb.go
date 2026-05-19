@@ -26,9 +26,11 @@ const (
 type UsrMain struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Username      string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
+	Active        bool                   `protobuf:"varint,2,opt,name=active,proto3" json:"active,omitempty"`
+	IsAdmin       bool                   `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
+	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Username      string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	Password      string                 `protobuf:"bytes,6,opt,name=password,proto3" json:"password,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -68,6 +70,20 @@ func (x *UsrMain) GetId() int64 {
 		return x.Id
 	}
 	return 0
+}
+
+func (x *UsrMain) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *UsrMain) GetIsAdmin() bool {
+	if x != nil {
+		return x.IsAdmin
+	}
+	return false
 }
 
 func (x *UsrMain) GetName() string {
@@ -383,12 +399,14 @@ var File_ruto_v1_usr_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_usr_proto_rawDesc = "" +
 	"\n" +
-	"\x11ruto_v1/usr.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x14ruto_v1/common.proto\"e\n" +
+	"\x11ruto_v1/usr.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x14ruto_v1/common.proto\"\x98\x01\n" +
 	"\aUsrMain\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
-	"\busername\x18\x03 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x04 \x01(\tR\bpassword\"\x1b\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
+	"\x06active\x18\x02 \x01(\bR\x06active\x12\x19\n" +
+	"\bis_admin\x18\x03 \x01(\bR\aisAdmin\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1a\n" +
+	"\busername\x18\x05 \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\x06 \x01(\tR\bpassword\"\x1b\n" +
 	"\tUsrGetReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"r\n" +
 	"\n" +

@@ -76,19 +76,32 @@ func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
 		return nil, err
 	}
 
-	return sessionModel.New(usrId), nil
+	isAdminRaw, ok := claims["is_admin"]
+	if !ok {
+		return nil, fmt.Errorf("missing is_admin claim in token")
+	}
+	isAdmin, err := boolFromClaim(isAdminRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	return &sessionModel.Session{
+		Id:      usrId,
+		IsAdmin: isAdmin,
+	}, nil
 }
 
-func (s *Service) CreateToken(usrId int64) (string, error) {
+func (s *Service) CreateToken(usrId int64, isAdmin bool) (string, error) {
 	if s.secret == "" {
 		return "", errs.InvalidConfig
 	}
 
 	now := time.Now().UTC()
 	claims := jwtv5.MapClaims{
-		"id":  usrId,
-		"iat": now.Unix(),
-		"exp": now.Add(tokenTTL).Unix(),
+		"id":       usrId,
+		"is_admin": isAdmin,
+		"iat":      now.Unix(),
+		"exp":      now.Add(tokenTTL).Unix(),
 	}
 
 	token := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, claims)
@@ -98,6 +111,29 @@ func (s *Service) CreateToken(usrId int64) (string, error) {
 	}
 
 	return tokenStr, nil
+}
+
+func boolFromClaim(v any) (bool, error) {
+	switch x := v.(type) {
+	case bool:
+		return x, nil
+	case string:
+		parsed, err := strconv.ParseBool(x)
+		if err != nil {
+			return false, fmt.Errorf("strconv.ParseBool: %w", err)
+		}
+		return parsed, nil
+	case float64:
+		if x == 1 {
+			return true, nil
+		}
+		if x == 0 {
+			return false, nil
+		}
+		return false, fmt.Errorf("invalid is_admin claim")
+	default:
+		return false, fmt.Errorf("invalid is_admin claim")
+	}
 }
 
 func usrIDFromClaim(v any) (int64, error) {

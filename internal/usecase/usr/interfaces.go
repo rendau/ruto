@@ -18,5 +18,5 @@ type ServiceI interface {
 
 type SessionServiceI interface {
 	FromContext(ctx context.Context) *sessionModel.Session
-	CreateToken(usrId int64) (string, error)
+	CreateToken(usrId int64, isAdmin bool) (string, error)
 }

@@ -28,11 +28,11 @@ func (u *Usecase) Login(ctx context.Context, username, password string) (string,
 	if err != nil {
 		return "", fmt.Errorf("svc.GetByUsernamePassword: %w", err)
 	}
-	if !found {
+	if !found || !item.Active {
 		return "", errs.NotAuthorized
 	}
 
-	token, err := u.sessionSvc.CreateToken(item.Id)
+	token, err := u.sessionSvc.CreateToken(item.Id, item.IsAdmin)
 	if err != nil {
 		return "", fmt.Errorf("sessionSvc.CreateToken: %w", err)
 	}
@@ -46,11 +46,11 @@ func (u *Usecase) GetProfile(ctx context.Context) (*model.Usr, error) {
 		return nil, errs.NotAuthorized
 	}
 
-	item, found, err := u.svc.Get(ctx, extractedSession.Id, false)
+	item, _, err := u.svc.Get(ctx, extractedSession.Id, true)
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
-	if !found {
+	if !item.Active {
 		return nil, errs.NotAuthorized
 	}
 
@@ -60,7 +60,8 @@ func (u *Usecase) GetProfile(ctx context.Context) (*model.Usr, error) {
 }
 
 func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Usr, int64, error) {
-	if u.sessionSvc.FromContext(ctx).Id == 0 {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
 		return nil, 0, errs.NotAuthorized
 	}
 
@@ -69,11 +70,16 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Usr, 
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
 	}
 
+	for i := range items {
+		items[i].Password = ""
+	}
+
 	return items, tCount, nil
 }
 
 func (u *Usecase) Get(ctx context.Context, id int64) (*model.Usr, error) {
-	if u.sessionSvc.FromContext(ctx).Id == 0 {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
 		return nil, errs.NotAuthorized
 	}
 
@@ -92,8 +98,12 @@ func (u *Usecase) Get(ctx context.Context, id int64) (*model.Usr, error) {
 }
 
 func (u *Usecase) Create(ctx context.Context, obj *model.Usr) (int64, error) {
-	if u.sessionSvc.FromContext(ctx).Id == 0 {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
 		return 0, errs.NotAuthorized
+	}
+	if !extractedSession.IsAdmin {
+		return 0, errs.NoPermission
 	}
 
 	if err := u.validateEdit(obj); err != nil {
@@ -108,8 +118,12 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Usr) (int64, error) {
 }
 
 func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Usr) error {
-	if u.sessionSvc.FromContext(ctx).Id == 0 {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
 		return errs.NotAuthorized
+	}
+	if !extractedSession.IsAdmin {
+		return errs.NoPermission
 	}
 
 	if id == 0 {
@@ -126,8 +140,12 @@ func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Usr) error {
 }
 
 func (u *Usecase) Delete(ctx context.Context, id int64) error {
-	if u.sessionSvc.FromContext(ctx).Id == 0 {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
 		return errs.NotAuthorized
+	}
+	if !extractedSession.IsAdmin {
+		return errs.NoPermission
 	}
 
 	if id == 0 {

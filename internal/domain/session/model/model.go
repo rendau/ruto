@@ -1,7 +1,8 @@
 package model
 
 type Session struct {
-	Id int64
+	Id      int64
+	IsAdmin bool
 }
 
 func New(id int64) *Session {

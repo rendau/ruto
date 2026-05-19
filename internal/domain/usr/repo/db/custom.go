@@ -5,6 +5,8 @@ import domainModel "github.com/rendau/ruto/internal/domain/usr/model"
 var (
 	allowedSortFields = map[string]string{
 		"id":       "id",
+		"active":   "active",
+		"is_admin": "is_admin",
 		"name":     "name",
 		"username": "username",
 	}

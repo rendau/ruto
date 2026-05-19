@@ -5,6 +5,8 @@ import domainModel "github.com/rendau/ruto/internal/domain/usr/model"
 type Upsert struct {
 	PKId int64
 
+	Active   *bool
+	IsAdmin  *bool
 	Name     *string
 	Username *string
 	Password *string
@@ -13,6 +15,12 @@ type Upsert struct {
 func (m *Upsert) CreateColumnMap() map[string]any {
 	result := map[string]any{}
 
+	if m.Active != nil {
+		result["active"] = *m.Active
+	}
+	if m.IsAdmin != nil {
+		result["is_admin"] = *m.IsAdmin
+	}
 	if m.Name != nil {
 		result["name"] = *m.Name
 	}
@@ -42,6 +50,8 @@ func (m *Upsert) PKColumnMap() map[string]any {
 
 func DecodeUpsert(v *domainModel.Usr) *Upsert {
 	return &Upsert{
+		Active:   &v.Active,
+		IsAdmin:  &v.IsAdmin,
 		Name:     &v.Name,
 		Username: &v.Username,
 		Password: &v.Password,

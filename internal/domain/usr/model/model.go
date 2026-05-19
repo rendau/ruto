@@ -8,6 +8,8 @@ import (
 
 type Usr struct {
 	Id       int64
+	Active   bool
+	IsAdmin  bool
 	Name     string
 	Username string
 	Password string

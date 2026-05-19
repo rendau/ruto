@@ -1243,6 +1243,12 @@
           "type": "string",
           "format": "int64"
         },
+        "active": {
+          "type": "boolean"
+        },
+        "is_admin": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -1257,6 +1263,12 @@
     "ruto_v1UsrUpdateBody": {
       "type": "object",
       "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "is_admin": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
