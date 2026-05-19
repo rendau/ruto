@@ -84,3 +84,10 @@ func (h *Usr) GetProfile(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.UsrMai
 	}
 	return dto.EncodeUsrMain(item, 0), nil
 }
+
+func (h *Usr) UpdateProfile(ctx context.Context, req *ruto_v1.UsrUpdateProfileReq) (*emptypb.Empty, error) {
+	if err := h.usecase.UpdateProfile(ctx, dto.DecodeUsrUpdateProfileReq(req)); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}

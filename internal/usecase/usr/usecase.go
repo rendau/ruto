@@ -59,6 +59,43 @@ func (u *Usecase) GetProfile(ctx context.Context) (*model.Usr, error) {
 	return item, nil
 }
 
+func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) error {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return errs.NotAuthorized
+	}
+	if req == nil {
+		return errs.InvalidRequest
+	}
+
+	item, _, err := u.svc.Get(ctx, extractedSession.Id, true)
+	if err != nil {
+		return fmt.Errorf("svc.Get: %w", err)
+	}
+	if !item.Active {
+		return errs.NotAuthorized
+	}
+
+	if req.Name != nil {
+		item.Name = *req.Name
+	}
+	if req.Password != nil {
+		item.Password = *req.Password
+	}
+	if req.Name == nil && req.Password == nil {
+		return errs.InvalidRequest
+	}
+
+	if err = u.validateEdit(item); err != nil {
+		return err
+	}
+
+	if err = u.svc.Update(ctx, extractedSession.Id, item); err != nil {
+		return fmt.Errorf("svc.Update: %w", err)
+	}
+	return nil
+}
+
 func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Usr, int64, error) {
 	extractedSession := u.sessionSvc.FromContext(ctx)
 	if extractedSession.Id == 0 {

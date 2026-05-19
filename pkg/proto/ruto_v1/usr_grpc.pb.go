@@ -20,13 +20,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Usr_List_FullMethodName       = "/ruto_v1.Usr/List"
-	Usr_Get_FullMethodName        = "/ruto_v1.Usr/Get"
-	Usr_Create_FullMethodName     = "/ruto_v1.Usr/Create"
-	Usr_Update_FullMethodName     = "/ruto_v1.Usr/Update"
-	Usr_Delete_FullMethodName     = "/ruto_v1.Usr/Delete"
-	Usr_Login_FullMethodName      = "/ruto_v1.Usr/Login"
-	Usr_GetProfile_FullMethodName = "/ruto_v1.Usr/GetProfile"
+	Usr_List_FullMethodName          = "/ruto_v1.Usr/List"
+	Usr_Get_FullMethodName           = "/ruto_v1.Usr/Get"
+	Usr_Create_FullMethodName        = "/ruto_v1.Usr/Create"
+	Usr_Update_FullMethodName        = "/ruto_v1.Usr/Update"
+	Usr_Delete_FullMethodName        = "/ruto_v1.Usr/Delete"
+	Usr_Login_FullMethodName         = "/ruto_v1.Usr/Login"
+	Usr_GetProfile_FullMethodName    = "/ruto_v1.Usr/GetProfile"
+	Usr_UpdateProfile_FullMethodName = "/ruto_v1.Usr/UpdateProfile"
 )
 
 // UsrClient is the client API for Usr service.
@@ -40,6 +41,7 @@ type UsrClient interface {
 	Delete(ctx context.Context, in *UsrGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Login(ctx context.Context, in *UsrLoginReq, opts ...grpc.CallOption) (*UsrLoginRep, error)
 	GetProfile(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrMain, error)
+	UpdateProfile(ctx context.Context, in *UsrUpdateProfileReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type usrClient struct {
@@ -120,6 +122,16 @@ func (c *usrClient) GetProfile(ctx context.Context, in *emptypb.Empty, opts ...g
 	return out, nil
 }
 
+func (c *usrClient) UpdateProfile(ctx context.Context, in *UsrUpdateProfileReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Usr_UpdateProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UsrServer is the server API for Usr service.
 // All implementations must embed UnimplementedUsrServer
 // for forward compatibility.
@@ -131,6 +143,7 @@ type UsrServer interface {
 	Delete(context.Context, *UsrGetReq) (*emptypb.Empty, error)
 	Login(context.Context, *UsrLoginReq) (*UsrLoginRep, error)
 	GetProfile(context.Context, *emptypb.Empty) (*UsrMain, error)
+	UpdateProfile(context.Context, *UsrUpdateProfileReq) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUsrServer()
 }
 
@@ -161,6 +174,9 @@ func (UnimplementedUsrServer) Login(context.Context, *UsrLoginReq) (*UsrLoginRep
 }
 func (UnimplementedUsrServer) GetProfile(context.Context, *emptypb.Empty) (*UsrMain, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProfile not implemented")
+}
+func (UnimplementedUsrServer) UpdateProfile(context.Context, *UsrUpdateProfileReq) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateProfile not implemented")
 }
 func (UnimplementedUsrServer) mustEmbedUnimplementedUsrServer() {}
 func (UnimplementedUsrServer) testEmbeddedByValue()             {}
@@ -309,6 +325,24 @@ func _Usr_GetProfile_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Usr_UpdateProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UsrUpdateProfileReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UsrServer).UpdateProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Usr_UpdateProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UsrServer).UpdateProfile(ctx, req.(*UsrUpdateProfileReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Usr_ServiceDesc is the grpc.ServiceDesc for Usr service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -343,6 +377,10 @@ var Usr_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProfile",
 			Handler:    _Usr_GetProfile_Handler,
+		},
+		{
+			MethodName: "UpdateProfile",
+			Handler:    _Usr_UpdateProfile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

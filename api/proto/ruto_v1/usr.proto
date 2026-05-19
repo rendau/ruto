@@ -30,6 +30,9 @@ service Usr {
   rpc GetProfile(google.protobuf.Empty) returns (UsrMain) {
     option (google.api.http) = { get: "/usr/profile" };
   };
+  rpc UpdateProfile(UsrUpdateProfileReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { put: "/usr/profile" body: "*" };
+  };
 }
 
 message UsrMain {
@@ -66,4 +69,9 @@ message UsrLoginReq {
 
 message UsrLoginRep {
   string jwt = 1;
+}
+
+message UsrUpdateProfileReq {
+  optional string name = 1;
+  optional string password = 2;
 }

@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/rendau/ruto/internal/domain/usr/model"
+	usecase "github.com/rendau/ruto/internal/usecase/usr"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
 
@@ -31,5 +32,12 @@ func DecodeUsrListReq(v *ruto_v1.UsrListReq) *model.ListReq {
 	return &model.ListReq{
 		ListParams: DecodeListParams(v.ListParams),
 		Username:   v.Username,
+	}
+}
+
+func DecodeUsrUpdateProfileReq(v *ruto_v1.UsrUpdateProfileReq) *usecase.UpdateProfileReq {
+	return &usecase.UpdateProfileReq{
+		Name:     v.Name,
+		Password: v.Password,
 	}
 }
