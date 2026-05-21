@@ -145,6 +145,13 @@ async function deploy() {
   }
 }
 
+function displayBackendUrl(url?: string): string {
+  if (!url) {
+    return "-";
+  }
+  return url.replace(/^https?:\/\//i, "");
+}
+
 onMounted(() => {
   const stored = Number(localStorage.getItem("ruto_admin_sidebar_width") || "");
   if (Number.isFinite(stored) && stored >= minSidebarWidth && stored <= maxSidebarWidth) {
@@ -179,8 +186,10 @@ onBeforeUnmount(() => {
       <nav class="nav">
         <div class="nav-row">
           <RouterLink class="nav-link with-icon" to="/root/edit">
-            <span class="icon" aria-hidden="true">⚙</span>
-            <span>Root Settings</span>
+            <span class="nav-link-content">
+              <span class="icon" aria-hidden="true">⚙</span>
+              <span>Root Settings</span>
+            </span>
           </RouterLink>
           <button
             class="nav-icon-button"
@@ -208,9 +217,15 @@ onBeforeUnmount(() => {
           :to="{ name: 'app-details', params: { id: app.id } }"
           class="app-item"
           :class="{ active: route.params.id === app.id }"
+          :title="`${app.name || app.id} (${app.path_prefix || '/'})`"
         >
-          <span class="app-name">{{ app.name || app.id }}</span>
-          <span class="app-path">{{ app.path_prefix }}</span>
+          <span class="app-topline">
+            <span class="app-name">{{ app.name || app.id }}</span>
+            <span class="app-prefix">{{ app.path_prefix || "/" }}</span>
+          </span>
+          <span class="app-backend" :title="app.backend?.url || '-'">
+            {{ displayBackendUrl(app.backend?.url) }}
+          </span>
         </RouterLink>
       </div>
       <button
