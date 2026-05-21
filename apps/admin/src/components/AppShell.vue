@@ -23,6 +23,7 @@ let resizing = false;
 const profileName = computed(() => authStore.profile?.name || authStore.profile?.username || "Unknown");
 const profileInitial = computed(() => profileName.value.trim().charAt(0).toUpperCase() || "U");
 const profileRole = computed(() => (authStore.profile?.is_admin ? "admin" : "user"));
+const appSearch = ref("");
 const pageTitle = computed(() => {
   switch (route.name) {
     case "dashboard":
@@ -44,6 +45,17 @@ const pageTitle = computed(() => {
     default:
       return "Control Panel";
   }
+});
+
+const filteredApps = computed(() => {
+  const query = appSearch.value.trim().toLowerCase();
+  if (!query) {
+    return appsStore.items;
+  }
+  return appsStore.items.filter((app) => {
+    const haystack = [app.name, app.id, app.path_prefix, app.backend?.url].join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
 });
 
 async function reloadMenuApps() {
@@ -210,9 +222,12 @@ onBeforeUnmount(() => {
           <span aria-hidden="true">＋</span>
         </RouterLink>
       </div>
+      <div class="apps-search-wrap">
+        <input v-model="appSearch" class="apps-search" type="search" placeholder="Search apps" aria-label="Search apps" />
+      </div>
       <div class="apps-list">
         <RouterLink
-          v-for="app in appsStore.items"
+          v-for="app in filteredApps"
           :key="app.id"
           :to="{ name: 'app-details', params: { id: app.id } }"
           class="app-item"
@@ -227,6 +242,7 @@ onBeforeUnmount(() => {
             {{ displayBackendUrl(app.backend?.url) }}
           </span>
         </RouterLink>
+        <div v-if="filteredApps.length === 0" class="apps-empty muted">No apps found</div>
       </div>
       <button
         class="sidebar-resize"

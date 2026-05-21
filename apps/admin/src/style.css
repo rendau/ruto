@@ -256,6 +256,29 @@ textarea {
   gap: 6px;
 }
 
+.apps-search-wrap {
+  margin: 0 8px 8px;
+}
+
+.apps-search {
+  height: 32px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  border: 1px solid #364d71;
+  background: #182337;
+  color: #dbe7f9;
+  font-size: 13px;
+}
+
+.apps-search::placeholder {
+  color: #90a5c3;
+}
+
+.apps-search:focus {
+  outline: none;
+  border-color: #5e7eb0;
+}
+
 .app-item {
   display: grid;
   gap: 2px;
@@ -317,6 +340,11 @@ textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.apps-empty {
+  padding: 8px 10px;
+  font-size: 12px;
 }
 
 .content {
