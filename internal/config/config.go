@@ -25,7 +25,7 @@ var Conf = struct {
 	GwPort              int    `env:"GW_PORT"`
 	SnapshotGrpcAddress string `env:"SNAPSHOT_GRPC_ADDRESS" envDefault:"localhost:5050"`
 
-	LegacyDMBaseURL      string `env:"LEGACY_DM_BASE_URL" envDefault:"https://api.dm.yc.mdev.kz"`
+	LegacyDMBaseURL      string `env:"LEGACY_DM_BASE_URL"`
 	LegacyDMRefreshToken string `env:"LEGACY_DM_REFRESH_TOKEN"`
 }{}
 

@@ -124,7 +124,57 @@ func TestServiceBuild_DuplicateRoute(t *testing.T) {
 			},
 		},
 	}, nil)
-	require.Error(t, err)
+	require.NoError(t, err)
+}
+
+func TestServiceBuild_PaymentRoutesDoNotConflict(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Backend-Path", r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer backend.Close()
+
+	s, err := New(&rootModel.Root{
+		BaseUrl: "https://public.example",
+		Apps: []*appModel.App{
+			{
+				Active:     true,
+				PathPrefix: "lp/payment",
+				Backend: appModel.AppBackend{
+					Url: backend.URL + "/svc",
+				},
+				Endpoints: []*endpointModel.Endpoint{
+					{
+						Active: true,
+						Method: http.MethodGet,
+						Path:   "remote/id/{id}",
+					},
+					{
+						Active: true,
+						Method: http.MethodGet,
+						Path:   "{id}/qr_picture",
+					},
+				},
+			},
+		},
+	}, nil)
+	require.NoError(t, err)
+
+	t.Run("remote by id", func(t *testing.T) {
+		rw := httptest.NewRecorder()
+		s.ServeHTTP(rw, httptest.NewRequest(http.MethodGet, "https://public.example/lp/payment/remote/id/123", nil))
+
+		require.Equal(t, http.StatusNoContent, rw.Code)
+		require.Equal(t, "/svc/remote/id/123", rw.Header().Get("X-Backend-Path"))
+	})
+
+	t.Run("qr picture by payment id", func(t *testing.T) {
+		rw := httptest.NewRecorder()
+		s.ServeHTTP(rw, httptest.NewRequest(http.MethodGet, "https://public.example/lp/payment/abc/qr_picture", nil))
+
+		require.Equal(t, http.StatusNoContent, rw.Code)
+		require.Equal(t, "/svc/abc/qr_picture", rw.Header().Get("X-Backend-Path"))
+	})
 }
 
 func TestServiceBuild_Auth(t *testing.T) {

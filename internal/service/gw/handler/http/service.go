@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/samber/lo"
 
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -45,9 +46,9 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI) (_ http.Ha
 		}
 	}()
 
-	mux := http.NewServeMux()
+	router := chi.NewRouter()
 
-	var routePattern string
+	var routePath string
 
 	for _, app := range snapshot.Apps {
 		if !app.Active {
@@ -67,13 +68,14 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI) (_ http.Ha
 
 		for _, endpoint := range filteredEndpoints {
 			if endpoint.Path == "" {
-				routePattern = endpoint.Method + " " + app.PathPrefix
+				routePath = app.PathPrefix
 			} else {
-				routePattern = endpoint.Method + " " + app.PathPrefix + "/" + endpoint.Path
+				routePath = app.PathPrefix + "/" + endpoint.Path
 			}
 
-			mux.Handle(
-				routePattern,
+			router.Method(
+				endpoint.Method,
+				routePath,
 				middleware.Chain(appHandler,
 					middleware.NewWithRequest(snapshot, app, endpoint),
 					auth.New(snapshot, app, endpoint, jwkGetter),
@@ -83,5 +85,5 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI) (_ http.Ha
 		}
 	}
 
-	return mux, nil
+	return router, nil
 }
