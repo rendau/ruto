@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "/ruto_v1";
+
+service Migrate {
+  rpc Run(MigrateRunReq) returns (MigrateRunRep) {
+    option (google.api.http) = { post: "/migrate/run" body: "*" };
+  };
+}
+
+message MigrateRunReq {
+  string realm_name = 1;
+  string jwk_url = 2;
+}
+
+message MigrateRunRep {
+  string realm_name = 1;
+  string root_base_url = 2;
+  int64 app_count = 3;
+  int64 endpoint_count = 4;
+}

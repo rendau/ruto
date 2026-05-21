@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { createEndpoint, getApp, getEndpoint, getRootJwtKids, updateEndpoint } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
-import { emptyAuth, normalizeAuth } from "../lib/forms";
+import { normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { EndpointMain } from "../types/api";
 
@@ -30,7 +30,9 @@ const form = ref<EndpointMain>({
     custom_path: ""
   },
   auth: {
-    ...emptyAuth
+    enabled: true,
+    mode: "extend",
+    methods: []
   }
 });
 const appDisplayName = computed(() => appName.value || form.value.app_id || "-");
@@ -123,7 +125,7 @@ onMounted(() => {
     </label>
     <label class="field">
       <span>Path</span>
-      <input v-model="form.path" placeholder="/users" required />
+      <input v-model="form.path" placeholder="/users or empty for app root" />
     </label>
     <label class="field">
       <span>Custom Backend Path</span>

@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { createApp, getApp, getRootJwtKids, updateApp } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
-import { emptyAuth, normalizeAuth } from "../lib/forms";
+import { normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain } from "../types/api";
 import { useAppsStore } from "../stores/apps";
@@ -29,7 +29,9 @@ const form = ref<AppMain>({
     url: ""
   },
   auth: {
-    ...emptyAuth
+    enabled: true,
+    mode: "extend",
+    methods: []
   }
 });
 

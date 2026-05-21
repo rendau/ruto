@@ -80,11 +80,15 @@ func (m *Auth) mergeOne(child *Auth) {
 	m.Enabled = child.Enabled
 	m.Mode = child.Mode
 
-	switch child.Mode {
-	case constant.AuthModeReplace:
-		m.Methods = append(make([]*AuthMethod, 0, len(child.Methods)), child.Methods...)
-	case constant.AuthModeExtend:
-		m.Methods = mergeMethods(m.Methods, child.Methods)
+	if child.Enabled {
+		switch child.Mode {
+		case constant.AuthModeReplace:
+			m.Methods = append(make([]*AuthMethod, 0, len(child.Methods)), child.Methods...)
+		case constant.AuthModeExtend:
+			m.Methods = mergeMethods(m.Methods, child.Methods)
+		}
+	} else {
+		m.Methods = []*AuthMethod{}
 	}
 }
 

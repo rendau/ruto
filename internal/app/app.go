@@ -1,6 +1,7 @@
 package app
 
 import (
+	// stdlib
 	"context"
 	"errors"
 	"fmt"
@@ -13,41 +14,55 @@ import (
 	"syscall"
 	"time"
 
+	// third-party
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/samber/lo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	// app-level constants and API
 	"github.com/rendau/ruto/internal/constant"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
+	// config
 	"github.com/rendau/ruto/internal/config"
 
+	// grpc handlers
 	handlerGrpcP "github.com/rendau/ruto/internal/handler/grpc"
 
+	// root module
 	domainRootRepoDbP "github.com/rendau/ruto/internal/domain/root/repo/db"
 	domainRootServiceP "github.com/rendau/ruto/internal/domain/root/service"
 	usecaseRootP "github.com/rendau/ruto/internal/usecase/root"
 
+	// app module
 	domainAppRepoDbP "github.com/rendau/ruto/internal/domain/app/repo/db"
 	domainAppServiceP "github.com/rendau/ruto/internal/domain/app/service"
 	usecaseAppP "github.com/rendau/ruto/internal/usecase/app"
 
+	// endpoint module
 	domainEndpointRepoDbP "github.com/rendau/ruto/internal/domain/endpoint/repo/db"
 	domainEndpointServiceP "github.com/rendau/ruto/internal/domain/endpoint/service"
-	domainSessionServiceP "github.com/rendau/ruto/internal/domain/session/service"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 
-	serviceGwP "github.com/rendau/ruto/internal/service/gw"
+	// user module
+	domainUsrRepoDbP "github.com/rendau/ruto/internal/domain/usr/repo/db"
+	domainUsrServiceP "github.com/rendau/ruto/internal/domain/usr/service"
+	usecaseUsrP "github.com/rendau/ruto/internal/usecase/usr"
 
+	// session module
+	domainSessionServiceP "github.com/rendau/ruto/internal/domain/session/service"
+
+	// gateway/snapshot/stats modules
+	serviceGwP "github.com/rendau/ruto/internal/service/gw"
 	serviceSnapshotP "github.com/rendau/ruto/internal/service/snapshot"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
 	usecaseStatsP "github.com/rendau/ruto/internal/usecase/stats"
 
-	domainUsrRepoDbP "github.com/rendau/ruto/internal/domain/usr/repo/db"
-	domainUsrServiceP "github.com/rendau/ruto/internal/domain/usr/service"
-	usecaseUsrP "github.com/rendau/ruto/internal/usecase/usr"
+	// migrate module
+	serviceMigrateP "github.com/rendau/ruto/internal/service/migrate"
+	usecaseMigrateP "github.com/rendau/ruto/internal/usecase/migrate"
 )
 
 type App struct {
@@ -133,6 +148,17 @@ func (a *App) Init() {
 	usecaseStats := usecaseStatsP.New(domainRootService, domainAppService, domainEndpointService, domainUsrService)
 	handlerGrpcStats := handlerGrpcP.NewStats(usecaseStats)
 
+	// migrate
+	serviceMigrate := serviceMigrateP.New(
+		config.Conf.LegacyDMBaseURL,
+		config.Conf.LegacyDMRefreshToken,
+		domainRootService,
+		domainAppService,
+		domainEndpointService,
+	)
+	usecaseMigrate := usecaseMigrateP.New(serviceMigrate, sessionService)
+	handlerGrpcMigrate := handlerGrpcP.NewMigrate(usecaseMigrate)
+
 	// grpc server
 	{
 		a.grpcServer = NewGrpcServer("main", sessionService, func(server *grpc.Server) {
@@ -142,6 +168,7 @@ func (a *App) Init() {
 			ruto_v1.RegisterSnapshotServer(server, handlerGrpcSnapshot)
 			ruto_v1.RegisterStatsServer(server, handlerGrpcStats)
 			ruto_v1.RegisterUsrServer(server, handlerGrpcUsr)
+			ruto_v1.RegisterMigrateServer(server, handlerGrpcMigrate)
 		})
 	}
 
@@ -164,6 +191,7 @@ func (a *App) Init() {
 				ruto_v1.RegisterSnapshotHandler,
 				ruto_v1.RegisterStatsHandler,
 				ruto_v1.RegisterUsrHandler,
+				ruto_v1.RegisterMigrateHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)

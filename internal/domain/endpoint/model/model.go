@@ -33,9 +33,6 @@ func (m *Endpoint) Normalize() error {
 	}
 
 	m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
-	if m.Path == "" {
-		return fmt.Errorf("path: empty")
-	}
 
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)

@@ -1,0 +1,1914 @@
+{
+  "schemes": ["https"],
+  "swagger": "2.0",
+  "info": {
+    "description": "",
+    "title": "Dutchman service",
+    "contact": {},
+    "version": ""
+  },
+  "host": "example.com",
+  "basePath": "/",
+  "paths": {
+    "/app": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "app"
+        ],
+        "parameters": [
+          {
+            "type": "boolean",
+            "name": "active",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "csv",
+            "name": "cols",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "only_count",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "page_size",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "realm_id",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "csv",
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "sort_name",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "with_total_count",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/dopTypes.PaginatedListRep"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/entities.AppSt"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "app"
+        ],
+        "parameters": [
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.AppCUSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/dopTypes.CreateRep"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/app/:id": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "app"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.AppSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "put": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "app"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.AppCUSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "app"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/app/:id/duplicate": {
+      "post": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "app"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.AppDuplicateReq"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/app/:id/sync_roles": {
+      "post": {
+        "tags": [
+          "app"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/config": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "summary": "Get configs",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.ConfigSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "application/json"
+        ],
+        "tags": [
+          "config"
+        ],
+        "summary": "Update configs",
+        "parameters": [
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.ConfigSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/endpoint": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "endpoint"
+        ],
+        "parameters": [
+          {
+            "type": "boolean",
+            "name": "active",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "app_id",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "csv",
+            "name": "cols",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "only_count",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "page_size",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "csv",
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "sort_name",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "with_total_count",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/dopTypes.PaginatedListRep"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/entities.EndpointSt"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "endpoint"
+        ],
+        "parameters": [
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.EndpointCUSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/dopTypes.CreateRep"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/endpoint/:id": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "endpoint"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.EndpointSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "put": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "endpoint"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.EndpointCUSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "endpoint"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/profile": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "profile"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.ProfileSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/profile/auth": {
+      "post": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "profile"
+        ],
+        "parameters": [
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.ProfileAuthReqSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.ProfileAuthRepSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/profile/auth/token": {
+      "post": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "profile"
+        ],
+        "parameters": [
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.ProfileAuthByRefreshTokenReqSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.ProfileAuthByRefreshTokenRepSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/realm": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "realm"
+        ],
+        "parameters": [
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "csv",
+            "name": "cols",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "only_count",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "page_size",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "csv",
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "sort_name",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "with_total_count",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/dopTypes.PaginatedListRep"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/entities.RealmSt"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "realm"
+        ],
+        "parameters": [
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.RealmCUSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/dopTypes.CreateRep"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/realm/:id": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "realm"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.RealmSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "put": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "realm"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.RealmCUSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "realm"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/realm/:id/deploy": {
+      "post": {
+        "tags": [
+          "realm"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/realm/:id/export": {
+      "get": {
+        "tags": [
+          "realm"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.KrakendSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/realm/:id/import_conf": {
+      "post": {
+        "tags": [
+          "realm"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/realm/:id/preview_conf": {
+      "get": {
+        "tags": [
+          "realm"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.KrakendSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/role": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "role"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "name": "app_id",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "app_id_or_null",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "csv",
+            "name": "cols",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "is_fetched",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "only_count",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "page_size",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "realm_id",
+            "in": "query"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "csv",
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "sort_name",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "with_total_count",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/dopTypes.PaginatedListRep"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/definitions/entities.RoleSt"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "role"
+        ],
+        "parameters": [
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.RoleCUSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/definitions/dopTypes.CreateRep"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/role/:id": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "role"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/entities.RoleSt"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "put": {
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "role"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.RoleCUSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "role"
+        ],
+        "parameters": [
+          {
+            "type": "string",
+            "description": "id",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    },
+    "/role/fetch_remote_uri": {
+      "post": {
+        "tags": [
+          "role"
+        ],
+        "parameters": [
+          {
+            "description": "body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/entities.RoleFetchRemoteReqSt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/entities.RoleFetchRemoteRepItemSt"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/dopTypes.ErrRep"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "dopTypes.CreateRep": {
+      "type": "object",
+      "properties": {
+        "id": {}
+      }
+    },
+    "dopTypes.ErrRep": {
+      "type": "object",
+      "properties": {
+        "desc": {
+          "type": "string"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dopTypes.PaginatedListRep": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer"
+        },
+        "page_size": {
+          "type": "integer"
+        },
+        "results": {},
+        "total_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "entities.AppCUSt": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/entities.AppDataSt"
+        },
+        "realm_id": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.AppDataBackendBaseSt": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.AppDataRemoteRolesSt": {
+      "type": "object",
+      "properties": {
+        "json_path": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.AppDataSt": {
+      "type": "object",
+      "properties": {
+        "backend_base": {
+          "$ref": "#/definitions/entities.AppDataBackendBaseSt"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "remote_roles": {
+          "$ref": "#/definitions/entities.AppDataRemoteRolesSt"
+        }
+      }
+    },
+    "entities.AppDuplicateReq": {
+      "type": "object",
+      "properties": {
+        "new_name": {
+          "type": "string"
+        },
+        "new_realm_id": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.AppSt": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/entities.AppDataSt"
+        },
+        "id": {
+          "type": "string"
+        },
+        "realm_id": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.ConfigSt": {
+      "type": "object"
+    },
+    "entities.EndpointCUSt": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "app_id": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/entities.EndpointDataSt"
+        }
+      }
+    },
+    "entities.EndpointDataBackendSt": {
+      "type": "object",
+      "properties": {
+        "custom_path": {
+          "type": "boolean"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.EndpointDataIpValidationSt": {
+      "type": "object",
+      "properties": {
+        "allowed_ips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "entities.EndpointDataJwtValidationSt": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "entities.EndpointDataSt": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "$ref": "#/definitions/entities.EndpointDataBackendSt"
+        },
+        "ip_validation": {
+          "$ref": "#/definitions/entities.EndpointDataIpValidationSt"
+        },
+        "jwt_validation": {
+          "$ref": "#/definitions/entities.EndpointDataJwtValidationSt"
+        },
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.EndpointSt": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "app_id": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/entities.EndpointDataSt"
+        },
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.KrakendEndpointBackendSt": {
+      "type": "object",
+      "properties": {
+        "encoding": {
+          "type": "string"
+        },
+        "host": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "method": {
+          "type": "string"
+        },
+        "url_pattern": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.KrakendEndpointExtraConfigAuthValidatorSt": {
+      "type": "object",
+      "properties": {
+        "alg": {
+          "type": "string"
+        },
+        "cache": {
+          "type": "boolean"
+        },
+        "cache_duration": {
+          "type": "integer"
+        },
+        "cookie_key": {
+          "type": "string"
+        },
+        "disable_jwk_security": {
+          "type": "boolean"
+        },
+        "jwk_url": {
+          "type": "string"
+        },
+        "operation_debug": {
+          "type": "boolean"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "roles_key": {
+          "type": "string"
+        },
+        "roles_key_is_nested": {
+          "type": "boolean"
+        }
+      }
+    },
+    "entities.KrakendEndpointExtraConfigSt": {
+      "type": "object",
+      "properties": {
+        "auth/validator": {
+          "$ref": "#/definitions/entities.KrakendEndpointExtraConfigAuthValidatorSt"
+        },
+        "validation/cel": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entities.KrakendEndpointExtraConfigValidationCelSt"
+          }
+        }
+      }
+    },
+    "entities.KrakendEndpointExtraConfigValidationCelSt": {
+      "type": "object",
+      "properties": {
+        "check_expr": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.KrakendEndpointSt": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entities.KrakendEndpointBackendSt"
+          }
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "extra_config": {
+          "$ref": "#/definitions/entities.KrakendEndpointExtraConfigSt"
+        },
+        "input_headers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "input_query_strings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "method": {
+          "type": "string"
+        },
+        "output_encoding": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.KrakendExtraConfigSecurityCorsSt": {
+      "type": "object",
+      "properties": {
+        "allow_credentials": {
+          "type": "boolean"
+        },
+        "allow_headers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allow_methods": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allow_origins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expose_headers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_age": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.KrakendExtraConfigSt": {
+      "type": "object",
+      "properties": {
+        "security/cors": {
+          "$ref": "#/definitions/entities.KrakendExtraConfigSecurityCorsSt"
+        }
+      }
+    },
+    "entities.KrakendSt": {
+      "type": "object",
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "endpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entities.KrakendEndpointSt"
+          }
+        },
+        "extra_config": {
+          "$ref": "#/definitions/entities.KrakendExtraConfigSt"
+        },
+        "read_header_timeout": {
+          "type": "string"
+        },
+        "read_timeout": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      }
+    },
+    "entities.ProfileAuthByRefreshTokenRepSt": {
+      "type": "object",
+      "properties": {
+        "access_token": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.ProfileAuthByRefreshTokenReqSt": {
+      "type": "object",
+      "properties": {
+        "refresh_token": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.ProfileAuthRepSt": {
+      "type": "object",
+      "properties": {
+        "access_token": {
+          "type": "string"
+        },
+        "refresh_token": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.ProfileAuthReqSt": {
+      "type": "object",
+      "properties": {
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.ProfileSt": {
+      "type": "object"
+    },
+    "entities.RealmCUSt": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/entities.RealmDataSt"
+        }
+      }
+    },
+    "entities.RealmDataCorsConfSt": {
+      "type": "object",
+      "properties": {
+        "allow_credentials": {
+          "type": "boolean"
+        },
+        "allow_headers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allow_methods": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allow_origins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "max_age": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.RealmDataDeployConfSt": {
+      "type": "object",
+      "properties": {
+        "conf_file": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.RealmDataJwtConfSt": {
+      "type": "object",
+      "properties": {
+        "alg": {
+          "type": "string"
+        },
+        "cache": {
+          "type": "boolean"
+        },
+        "cache_duration": {
+          "type": "integer"
+        },
+        "disable_jwk_security": {
+          "type": "boolean"
+        },
+        "jwk_url": {
+          "type": "string"
+        },
+        "roles_key": {
+          "type": "string"
+        },
+        "roles_key_is_nested": {
+          "type": "boolean"
+        }
+      }
+    },
+    "entities.RealmDataSt": {
+      "type": "object",
+      "properties": {
+        "cors_conf": {
+          "$ref": "#/definitions/entities.RealmDataCorsConfSt"
+        },
+        "deploy_conf": {
+          "$ref": "#/definitions/entities.RealmDataDeployConfSt"
+        },
+        "jwt_conf": {
+          "$ref": "#/definitions/entities.RealmDataJwtConfSt"
+        },
+        "name": {
+          "type": "string"
+        },
+        "public_base_url": {
+          "type": "string"
+        },
+        "read_header_timeout": {
+          "type": "string"
+        },
+        "read_timeout": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.RealmSt": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/entities.RealmDataSt"
+        },
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.RoleCUSt": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "dsc": {
+          "type": "string"
+        },
+        "is_fetched": {
+          "type": "boolean"
+        },
+        "realm_id": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.RoleFetchRemoteRepItemSt": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "dsc": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.RoleFetchRemoteReqSt": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        }
+      }
+    },
+    "entities.RoleSt": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "dsc": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_fetched": {
+          "type": "boolean"
+        },
+        "realm_id": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
