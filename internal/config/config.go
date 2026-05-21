@@ -22,7 +22,7 @@ var Conf = struct {
 
 	PgDsn string `env:"PG_DSN"`
 
-	GwPort              int    `env:"GW_PORT" envDefault:"8000"`
+	GwPort              int    `env:"GW_PORT"`
 	SnapshotGrpcAddress string `env:"SNAPSHOT_GRPC_ADDRESS" envDefault:"localhost:5050"`
 
 	LegacyDMBaseURL      string `env:"LEGACY_DM_BASE_URL" envDefault:"https://api.dm.yc.mdev.kz"`

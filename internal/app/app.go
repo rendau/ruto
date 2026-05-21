@@ -215,34 +215,10 @@ func (a *App) Init() {
 	}
 
 	// gw-server-http
-	a.gw, err = serviceGwP.New(a.ctx, config.Conf.GwPort, config.Conf.SnapshotGrpcAddress)
-	errCheck(err, "gw-server New")
-
-	// err = a.gw.SetConfig(&gwConfig.Root{
-	// 	PublicBaseUrl: "https://example.com",
-	// 	Cors:          gwConfig.RootCors{},
-	// 	Jwt: []*gwConfig.RootJwt{
-	// 		{JwkUrl: "https://api.mdev.kz/jwts/jwk/set"},
-	// 	},
-	// 	Apps: []*gwConfig.App{
-	// 		{
-	// 			PublicPathPrefix: "/ep",
-	// 			Backend: gwConfig.AppBackend{
-	// 				UrlStr: "https://api.mdev.kz/ep",
-	// 			},
-	// 			Endpoints: []*gwConfig.Endpoint{
-	// 				{
-	// 					Method:        "GET",
-	// 					Path:          "dict",
-	// 					Backend:       gwConfig.EndpointBackend{},
-	// 					JwtValidation: gwConfig.EndpointJwtValidation{},
-	// 					IpValidation:  gwConfig.EndpointIpValidation{},
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// })
-	// errCheck(err, "gw-server SetConfig")
+	if config.Conf.GwPort > 0 {
+		a.gw, err = serviceGwP.New(a.ctx, config.Conf.GwPort, config.Conf.SnapshotGrpcAddress)
+		errCheck(err, "gw-server New")
+	}
 }
 
 func (a *App) PreStartHook() {
@@ -270,7 +246,9 @@ func (a *App) Start() {
 	}
 
 	// gw-server-http
-	a.gw.Start()
+	if a.gw != nil {
+		a.gw.Start()
+	}
 }
 
 func (a *App) Listen() {
@@ -288,7 +266,7 @@ func (a *App) Stop() {
 	a.ctxCancel()
 
 	// gw-server-http
-	{
+	if a.gw != nil {
 		err := a.gw.Stop(time.Minute)
 		if err != nil {
 			slog.Error("http-server Stop error", "error", err)
