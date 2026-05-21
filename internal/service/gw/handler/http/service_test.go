@@ -99,6 +99,64 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 	}
 }
 
+func TestServiceBuild_ProxyByConfig_AnyMethod(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Backend-Method", r.Method)
+		w.Header().Set("X-Backend-Path", r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer backend.Close()
+
+	tests := []struct {
+		name           string
+		method         string
+		endpointMethod string
+	}{
+		{
+			name:           "any keyword",
+			method:         http.MethodDelete,
+			endpointMethod: "any",
+		},
+		{
+			name:           "asterisk",
+			method:         http.MethodPatch,
+			endpointMethod: "*",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, err := New(&rootModel.Root{
+				BaseUrl: "https://public.example",
+				Apps: []*appModel.App{
+					{
+						Active:     true,
+						PathPrefix: "lp",
+						Backend: appModel.AppBackend{
+							Url: backend.URL + "/svc",
+						},
+						Endpoints: []*endpointModel.Endpoint{
+							{
+								Active: true,
+								Method: tt.endpointMethod,
+								Path:   "doc/*",
+							},
+						},
+					},
+				},
+			}, nil)
+			require.NoError(t, err)
+
+			rw := httptest.NewRecorder()
+			s.ServeHTTP(rw, httptest.NewRequest(tt.method, "https://public.example/lp/doc/a/b", nil))
+
+			require.Equal(t, http.StatusNoContent, rw.Code)
+			require.Equal(t, tt.method, rw.Header().Get("X-Backend-Method"))
+			require.Equal(t, "/svc/doc/a/b", rw.Header().Get("X-Backend-Path"))
+		})
+	}
+}
+
 func TestServiceBuild_DuplicateRoute(t *testing.T) {
 	_, err := New(&rootModel.Root{
 		BaseUrl: "https://public.example",

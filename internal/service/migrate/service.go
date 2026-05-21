@@ -384,7 +384,7 @@ func mapEndpoint(item legacyEndpoint, rootJWTKids []string) (*endpointModel.Endp
 		// Public endpoint: explicit auth replace
 		endpointAuth = authModel.Auth{
 			Enabled: false,
-			Mode:    constant.AuthModeReplace,
+			Mode:    constant.AuthModeExtend,
 			Methods: []*authModel.AuthMethod{},
 		}
 

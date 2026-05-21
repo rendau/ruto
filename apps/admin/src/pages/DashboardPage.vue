@@ -9,7 +9,14 @@ const stats = ref<StatsResponse | null>(null);
 const errorMessage = ref("");
 
 function safeNum(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
 }
 
 const endpointActivePercent = computed(() => {

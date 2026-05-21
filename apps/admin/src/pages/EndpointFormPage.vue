@@ -36,6 +36,7 @@ const form = ref<EndpointMain>({
   }
 });
 const appDisplayName = computed(() => appName.value || form.value.app_id || "-");
+const endpointMethodOptions = ["*", "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE"];
 
 async function loadAppName() {
   if (!form.value.app_id) {
@@ -121,15 +122,19 @@ onMounted(() => {
     </label>
     <label class="field">
       <span>Method</span>
-      <input v-model="form.method" placeholder="GET" required />
+      <select v-model="form.method" required>
+        <option v-for="method in endpointMethodOptions" :key="method" :value="method">
+          {{ method }}
+        </option>
+      </select>
     </label>
     <label class="field">
       <span>Path</span>
-      <input v-model="form.path" placeholder="/users or empty for app root" />
+      <input v-model="form.path" placeholder="/path or empty for app root" />
     </label>
     <label class="field">
       <span>Custom Backend Path</span>
-      <input v-model="form.backend.custom_path" />
+      <input v-model="form.backend.custom_path" placeholder="/cusom_path or empty for app backend-path" />
     </label>
     <div class="field">
       <span>Auth</span>

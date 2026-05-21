@@ -73,15 +73,17 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI) (_ http.Ha
 				routePath = app.PathPrefix + "/" + endpoint.Path
 			}
 
-			router.Method(
-				endpoint.Method,
-				routePath,
-				middleware.Chain(appHandler,
-					middleware.NewWithRequest(snapshot, app, endpoint),
-					auth.New(snapshot, app, endpoint, jwkGetter),
-					middleware.NewStripPrefix(app.PathPrefix),
-				),
+			handler := middleware.Chain(appHandler,
+				middleware.NewWithRequest(snapshot, app, endpoint),
+				auth.New(snapshot, app, endpoint, jwkGetter),
+				middleware.NewStripPrefix(app.PathPrefix),
 			)
+
+			if endpoint.Method == "*" {
+				router.Handle(routePath, handler)
+			} else {
+				router.Method(endpoint.Method, routePath, handler)
+			}
 		}
 	}
 
