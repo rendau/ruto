@@ -54,9 +54,12 @@ import (
 	// session module
 	domainSessionServiceP "github.com/rendau/ruto/internal/domain/session/service"
 
+	// snapshot module
+	domainSnapshotRepoDbP "github.com/rendau/ruto/internal/domain/snapshot/repo/db"
+	domainSnapshotServiceP "github.com/rendau/ruto/internal/domain/snapshot/service"
+
 	// gateway/snapshot/stats modules
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
-	serviceSnapshotP "github.com/rendau/ruto/internal/service/snapshot"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
 	usecaseStatsP "github.com/rendau/ruto/internal/usecase/stats"
 
@@ -140,8 +143,9 @@ func (a *App) Init() {
 	handlerGrpcUsr := handlerGrpcP.NewUsr(usecaseUsr)
 
 	// snapshot
-	snapshotService := serviceSnapshotP.New(a.ctx, domainRootService, domainAppService, domainEndpointService)
-	usecaseSnapshot := usecaseSnapshotP.New(snapshotService)
+	domainSnapshotRepoDb := domainSnapshotRepoDbP.New(a.pgpool)
+	domainSnapshotService := domainSnapshotServiceP.New(domainSnapshotRepoDb)
+	usecaseSnapshot := usecaseSnapshotP.New(domainSnapshotService, domainRootService, domainAppService, domainEndpointService)
 	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
 
 	// stats

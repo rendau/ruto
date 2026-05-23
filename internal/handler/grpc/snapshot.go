@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -20,20 +21,28 @@ func NewSnapshot(usecase *usecase.Usecase) *Snapshot {
 }
 
 func (h *Snapshot) GetVersion(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.SnapshotVersion, error) {
-	result := h.usecase.GetVersion()
+	result, err := h.usecase.GetVersion(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("usecase.GetVersion: %w", err)
+	}
 	return &ruto_v1.SnapshotVersion{
 		Version: result,
 	}, nil
 }
 
-func (h *Snapshot) Get(_ context.Context, _ *emptypb.Empty) (*ruto_v1.SnapshotResponse, error) {
-	result := h.usecase.Get()
+func (h *Snapshot) Get(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.SnapshotResponse, error) {
+	result, err := h.usecase.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("usecase.Get: %w", err)
+	}
 	return &ruto_v1.SnapshotResponse{
 		Data: dto.JsonObjToGrpcStruct(result),
 	}, nil
 }
 
-func (h *Snapshot) Deploy(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	h.usecase.Refresh()
+func (h *Snapshot) Deploy(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	if err := h.usecase.Refresh(ctx); err != nil {
+		return nil, fmt.Errorf("usecase.Refresh: %w", err)
+	}
 	return &emptypb.Empty{}, nil
 }

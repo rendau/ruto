@@ -33,3 +33,11 @@ create table usr
     username text      not null default '',
     password text      not null default ''
 );
+
+create table snapshot
+(
+    id   text  not null
+        primary key,
+    hash text  not null default '',
+    data jsonb not null default '{}'
+);
