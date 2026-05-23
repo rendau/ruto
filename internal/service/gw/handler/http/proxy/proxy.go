@@ -20,11 +20,11 @@ func NewProxy(app *appModel.App) http.Handler {
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			DialContext: (&net.Dialer{
-				Timeout: 1 * time.Second,
+				Timeout: 2 * time.Second,
 			}).DialContext,
 			DisableCompression:  true,
-			TLSHandshakeTimeout: 1 * time.Second,
-			MaxIdleConnsPerHost: 50,
+			TLSHandshakeTimeout: 2 * time.Second,
+			MaxIdleConnsPerHost: 100,
 		},
 		Rewrite: func(r *httputil.ProxyRequest) {
 			ctxReq := request.Extract(r.In.Context())

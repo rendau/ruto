@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 
 	"github.com/goccy/go-json"
 	"github.com/samber/lo"
@@ -28,12 +29,18 @@ func New(
 	appSvc AppServiceI,
 	endpointSvc EndpointServiceI,
 ) *Usecase {
-	return &Usecase{
+	result := &Usecase{
 		snapshotSvc: snapshotSvc,
 		rootSvc:     rootSvc,
 		appSvc:      appSvc,
 		endpointSvc: endpointSvc,
 	}
+
+	if err := result.ensure(context.Background()); err != nil {
+		slog.Error("snapshot-usecase: ensure failed", "error", err)
+	}
+
+	return result
 }
 
 func (u *Usecase) GetVersion(ctx context.Context) (string, error) {
@@ -72,6 +79,22 @@ func (u *Usecase) Refresh(ctx context.Context) error {
 	})
 	if err != nil {
 		return fmt.Errorf("snapshotSvc.Set: %w", err)
+	}
+
+	return nil
+}
+
+func (u *Usecase) ensure(ctx context.Context) error {
+	version, err := u.GetVersion(ctx)
+	if err != nil {
+		return fmt.Errorf("GetVersion: %w", err)
+	}
+	if version != "" {
+		return nil
+	}
+
+	if err = u.Refresh(ctx); err != nil {
+		return fmt.Errorf("u.Refresh: %w", err)
 	}
 
 	return nil
