@@ -60,12 +60,17 @@ func (u *Usecase) Get(ctx context.Context) ([]byte, error) {
 }
 
 func (u *Usecase) Refresh(ctx context.Context) error {
-	rootObj, err := u.generateFromDb(ctx)
+	snapshotObj, err := u.construct(ctx)
 	if err != nil {
-		return fmt.Errorf("generateFromDb: %w", err)
+		return fmt.Errorf("construct: %w", err)
 	}
 
-	result, err := json.Marshal(rootObj)
+	err = snapshotObj.Normalize()
+	if err != nil {
+		return fmt.Errorf("snapshot.Normalize: %w", err)
+	}
+
+	result, err := json.Marshal(snapshotObj)
 	if err != nil {
 		return fmt.Errorf("json.Marshal: %w", err)
 	}
@@ -100,7 +105,7 @@ func (u *Usecase) ensure(ctx context.Context) error {
 	return nil
 }
 
-func (u *Usecase) generateFromDb(ctx context.Context) (*rootModel.Root, error) {
+func (u *Usecase) construct(ctx context.Context) (*rootModel.Root, error) {
 	// fetch root
 	rootObj, err := u.rootSvc.Get(ctx)
 	if err != nil {
