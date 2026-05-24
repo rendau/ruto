@@ -941,6 +941,19 @@ h3 {
   gap: 12px;
 }
 
+.gateway-panel {
+  margin-top: 12px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.gateway-table th,
+.gateway-table td {
+  white-space: nowrap;
+}
+
 .panel {
   background: #1e2d44;
   border: 1px solid #425c7f;

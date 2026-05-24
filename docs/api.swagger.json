@@ -12,6 +12,9 @@
       "name": "Endpoint"
     },
     {
+      "name": "Gateway"
+    },
+    {
       "name": "Migrate"
     },
     {
@@ -433,6 +436,28 @@
         ],
         "tags": [
           "Endpoint"
+        ]
+      }
+    },
+    "/gateway": {
+      "get": {
+        "operationId": "Gateway_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1GatewayListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Gateway"
         ]
       }
     },
@@ -1204,6 +1229,59 @@
         },
         "auth": {
           "$ref": "#/definitions/ruto_v1Auth"
+        }
+      }
+    },
+    "ruto_v1GatewayListResponse": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1GatewayStateItem"
+          }
+        }
+      }
+    },
+    "ruto_v1GatewayStateItem": {
+      "type": "object",
+      "properties": {
+        "gateway_id": {
+          "type": "string"
+        },
+        "pod_uid": {
+          "type": "string"
+        },
+        "pod_name": {
+          "type": "string"
+        },
+        "node_name": {
+          "type": "string"
+        },
+        "host_name": {
+          "type": "string"
+        },
+        "snapshot_version": {
+          "type": "string"
+        },
+        "last_apply_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "started_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last_error": {
+          "type": "string"
+        },
+        "last_seen_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "status": {
+          "type": "string"
         }
       }
     },

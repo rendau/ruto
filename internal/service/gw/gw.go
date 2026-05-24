@@ -8,17 +8,17 @@ import (
 	"github.com/samber/lo"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
-	"github.com/rendau/ruto/internal/service/gw/config_client"
+	"github.com/rendau/ruto/internal/service/gw/core_client"
 	handlerHttp "github.com/rendau/ruto/internal/service/gw/handler/http"
 	"github.com/rendau/ruto/internal/service/gw/jwk"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
 )
 
 type Service struct {
-	globalCtx context.Context
-	server    *localHttp.Service
-	jwk       *jwk.Service
-	client    *config_client.Service
+	globalCtx  context.Context
+	server     *localHttp.Service
+	jwk        *jwk.Service
+	coreClient *core_client.Service
 }
 
 func New(globalCtx context.Context, serverPort int, configAddress string) (*Service, error) {
@@ -30,7 +30,7 @@ func New(globalCtx context.Context, serverPort int, configAddress string) (*Serv
 		jwk:       jwk.New(globalCtx),
 	}
 
-	service.client, err = config_client.New(globalCtx, configAddress, service.SetConfig)
+	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig)
 	if err != nil {
 		return nil, fmt.Errorf("config_client.New: %w", err)
 	}
@@ -40,7 +40,7 @@ func New(globalCtx context.Context, serverPort int, configAddress string) (*Serv
 
 func (s *Service) Start() {
 	s.jwk.Start()
-	s.client.Start()
+	s.coreClient.Start()
 	s.server.Start()
 }
 

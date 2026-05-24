@@ -6,6 +6,8 @@ import type {
   EndpointListRep,
   EndpointMain,
   ErrorRep,
+  GatewayStateListRep,
+  SnapshotVersionRep,
   StatsResponse,
   RootMain,
   RootJwtKidsRep,
@@ -224,4 +226,12 @@ export function deploySnapshot(): Promise<void> {
   return apiFetch<void>("/snapshot/deploy", {
     method: "POST"
   });
+}
+
+export function getSnapshotVersion(): Promise<SnapshotVersionRep> {
+  return apiFetch<SnapshotVersionRep>("/snapshot/version");
+}
+
+export function listGateways(): Promise<GatewayStateListRep> {
+  return apiFetch<GatewayStateListRep>("/gateway");
 }

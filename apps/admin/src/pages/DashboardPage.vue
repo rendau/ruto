@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { getStats } from "../lib/api";
+import { getSnapshotVersion, getStats, listGateways } from "../lib/api";
+import { formatUnixAge, formatUnixDateTime } from "../lib/datetime";
 import { notifyError } from "../lib/notify";
-import type { StatsResponse } from "../types/api";
+import type { GatewayStateItem, StatsResponse } from "../types/api";
 
 const loading = ref(false);
 const stats = ref<StatsResponse | null>(null);
+const gateways = ref<GatewayStateItem[]>([]);
+const currentSnapshotVersion = ref("");
 const errorMessage = ref("");
 
 function safeNum(value: unknown): number {
@@ -44,13 +47,47 @@ async function loadStats() {
   loading.value = true;
   errorMessage.value = "";
   try {
-    stats.value = await getStats();
+    const [statsRep, gatewaysRep, snapshotVersionRep] = await Promise.all([
+      getStats(),
+      listGateways(),
+      getSnapshotVersion()
+    ]);
+    stats.value = statsRep;
+    gateways.value = gatewaysRep.results || [];
+    currentSnapshotVersion.value = snapshotVersionRep.version || "";
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load dashboard stats";
     notifyError(errorMessage.value);
   } finally {
     loading.value = false;
   }
+}
+
+function formatUnixTime(value: unknown): string {
+  return formatUnixDateTime(value, "n/a");
+}
+
+function formatApplyAge(value: unknown): string {
+  return formatUnixAge(value, "n/a");
+}
+
+function isCurrentVersionApplied(gateway: GatewayStateItem): boolean {
+  const currentVersion = (currentSnapshotVersion.value || "").trim();
+  const gatewayVersion = (gateway.snapshot_version || "").trim();
+  if (!currentVersion || !gatewayVersion) {
+    return false;
+  }
+  return currentVersion === gatewayVersion;
+}
+
+function shortVersion(value: string): string {
+  if (!value) {
+    return "n/a";
+  }
+  if (value.length <= 12) {
+    return value;
+  }
+  return `${value.slice(0, 12)}...`;
 }
 
 onMounted(() => {
@@ -130,6 +167,45 @@ onMounted(() => {
           <p v-if="topMethods.length === 0" class="muted">No endpoint methods yet.</p>
         </div>
       </article>
+    </section>
+
+    <section class="panel gateway-panel">
+      <h3>Gateways</h3>
+      <div class="table-wrap">
+        <table class="data-table gateway-table">
+          <thead>
+            <tr>
+              <th>Gateway</th>
+              <th>Status</th>
+              <th>Current Applied</th>
+              <th>Apply Age</th>
+              <th>Runtime</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="gateway in gateways" :key="gateway.gateway_id">
+              <td>{{ gateway.gateway_id }}</td>
+              <td>
+                <span class="status-chip" :class="{ inactive: gateway.status !== 'online' }">
+                  {{ gateway.status }}
+                </span>
+              </td>
+              <td :title="`current: ${shortVersion(currentSnapshotVersion)} / gateway: ${shortVersion(gateway.snapshot_version)}`">
+                <span class="status-chip" :class="{ inactive: !isCurrentVersionApplied(gateway) }">
+                  {{ isCurrentVersionApplied(gateway) ? "yes" : "no" }}
+                </span>
+              </td>
+              <td :title="formatUnixTime(gateway.last_apply_at_unix)">{{ formatApplyAge(gateway.last_apply_at_unix) }}</td>
+              <td :title="gateway.node_name || gateway.host_name || ''">
+                {{ gateway.pod_name || gateway.node_name || gateway.host_name || "n/a" }}
+              </td>
+            </tr>
+            <tr v-if="gateways.length === 0">
+              <td colspan="5" class="muted">No gateways reported yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   </template>
 </template>

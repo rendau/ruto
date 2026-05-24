@@ -17,7 +17,12 @@ var Conf = struct {
 	HttpCors bool `env:"HTTP_CORS" envDefault:"false"`
 
 	AdminJWTSecret string `env:"ADMIN_JWT_SECRET"`
-	PgDsn          string `env:"PG_DSN"`
+
+	PgDsn string `env:"PG_DSN"`
+
+	RedisAddr     string `env:"REDIS_ADDR"`
+	RedisDB       int    `env:"REDIS_DB" envDefault:"0"`
+	RedisPassword string `env:"REDIS_PASSWORD"`
 
 	LegacyDMBaseURL      string `env:"LEGACY_DM_BASE_URL"`
 	LegacyDMRefreshToken string `env:"LEGACY_DM_REFRESH_TOKEN"`

@@ -28,9 +28,13 @@ import (
 	domainUsrRepoDbP "github.com/rendau/ruto/internal/domain/usr/repo/db"
 	domainUsrServiceP "github.com/rendau/ruto/internal/domain/usr/service"
 	handlerGrpcP "github.com/rendau/ruto/internal/handler/grpc"
+	cacheRepoMemP "github.com/rendau/ruto/internal/service/cache/repo/mem"
+	cacheRepoRedisP "github.com/rendau/ruto/internal/service/cache/repo/redis"
+	cacheServiceP "github.com/rendau/ruto/internal/service/cache/service"
 	serviceMigrateP "github.com/rendau/ruto/internal/service/migrate"
 	usecaseAppP "github.com/rendau/ruto/internal/usecase/app"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
+	usecaseGatewayP "github.com/rendau/ruto/internal/usecase/gateway"
 	usecaseMigrateP "github.com/rendau/ruto/internal/usecase/migrate"
 	usecaseRootP "github.com/rendau/ruto/internal/usecase/root"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
@@ -72,6 +76,17 @@ func (a *App) Init() error {
 
 	// session
 	sessionService := domainSessionServiceP.New(configCore.Conf.AdminJWTSecret)
+
+	// cache
+	var cacheRepo cacheServiceP.RepoI
+	if configCore.Conf.RedisAddr != "" {
+		cacheRepo = cacheRepoRedisP.New(configCore.Conf.RedisAddr, configCore.Conf.RedisDB, configCore.Conf.RedisPassword)
+		slog.Info("Cache initialized with Redis")
+	} else {
+		cacheRepo = cacheRepoMemP.New()
+		slog.Info("Cache initialized with memory")
+	}
+	cacheService := cacheServiceP.New(cacheRepo, "ruto:")
 
 	// root
 	domainRootRepoDb := domainRootRepoDbP.New(a.pgpool)
@@ -118,6 +133,10 @@ func (a *App) Init() error {
 	usecaseMigrate := usecaseMigrateP.New(serviceMigrate, sessionService)
 	handlerGrpcMigrate := handlerGrpcP.NewMigrate(usecaseMigrate)
 
+	// gateway
+	usecaseGateway := usecaseGatewayP.New(sessionService, cacheService.NewChildInstance("gateway:"))
+	handlerGrpcGateway := handlerGrpcP.NewGateway(usecaseGateway)
+
 	// grpc-server
 	a.grpcServer = NewGrpcServer("core", sessionService, func(server *grpc.Server) {
 		ruto_v1.RegisterRootServer(server, handlerGrpcRoot)
@@ -127,6 +146,7 @@ func (a *App) Init() error {
 		ruto_v1.RegisterStatsServer(server, handlerGrpcStats)
 		ruto_v1.RegisterUsrServer(server, handlerGrpcUsr)
 		ruto_v1.RegisterMigrateServer(server, handlerGrpcMigrate)
+		ruto_v1.RegisterGatewayServer(server, handlerGrpcGateway)
 	})
 
 	// grpc-gateway
@@ -145,6 +165,7 @@ func (a *App) Init() error {
 			ruto_v1.RegisterStatsHandler,
 			ruto_v1.RegisterUsrHandler,
 			ruto_v1.RegisterMigrateHandler,
+			ruto_v1.RegisterGatewayHandler,
 		}
 		for _, registerHandler := range handlers {
 			if registerErr := registerHandler(context.Background(), mux, conn); registerErr != nil {

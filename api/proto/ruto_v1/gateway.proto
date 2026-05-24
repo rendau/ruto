@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/ruto_v1";
+
+service Gateway {
+  rpc Heartbeat(GatewayHeartbeatRequest) returns (google.protobuf.Empty);
+  rpc List(google.protobuf.Empty) returns (GatewayListResponse) {
+    option (google.api.http) = { get: "/gateway" };
+  };
+}
+
+message GatewayHeartbeatRequest {
+  string gateway_id = 1;
+  string pod_uid = 2;
+  string pod_name = 3;
+  string node_name = 4;
+  string host_name = 5;
+  string snapshot_version = 6;
+  int64 last_apply_at_unix = 7;
+  int64 started_at_unix = 8;
+  string last_error = 9;
+}
+
+message GatewayListResponse {
+  repeated GatewayStateItem results = 1;
+}
+
+message GatewayStateItem {
+  string gateway_id = 1;
+  string pod_uid = 2;
+  string pod_name = 3;
+  string node_name = 4;
+  string host_name = 5;
+  string snapshot_version = 6;
+  int64 last_apply_at_unix = 7;
+  int64 started_at_unix = 8;
+  string last_error = 9;
+  int64 last_seen_at_unix = 10;
+  string status = 11;
+}
+

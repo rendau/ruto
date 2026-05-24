@@ -1,9 +1,10 @@
-package config_client
+package core_client
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -27,7 +28,12 @@ type Service struct {
 
 	conn           *grpc.ClientConn
 	client         ruto_v1.SnapshotClient
+	gatewayClient  ruto_v1.GatewayClient
 	currentVersion string
+	identity       *identity
+	startedAtUnix  int64
+	lastApplyAt    int64
+	lastError      string
 }
 
 func New(
@@ -38,8 +44,10 @@ func New(
 	var err error
 
 	service := &Service{
-		globalCtx: globalCtx,
-		onConfig:  onConfig,
+		globalCtx:     globalCtx,
+		onConfig:      onConfig,
+		identity:      newIdentity(),
+		startedAtUnix: time.Now().Unix(),
 	}
 
 	if address != "" {
@@ -51,6 +59,7 @@ func New(
 			return nil, fmt.Errorf("grpc.NewClient: %w", err)
 		}
 		service.client = ruto_v1.NewSnapshotClient(service.conn)
+		service.gatewayClient = ruto_v1.NewGatewayClient(service.conn)
 	}
 
 	return service, nil
@@ -84,8 +93,13 @@ func (s *Service) worker() {
 }
 
 func (s *Service) refresh() {
+	if err := s.sendHeartbeat(); err != nil {
+		slog.Warn("core-client: heartbeat failed", "error", err)
+	}
+
 	serverVersion, err := s.fetchVersion()
 	if err != nil {
+		s.lastError = err.Error()
 		slog.Error("config-client: fetchVersion failed", "error", err)
 		return
 	}
@@ -95,6 +109,7 @@ func (s *Service) refresh() {
 
 	err = s.fetchAndApplyConfig()
 	if err != nil {
+		s.lastError = err.Error()
 		slog.Error("config-client: fetchAndApplyConfig failed", "error", err, "version", serverVersion)
 		return
 	}
@@ -102,6 +117,8 @@ func (s *Service) refresh() {
 	slog.Info("config-client: config applied", "version", serverVersion)
 
 	s.currentVersion = serverVersion
+	s.lastApplyAt = time.Now().Unix()
+	s.lastError = ""
 }
 
 func (s *Service) fetchVersion() (string, error) {
@@ -139,6 +156,37 @@ func (s *Service) fetchAndApplyConfig() error {
 	err = s.onConfig(conf)
 	if err != nil {
 		return fmt.Errorf("onConfig: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) sendHeartbeat() error {
+	if s.gatewayClient == nil || s.identity == nil {
+		return nil
+	}
+
+	lastError := strings.TrimSpace(s.lastError)
+	if len(lastError) > 512 {
+		lastError = lastError[:512]
+	}
+
+	ctx, cancel := context.WithTimeout(s.globalCtx, 3*time.Second)
+	defer cancel()
+
+	_, err := s.gatewayClient.Heartbeat(ctx, &ruto_v1.GatewayHeartbeatRequest{
+		GatewayId:       s.identity.GatewayID,
+		PodUid:          s.identity.PodUID,
+		PodName:         s.identity.PodName,
+		NodeName:        s.identity.NodeName,
+		HostName:        s.identity.HostName,
+		SnapshotVersion: s.currentVersion,
+		LastApplyAtUnix: s.lastApplyAt,
+		StartedAtUnix:   s.startedAtUnix,
+		LastError:       lastError,
+	})
+	if err != nil && s.globalCtx.Err() == nil {
+		return fmt.Errorf("gatewayClient.Heartbeat: %w", err)
 	}
 
 	return nil

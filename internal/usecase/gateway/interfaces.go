@@ -1,0 +1,18 @@
+package gateway
+
+import (
+	"context"
+	"time"
+
+	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
+)
+
+type SessionServiceI interface {
+	FromContext(ctx context.Context) *sessionModel.Session
+}
+
+type CacheI interface {
+	ListKeys() ([]string, error)
+	SetJsonObj(key string, value any, ttl time.Duration) error
+	GetJsonObj(key string, dst any) (bool, error)
+}

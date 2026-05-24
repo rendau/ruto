@@ -163,3 +163,25 @@ export interface StatsResponse {
   root_cors_enabled: boolean;
   methods: StatsMethodStats[];
 }
+
+export interface GatewayStateItem {
+  gateway_id: string;
+  pod_uid: string;
+  pod_name: string;
+  node_name: string;
+  host_name: string;
+  snapshot_version: string;
+  last_apply_at_unix: number;
+  started_at_unix: number;
+  last_error: string;
+  last_seen_at_unix: number;
+  status: "online" | "stale" | "offline";
+}
+
+export interface GatewayStateListRep {
+  results: GatewayStateItem[];
+}
+
+export interface SnapshotVersionRep {
+  version: string;
+}
