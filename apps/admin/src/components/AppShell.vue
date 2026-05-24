@@ -244,14 +244,14 @@ onBeforeUnmount(() => {
         </RouterLink>
         <div v-if="filteredApps.length === 0" class="apps-empty muted">No apps found</div>
       </div>
-      <button
-        class="sidebar-resize"
-        type="button"
-        title="Resize sidebar"
-        aria-label="Resize sidebar"
-        @mousedown="startResize"
-      ></button>
     </aside>
+    <button
+      class="sidebar-resize"
+      type="button"
+      title="Resize sidebar"
+      aria-label="Resize sidebar"
+      @mousedown="startResize"
+    ></button>
     <button v-if="mobileSidebarOpen" class="sidebar-overlay" type="button" @click="closeMobileSidebar"></button>
 
     <main class="content">

@@ -50,7 +50,7 @@ async function submit() {
         {{ authStore.loading ? "Signing in..." : "Sign in" }}
       </button>
       <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-      <p class="hint">Token renewal on expiry uses this session's credentials (one attempt).</p>
+      <p class="hint">Token renewal on expiry uses saved credentials (one attempt).</p>
     </form>
   </main>
 </template>

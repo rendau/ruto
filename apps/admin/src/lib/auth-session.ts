@@ -11,11 +11,11 @@ interface Credentials {
   password: string;
 }
 
-let token = sessionStorage.getItem(storageKeys.token) || "";
+let token = localStorage.getItem(storageKeys.token) || "";
 let renewInFlight: Promise<boolean> | null = null;
 
 function readCredentials(): Credentials | null {
-  const raw = sessionStorage.getItem(storageKeys.credentials);
+  const raw = localStorage.getItem(storageKeys.credentials);
   if (!raw) {
     return null;
   }
@@ -32,10 +32,10 @@ function readCredentials(): Credentials | null {
 
 function writeCredentials(creds: Credentials | null): void {
   if (!creds) {
-    sessionStorage.removeItem(storageKeys.credentials);
+    localStorage.removeItem(storageKeys.credentials);
     return;
   }
-  sessionStorage.setItem(storageKeys.credentials, JSON.stringify(creds));
+  localStorage.setItem(storageKeys.credentials, JSON.stringify(creds));
 }
 
 export function getToken(): string {
@@ -45,9 +45,9 @@ export function getToken(): string {
 export function setToken(value: string): void {
   token = value.trim();
   if (token) {
-    sessionStorage.setItem(storageKeys.token, token);
+    localStorage.setItem(storageKeys.token, token);
   } else {
-    sessionStorage.removeItem(storageKeys.token);
+    localStorage.removeItem(storageKeys.token);
   }
 }
 
