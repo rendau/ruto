@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"context"
@@ -11,17 +11,14 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"time"
 
-	otgrpc "github.com/opentracing-contrib/go-grpc"
-	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	"github.com/rendau/ruto/internal/config"
+	configCore "github.com/rendau/ruto/internal/config/core"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	sessionService "github.com/rendau/ruto/internal/domain/session/service"
 	"github.com/rendau/ruto/internal/errs"
@@ -36,41 +33,21 @@ type GrpcServer struct {
 func NewGrpcServer(name string, sessionSvc *sessionService.Service, register func(*grpc.Server)) *GrpcServer {
 	interceptors := make([]grpc.UnaryServerInterceptor, 0, 5)
 
-	// ctx without cancel
 	interceptors = append(interceptors, GrpcInterceptorCtxWithoutCancel())
-
-	// session from jwt
 	interceptors = append(interceptors, GrpcInterceptorSession(sessionSvc))
-
-	// recovery
 	interceptors = append(interceptors, GrpcInterceptorRecovery())
-
-	// error
 	interceptors = append(interceptors, GrpcInterceptorError())
 
-	// tracing
-	if config.Conf.WithTracing {
-		interceptors = append(interceptors, GrpcInterceptorTracing())
-	}
-
-	// metrics
-	if config.Conf.WithMetrics {
-		interceptors = append(interceptors, GrpcInterceptorMetrics())
-	}
-
-	// server
 	server := grpc.NewServer(
 		grpc.MaxSendMsgSize(math.MaxUint32),
 		grpc.MaxRecvMsgSize(math.MaxUint32),
 		grpc.ChainUnaryInterceptor(interceptors...),
 	)
 
-	// register handlers
 	if register != nil {
 		register(server)
 	}
 
-	// register grpc reflection
 	reflection.Register(server)
 
 	return &GrpcServer{
@@ -80,7 +57,7 @@ func NewGrpcServer(name string, sessionSvc *sessionService.Service, register fun
 }
 
 func (s *GrpcServer) Start() error {
-	lis, err := net.Listen("tcp", ":"+strconv.Itoa(config.Conf.GrpcPort))
+	lis, err := net.Listen("tcp", ":"+strconv.Itoa(configCore.Conf.GrpcPort))
 	if err != nil {
 		return fmt.Errorf("failed to listen grpc: %w", err)
 	}
@@ -148,19 +125,6 @@ func grpcExtractBearerToken(ctx context.Context) string {
 	return ""
 }
 
-func GrpcInterceptorTracing() grpc.UnaryServerInterceptor {
-	tracer := opentracing.GlobalTracer()
-
-	return otgrpc.OpenTracingServerInterceptor(
-		tracer,
-		otgrpc.SpanDecorator(func(_ context.Context, span opentracing.Span, method string, req, resp any, err error) {
-			if err != nil {
-				span.SetTag("error", true)
-			}
-		}),
-	)
-}
-
 func GrpcInterceptorRecovery() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		defer func() {
@@ -176,24 +140,6 @@ func GrpcInterceptorRecovery() grpc.UnaryServerInterceptor {
 		}()
 
 		return handler(ctx, req)
-	}
-}
-
-func GrpcInterceptorMetrics() grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-		start := time.Now()
-
-		h, err := handler(ctx, req)
-
-		responseStatus := "ok"
-		if err != nil {
-			responseStatus = "error"
-		}
-
-		metricRequestCounter.WithLabelValues("grpc", info.FullMethod, responseStatus).Inc()
-		metricResponseDuration.WithLabelValues("grpc", info.FullMethod, responseStatus).Observe(time.Since(start).Seconds())
-
-		return h, err
 	}
 }
 

@@ -1,5 +1,30 @@
 # ruto
 
+## Backends
+
+Проект разделен на два бэкенда:
+
+- `core`: БД + API + snapshot source
+- `gateway`: тянет snapshot из `core` и поднимает gateway
+
+Entrypoints:
+
+- `cmd/core/main.go`
+- `cmd/gateway/main.go`
+
+Команды:
+
+```bash
+make run-core
+make run-gateway
+make build-all
+```
+
+Env templates:
+
+- `config/core.env.example`
+- `config/gateway.env.example`
+
 ### DB dump:
 
 ```

@@ -1,4 +1,4 @@
-package app
+package common
 
 import (
 	"log/slog"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func initLogger(debug bool, level string) {
+func InitLogger(debug bool, level string) {
 	var slogLevel slog.Level
 	switch strings.ToLower(level) {
 	case "debug":
@@ -31,4 +31,7 @@ func initLogger(debug bool, level string) {
 	}
 
 	slog.Info("Logger initialized with level '" + strings.ToLower(slogLevel.String()) + "'")
+	if debug {
+		slog.Info("DEBUG mode enabled")
+	}
 }

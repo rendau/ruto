@@ -1,4 +1,4 @@
-package app
+package core
 
 import (
 	"context"
@@ -20,9 +20,7 @@ func initPgPool(dsn string) (*pgxpool.Pool, error) {
 	pgConf.MaxConnIdleTime = 10 * time.Minute
 	pgConf.HealthCheckPeriod = time.Minute
 
-	var pgpool *pgxpool.Pool
-
-	pgpool, err = pgxpool.NewWithConfig(context.Background(), pgConf)
+	pgpool, err := pgxpool.NewWithConfig(context.Background(), pgConf)
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool.NewWithConfig: %w", err)
 	}

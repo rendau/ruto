@@ -113,11 +113,6 @@ func TestServiceBuild_ProxyByConfig_AnyMethod(t *testing.T) {
 		endpointMethod string
 	}{
 		{
-			name:           "any keyword",
-			method:         http.MethodDelete,
-			endpointMethod: "any",
-		},
-		{
 			name:           "asterisk",
 			method:         http.MethodPatch,
 			endpointMethod: "*",

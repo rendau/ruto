@@ -1,30 +1,37 @@
-.DEFAULT_GOAL := build
+.DEFAULT_GOAL := build-all
 
-BINARY_NAME = ruto
+CORE_BINARY_NAME = core
+GATEWAY_BINARY_NAME = gateway
 BUILD_PATH = cmd/build
 SERVICE_NAME = ruto_v1
 ADMIN_PATH = apps/admin
 
 .SILENT:
 
-run:
-	go run cmd/main.go
+run-core:
+	go run cmd/core/main.go
+
+run-gateway:
+	go run cmd/gateway/main.go
 
 run-admin:
 	pnpm --dir $(ADMIN_PATH) dev
 
-run-local:
-	go run cmd/main.go
-
-build:
+build-core:
 	mkdir -p $(BUILD_PATH)
-	CGO_ENABLED=0 go build -o $(BUILD_PATH)/$(BINARY_NAME) cmd/main.go
+	CGO_ENABLED=0 go build -o $(BUILD_PATH)/$(CORE_BINARY_NAME) cmd/core/main.go
+
+build-gateway:
+	mkdir -p $(BUILD_PATH)
+	CGO_ENABLED=0 go build -o $(BUILD_PATH)/$(GATEWAY_BINARY_NAME) cmd/gateway/main.go
+
+build-all: build-core build-gateway
 
 build-admin:
 	pnpm --dir $(ADMIN_PATH) install
 	pnpm --dir $(ADMIN_PATH) build
 
-build-prod: build build-admin
+build-prod: build-all build-admin
 
 clean:
 	rm -rf $(BUILD_PATH)
