@@ -34,8 +34,8 @@ func (h *Root) Set(ctx context.Context, req *ruto_v1.RootMain) (*emptypb.Empty, 
 	return &emptypb.Empty{}, nil
 }
 
-func (h *Root) GetJwtKids(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.RootJwtKidsRep, error) {
-	kids, err := h.usecase.GetJwtKids(ctx)
+func (h *Root) GetJwtKidsByUrls(ctx context.Context, req *ruto_v1.RootJwtKidsReq) (*ruto_v1.RootJwtKidsRep, error) {
+	kids, err := h.usecase.GetJwtKidsByURLs(ctx, req.GetUrls())
 	if err != nil {
 		return nil, err
 	}

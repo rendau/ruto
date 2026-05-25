@@ -8,6 +8,7 @@ import (
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/samber/lo"
 
+	"github.com/rendau/ruto/internal/constant"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 )
 
@@ -17,20 +18,6 @@ type Jwt struct {
 	requiredKid     string
 	requiredRoleMap map[string]bool
 }
-
-var (
-	validJWTAlg = []string{
-		jwtv5.SigningMethodRS256.Alg(),
-		jwtv5.SigningMethodRS384.Alg(),
-		jwtv5.SigningMethodRS512.Alg(),
-	}
-	validJWTAlgMap = lo.SliceToMap(
-		validJWTAlg,
-		func(method string) (string, bool) {
-			return method, true
-		},
-	)
-)
 
 func New(jwkGetter JwkGetterI, conf *authModel.AuthMethodJWT) *Jwt {
 	return &Jwt{
@@ -81,7 +68,7 @@ func (a *Jwt) Authorize(r *http.Request) bool {
 
 			return jwk, nil
 		},
-		jwtv5.WithValidMethods(validJWTAlg),
+		jwtv5.WithValidMethods(constant.SupportedJWTAlgorithms),
 	)
 	if err != nil || parsed == nil || !parsed.Valid {
 		return false
@@ -95,7 +82,7 @@ func (a *Jwt) Authorize(r *http.Request) bool {
 }
 
 func (a *Jwt) checkAlg(alg string) bool {
-	return validJWTAlgMap[alg]
+	return constant.IsSupportedJWTAlgorithm(alg)
 }
 
 func (a *Jwt) checkKid(kid string) bool {

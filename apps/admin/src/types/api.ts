@@ -79,6 +79,10 @@ export interface RootJwtKidsRep {
   kids: string[];
 }
 
+export interface RootJwtKidsReq {
+  urls: string[];
+}
+
 export interface AppBackend {
   url: string;
 }

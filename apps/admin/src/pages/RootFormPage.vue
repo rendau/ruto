@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import AuthEditor from "../components/AuthEditor.vue";
-import { getRoot, getRootJwtKids, setRoot } from "../lib/api";
+import { getRoot, getRootJwtKidsByUrls, setRoot } from "../lib/api";
 import { arrayToLines, emptyAuth, linesToArray, normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { RootMain } from "../types/api";
@@ -34,7 +34,10 @@ async function load() {
   loading.value = true;
   errorMessage.value = "";
   try {
-    const [root, kidsRep] = await Promise.all([getRoot(), getRootJwtKids().catch(() => ({ kids: [] }))]);
+    const root = await getRoot();
+    const kidsRep = await getRootJwtKidsByUrls({
+      urls: (root.jwt || []).map((x) => x.jwk_url).filter(Boolean)
+    }).catch(() => ({ kids: [] }));
     form.value = {
       ...root,
       auth: normalizeAuth(root.auth)

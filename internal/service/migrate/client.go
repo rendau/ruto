@@ -15,6 +15,8 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/samber/lo"
+
+	"github.com/rendau/ruto/internal/constant"
 )
 
 type legacyClient struct {
@@ -29,12 +31,6 @@ const (
 	legacyRetryBaseDelay = 200 * time.Millisecond
 	legacyRetryMaxDelay  = 2 * time.Second
 )
-
-var allowedJWTAlgMap = map[string]struct{}{
-	"RS256": {},
-	"RS384": {},
-	"RS512": {},
-}
 
 func newLegacyClient(baseURL, refreshToken string) *legacyClient {
 	transport := &http.Transport{
@@ -130,8 +126,7 @@ func isAllowedJWKKey(item legacyJwkKey) bool {
 		return true
 	}
 
-	_, ok := allowedJWTAlgMap[strings.ToUpper(alg)]
-	return ok
+	return constant.IsSupportedJWTAlgorithm(alg)
 }
 
 func (c *legacyClient) requestJSON(

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createApp, getApp, getRootJwtKids, updateApp } from "../lib/api";
+import { createApp, getApp, getRoot, getRootJwtKidsByUrls, updateApp } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
 import { normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
@@ -57,7 +57,10 @@ async function load() {
 
 async function loadJwtKidOptions() {
   try {
-    const rep = await getRootJwtKids();
+    const root = await getRoot();
+    const rep = await getRootJwtKidsByUrls({
+      urls: (root.jwt || []).map((item) => item.jwk_url).filter(Boolean)
+    });
     jwtKidOptions.value = rep.kids || [];
   } catch {
     jwtKidOptions.value = [];

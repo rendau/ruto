@@ -546,9 +546,9 @@
         ]
       }
     },
-    "/root/jwt/kids": {
+    "/root/jwt/kids/by-urls": {
       "get": {
-        "operationId": "Root_GetJwtKids",
+        "operationId": "Root_GetJwtKidsByUrls",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -563,6 +563,18 @@
             }
           }
         },
+        "parameters": [
+          {
+            "name": "urls",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          }
+        ],
         "tags": [
           "Root"
         ]

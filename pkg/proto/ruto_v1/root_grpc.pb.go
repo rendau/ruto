@@ -20,9 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Root_Get_FullMethodName        = "/ruto_v1.Root/Get"
-	Root_Set_FullMethodName        = "/ruto_v1.Root/Set"
-	Root_GetJwtKids_FullMethodName = "/ruto_v1.Root/GetJwtKids"
+	Root_Get_FullMethodName              = "/ruto_v1.Root/Get"
+	Root_Set_FullMethodName              = "/ruto_v1.Root/Set"
+	Root_GetJwtKidsByUrls_FullMethodName = "/ruto_v1.Root/GetJwtKidsByUrls"
 )
 
 // RootClient is the client API for Root service.
@@ -31,7 +31,7 @@ const (
 type RootClient interface {
 	Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RootMain, error)
 	Set(ctx context.Context, in *RootMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetJwtKids(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RootJwtKidsRep, error)
+	GetJwtKidsByUrls(ctx context.Context, in *RootJwtKidsReq, opts ...grpc.CallOption) (*RootJwtKidsRep, error)
 }
 
 type rootClient struct {
@@ -62,10 +62,10 @@ func (c *rootClient) Set(ctx context.Context, in *RootMain, opts ...grpc.CallOpt
 	return out, nil
 }
 
-func (c *rootClient) GetJwtKids(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RootJwtKidsRep, error) {
+func (c *rootClient) GetJwtKidsByUrls(ctx context.Context, in *RootJwtKidsReq, opts ...grpc.CallOption) (*RootJwtKidsRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RootJwtKidsRep)
-	err := c.cc.Invoke(ctx, Root_GetJwtKids_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Root_GetJwtKidsByUrls_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (c *rootClient) GetJwtKids(ctx context.Context, in *emptypb.Empty, opts ...
 type RootServer interface {
 	Get(context.Context, *emptypb.Empty) (*RootMain, error)
 	Set(context.Context, *RootMain) (*emptypb.Empty, error)
-	GetJwtKids(context.Context, *emptypb.Empty) (*RootJwtKidsRep, error)
+	GetJwtKidsByUrls(context.Context, *RootJwtKidsReq) (*RootJwtKidsRep, error)
 	mustEmbedUnimplementedRootServer()
 }
 
@@ -95,8 +95,8 @@ func (UnimplementedRootServer) Get(context.Context, *emptypb.Empty) (*RootMain, 
 func (UnimplementedRootServer) Set(context.Context, *RootMain) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Set not implemented")
 }
-func (UnimplementedRootServer) GetJwtKids(context.Context, *emptypb.Empty) (*RootJwtKidsRep, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetJwtKids not implemented")
+func (UnimplementedRootServer) GetJwtKidsByUrls(context.Context, *RootJwtKidsReq) (*RootJwtKidsRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetJwtKidsByUrls not implemented")
 }
 func (UnimplementedRootServer) mustEmbedUnimplementedRootServer() {}
 func (UnimplementedRootServer) testEmbeddedByValue()              {}
@@ -155,20 +155,20 @@ func _Root_Set_Handler(srv interface{}, ctx context.Context, dec func(interface{
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Root_GetJwtKids_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+func _Root_GetJwtKidsByUrls_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RootJwtKidsReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(RootServer).GetJwtKids(ctx, in)
+		return srv.(RootServer).GetJwtKidsByUrls(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Root_GetJwtKids_FullMethodName,
+		FullMethod: Root_GetJwtKidsByUrls_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RootServer).GetJwtKids(ctx, req.(*emptypb.Empty))
+		return srv.(RootServer).GetJwtKidsByUrls(ctx, req.(*RootJwtKidsReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -189,8 +189,8 @@ var Root_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Root_Set_Handler,
 		},
 		{
-			MethodName: "GetJwtKids",
-			Handler:    _Root_GetJwtKids_Handler,
+			MethodName: "GetJwtKidsByUrls",
+			Handler:    _Root_GetJwtKidsByUrls_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

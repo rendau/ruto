@@ -14,6 +14,7 @@ import type {
   SnapshotVersionRep,
   StatsResponse,
   RootMain,
+  RootJwtKidsReq,
   RootJwtKidsRep,
   UsrLoginRep,
   UsrMain
@@ -253,8 +254,12 @@ export function setRoot(req: RootMain): Promise<void> {
   });
 }
 
-export function getRootJwtKids(): Promise<RootJwtKidsRep> {
-  return apiFetch<RootJwtKidsRep>("/root/jwt/kids");
+export function getRootJwtKidsByUrls(req: RootJwtKidsReq): Promise<RootJwtKidsRep> {
+  return apiFetch<RootJwtKidsRep>(
+    withQuery("/root/jwt/kids/by-urls", {
+      urls: req.urls || []
+    })
+  );
 }
 
 export function getStats(): Promise<StatsResponse> {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/rendau/ruto/internal/constant"
 	"github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/errs"
 )
@@ -55,21 +56,22 @@ func (u *Usecase) Set(ctx context.Context, obj *model.Root) error {
 	return nil
 }
 
-func (u *Usecase) GetJwtKids(ctx context.Context) ([]string, error) {
+func (u *Usecase) GetJwtKidsByURLs(ctx context.Context, urls []string) ([]string, error) {
 	extractedSession := u.sessionSvc.FromContext(ctx)
 	if extractedSession.Id == 0 {
 		return nil, errs.NotAuthorized
 	}
 
-	rootObj, err := u.svc.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("svc.Get: %w", err)
-	}
+	return u.getJwtKidsByURLs(ctx, urls), nil
+}
 
-	jwkURLs := lo.FilterMap(rootObj.Jwt, func(jwtItem model.RootJwt, _ int) (string, bool) {
-		jwkURL := strings.TrimSpace(jwtItem.JwkUrl)
+func (u *Usecase) getJwtKidsByURLs(ctx context.Context, urls []string) []string {
+	jwkURLs := lo.FilterMap(urls, func(rawURL string, _ int) (string, bool) {
+		jwkURL := strings.TrimSpace(rawURL)
 		return jwkURL, jwkURL != ""
 	})
+	jwkURLs = lo.Uniq(jwkURLs)
+
 	kidsByURL := lo.Map(jwkURLs, func(jwkURL string, _ int) []string {
 		kids, loadErr := u.loadJwkKids(ctx, jwkURL)
 		if loadErr != nil {
@@ -80,7 +82,7 @@ func (u *Usecase) GetJwtKids(ctx context.Context) ([]string, error) {
 
 	result := lo.Uniq(lo.Flatten(kidsByURL))
 	sort.Strings(result)
-	return result, nil
+	return result
 }
 
 func (u *Usecase) loadJwkKids(ctx context.Context, jwkURL string) ([]string, error) {
@@ -107,7 +109,7 @@ func (u *Usecase) loadJwkKids(ctx context.Context, jwkURL string) ([]string, err
 
 	result := lo.FilterMap(repObj.Keys, func(key jwkKey, _ int) (string, bool) {
 		kid := strings.TrimSpace(key.Kid)
-		return kid, kid != ""
+		return kid, kid != "" && constant.IsSupportedJWTAlgorithm(key.Alg)
 	})
 
 	return result, nil

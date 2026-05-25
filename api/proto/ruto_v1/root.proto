@@ -15,8 +15,8 @@ service Root {
   rpc Set(RootMain) returns (google.protobuf.Empty) {
     option (google.api.http) = { post: "/root" body: "*" };
   };
-  rpc GetJwtKids(google.protobuf.Empty) returns (RootJwtKidsRep) {
-    option (google.api.http) = { get: "/root/jwt/kids" };
+  rpc GetJwtKidsByUrls(RootJwtKidsReq) returns (RootJwtKidsRep) {
+    option (google.api.http) = { get: "/root/jwt/kids/by-urls" };
   };
 }
 
@@ -44,4 +44,8 @@ message RootJwt {
 
 message RootJwtKidsRep {
   repeated string kids = 1;
+}
+
+message RootJwtKidsReq {
+  repeated string urls = 1;
 }
