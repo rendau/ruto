@@ -718,7 +718,7 @@
             "collectionFormat": "multi"
           },
           {
-            "name": "username",
+            "name": "search",
             "in": "query",
             "required": false,
             "type": "string"
@@ -750,7 +750,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ruto_v1UsrMain"
+              "$ref": "#/definitions/ruto_v1UsrCreate"
             }
           }
         ],
@@ -1519,6 +1519,26 @@
             "type": "object",
             "$ref": "#/definitions/ruto_v1StatsMethodStats"
           }
+        }
+      }
+    },
+    "ruto_v1UsrCreate": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "is_admin": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
         }
       }
     },

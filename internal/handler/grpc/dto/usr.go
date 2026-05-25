@@ -17,9 +17,24 @@ func EncodeUsrMain(v *model.Usr, _ int) *ruto_v1.UsrMain {
 	}
 }
 
-func DecodeUsrMain(v *ruto_v1.UsrMain) *model.Usr {
-	return &model.Usr{
-		Id:       v.Id,
+func DecodeUsrCreate(v *ruto_v1.UsrCreate) *model.Edit {
+	if v == nil {
+		return &model.Edit{}
+	}
+	return &model.Edit{
+		Active:   v.Active,
+		IsAdmin:  v.IsAdmin,
+		Name:     v.Name,
+		Username: v.Username,
+		Password: v.Password,
+	}
+}
+
+func DecodeUsrEdit(v *ruto_v1.UsrEdit) *model.Edit {
+	if v == nil {
+		return &model.Edit{}
+	}
+	return &model.Edit{
 		Active:   v.Active,
 		IsAdmin:  v.IsAdmin,
 		Name:     v.Name,
@@ -31,7 +46,7 @@ func DecodeUsrMain(v *ruto_v1.UsrMain) *model.Usr {
 func DecodeUsrListReq(v *ruto_v1.UsrListReq) *model.ListReq {
 	return &model.ListReq{
 		ListParams: DecodeListParams(v.ListParams),
-		Username:   v.Username,
+		Search:     v.Search,
 	}
 }
 

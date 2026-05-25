@@ -47,14 +47,19 @@ async function loadStats() {
   loading.value = true;
   errorMessage.value = "";
   try {
-    const [statsRep, gatewaysRep, snapshotVersionRep] = await Promise.all([
+    const [statsRep, snapshotVersionRep] = await Promise.all([
       getStats(),
-      listGateways(),
       getSnapshotVersion()
     ]);
     stats.value = statsRep;
-    gateways.value = gatewaysRep.results || [];
     currentSnapshotVersion.value = snapshotVersionRep.version || "";
+
+    try {
+      const gatewaysRep = await listGateways();
+      gateways.value = gatewaysRep.results || [];
+    } catch {
+      gateways.value = [];
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load dashboard stats";
     notifyError(errorMessage.value);

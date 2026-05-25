@@ -1,5 +1,7 @@
 package db
 
+import "strings"
+
 import domainModel "github.com/rendau/ruto/internal/domain/usr/model"
 
 var (
@@ -20,8 +22,12 @@ func (r *Repo) getConditions(pars *domainModel.ListReq) (map[string]any, map[str
 		return conditions, conditionExps
 	}
 
-	if pars.Username != nil {
-		conditions["username"] = *pars.Username
+	if pars.Search != nil {
+		query := strings.TrimSpace(*pars.Search)
+		if query != "" {
+			pattern := "%" + query + "%"
+			conditionExps["(username ILIKE ? OR name ILIKE ?)"] = []any{pattern, pattern}
+		}
 	}
 
 	return conditions, conditionExps

@@ -93,8 +93,8 @@ func (r *Repo) GetByUsernamePassword(ctx context.Context, username, password str
 	return repoModel.EncodeSelect(&m.Select, 0), true, nil
 }
 
-func (r *Repo) Create(ctx context.Context, obj *domainModel.Usr) (int64, error) {
-	m := repoModel.DecodeUpsert(obj)
+func (r *Repo) Create(ctx context.Context, obj *domainModel.Edit) (int64, error) {
+	m := repoModel.DecodeUpsertEdit(obj)
 
 	err := r.ModelStore.Create(ctx, m)
 	if err != nil {
@@ -104,8 +104,8 @@ func (r *Repo) Create(ctx context.Context, obj *domainModel.Usr) (int64, error) 
 	return m.PKId, nil
 }
 
-func (r *Repo) Update(ctx context.Context, id int64, obj *domainModel.Usr) error {
-	m := repoModel.DecodeUpsert(obj)
+func (r *Repo) Update(ctx context.Context, id int64, obj *domainModel.Edit) error {
+	m := repoModel.DecodeUpsertEdit(obj)
 	m.PKId = id
 
 	err := r.ModelStore.Update(ctx, m)

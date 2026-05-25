@@ -23,6 +23,7 @@ let resizing = false;
 const profileName = computed(() => authStore.profile?.name || authStore.profile?.username || "Unknown");
 const profileInitial = computed(() => profileName.value.trim().charAt(0).toUpperCase() || "U");
 const profileRole = computed(() => (authStore.profile?.is_admin ? "admin" : "user"));
+const canManageUsers = computed(() => Boolean(authStore.profile?.is_admin));
 const appSearch = ref("");
 const pageTitle = computed(() => {
   switch (route.name) {
@@ -42,6 +43,12 @@ const pageTitle = computed(() => {
       return "Root Settings";
     case "profile":
       return "Profile";
+    case "users":
+      return "Users";
+    case "users-create":
+      return "Create User";
+    case "users-edit":
+      return "Edit User";
     default:
       return "Control Panel";
   }
@@ -214,6 +221,12 @@ onBeforeUnmount(() => {
             <span aria-hidden="true">{{ deploying ? "⏳" : "🚀" }}</span>
           </button>
         </div>
+        <RouterLink v-if="canManageUsers" class="nav-link with-icon" to="/users">
+          <span class="nav-link-content">
+            <span class="icon users-icon" aria-hidden="true">👥</span>
+            <span>Users</span>
+          </span>
+        </RouterLink>
       </nav>
 
       <div class="menu-block-head">
@@ -269,7 +282,7 @@ onBeforeUnmount(() => {
           </button>
           <div v-if="userMenuOpen" class="user-menu">
             <button class="menu-item" type="button" @click="goToProfile">
-              <span class="icon" aria-hidden="true">🧑</span>
+              <span class="icon" aria-hidden="true">👤</span>
               <span>Profile</span>
             </button>
             <button class="menu-item danger" type="button" @click="logout">

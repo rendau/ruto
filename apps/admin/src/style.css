@@ -95,6 +95,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-bottom: 6px;
 }
 
 .nav-link {
@@ -134,6 +135,10 @@ textarea {
   line-height: 1;
   position: relative;
   top: -1px;
+}
+
+.nav-link.with-icon .icon.users-icon {
+  font-size: 20px;
 }
 
 .nav-icon-button {
@@ -453,15 +458,16 @@ textarea {
 }
 
 .menu-item:hover {
-  background: #233450;
+  background: #2f4668;
 }
 
 .menu-item.danger {
-  color: #9c3434;
+  color: #ff9aa6;
 }
 
 .menu-item.danger:hover {
-  background: #4a2930;
+  background: #5b313b;
+  color: #ffd6dd;
 }
 
 .page {
@@ -949,6 +955,24 @@ h3 {
   overflow-x: auto;
 }
 
+.users-top-actions {
+  justify-content: flex-start;
+}
+
+.users-filter {
+  width: 280px;
+  max-width: 100%;
+}
+
+.users-editor-panel {
+  margin-bottom: 14px;
+}
+
+.users-table th,
+.users-table td {
+  white-space: nowrap;
+}
+
 .gateway-table th,
 .gateway-table td {
   white-space: nowrap;
@@ -1018,10 +1042,11 @@ h3 {
 .toasts {
   position: fixed;
   right: 16px;
-  bottom: 16px;
+  top: 16px;
   display: grid;
   gap: 8px;
   z-index: 1000;
+  pointer-events: none;
 }
 
 .toast {
@@ -1030,7 +1055,10 @@ h3 {
   padding: 10px 12px;
   border-radius: 8px;
   color: #fff;
-  box-shadow: 0 10px 20px rgba(20, 35, 61, 0.2);
+  box-shadow: 0 12px 26px rgba(11, 20, 36, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .toast.success {

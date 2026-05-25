@@ -112,7 +112,7 @@ func local_request_Usr_Get_0(ctx context.Context, marshaler runtime.Marshaler, s
 
 func request_Usr_Create_0(ctx context.Context, marshaler runtime.Marshaler, client UsrClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq UsrMain
+		protoReq UsrCreate
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -127,7 +127,7 @@ func request_Usr_Create_0(ctx context.Context, marshaler runtime.Marshaler, clie
 
 func local_request_Usr_Create_0(ctx context.Context, marshaler runtime.Marshaler, server UsrServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq UsrMain
+		protoReq UsrCreate
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -139,7 +139,7 @@ func local_request_Usr_Create_0(ctx context.Context, marshaler runtime.Marshaler
 
 func request_Usr_Update_0(ctx context.Context, marshaler runtime.Marshaler, client UsrClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq UsrMain
+		protoReq UsrEdit
 		metadata runtime.ServerMetadata
 		err      error
 	)
@@ -163,7 +163,7 @@ func request_Usr_Update_0(ctx context.Context, marshaler runtime.Marshaler, clie
 
 func local_request_Usr_Update_0(ctx context.Context, marshaler runtime.Marshaler, server UsrServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq UsrMain
+		protoReq UsrEdit
 		metadata runtime.ServerMetadata
 		err      error
 	)

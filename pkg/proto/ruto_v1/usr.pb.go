@@ -107,6 +107,166 @@ func (x *UsrMain) GetPassword() string {
 	return ""
 }
 
+type UsrCreate struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Active        *bool                  `protobuf:"varint,1,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	IsAdmin       *bool                  `protobuf:"varint,2,opt,name=is_admin,json=isAdmin,proto3,oneof" json:"is_admin,omitempty"`
+	Name          *string                `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Username      *string                `protobuf:"bytes,4,opt,name=username,proto3,oneof" json:"username,omitempty"`
+	Password      *string                `protobuf:"bytes,5,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsrCreate) Reset() {
+	*x = UsrCreate{}
+	mi := &file_ruto_v1_usr_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsrCreate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsrCreate) ProtoMessage() {}
+
+func (x *UsrCreate) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_usr_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsrCreate.ProtoReflect.Descriptor instead.
+func (*UsrCreate) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *UsrCreate) GetActive() bool {
+	if x != nil && x.Active != nil {
+		return *x.Active
+	}
+	return false
+}
+
+func (x *UsrCreate) GetIsAdmin() bool {
+	if x != nil && x.IsAdmin != nil {
+		return *x.IsAdmin
+	}
+	return false
+}
+
+func (x *UsrCreate) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
+}
+
+func (x *UsrCreate) GetUsername() string {
+	if x != nil && x.Username != nil {
+		return *x.Username
+	}
+	return ""
+}
+
+func (x *UsrCreate) GetPassword() string {
+	if x != nil && x.Password != nil {
+		return *x.Password
+	}
+	return ""
+}
+
+type UsrEdit struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	IsAdmin       *bool                  `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3,oneof" json:"is_admin,omitempty"`
+	Name          *string                `protobuf:"bytes,4,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Username      *string                `protobuf:"bytes,5,opt,name=username,proto3,oneof" json:"username,omitempty"`
+	Password      *string                `protobuf:"bytes,6,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsrEdit) Reset() {
+	*x = UsrEdit{}
+	mi := &file_ruto_v1_usr_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsrEdit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsrEdit) ProtoMessage() {}
+
+func (x *UsrEdit) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_usr_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsrEdit.ProtoReflect.Descriptor instead.
+func (*UsrEdit) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *UsrEdit) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *UsrEdit) GetActive() bool {
+	if x != nil && x.Active != nil {
+		return *x.Active
+	}
+	return false
+}
+
+func (x *UsrEdit) GetIsAdmin() bool {
+	if x != nil && x.IsAdmin != nil {
+		return *x.IsAdmin
+	}
+	return false
+}
+
+func (x *UsrEdit) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
+}
+
+func (x *UsrEdit) GetUsername() string {
+	if x != nil && x.Username != nil {
+		return *x.Username
+	}
+	return ""
+}
+
+func (x *UsrEdit) GetPassword() string {
+	if x != nil && x.Password != nil {
+		return *x.Password
+	}
+	return ""
+}
+
 type UsrGetReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -116,7 +276,7 @@ type UsrGetReq struct {
 
 func (x *UsrGetReq) Reset() {
 	*x = UsrGetReq{}
-	mi := &file_ruto_v1_usr_proto_msgTypes[1]
+	mi := &file_ruto_v1_usr_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -128,7 +288,7 @@ func (x *UsrGetReq) String() string {
 func (*UsrGetReq) ProtoMessage() {}
 
 func (x *UsrGetReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_usr_proto_msgTypes[1]
+	mi := &file_ruto_v1_usr_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -141,7 +301,7 @@ func (x *UsrGetReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrGetReq.ProtoReflect.Descriptor instead.
 func (*UsrGetReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{1}
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *UsrGetReq) GetId() int64 {
@@ -154,14 +314,14 @@ func (x *UsrGetReq) GetId() int64 {
 type UsrListReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ListParams    *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
-	Username      *string                `protobuf:"bytes,2,opt,name=username,proto3,oneof" json:"username,omitempty"`
+	Search        *string                `protobuf:"bytes,2,opt,name=search,proto3,oneof" json:"search,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UsrListReq) Reset() {
 	*x = UsrListReq{}
-	mi := &file_ruto_v1_usr_proto_msgTypes[2]
+	mi := &file_ruto_v1_usr_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -173,7 +333,7 @@ func (x *UsrListReq) String() string {
 func (*UsrListReq) ProtoMessage() {}
 
 func (x *UsrListReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_usr_proto_msgTypes[2]
+	mi := &file_ruto_v1_usr_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -186,7 +346,7 @@ func (x *UsrListReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrListReq.ProtoReflect.Descriptor instead.
 func (*UsrListReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{2}
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UsrListReq) GetListParams() *ListParamsSt {
@@ -196,9 +356,9 @@ func (x *UsrListReq) GetListParams() *ListParamsSt {
 	return nil
 }
 
-func (x *UsrListReq) GetUsername() string {
-	if x != nil && x.Username != nil {
-		return *x.Username
+func (x *UsrListReq) GetSearch() string {
+	if x != nil && x.Search != nil {
+		return *x.Search
 	}
 	return ""
 }
@@ -213,7 +373,7 @@ type UsrListRep struct {
 
 func (x *UsrListRep) Reset() {
 	*x = UsrListRep{}
-	mi := &file_ruto_v1_usr_proto_msgTypes[3]
+	mi := &file_ruto_v1_usr_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -225,7 +385,7 @@ func (x *UsrListRep) String() string {
 func (*UsrListRep) ProtoMessage() {}
 
 func (x *UsrListRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_usr_proto_msgTypes[3]
+	mi := &file_ruto_v1_usr_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -238,7 +398,7 @@ func (x *UsrListRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrListRep.ProtoReflect.Descriptor instead.
 func (*UsrListRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{3}
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *UsrListRep) GetPaginationInfo() *PaginationInfoSt {
@@ -264,7 +424,7 @@ type UsrCreateRep struct {
 
 func (x *UsrCreateRep) Reset() {
 	*x = UsrCreateRep{}
-	mi := &file_ruto_v1_usr_proto_msgTypes[4]
+	mi := &file_ruto_v1_usr_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -276,7 +436,7 @@ func (x *UsrCreateRep) String() string {
 func (*UsrCreateRep) ProtoMessage() {}
 
 func (x *UsrCreateRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_usr_proto_msgTypes[4]
+	mi := &file_ruto_v1_usr_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -289,7 +449,7 @@ func (x *UsrCreateRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrCreateRep.ProtoReflect.Descriptor instead.
 func (*UsrCreateRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{4}
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UsrCreateRep) GetId() int64 {
@@ -309,7 +469,7 @@ type UsrLoginReq struct {
 
 func (x *UsrLoginReq) Reset() {
 	*x = UsrLoginReq{}
-	mi := &file_ruto_v1_usr_proto_msgTypes[5]
+	mi := &file_ruto_v1_usr_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -321,7 +481,7 @@ func (x *UsrLoginReq) String() string {
 func (*UsrLoginReq) ProtoMessage() {}
 
 func (x *UsrLoginReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_usr_proto_msgTypes[5]
+	mi := &file_ruto_v1_usr_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -334,7 +494,7 @@ func (x *UsrLoginReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrLoginReq.ProtoReflect.Descriptor instead.
 func (*UsrLoginReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{5}
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UsrLoginReq) GetUsername() string {
@@ -360,7 +520,7 @@ type UsrLoginRep struct {
 
 func (x *UsrLoginRep) Reset() {
 	*x = UsrLoginRep{}
-	mi := &file_ruto_v1_usr_proto_msgTypes[6]
+	mi := &file_ruto_v1_usr_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -372,7 +532,7 @@ func (x *UsrLoginRep) String() string {
 func (*UsrLoginRep) ProtoMessage() {}
 
 func (x *UsrLoginRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_usr_proto_msgTypes[6]
+	mi := &file_ruto_v1_usr_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -385,7 +545,7 @@ func (x *UsrLoginRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrLoginRep.ProtoReflect.Descriptor instead.
 func (*UsrLoginRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{6}
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UsrLoginRep) GetJwt() string {
@@ -405,7 +565,7 @@ type UsrUpdateProfileReq struct {
 
 func (x *UsrUpdateProfileReq) Reset() {
 	*x = UsrUpdateProfileReq{}
-	mi := &file_ruto_v1_usr_proto_msgTypes[7]
+	mi := &file_ruto_v1_usr_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -417,7 +577,7 @@ func (x *UsrUpdateProfileReq) String() string {
 func (*UsrUpdateProfileReq) ProtoMessage() {}
 
 func (x *UsrUpdateProfileReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_usr_proto_msgTypes[7]
+	mi := &file_ruto_v1_usr_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -430,7 +590,7 @@ func (x *UsrUpdateProfileReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrUpdateProfileReq.ProtoReflect.Descriptor instead.
 func (*UsrUpdateProfileReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{7}
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UsrUpdateProfileReq) GetName() string {
@@ -458,15 +618,38 @@ const file_ruto_v1_usr_proto_rawDesc = "" +
 	"\bis_admin\x18\x03 \x01(\bR\aisAdmin\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x05 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x06 \x01(\tR\bpassword\"\x1b\n" +
+	"\bpassword\x18\x06 \x01(\tR\bpassword\"\xde\x01\n" +
+	"\tUsrCreate\x12\x1b\n" +
+	"\x06active\x18\x01 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1e\n" +
+	"\bis_admin\x18\x02 \x01(\bH\x01R\aisAdmin\x88\x01\x01\x12\x17\n" +
+	"\x04name\x18\x03 \x01(\tH\x02R\x04name\x88\x01\x01\x12\x1f\n" +
+	"\busername\x18\x04 \x01(\tH\x03R\busername\x88\x01\x01\x12\x1f\n" +
+	"\bpassword\x18\x05 \x01(\tH\x04R\bpassword\x88\x01\x01B\t\n" +
+	"\a_activeB\v\n" +
+	"\t_is_adminB\a\n" +
+	"\x05_nameB\v\n" +
+	"\t_usernameB\v\n" +
+	"\t_password\"\xec\x01\n" +
+	"\aUsrEdit\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
+	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1e\n" +
+	"\bis_admin\x18\x03 \x01(\bH\x01R\aisAdmin\x88\x01\x01\x12\x17\n" +
+	"\x04name\x18\x04 \x01(\tH\x02R\x04name\x88\x01\x01\x12\x1f\n" +
+	"\busername\x18\x05 \x01(\tH\x03R\busername\x88\x01\x01\x12\x1f\n" +
+	"\bpassword\x18\x06 \x01(\tH\x04R\bpassword\x88\x01\x01B\t\n" +
+	"\a_activeB\v\n" +
+	"\t_is_adminB\a\n" +
+	"\x05_nameB\v\n" +
+	"\t_usernameB\v\n" +
+	"\t_password\"\x1b\n" +
 	"\tUsrGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"r\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"l\n" +
 	"\n" +
 	"UsrListReq\x126\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x15.ruto_v1.ListParamsStR\n" +
-	"listParams\x12\x1f\n" +
-	"\busername\x18\x02 \x01(\tH\x00R\busername\x88\x01\x01B\v\n" +
-	"\t_username\"|\n" +
+	"listParams\x12\x1b\n" +
+	"\x06search\x18\x02 \x01(\tH\x00R\x06search\x88\x01\x01B\t\n" +
+	"\a_search\"|\n" +
 	"\n" +
 	"UsrListRep\x12B\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x19.ruto_v1.PaginationInfoStR\x0epaginationInfo\x12*\n" +
@@ -482,12 +665,12 @@ const file_ruto_v1_usr_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1f\n" +
 	"\bpassword\x18\x02 \x01(\tH\x01R\bpassword\x88\x01\x01B\a\n" +
 	"\x05_nameB\v\n" +
-	"\t_password2\xd6\x04\n" +
+	"\t_password2\xd8\x04\n" +
 	"\x03Usr\x12>\n" +
 	"\x04List\x12\x13.ruto_v1.UsrListReq\x1a\x13.ruto_v1.UsrListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/usr\x12>\n" +
-	"\x03Get\x12\x12.ruto_v1.UsrGetReq\x1a\x10.ruto_v1.UsrMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/usr/{id}\x12B\n" +
-	"\x06Create\x12\x10.ruto_v1.UsrMain\x1a\x15.ruto_v1.UsrCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/usr\x12H\n" +
-	"\x06Update\x12\x10.ruto_v1.UsrMain\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/usr/{id}\x12G\n" +
+	"\x03Get\x12\x12.ruto_v1.UsrGetReq\x1a\x10.ruto_v1.UsrMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/usr/{id}\x12D\n" +
+	"\x06Create\x12\x12.ruto_v1.UsrCreate\x1a\x15.ruto_v1.UsrCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/usr\x12H\n" +
+	"\x06Update\x12\x10.ruto_v1.UsrEdit\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/usr/{id}\x12G\n" +
 	"\x06Delete\x12\x12.ruto_v1.UsrGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/usr/{id}\x12J\n" +
 	"\x05Login\x12\x14.ruto_v1.UsrLoginReq\x1a\x14.ruto_v1.UsrLoginRep\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*\"\n" +
 	"/usr/login\x12L\n" +
@@ -508,40 +691,42 @@ func file_ruto_v1_usr_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_usr_proto_rawDescData
 }
 
-var file_ruto_v1_usr_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_ruto_v1_usr_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_ruto_v1_usr_proto_goTypes = []any{
 	(*UsrMain)(nil),             // 0: ruto_v1.UsrMain
-	(*UsrGetReq)(nil),           // 1: ruto_v1.UsrGetReq
-	(*UsrListReq)(nil),          // 2: ruto_v1.UsrListReq
-	(*UsrListRep)(nil),          // 3: ruto_v1.UsrListRep
-	(*UsrCreateRep)(nil),        // 4: ruto_v1.UsrCreateRep
-	(*UsrLoginReq)(nil),         // 5: ruto_v1.UsrLoginReq
-	(*UsrLoginRep)(nil),         // 6: ruto_v1.UsrLoginRep
-	(*UsrUpdateProfileReq)(nil), // 7: ruto_v1.UsrUpdateProfileReq
-	(*ListParamsSt)(nil),        // 8: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),    // 9: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),       // 10: google.protobuf.Empty
+	(*UsrCreate)(nil),           // 1: ruto_v1.UsrCreate
+	(*UsrEdit)(nil),             // 2: ruto_v1.UsrEdit
+	(*UsrGetReq)(nil),           // 3: ruto_v1.UsrGetReq
+	(*UsrListReq)(nil),          // 4: ruto_v1.UsrListReq
+	(*UsrListRep)(nil),          // 5: ruto_v1.UsrListRep
+	(*UsrCreateRep)(nil),        // 6: ruto_v1.UsrCreateRep
+	(*UsrLoginReq)(nil),         // 7: ruto_v1.UsrLoginReq
+	(*UsrLoginRep)(nil),         // 8: ruto_v1.UsrLoginRep
+	(*UsrUpdateProfileReq)(nil), // 9: ruto_v1.UsrUpdateProfileReq
+	(*ListParamsSt)(nil),        // 10: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),    // 11: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),       // 12: google.protobuf.Empty
 }
 var file_ruto_v1_usr_proto_depIdxs = []int32{
-	8,  // 0: ruto_v1.UsrListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	9,  // 1: ruto_v1.UsrListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	10, // 0: ruto_v1.UsrListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	11, // 1: ruto_v1.UsrListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
 	0,  // 2: ruto_v1.UsrListRep.results:type_name -> ruto_v1.UsrMain
-	2,  // 3: ruto_v1.Usr.List:input_type -> ruto_v1.UsrListReq
-	1,  // 4: ruto_v1.Usr.Get:input_type -> ruto_v1.UsrGetReq
-	0,  // 5: ruto_v1.Usr.Create:input_type -> ruto_v1.UsrMain
-	0,  // 6: ruto_v1.Usr.Update:input_type -> ruto_v1.UsrMain
-	1,  // 7: ruto_v1.Usr.Delete:input_type -> ruto_v1.UsrGetReq
-	5,  // 8: ruto_v1.Usr.Login:input_type -> ruto_v1.UsrLoginReq
-	10, // 9: ruto_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
-	7,  // 10: ruto_v1.Usr.UpdateProfile:input_type -> ruto_v1.UsrUpdateProfileReq
-	3,  // 11: ruto_v1.Usr.List:output_type -> ruto_v1.UsrListRep
+	4,  // 3: ruto_v1.Usr.List:input_type -> ruto_v1.UsrListReq
+	3,  // 4: ruto_v1.Usr.Get:input_type -> ruto_v1.UsrGetReq
+	1,  // 5: ruto_v1.Usr.Create:input_type -> ruto_v1.UsrCreate
+	2,  // 6: ruto_v1.Usr.Update:input_type -> ruto_v1.UsrEdit
+	3,  // 7: ruto_v1.Usr.Delete:input_type -> ruto_v1.UsrGetReq
+	7,  // 8: ruto_v1.Usr.Login:input_type -> ruto_v1.UsrLoginReq
+	12, // 9: ruto_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
+	9,  // 10: ruto_v1.Usr.UpdateProfile:input_type -> ruto_v1.UsrUpdateProfileReq
+	5,  // 11: ruto_v1.Usr.List:output_type -> ruto_v1.UsrListRep
 	0,  // 12: ruto_v1.Usr.Get:output_type -> ruto_v1.UsrMain
-	4,  // 13: ruto_v1.Usr.Create:output_type -> ruto_v1.UsrCreateRep
-	10, // 14: ruto_v1.Usr.Update:output_type -> google.protobuf.Empty
-	10, // 15: ruto_v1.Usr.Delete:output_type -> google.protobuf.Empty
-	6,  // 16: ruto_v1.Usr.Login:output_type -> ruto_v1.UsrLoginRep
+	6,  // 13: ruto_v1.Usr.Create:output_type -> ruto_v1.UsrCreateRep
+	12, // 14: ruto_v1.Usr.Update:output_type -> google.protobuf.Empty
+	12, // 15: ruto_v1.Usr.Delete:output_type -> google.protobuf.Empty
+	8,  // 16: ruto_v1.Usr.Login:output_type -> ruto_v1.UsrLoginRep
 	0,  // 17: ruto_v1.Usr.GetProfile:output_type -> ruto_v1.UsrMain
-	10, // 18: ruto_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
+	12, // 18: ruto_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
 	11, // [11:19] is the sub-list for method output_type
 	3,  // [3:11] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
@@ -555,15 +740,17 @@ func file_ruto_v1_usr_proto_init() {
 		return
 	}
 	file_ruto_v1_common_proto_init()
+	file_ruto_v1_usr_proto_msgTypes[1].OneofWrappers = []any{}
 	file_ruto_v1_usr_proto_msgTypes[2].OneofWrappers = []any{}
-	file_ruto_v1_usr_proto_msgTypes[7].OneofWrappers = []any{}
+	file_ruto_v1_usr_proto_msgTypes[4].OneofWrappers = []any{}
+	file_ruto_v1_usr_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_usr_proto_rawDesc), len(file_ruto_v1_usr_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

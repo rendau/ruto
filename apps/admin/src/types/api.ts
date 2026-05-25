@@ -138,6 +138,27 @@ export interface UsrListRep {
   results: UsrMain[];
 }
 
+export interface UsrCreateRep {
+  id: number;
+}
+
+export interface UsrCreateReq {
+  active?: boolean;
+  is_admin?: boolean;
+  name?: string;
+  username?: string;
+  password?: string;
+}
+
+export interface UsrEditReq {
+  id: number;
+  active?: boolean;
+  is_admin?: boolean;
+  name?: string;
+  username?: string;
+  password?: string;
+}
+
 export interface UsrLoginRep {
   jwt: string;
 }

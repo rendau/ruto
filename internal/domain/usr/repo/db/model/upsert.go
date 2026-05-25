@@ -57,3 +57,16 @@ func DecodeUpsert(v *domainModel.Usr) *Upsert {
 		Password: &v.Password,
 	}
 }
+
+func DecodeUpsertEdit(v *domainModel.Edit) *Upsert {
+	if v == nil {
+		return &Upsert{}
+	}
+	return &Upsert{
+		Active:   v.Active,
+		IsAdmin:  v.IsAdmin,
+		Name:     v.Name,
+		Username: v.Username,
+		Password: v.Password,
+	}
+}

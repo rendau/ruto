@@ -75,24 +75,23 @@ func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) erro
 	if !item.Active {
 		return errs.NotAuthorized
 	}
-
-	if req.Name != nil {
-		item.Name = *req.Name
-	}
-	if req.Password != nil {
-		item.Password = *req.Password
-	}
 	if req.Name == nil && req.Password == nil {
 		return errs.InvalidRequest
 	}
 
-	if err = u.validateEdit(item); err != nil {
+	edit := &model.Edit{
+		Name:     req.Name,
+		Password: req.Password,
+	}
+
+	if err = u.validateEdit(edit, false); err != nil {
 		return err
 	}
 
-	if err = u.svc.Update(ctx, extractedSession.Id, item); err != nil {
+	if err = u.svc.Update(ctx, extractedSession.Id, edit); err != nil {
 		return fmt.Errorf("svc.Update: %w", err)
 	}
+
 	return nil
 }
 
@@ -134,7 +133,7 @@ func (u *Usecase) Get(ctx context.Context, id int64) (*model.Usr, error) {
 	return item, nil
 }
 
-func (u *Usecase) Create(ctx context.Context, obj *model.Usr) (int64, error) {
+func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 	extractedSession := u.sessionSvc.FromContext(ctx)
 	if extractedSession.Id == 0 {
 		return 0, errs.NotAuthorized
@@ -143,7 +142,7 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Usr) (int64, error) {
 		return 0, errs.NoPermission
 	}
 
-	if err := u.validateEdit(obj); err != nil {
+	if err := u.validateEdit(obj, true); err != nil {
 		return 0, err
 	}
 
@@ -151,10 +150,11 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Usr) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("svc.Create: %w", err)
 	}
+
 	return newId, nil
 }
 
-func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Usr) error {
+func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Edit) error {
 	extractedSession := u.sessionSvc.FromContext(ctx)
 	if extractedSession.Id == 0 {
 		return errs.NotAuthorized
@@ -166,13 +166,15 @@ func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Usr) error {
 	if id == 0 {
 		return errs.IdRequired
 	}
-	if err := u.validateEdit(obj); err != nil {
+
+	if err := u.validateEdit(obj, false); err != nil {
 		return err
 	}
 
 	if err := u.svc.Update(ctx, id, obj); err != nil {
 		return fmt.Errorf("svc.Update: %w", err)
 	}
+
 	return nil
 }
 
@@ -195,12 +197,42 @@ func (u *Usecase) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (u *Usecase) validateEdit(obj *model.Usr) error {
+func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
 	if obj == nil {
 		return errs.InvalidRequest
 	}
-	if err := obj.Normalize(); err != nil {
-		return fmt.Errorf("normalize: %w", err)
+
+	// Name
+	if forCreate && obj.Name == nil {
+		return errs.NameRequired
+	}
+	if obj.Name != nil {
+		*obj.Name = strings.TrimSpace(*obj.Name)
+		if *obj.Name == "" {
+			return errs.NameRequired
+		}
+	}
+
+	// Username
+	if forCreate && obj.Username == nil {
+		return errs.UsernameRequired
+	}
+	if obj.Username != nil {
+		*obj.Username = strings.TrimSpace(*obj.Username)
+		if *obj.Username == "" {
+			return errs.UsernameRequired
+		}
+	}
+
+	// Password
+	if forCreate && obj.Password == nil {
+		return errs.PasswordRequired
+	}
+	if obj.Password != nil {
+		*obj.Password = strings.TrimSpace(*obj.Password)
+		if *obj.Password == "" {
+			return errs.PasswordRequired
+		}
 	}
 	return nil
 }

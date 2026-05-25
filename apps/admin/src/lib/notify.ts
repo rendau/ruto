@@ -14,15 +14,19 @@ const state = reactive({
 
 let seq = 0;
 
+function removeById(id: number): void {
+  const idx = state.items.findIndex((x) => x.id === id);
+  if (idx >= 0) {
+    state.items.splice(idx, 1);
+  }
+}
+
 function push(kind: NoticeKind, message: string): void {
   const id = ++seq;
   state.items.push({ id, kind, message });
   window.setTimeout(() => {
-    const idx = state.items.findIndex((x) => x.id === id);
-    if (idx >= 0) {
-      state.items.splice(idx, 1);
-    }
-  }, 2600);
+    removeById(id);
+  }, 4200);
 }
 
 export function notifySuccess(message: string): void {
@@ -35,4 +39,8 @@ export function notifyError(message: string): void {
 
 export function useNotices() {
   return state;
+}
+
+export function dismissNotice(id: number): void {
+  removeById(id);
 }

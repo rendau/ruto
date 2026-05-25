@@ -62,9 +62,6 @@ func (u *Usecase) List(ctx context.Context) ([]*Item, error) {
 	if extractedSession.Id == 0 {
 		return nil, errs.NotAuthorized
 	}
-	if !extractedSession.IsAdmin {
-		return nil, errs.NoPermission
-	}
 
 	keys, err := u.cache.ListKeys()
 	if err != nil {

@@ -7,6 +7,8 @@ import AppDetailsPage from "../pages/AppDetailsPage.vue";
 import EndpointFormPage from "../pages/EndpointFormPage.vue";
 import RootFormPage from "../pages/RootFormPage.vue";
 import ProfilePage from "../pages/ProfilePage.vue";
+import UsersPage from "../pages/UsersPage.vue";
+import UsersFormPage from "../pages/UsersFormPage.vue";
 import { useAuthStore } from "../stores/auth";
 
 export const router = createRouter({
@@ -62,6 +64,24 @@ export const router = createRouter({
           path: "profile",
           name: "profile",
           component: ProfilePage
+        },
+        {
+          path: "users",
+          name: "users",
+          component: UsersPage,
+          meta: { requiresAdmin: true }
+        },
+        {
+          path: "users/new",
+          name: "users-create",
+          component: UsersFormPage,
+          meta: { requiresAdmin: true }
+        },
+        {
+          path: "users/:id/edit",
+          name: "users-edit",
+          component: UsersFormPage,
+          meta: { requiresAdmin: true }
         }
       ]
     }
@@ -90,6 +110,10 @@ router.beforeEach(async (to) => {
       name: "login",
       query: { redirect: to.fullPath }
     };
+  }
+
+  if ((to.meta.requiresAdmin as boolean | undefined) && !authStore.profile?.is_admin) {
+    return { name: "dashboard" };
   }
   return true;
 });

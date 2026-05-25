@@ -36,8 +36,8 @@ const (
 type UsrClient interface {
 	List(ctx context.Context, in *UsrListReq, opts ...grpc.CallOption) (*UsrListRep, error)
 	Get(ctx context.Context, in *UsrGetReq, opts ...grpc.CallOption) (*UsrMain, error)
-	Create(ctx context.Context, in *UsrMain, opts ...grpc.CallOption) (*UsrCreateRep, error)
-	Update(ctx context.Context, in *UsrMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Create(ctx context.Context, in *UsrCreate, opts ...grpc.CallOption) (*UsrCreateRep, error)
+	Update(ctx context.Context, in *UsrEdit, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *UsrGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Login(ctx context.Context, in *UsrLoginReq, opts ...grpc.CallOption) (*UsrLoginRep, error)
 	GetProfile(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrMain, error)
@@ -72,7 +72,7 @@ func (c *usrClient) Get(ctx context.Context, in *UsrGetReq, opts ...grpc.CallOpt
 	return out, nil
 }
 
-func (c *usrClient) Create(ctx context.Context, in *UsrMain, opts ...grpc.CallOption) (*UsrCreateRep, error) {
+func (c *usrClient) Create(ctx context.Context, in *UsrCreate, opts ...grpc.CallOption) (*UsrCreateRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UsrCreateRep)
 	err := c.cc.Invoke(ctx, Usr_Create_FullMethodName, in, out, cOpts...)
@@ -82,7 +82,7 @@ func (c *usrClient) Create(ctx context.Context, in *UsrMain, opts ...grpc.CallOp
 	return out, nil
 }
 
-func (c *usrClient) Update(ctx context.Context, in *UsrMain, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *usrClient) Update(ctx context.Context, in *UsrEdit, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Usr_Update_FullMethodName, in, out, cOpts...)
@@ -138,8 +138,8 @@ func (c *usrClient) UpdateProfile(ctx context.Context, in *UsrUpdateProfileReq, 
 type UsrServer interface {
 	List(context.Context, *UsrListReq) (*UsrListRep, error)
 	Get(context.Context, *UsrGetReq) (*UsrMain, error)
-	Create(context.Context, *UsrMain) (*UsrCreateRep, error)
-	Update(context.Context, *UsrMain) (*emptypb.Empty, error)
+	Create(context.Context, *UsrCreate) (*UsrCreateRep, error)
+	Update(context.Context, *UsrEdit) (*emptypb.Empty, error)
 	Delete(context.Context, *UsrGetReq) (*emptypb.Empty, error)
 	Login(context.Context, *UsrLoginReq) (*UsrLoginRep, error)
 	GetProfile(context.Context, *emptypb.Empty) (*UsrMain, error)
@@ -160,10 +160,10 @@ func (UnimplementedUsrServer) List(context.Context, *UsrListReq) (*UsrListRep, e
 func (UnimplementedUsrServer) Get(context.Context, *UsrGetReq) (*UsrMain, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedUsrServer) Create(context.Context, *UsrMain) (*UsrCreateRep, error) {
+func (UnimplementedUsrServer) Create(context.Context, *UsrCreate) (*UsrCreateRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedUsrServer) Update(context.Context, *UsrMain) (*emptypb.Empty, error) {
+func (UnimplementedUsrServer) Update(context.Context, *UsrEdit) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedUsrServer) Delete(context.Context, *UsrGetReq) (*emptypb.Empty, error) {
@@ -236,7 +236,7 @@ func _Usr_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 }
 
 func _Usr_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UsrMain)
+	in := new(UsrCreate)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -248,13 +248,13 @@ func _Usr_Create_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		FullMethod: Usr_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UsrServer).Create(ctx, req.(*UsrMain))
+		return srv.(UsrServer).Create(ctx, req.(*UsrCreate))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Usr_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UsrMain)
+	in := new(UsrEdit)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -266,7 +266,7 @@ func _Usr_Update_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		FullMethod: Usr_Update_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UsrServer).Update(ctx, req.(*UsrMain))
+		return srv.(UsrServer).Update(ctx, req.(*UsrEdit))
 	}
 	return interceptor(ctx, in, info, handler)
 }

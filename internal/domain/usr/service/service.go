@@ -46,7 +46,7 @@ func (s *Service) GetByUsernamePassword(ctx context.Context, username, password 
 	return result, found, nil
 }
 
-func (s *Service) Create(ctx context.Context, obj *model.Usr) (int64, error) {
+func (s *Service) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 	newId, err := s.repoDb.Create(ctx, obj)
 	if err != nil {
 		return 0, fmt.Errorf("repoDb.Create: %w", err)
@@ -55,7 +55,7 @@ func (s *Service) Create(ctx context.Context, obj *model.Usr) (int64, error) {
 	return newId, nil
 }
 
-func (s *Service) Update(ctx context.Context, id int64, obj *model.Usr) error {
+func (s *Service) Update(ctx context.Context, id int64, obj *model.Edit) error {
 	err := s.repoDb.Update(ctx, id, obj)
 	if err != nil {
 		return fmt.Errorf("repoDb.Update: %w", err)

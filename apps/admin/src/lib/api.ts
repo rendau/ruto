@@ -7,6 +7,10 @@ import type {
   EndpointMain,
   ErrorRep,
   GatewayStateListRep,
+  UsrCreateRep,
+  UsrCreateReq,
+  UsrEditReq,
+  UsrListRep,
   SnapshotVersionRep,
   StatsResponse,
   RootMain,
@@ -135,6 +139,41 @@ export function updateProfile(req: { name?: string; password?: string }): Promis
   return apiFetch<void>("/usr/profile", {
     method: "PUT",
     body: JSON.stringify(req)
+  });
+}
+
+export function listUsers(req?: { search?: string; page?: number; page_size?: number; with_total_count?: boolean }): Promise<UsrListRep> {
+  return apiFetch<UsrListRep>(
+    withQuery("/usr", {
+      "list_params.page": req?.page,
+      "list_params.page_size": req?.page_size,
+      "list_params.with_total_count": req?.with_total_count,
+      search: req?.search
+    })
+  );
+}
+
+export function createUser(req: UsrCreateReq): Promise<UsrCreateRep> {
+  return apiFetch<UsrCreateRep>("/usr", {
+    method: "POST",
+    body: JSON.stringify(req)
+  });
+}
+
+export function getUser(id: number): Promise<UsrMain> {
+  return apiFetch<UsrMain>(`/usr/${id}`);
+}
+
+export function updateUser(req: UsrEditReq): Promise<void> {
+  return apiFetch<void>(`/usr/${req.id}`, {
+    method: "PUT",
+    body: JSON.stringify(req)
+  });
+}
+
+export function deleteUser(id: number): Promise<void> {
+  return apiFetch<void>(`/usr/${id}`, {
+    method: "DELETE"
   });
 }
 

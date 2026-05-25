@@ -44,16 +44,16 @@ func (h *Usr) Get(ctx context.Context, req *ruto_v1.UsrGetReq) (*ruto_v1.UsrMain
 	return dto.EncodeUsrMain(item, 0), nil
 }
 
-func (h *Usr) Create(ctx context.Context, req *ruto_v1.UsrMain) (*ruto_v1.UsrCreateRep, error) {
-	newId, err := h.usecase.Create(ctx, dto.DecodeUsrMain(req))
+func (h *Usr) Create(ctx context.Context, req *ruto_v1.UsrCreate) (*ruto_v1.UsrCreateRep, error) {
+	newId, err := h.usecase.Create(ctx, dto.DecodeUsrCreate(req))
 	if err != nil {
 		return nil, err
 	}
 	return &ruto_v1.UsrCreateRep{Id: newId}, nil
 }
 
-func (h *Usr) Update(ctx context.Context, req *ruto_v1.UsrMain) (*emptypb.Empty, error) {
-	if err := h.usecase.Update(ctx, req.Id, dto.DecodeUsrMain(req)); err != nil {
+func (h *Usr) Update(ctx context.Context, req *ruto_v1.UsrEdit) (*emptypb.Empty, error) {
+	if err := h.usecase.Update(ctx, req.Id, dto.DecodeUsrEdit(req)); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
