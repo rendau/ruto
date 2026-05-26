@@ -988,6 +988,49 @@ h3 {
   white-space: nowrap;
 }
 
+.endpoints-head {
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.endpoints-head-count {
+  font-size: 12px;
+}
+
+.endpoints-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.endpoints-filter-input {
+  width: 220px;
+  max-width: 100%;
+  border: 1px solid #4a6487;
+  background: #223450;
+  color: #e3edff;
+}
+
+.endpoints-filter-input::placeholder {
+  color: #9bb0cb;
+}
+
+.endpoints-filter-select {
+  width: auto;
+  min-width: 140px;
+  border: 1px solid #4a6487;
+  background: #223450;
+  color: #e3edff;
+  padding-right: 34px;
+}
+
+.endpoints-filters .icon-action-button.secondary:not(:disabled):hover .icon-action-glyph {
+  color: #8fd0ff;
+}
+
 .endpoints-table {
   border: 0;
   background: transparent;
@@ -1326,5 +1369,14 @@ h3 {
 
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .endpoints-filter-input {
+    width: 100%;
+  }
+
+  .endpoints-filter-select {
+    min-width: 0;
+    flex: 1 1 180px;
   }
 }

@@ -15,6 +15,10 @@ const loading = ref(false);
 const errorMessage = ref("");
 const deletingApp = ref(false);
 const deletingEndpointId = ref("");
+const endpointSearch = ref("");
+const authVisibilityFilter = ref<"all" | "public" | "protected">("all");
+const activeFilter = ref<"all" | "active" | "inactive">("all");
+const httpMethodFilter = ref("all");
 
 const app = ref<AppMain | null>(null);
 const endpoints = ref<EndpointMain[]>([]);
@@ -25,9 +29,74 @@ type EndpointAuthIcon = {
   label: string;
 };
 
+const methodSortOrder: Record<string, number> = {
+  GET: 1,
+  POST: 2,
+  PUT: 3,
+  PATCH: 4,
+  DELETE: 5,
+  OPTIONS: 6,
+  HEAD: 7
+};
+
+const httpMethodOptions = computed(() => {
+  const items = new Set<string>();
+  for (const endpoint of endpoints.value) {
+    const method = (endpoint.method || "").trim().toUpperCase();
+    if (method) {
+      items.add(method);
+    }
+  }
+  return Array.from(items).sort((a, b) => {
+    const orderA = methodSortOrder[a] || 99;
+    const orderB = methodSortOrder[b] || 99;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    return a.localeCompare(b);
+  });
+});
+
+const filteredEndpoints = computed(() => {
+  const query = endpointSearch.value.trim().toLowerCase();
+  return endpoints.value.filter((endpoint) => {
+    const path = normalizedRoutePath(endpoint.path);
+    const method = (endpoint.method || "").trim().toUpperCase();
+    const requiresAuth = endpointRequiresAuth(endpoint);
+    const isActive = Boolean(endpoint.active);
+
+    if (query) {
+      const target = `${method} ${path}`.toLowerCase();
+      if (!target.includes(query)) {
+        return false;
+      }
+    }
+
+    if (authVisibilityFilter.value === "public" && requiresAuth) {
+      return false;
+    }
+    if (authVisibilityFilter.value === "protected" && !requiresAuth) {
+      return false;
+    }
+
+    if (activeFilter.value === "active" && !isActive) {
+      return false;
+    }
+    if (activeFilter.value === "inactive" && isActive) {
+      return false;
+    }
+
+    if (httpMethodFilter.value !== "all" && method !== httpMethodFilter.value) {
+      return false;
+    }
+
+    return true;
+  });
+});
+
 const endpointGroups = computed(() => {
   const groups = new Map<string, EndpointMain[]>();
-  for (const endpoint of endpoints.value) {
+  for (const endpoint of filteredEndpoints.value) {
     const key = firstPathSegment(endpoint.path);
     const current = groups.get(key);
     if (current) {
@@ -51,6 +120,15 @@ const endpointGroups = computed(() => {
       }
       return a.segment.localeCompare(b.segment);
     });
+});
+
+const hasEndpointFilters = computed(() => {
+  return (
+    endpointSearch.value.trim() !== "" ||
+    authVisibilityFilter.value !== "all" ||
+    activeFilter.value !== "all" ||
+    httpMethodFilter.value !== "all"
+  );
 });
 
 function firstPathSegment(path: string): string {
@@ -128,6 +206,13 @@ function endpointMethodBadgeClass(method: string): string {
     default:
       return "method-other";
   }
+}
+
+function resetEndpointFilters() {
+  endpointSearch.value = "";
+  authVisibilityFilter.value = "all";
+  activeFilter.value = "all";
+  httpMethodFilter.value = "all";
 }
 
 async function load() {
@@ -239,13 +324,47 @@ onMounted(() => {
       </div>
     </section>
 
-    <div class="page-header compact">
+    <div class="page-header compact endpoints-head">
       <h3>Endpoints</h3>
+      <span class="muted endpoints-head-count">{{ filteredEndpoints.length }} / {{ endpoints.length }}</span>
+    </div>
+    <div class="endpoints-filters">
+      <input
+        v-model="endpointSearch"
+        class="endpoints-filter-input"
+        type="search"
+        placeholder="Search endpoints"
+        aria-label="Search endpoints"
+      />
+      <select v-model="authVisibilityFilter" class="endpoints-filter-select" aria-label="Filter by visibility">
+        <option value="all">All Visibility</option>
+        <option value="public">Public</option>
+        <option value="protected">Protected</option>
+      </select>
+      <select v-model="activeFilter" class="endpoints-filter-select" aria-label="Filter by status">
+        <option value="all">All Status</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <select v-model="httpMethodFilter" class="endpoints-filter-select" aria-label="Filter by HTTP method">
+        <option value="all">All Methods</option>
+        <option v-for="method in httpMethodOptions" :key="method" :value="method">{{ method }}</option>
+      </select>
+      <button
+        class="icon-action-button secondary"
+        type="button"
+        :disabled="!hasEndpointFilters"
+        title="Reset Filters"
+        aria-label="Reset Filters"
+        @click="resetEndpointFilters"
+      >
+        <span class="icon-action-glyph">✖</span>
+      </button>
     </div>
     <table class="data-table endpoints-table">
       <tbody v-if="endpointGroups.length === 0">
         <tr>
-          <td colspan="5" class="muted">No endpoints found.</td>
+          <td colspan="5" class="muted">{{ hasEndpointFilters ? "No endpoints match filters." : "No endpoints found." }}</td>
         </tr>
       </tbody>
 
