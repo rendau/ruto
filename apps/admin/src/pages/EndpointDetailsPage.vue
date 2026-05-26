@@ -1,0 +1,365 @@
+<script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
+import { deleteEndpoint, getApp, getEndpoint, getRoot, updateEndpoint } from "../lib/api";
+import { notifyError, notifySuccess } from "../lib/notify";
+import type { AppMain, EndpointMain } from "../types/api";
+
+type EndpointAuthIcon = {
+  key: "ip_validation" | "jwt" | "basic" | "api_key";
+  glyph: string;
+  label: string;
+};
+
+const route = useRoute();
+const router = useRouter();
+
+const id = computed(() => (typeof route.params.id === "string" ? route.params.id : ""));
+const loading = ref(false);
+const deactivating = ref(false);
+const deleting = ref(false);
+const errorMessage = ref("");
+
+const endpoint = ref<EndpointMain | null>(null);
+const app = ref<AppMain | null>(null);
+const rootBaseUrl = ref("");
+const appName = ref("");
+
+const endpointPath = computed(() => normalizedRoutePath(endpoint.value?.path || ""));
+const endpointMethod = computed(() => (endpoint.value?.method || "").trim().toUpperCase() || "*");
+const publicUrl = computed(() => {
+  if (!app.value || !rootBaseUrl.value) {
+    return "";
+  }
+  const routePath = joinPathParts(app.value.path_prefix, endpoint.value?.path || "");
+  return joinUrl(rootBaseUrl.value, routePath);
+});
+const backendUrl = computed(() => {
+  if (!app.value) {
+    return "";
+  }
+  const targetPath = endpoint.value?.backend.custom_path || endpoint.value?.path || "";
+  return joinUrl(app.value.backend.url, targetPath);
+});
+
+function normalizedRoutePath(path: string): string {
+  const trimmed = (path || "").trim();
+  if (!trimmed) {
+    return "/";
+  }
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function cleanPathPart(part: string): string {
+  return (part || "").trim().replace(/^\/+|\/+$/g, "");
+}
+
+function joinPathParts(...parts: string[]): string {
+  return parts
+    .map((part) => cleanPathPart(part))
+    .filter((part) => part.length > 0)
+    .join("/");
+}
+
+function joinUrl(baseUrl: string, path: string): string {
+  const base = (baseUrl || "").trim().replace(/\/+$/g, "");
+  if (!base) {
+    return "";
+  }
+  const cleanedPath = cleanPathPart(path);
+  return cleanedPath ? `${base}/${cleanedPath}` : base;
+}
+
+function endpointMethodBadgeClass(method: string): string {
+  const normalized = (method || "").trim().toUpperCase();
+  switch (normalized) {
+    case "GET":
+      return "method-get";
+    case "POST":
+      return "method-post";
+    case "PUT":
+      return "method-put";
+    case "DELETE":
+      return "method-delete";
+    case "PATCH":
+      return "method-patch";
+    case "HEAD":
+      return "method-head";
+    case "OPTIONS":
+      return "method-options";
+    default:
+      return "method-other";
+  }
+}
+
+function endpointAuthIcons(item: EndpointMain): EndpointAuthIcon[] {
+  const methods = item.auth?.methods || [];
+  const hasIpValidation = methods.some((method) => Boolean(method.ip_validation));
+  const hasJwt = methods.some((method) => Boolean(method.jwt));
+  const hasBasic = methods.some((method) => Boolean(method.basic));
+  const hasApiKey = methods.some((method) => Boolean(method.api_key));
+
+  const icons: EndpointAuthIcon[] = [];
+  if (hasIpValidation) {
+    icons.push({ key: "ip_validation", glyph: "IP", label: "IP Validation" });
+  }
+  if (hasJwt) {
+    icons.push({ key: "jwt", glyph: "JWT", label: "JWT" });
+  }
+  if (hasBasic) {
+    icons.push({ key: "basic", glyph: "B", label: "Basic Auth" });
+  }
+  if (hasApiKey) {
+    icons.push({ key: "api_key", glyph: "K", label: "API Key" });
+  }
+  return icons;
+}
+
+function authSummary(item: EndpointMain): string {
+  if (!item.auth?.enabled) {
+    return "Public access (auth disabled)";
+  }
+  const mode = (item.auth.mode || "extend").toLowerCase() === "replace" ? "replace" : "extend";
+  return `Auth enabled, mode: ${mode}`;
+}
+
+async function load() {
+  loading.value = true;
+  errorMessage.value = "";
+  try {
+    endpoint.value = await getEndpoint(id.value);
+    app.value = null;
+    rootBaseUrl.value = "";
+    appName.value = "";
+    try {
+      const root = await getRoot();
+      rootBaseUrl.value = root.base_url || "";
+    } catch {
+      rootBaseUrl.value = "";
+    }
+    if (endpoint.value.app_id) {
+      try {
+        app.value = await getApp(endpoint.value.app_id);
+        appName.value = app.value.name || app.value.id;
+      } catch {
+        app.value = null;
+        appName.value = "";
+      }
+    }
+  } catch (error) {
+    endpoint.value = null;
+    errorMessage.value = error instanceof Error ? error.message : "Unable to load endpoint";
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function deactivateEndpoint() {
+  if (deactivating.value || deleting.value || !endpoint.value || !endpoint.value.active) {
+    return;
+  }
+  const approved = window.confirm(`Deactivate endpoint ${endpointMethod.value} ${endpointPath.value}?`);
+  if (!approved) {
+    return;
+  }
+  deactivating.value = true;
+  errorMessage.value = "";
+  try {
+    await updateEndpoint({
+      ...endpoint.value,
+      active: false
+    });
+    endpoint.value.active = false;
+    notifySuccess("Endpoint deactivated");
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : "Unable to deactivate endpoint";
+    notifyError(errorMessage.value);
+  } finally {
+    deactivating.value = false;
+  }
+}
+
+async function removeEndpoint() {
+  if (deleting.value || deactivating.value || !endpoint.value) {
+    return;
+  }
+  const approved = window.confirm(`Delete endpoint ${endpointMethod.value} ${endpointPath.value}?`);
+  if (!approved) {
+    return;
+  }
+  deleting.value = true;
+  errorMessage.value = "";
+  try {
+    const appId = endpoint.value.app_id;
+    await deleteEndpoint(endpoint.value.id);
+    notifySuccess("Endpoint deleted");
+    await router.push({ name: "app-details", params: { id: appId } });
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : "Unable to delete endpoint";
+    notifyError(errorMessage.value);
+  } finally {
+    deleting.value = false;
+  }
+}
+
+async function copyUrl(label: string, value: string) {
+  if (!value) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(value);
+    notifySuccess(`${label} copied`);
+  } catch {
+    notifyError(`Unable to copy ${label.toLowerCase()}`);
+  }
+}
+
+onMounted(() => {
+  void load();
+});
+</script>
+
+<template>
+  <div class="actions page-top-actions endpoint-details-actions">
+    <RouterLink
+      v-if="endpoint"
+      class="icon-action-button secondary"
+      :to="{ name: 'app-details', params: { id: endpoint.app_id } }"
+      title="Back to Application"
+      aria-label="Back to Application"
+    >
+      <svg class="icon-action-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+    </RouterLink>
+    <RouterLink
+      v-if="endpoint"
+      class="icon-action-button secondary"
+      :to="{ name: 'endpoint-edit', params: { id: endpoint.id } }"
+      title="Edit Endpoint"
+      aria-label="Edit Endpoint"
+    >
+      <svg class="icon-action-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 20h4l10-10a2 2 0 0 0-4-4L4 16v4z" />
+      </svg>
+    </RouterLink>
+    <button
+      v-if="endpoint"
+      class="icon-action-button primary"
+      :disabled="deactivating || deleting || !endpoint.active"
+      :title="endpoint.active ? 'Deactivate Endpoint' : 'Endpoint already inactive'"
+      aria-label="Deactivate Endpoint"
+      @click="deactivateEndpoint"
+    >
+      <svg class="icon-action-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M7 17L17 7" />
+      </svg>
+    </button>
+    <button
+      v-if="endpoint"
+      class="icon-action-button danger"
+      :disabled="deleting || deactivating"
+      title="Delete Endpoint"
+      aria-label="Delete Endpoint"
+      @click="removeEndpoint"
+    >
+      <svg v-if="!deleting" class="icon-action-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 7h16" />
+        <path d="M9 7V5h6v2" />
+        <path d="M7 7l1 12h8l1-12" />
+        <path d="M10 11v5M14 11v5" />
+      </svg>
+      <span v-else class="icon-action-glyph">…</span>
+    </button>
+  </div>
+
+  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <p v-if="loading" class="muted">Loading...</p>
+  <p v-else-if="!endpoint" class="muted">Endpoint not found.</p>
+
+  <template v-else>
+    <section class="endpoint-details-hero">
+      <div class="endpoint-details-main">
+        <span class="http-method-badge" :class="endpointMethodBadgeClass(endpointMethod)">{{ endpointMethod }}</span>
+        <h2 class="endpoint-details-path">{{ endpointPath }}</h2>
+      </div>
+      <span class="status-chip" :class="{ inactive: !endpoint.active }">
+        {{ endpoint.active ? "active" : "inactive" }}
+      </span>
+    </section>
+
+    <section class="summary-grid endpoint-summary-grid">
+      <div>
+        <span class="label">Application</span>
+        <strong>{{ appName || endpoint.app_id }}</strong>
+      </div>
+      <div>
+        <span class="label">App ID</span>
+        <strong>{{ endpoint.app_id }}</strong>
+      </div>
+      <div>
+        <span class="label">Endpoint ID</span>
+        <strong class="endpoint-value-break">{{ endpoint.id }}</strong>
+      </div>
+      <div>
+        <span class="label">Custom Backend Path</span>
+        <strong>{{ endpoint.backend.custom_path || "inherit app backend path" }}</strong>
+      </div>
+      <div>
+        <span class="label">Public URL</span>
+        <button
+          class="endpoint-copy-link"
+          type="button"
+          :disabled="!publicUrl"
+          title="Copy Public URL"
+          aria-label="Copy Public URL"
+          @click="copyUrl('Public URL', publicUrl)"
+        >
+          <span class="endpoint-copy-value" :class="{ muted: !publicUrl }">{{ publicUrl || "unavailable" }}</span>
+          <svg class="endpoint-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="9" width="10" height="10" rx="2" />
+            <rect x="5" y="5" width="10" height="10" rx="2" />
+          </svg>
+        </button>
+      </div>
+      <div>
+        <span class="label">Backend URL</span>
+        <button
+          class="endpoint-copy-link"
+          type="button"
+          :disabled="!backendUrl"
+          title="Copy Backend URL"
+          aria-label="Copy Backend URL"
+          @click="copyUrl('Backend URL', backendUrl)"
+        >
+          <span class="endpoint-copy-value" :class="{ muted: !backendUrl }">{{ backendUrl || "unavailable" }}</span>
+          <svg class="endpoint-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="9" width="10" height="10" rx="2" />
+            <rect x="5" y="5" width="10" height="10" rx="2" />
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <section class="panel endpoint-auth-panel">
+      <div class="endpoint-auth-head">
+        <h3>Auth</h3>
+        <span v-if="endpoint.auth?.enabled" class="endpoint-lock-chip" title="Auth required" aria-label="Auth required">🔒</span>
+      </div>
+      <p class="muted endpoint-auth-summary">{{ authSummary(endpoint) }}</p>
+      <div v-if="endpointAuthIcons(endpoint).length > 0" class="endpoint-auth-icons">
+        <span
+          v-for="authIcon in endpointAuthIcons(endpoint)"
+          :key="authIcon.key"
+          class="endpoint-auth-icon"
+          :title="authIcon.label"
+          :aria-label="authIcon.label"
+        >
+          {{ authIcon.glyph }}
+        </span>
+      </div>
+      <p v-else class="muted">No auth methods configured.</p>
+    </section>
+  </template>
+</template>

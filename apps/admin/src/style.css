@@ -988,6 +988,19 @@ h3 {
   white-space: nowrap;
 }
 
+.endpoint-path-link {
+  color: #cfe2ff;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: color 0.14s ease, text-decoration-color 0.14s ease;
+}
+
+.endpoint-path-link:hover,
+.endpoint-path-link:focus-visible {
+  color: #8fd0ff;
+  text-decoration-color: currentColor;
+}
+
 .endpoints-head {
   justify-content: flex-start;
   gap: 8px;
@@ -1200,6 +1213,116 @@ h3 {
   line-height: 1;
 }
 
+.endpoint-details-actions {
+  gap: 10px;
+}
+
+.endpoint-details-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.endpoint-details-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.endpoint-details-path {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #edf3ff;
+}
+
+.endpoint-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.endpoint-value-break {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.endpoint-copy-link {
+  width: auto;
+  max-width: 100%;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+
+.endpoint-copy-value {
+  display: block;
+  flex: 0 1 auto;
+  overflow-wrap: anywhere;
+}
+
+.endpoint-copy-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  stroke: #9fd2ff;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+.endpoint-copy-link:hover .endpoint-copy-icon,
+.endpoint-copy-link:focus-visible .endpoint-copy-icon {
+  opacity: 1;
+}
+
+.endpoint-copy-link:not(:disabled):hover .endpoint-copy-value,
+.endpoint-copy-link:not(:disabled):focus-visible .endpoint-copy-value {
+  color: #c8e7ff;
+}
+
+.endpoint-copy-link:disabled {
+  cursor: default;
+}
+
+.endpoint-auth-panel {
+  max-width: 920px;
+}
+
+.endpoint-auth-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.endpoint-auth-summary {
+  margin-top: 0;
+}
+
+.icon-action-svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .panel {
   background: #1e2d44;
   border: 1px solid #425c7f;
@@ -1361,6 +1484,10 @@ h3 {
 
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .endpoint-summary-grid {
+    grid-template-columns: 1fr;
   }
 
   .dashboard-kpis {

@@ -91,12 +91,12 @@ async function submit() {
     if (isEdit.value) {
       await updateEndpoint(form.value);
       notifySuccess("Endpoint updated");
-      await router.push({ name: "app-details", params: { id: form.value.app_id } });
+      await router.push({ name: "endpoint-details", params: { id: form.value.id } });
       return;
     }
     const created = await createEndpoint(form.value);
     notifySuccess("Endpoint created");
-    await router.push({ name: "endpoint-edit", params: { id: created.id } });
+    await router.push({ name: "endpoint-details", params: { id: created.id } });
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to save endpoint";
     notifyError(errorMessage.value);

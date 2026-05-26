@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
-import { deleteApp, deleteEndpoint, getApp, listEndpoints } from "../lib/api";
+import { deleteApp, deleteEndpoint, getApp, listEndpoints, updateApp } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain, EndpointMain } from "../types/api";
 import { useAppsStore } from "../stores/apps";
@@ -14,6 +14,7 @@ const id = computed(() => (typeof route.params.id === "string" ? route.params.id
 const loading = ref(false);
 const errorMessage = ref("");
 const deletingApp = ref(false);
+const togglingApp = ref(false);
 const deletingEndpointId = ref("");
 const endpointSearch = ref("");
 const authVisibilityFilter = ref<"all" | "public" | "protected">("all");
@@ -253,7 +254,7 @@ async function removeEndpoint(endpoint: EndpointMain) {
 }
 
 async function removeApp() {
-  if (deletingApp.value) {
+  if (deletingApp.value || togglingApp.value) {
     return;
   }
   const approved = window.confirm(`Delete application "${app.value?.name || app.value?.id}"?`);
@@ -274,6 +275,36 @@ async function removeApp() {
   }
 }
 
+async function toggleAppActive() {
+  if (!app.value || deletingApp.value || togglingApp.value) {
+    return;
+  }
+
+  const nextActive = !app.value.active;
+  const action = nextActive ? "Activate" : "Deactivate";
+  const approved = window.confirm(`${action} application "${app.value.name || app.value.id}"?`);
+  if (!approved) {
+    return;
+  }
+
+  togglingApp.value = true;
+  errorMessage.value = "";
+  try {
+    await updateApp({
+      ...app.value,
+      active: nextActive
+    });
+    app.value.active = nextActive;
+    await appsStore.loadMenuApps();
+    notifySuccess(`Application ${nextActive ? "activated" : "deactivated"}`);
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : "Unable to update app status";
+    notifyError(errorMessage.value);
+  } finally {
+    togglingApp.value = false;
+  }
+}
+
 onMounted(() => {
   void load();
 });
@@ -282,6 +313,15 @@ onMounted(() => {
 <template>
   <div class="actions page-top-actions">
     <RouterLink class="primary-button" :to="{ name: 'endpoint-create', params: { appId: id } }">Create Endpoint</RouterLink>
+    <button
+      v-if="app"
+      :class="app.active ? 'danger-button' : 'primary-button'"
+      :disabled="deletingApp || deletingEndpointId !== '' || togglingApp"
+      :title="app.active ? 'Deactivate App' : 'Activate App'"
+      @click="toggleAppActive"
+    >
+      {{ togglingApp ? "Saving..." : app.active ? "Deactivate App" : "Activate App" }}
+    </button>
     <RouterLink
       class="icon-action-button secondary"
       :to="{ name: 'app-edit', params: { id } }"
@@ -292,7 +332,7 @@ onMounted(() => {
     </RouterLink>
     <button
       class="icon-action-button danger"
-      :disabled="deletingApp || deletingEndpointId !== ''"
+      :disabled="deletingApp || deletingEndpointId !== '' || togglingApp"
       title="Delete App"
       aria-label="Delete App"
       @click="removeApp"
@@ -384,7 +424,15 @@ onMounted(() => {
           <td>
             <span class="http-method-badge" :class="endpointMethodBadgeClass(endpoint.method)">{{ endpoint.method }}</span>
           </td>
-          <td class="endpoint-path-cell">{{ normalizedRoutePath(endpoint.path) }}</td>
+          <td class="endpoint-path-cell">
+            <RouterLink
+              class="endpoint-path-link"
+              :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
+              :title="`${endpoint.method} ${normalizedRoutePath(endpoint.path)}`"
+            >
+              {{ normalizedRoutePath(endpoint.path) }}
+            </RouterLink>
+          </td>
           <td>
             <div class="endpoint-auth">
               <span
@@ -416,6 +464,14 @@ onMounted(() => {
           <td class="actions">
             <RouterLink
               class="icon-action-button secondary"
+              :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
+              title="View Endpoint"
+              aria-label="View Endpoint"
+            >
+              <span class="icon-action-glyph">◉</span>
+            </RouterLink>
+            <RouterLink
+              class="icon-action-button secondary"
               :to="{ name: 'endpoint-edit', params: { id: endpoint.id } }"
               title="Edit Endpoint"
               aria-label="Edit Endpoint"
@@ -424,7 +480,7 @@ onMounted(() => {
             </RouterLink>
             <button
               class="icon-action-button danger"
-              :disabled="deletingApp || deletingEndpointId !== ''"
+              :disabled="deletingApp || deletingEndpointId !== '' || togglingApp"
               title="Delete Endpoint"
               aria-label="Delete Endpoint"
               @click="removeEndpoint(endpoint)"

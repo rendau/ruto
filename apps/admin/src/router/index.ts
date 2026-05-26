@@ -5,6 +5,7 @@ import DashboardPage from "../pages/DashboardPage.vue";
 import AppFormPage from "../pages/AppFormPage.vue";
 import AppDetailsPage from "../pages/AppDetailsPage.vue";
 import EndpointFormPage from "../pages/EndpointFormPage.vue";
+import EndpointDetailsPage from "../pages/EndpointDetailsPage.vue";
 import RootFormPage from "../pages/RootFormPage.vue";
 import ProfilePage from "../pages/ProfilePage.vue";
 import UsersPage from "../pages/UsersPage.vue";
@@ -49,6 +50,11 @@ export const router = createRouter({
           path: "apps/:appId/endpoints/new",
           name: "endpoint-create",
           component: EndpointFormPage
+        },
+        {
+          path: "endpoints/:id",
+          name: "endpoint-details",
+          component: EndpointDetailsPage
         },
         {
           path: "endpoints/:id/edit",

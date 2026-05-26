@@ -37,6 +37,8 @@ const pageTitle = computed(() => {
       return "Edit Application";
     case "endpoint-create":
       return "Create Endpoint";
+    case "endpoint-details":
+      return "Endpoint";
     case "endpoint-edit":
       return "Edit Endpoint";
     case "root-edit":
