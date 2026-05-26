@@ -134,7 +134,7 @@ func TestServiceBuild_ProxyByConfig_AnyMethod(t *testing.T) {
 							{
 								Active: true,
 								Method: tt.endpointMethod,
-								Path:   "doc/*",
+								Path:   "doc",
 							},
 						},
 					},
@@ -143,11 +143,11 @@ func TestServiceBuild_ProxyByConfig_AnyMethod(t *testing.T) {
 			require.NoError(t, err)
 
 			rw := httptest.NewRecorder()
-			s.ServeHTTP(rw, httptest.NewRequest(tt.method, "https://public.example/lp/doc/a/b", nil))
+			s.ServeHTTP(rw, httptest.NewRequest(tt.method, "https://public.example/lp/doc", nil))
 
 			require.Equal(t, http.StatusNoContent, rw.Code)
 			require.Equal(t, tt.method, rw.Header().Get("X-Backend-Method"))
-			require.Equal(t, "/svc/doc/a/b", rw.Header().Get("X-Backend-Path"))
+			require.Equal(t, "/svc/doc", rw.Header().Get("X-Backend-Path"))
 		})
 	}
 }

@@ -3,11 +3,16 @@ package model
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+)
+
+var (
+	pathPrefixPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*$`)
 )
 
 type App struct {
@@ -33,6 +38,9 @@ func (m *App) Normalize() error {
 	m.PathPrefix = strings.Trim(strings.TrimSpace(m.PathPrefix), "/")
 	if m.PathPrefix == "" {
 		return fmt.Errorf("path_prefix: empty")
+	}
+	if !pathPrefixPattern.MatchString(m.PathPrefix) {
+		return fmt.Errorf("path_prefix: invalid format")
 	}
 	m.PathPrefix = "/" + m.PathPrefix
 	if err := m.Backend.Normalize(); err != nil {

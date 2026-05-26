@@ -33,6 +33,9 @@ func (m *Endpoint) Normalize() error {
 	}
 
 	m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
+	if strings.Contains(m.Path, "*") {
+		return fmt.Errorf("path: wildcard '*' is not allowed")
+	}
 
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)

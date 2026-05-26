@@ -38,3 +38,21 @@ func TestEndpointNormalize_SlashPathToEmpty(t *testing.T) {
 		t.Fatalf("path normalize failed, expected empty, got %q", item.Path)
 	}
 }
+
+func TestEndpointNormalize_RejectWildcardInPath(t *testing.T) {
+	item := &Endpoint{
+		Method: "GET",
+		Path:   "doc/*",
+		Backend: Backend{
+			CustomPath: "",
+		},
+	}
+
+	err := item.Normalize()
+	if err == nil {
+		t.Fatalf("Normalize() expected error, got nil")
+	}
+	if err.Error() != "path: wildcard '*' is not allowed" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
