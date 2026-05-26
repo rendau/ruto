@@ -2,25 +2,46 @@ name: Deploy
 on:
   push:
     branches:
-      - disabled
+      - master
 jobs:
   build:
-    name: Build and deploy
+    name: Build and deploy ${{ matrix.service }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: core
+            image: ruto-core:latest
+            dockerfile: docker/core.Dockerfile
+          - service: gateway
+            image: ruto-gateway:latest
+            dockerfile: docker/gateway.Dockerfile
     env:
-      OWNER: rendau
-      IMAGE: ruto:latest
+      OWNER: ${{ github.repository_owner }}
+      IMAGE: ${{ matrix.image }}
     steps:
       - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
 
       - run: go mod download
 
       # - run: go test -v ./...
 
-      - run: make
+      - run: make build-${{ matrix.service }}
 
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $ --password-stdin
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: docker build -t ghcr.io/$OWNER/$IMAGE .
+      - run: docker build -f ${{ matrix.dockerfile }} -t ghcr.io/$OWNER/$IMAGE .
 
       - run: docker push ghcr.io/$OWNER/$IMAGE
