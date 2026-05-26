@@ -684,6 +684,11 @@ h3 {
   color: #d8e6fb;
 }
 
+.icon-action-button.primary {
+  background: #1e4bb8;
+  color: #fff;
+}
+
 .icon-action-button.danger {
   background: #c73c3c;
   color: #fff;
@@ -976,6 +981,180 @@ h3 {
 .gateway-table th,
 .gateway-table td {
   white-space: nowrap;
+}
+
+.endpoints-table th,
+.endpoints-table td {
+  white-space: nowrap;
+}
+
+.endpoints-table {
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.endpoint-group-row td {
+  background: transparent;
+  padding-top: 9px;
+  padding-bottom: 16px;
+  padding-left: 0;
+  border-top: 0;
+  border-bottom: 1px solid #2b3e5b;
+}
+
+.endpoint-route-row td:first-child {
+  border-left: 1px solid #2b3e5b;
+}
+
+.endpoint-route-row td:last-child {
+  border-right: 1px solid #2b3e5b;
+}
+
+.endpoint-group-spacer td {
+  padding: 0;
+  height: 18px;
+  border: 0;
+  background: transparent;
+}
+
+.endpoint-group-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.endpoint-group-segment {
+  font-size: 14px;
+  /*font-weight: 700;*/
+  color: #8abd4c;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.endpoint-group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  border-radius: 999px;
+  padding: 0 7px;
+  background: #2d4464;
+  color: #b9cce6;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.http-method-badge {
+  min-width: 72px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  text-transform: uppercase;
+}
+
+.http-method-badge.method-get {
+  background: #284f8f;
+  border-color: #3f6fb9;
+  color: #d8e8ff;
+}
+
+.http-method-badge.method-post {
+  background: #1f5a40;
+  border-color: #2d7b56;
+  color: #d8ffec;
+}
+
+.http-method-badge.method-put {
+  background: #664423;
+  border-color: #8b5f33;
+  color: #ffe8cf;
+}
+
+.http-method-badge.method-delete {
+  background: #6a2e37;
+  border-color: #94434f;
+  color: #ffe0e4;
+}
+
+.http-method-badge.method-patch {
+  background: #5a3f79;
+  border-color: #7c58a2;
+  color: #f0e2ff;
+}
+
+.http-method-badge.method-head {
+  background: #2b5d61;
+  border-color: #3f8187;
+  color: #dafdff;
+}
+
+.http-method-badge.method-options {
+  background: #3c4150;
+  border-color: #596277;
+  color: #e7ecf6;
+}
+
+.http-method-badge.method-other {
+  background: #3b4459;
+  border-color: #596582;
+  color: #e1e7f4;
+}
+
+.endpoint-path-cell {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #bccfe3;
+}
+
+.endpoint-auth {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.endpoint-lock-chip {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #4d6487;
+  border-radius: 6px;
+  background: #2a3f5f;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.endpoint-auth-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.endpoint-auth-icon {
+  min-width: 28px;
+  height: 24px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #4d6487;
+  border-radius: 6px;
+  background: #2a3f5f;
+  color: #dce7f8;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .panel {

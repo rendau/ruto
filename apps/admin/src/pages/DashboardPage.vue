@@ -102,8 +102,14 @@ onMounted(() => {
 
 <template>
   <div class="actions page-top-actions">
-    <button class="secondary-button" :disabled="loading" @click="loadStats">
-      {{ loading ? "Refreshing..." : "Refresh" }}
+    <button
+      class="icon-action-button secondary"
+      :disabled="loading"
+      title="Refresh Dashboard"
+      aria-label="Refresh Dashboard"
+      @click="loadStats"
+    >
+      <span class="icon-action-glyph">{{ loading ? "…" : "↻" }}</span>
     </button>
   </div>
 
