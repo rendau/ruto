@@ -491,5 +491,82 @@ onMounted(() => {
         </tr>
       </tbody>
     </table>
+
+    <div class="endpoints-mobile-list">
+      <p v-if="endpointGroups.length === 0" class="muted endpoints-mobile-empty">
+        {{ hasEndpointFilters ? "No endpoints match filters." : "No endpoints found." }}
+      </p>
+      <section v-for="group in endpointGroups" :key="`mobile-${group.segment}`" class="endpoint-mobile-group">
+        <div class="endpoint-group-head">
+          <span class="endpoint-group-segment">{{ group.segment }}</span>
+          <span class="endpoint-group-count">{{ group.items.length }}</span>
+        </div>
+        <div class="endpoint-mobile-cards">
+          <article v-for="endpoint in group.items" :key="`mobile-${endpoint.id}`" class="endpoint-mobile-card">
+            <div class="endpoint-mobile-top">
+              <span class="http-method-badge" :class="endpointMethodBadgeClass(endpoint.method)">{{ endpoint.method }}</span>
+              <span class="status-chip" :class="{ inactive: !endpoint.active }">
+                {{ endpoint.active ? "active" : "inactive" }}
+              </span>
+            </div>
+            <RouterLink
+              class="endpoint-path-link endpoint-mobile-path"
+              :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
+              :title="`${endpoint.method} ${normalizedRoutePath(endpoint.path)}`"
+            >
+              {{ normalizedRoutePath(endpoint.path) }}
+            </RouterLink>
+            <div class="endpoint-auth endpoint-mobile-auth">
+              <span
+                v-if="endpointRequiresAuth(endpoint)"
+                class="endpoint-lock-chip"
+                title="Auth required"
+                aria-label="Auth required"
+              >
+                🔒
+              </span>
+              <div v-if="endpointAuthIcons(endpoint).length > 0" class="endpoint-auth-icons">
+                <span
+                  v-for="authIcon in endpointAuthIcons(endpoint)"
+                  :key="`mobile-${endpoint.id}-${authIcon.key}`"
+                  class="endpoint-auth-icon"
+                  :title="authIcon.label"
+                  :aria-label="authIcon.label"
+                >
+                  {{ authIcon.glyph }}
+                </span>
+              </div>
+            </div>
+            <div class="endpoint-mobile-actions">
+              <RouterLink
+                class="icon-action-button secondary"
+                :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
+                title="View Endpoint"
+                aria-label="View Endpoint"
+              >
+                <span class="icon-action-glyph">◉</span>
+              </RouterLink>
+              <RouterLink
+                class="icon-action-button secondary"
+                :to="{ name: 'endpoint-edit', params: { id: endpoint.id } }"
+                title="Edit Endpoint"
+                aria-label="Edit Endpoint"
+              >
+                <span class="icon-action-glyph">✎</span>
+              </RouterLink>
+              <button
+                class="icon-action-button danger"
+                :disabled="deletingApp || deletingEndpointId !== '' || togglingApp"
+                title="Delete Endpoint"
+                aria-label="Delete Endpoint"
+                @click="removeEndpoint(endpoint)"
+              >
+                <span class="icon-action-glyph">{{ deletingEndpointId === endpoint.id ? "…" : "✕" }}</span>
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+    </div>
   </template>
 </template>

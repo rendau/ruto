@@ -278,8 +278,8 @@ onBeforeUnmount(() => {
         <div class="topbar-user" ref="userMenuRef">
           <button class="user-trigger" type="button" @click="toggleUserMenu">
             <span class="avatar-badge" aria-hidden="true">{{ profileInitial }}</span>
-            <span>{{ profileName }}</span>
-            <span class="admin-badge" :class="{ yes: authStore.profile?.is_admin }">{{ profileRole }}</span>
+            <span class="user-name">{{ profileName }}</span>
+            <span class="admin-badge user-role" :class="{ yes: authStore.profile?.is_admin }">{{ profileRole }}</span>
             <span class="icon caret" aria-hidden="true">▾</span>
           </button>
           <div v-if="userMenuOpen" class="user-menu">

@@ -161,7 +161,7 @@ onMounted(() => {
 
   <section class="panel">
     <h3>Users</h3>
-    <div class="table-wrap">
+    <div class="table-wrap users-table-wrap">
       <table class="data-table users-table">
         <thead>
           <tr>
@@ -227,6 +227,63 @@ onMounted(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="users-mobile-list">
+      <p v-if="!loading && users.length === 0" class="muted">No users found.</p>
+      <p v-if="loading && users.length === 0" class="muted">Loading users...</p>
+      <article v-for="user in users" :key="`mobile-${toUserId(user.id)}`" class="users-mobile-card">
+        <div class="users-mobile-head">
+          <strong class="users-mobile-username">{{ user.username }}</strong>
+          <span class="status-chip" :class="{ inactive: !user.active }">{{ user.active ? "active" : "inactive" }}</span>
+        </div>
+        <div class="users-mobile-grid">
+          <div class="users-mobile-row">
+            <span class="label">ID</span>
+            <span>{{ toUserId(user.id) }}</span>
+          </div>
+          <div class="users-mobile-row">
+            <span class="label">Name</span>
+            <span>{{ user.name || "-" }}</span>
+          </div>
+          <div class="users-mobile-row">
+            <span class="label">Role</span>
+            <span class="admin-badge" :class="{ yes: user.is_admin }">{{ user.is_admin ? "admin" : "user" }}</span>
+          </div>
+        </div>
+        <div class="users-mobile-actions">
+          <button
+            class="icon-action-button secondary"
+            type="button"
+            :disabled="saving || !canManage"
+            title="Edit User"
+            aria-label="Edit User"
+            @click="goToEdit(user)"
+          >
+            <span class="icon-action-glyph">✎</span>
+          </button>
+          <button
+            class="icon-action-button secondary"
+            type="button"
+            :disabled="saving || !canManage"
+            :title="user.active ? 'Deactivate User' : 'Activate User'"
+            :aria-label="user.active ? 'Deactivate User' : 'Activate User'"
+            @click="toggleActive(user, !user.active)"
+          >
+            <span class="icon-action-glyph">{{ user.active ? "⏸" : "▶" }}</span>
+          </button>
+          <button
+            class="icon-action-button danger"
+            type="button"
+            :disabled="removingId === toUserId(user.id) || saving || !canManage"
+            title="Delete User"
+            aria-label="Delete User"
+            @click="removeUser(user)"
+          >
+            <span class="icon-action-glyph">{{ removingId === toUserId(user.id) ? "…" : "✕" }}</span>
+          </button>
+        </div>
+      </article>
     </div>
   </section>
 </template>
