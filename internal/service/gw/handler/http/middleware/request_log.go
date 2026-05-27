@@ -31,7 +31,7 @@ func NewRequestLog(enabled bool) Middleware {
 			}
 
 			if statusCode < http.StatusOK || statusCode > http.StatusMultipleChoices-1 {
-				slog.Error("gw request error", logArgs...)
+				slog.Info("gw request error", logArgs...)
 			} else if enabled {
 				slog.Info("gw request", logArgs...)
 			}
