@@ -35,6 +35,12 @@ func NewProxy(app *appModel.App) http.Handler {
 			}
 			endpoint := ctxReq.Endpoint
 
+			slog.Debug("gw access",
+				"method", r.In.Method,
+				"path", r.In.URL.Path,
+				"app", ctxReq.App.Name,
+			)
+
 			r.SetURL(backendUrl)
 
 			if endpoint.Backend.CustomPath != "" {
