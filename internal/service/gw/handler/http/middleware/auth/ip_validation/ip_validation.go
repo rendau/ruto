@@ -1,6 +1,7 @@
 package ip_validation
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 
@@ -40,5 +41,6 @@ func extractRemoteIP(remoteAddr string) string {
 }
 
 func (a *Authorizer) checkIP(ip string) bool {
+	slog.Debug("checking IP", slog.String("ip", ip))
 	return a.allowedIPMap[ip]
 }
