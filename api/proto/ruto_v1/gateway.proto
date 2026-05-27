@@ -16,9 +16,9 @@ service Gateway {
 
 message GatewayHeartbeatRequest {
   string gateway_id = 1;
-  string pod_uid = 2;
+  reserved 2;
   string pod_name = 3;
-  string node_name = 4;
+  reserved 4;
   string host_name = 5;
   string snapshot_version = 6;
   int64 last_apply_at_unix = 7;
@@ -32,9 +32,9 @@ message GatewayListResponse {
 
 message GatewayStateItem {
   string gateway_id = 1;
-  string pod_uid = 2;
+  reserved 2;
   string pod_name = 3;
-  string node_name = 4;
+  reserved 4;
   string host_name = 5;
   string snapshot_version = 6;
   int64 last_apply_at_unix = 7;
@@ -43,4 +43,3 @@ message GatewayStateItem {
   int64 last_seen_at_unix = 10;
   string status = 11;
 }
-

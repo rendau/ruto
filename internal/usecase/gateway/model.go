@@ -2,9 +2,7 @@ package gateway
 
 type Heartbeat struct {
 	GatewayID       string
-	PodUID          string
 	PodName         string
-	NodeName        string
 	HostName        string
 	SnapshotVersion string
 	LastApplyAtUnix int64
@@ -14,9 +12,7 @@ type Heartbeat struct {
 
 type Item struct {
 	GatewayID       string `json:"gateway_id"`
-	PodUID          string `json:"pod_uid"`
 	PodName         string `json:"pod_name"`
-	NodeName        string `json:"node_name"`
 	HostName        string `json:"host_name"`
 	SnapshotVersion string `json:"snapshot_version"`
 	LastApplyAtUnix int64  `json:"last_apply_at_unix"`

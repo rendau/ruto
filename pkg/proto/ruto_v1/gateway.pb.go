@@ -26,9 +26,7 @@ const (
 type GatewayHeartbeatRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	GatewayId       string                 `protobuf:"bytes,1,opt,name=gateway_id,json=gatewayId,proto3" json:"gateway_id,omitempty"`
-	PodUid          string                 `protobuf:"bytes,2,opt,name=pod_uid,json=podUid,proto3" json:"pod_uid,omitempty"`
 	PodName         string                 `protobuf:"bytes,3,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
-	NodeName        string                 `protobuf:"bytes,4,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
 	HostName        string                 `protobuf:"bytes,5,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
 	SnapshotVersion string                 `protobuf:"bytes,6,opt,name=snapshot_version,json=snapshotVersion,proto3" json:"snapshot_version,omitempty"`
 	LastApplyAtUnix int64                  `protobuf:"varint,7,opt,name=last_apply_at_unix,json=lastApplyAtUnix,proto3" json:"last_apply_at_unix,omitempty"`
@@ -75,23 +73,9 @@ func (x *GatewayHeartbeatRequest) GetGatewayId() string {
 	return ""
 }
 
-func (x *GatewayHeartbeatRequest) GetPodUid() string {
-	if x != nil {
-		return x.PodUid
-	}
-	return ""
-}
-
 func (x *GatewayHeartbeatRequest) GetPodName() string {
 	if x != nil {
 		return x.PodName
-	}
-	return ""
-}
-
-func (x *GatewayHeartbeatRequest) GetNodeName() string {
-	if x != nil {
-		return x.NodeName
 	}
 	return ""
 }
@@ -178,9 +162,7 @@ func (x *GatewayListResponse) GetResults() []*GatewayStateItem {
 type GatewayStateItem struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	GatewayId       string                 `protobuf:"bytes,1,opt,name=gateway_id,json=gatewayId,proto3" json:"gateway_id,omitempty"`
-	PodUid          string                 `protobuf:"bytes,2,opt,name=pod_uid,json=podUid,proto3" json:"pod_uid,omitempty"`
 	PodName         string                 `protobuf:"bytes,3,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
-	NodeName        string                 `protobuf:"bytes,4,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
 	HostName        string                 `protobuf:"bytes,5,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
 	SnapshotVersion string                 `protobuf:"bytes,6,opt,name=snapshot_version,json=snapshotVersion,proto3" json:"snapshot_version,omitempty"`
 	LastApplyAtUnix int64                  `protobuf:"varint,7,opt,name=last_apply_at_unix,json=lastApplyAtUnix,proto3" json:"last_apply_at_unix,omitempty"`
@@ -229,23 +211,9 @@ func (x *GatewayStateItem) GetGatewayId() string {
 	return ""
 }
 
-func (x *GatewayStateItem) GetPodUid() string {
-	if x != nil {
-		return x.PodUid
-	}
-	return ""
-}
-
 func (x *GatewayStateItem) GetPodName() string {
 	if x != nil {
 		return x.PodName
-	}
-	return ""
-}
-
-func (x *GatewayStateItem) GetNodeName() string {
-	if x != nil {
-		return x.NodeName
 	}
 	return ""
 }
@@ -303,27 +271,23 @@ var File_ruto_v1_gateway_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"\n" +
-	"\x15ruto_v1/gateway.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xc5\x02\n" +
+	"\x15ruto_v1/gateway.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x9b\x02\n" +
 	"\x17GatewayHeartbeatRequest\x12\x1d\n" +
 	"\n" +
-	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x17\n" +
-	"\apod_uid\x18\x02 \x01(\tR\x06podUid\x12\x19\n" +
+	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x19\n" +
 	"\bpod_name\x18\x03 \x01(\tR\apodName\x12\x1b\n" +
-	"\tnode_name\x18\x04 \x01(\tR\bnodeName\x12\x1b\n" +
 	"\thost_name\x18\x05 \x01(\tR\bhostName\x12)\n" +
 	"\x10snapshot_version\x18\x06 \x01(\tR\x0fsnapshotVersion\x12+\n" +
 	"\x12last_apply_at_unix\x18\a \x01(\x03R\x0flastApplyAtUnix\x12&\n" +
 	"\x0fstarted_at_unix\x18\b \x01(\x03R\rstartedAtUnix\x12\x1d\n" +
 	"\n" +
-	"last_error\x18\t \x01(\tR\tlastError\"J\n" +
+	"last_error\x18\t \x01(\tR\tlastErrorJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05\"J\n" +
 	"\x13GatewayListResponse\x123\n" +
-	"\aresults\x18\x01 \x03(\v2\x19.ruto_v1.GatewayStateItemR\aresults\"\x81\x03\n" +
+	"\aresults\x18\x01 \x03(\v2\x19.ruto_v1.GatewayStateItemR\aresults\"\xd7\x02\n" +
 	"\x10GatewayStateItem\x12\x1d\n" +
 	"\n" +
-	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x17\n" +
-	"\apod_uid\x18\x02 \x01(\tR\x06podUid\x12\x19\n" +
+	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x19\n" +
 	"\bpod_name\x18\x03 \x01(\tR\apodName\x12\x1b\n" +
-	"\tnode_name\x18\x04 \x01(\tR\bnodeName\x12\x1b\n" +
 	"\thost_name\x18\x05 \x01(\tR\bhostName\x12)\n" +
 	"\x10snapshot_version\x18\x06 \x01(\tR\x0fsnapshotVersion\x12+\n" +
 	"\x12last_apply_at_unix\x18\a \x01(\x03R\x0flastApplyAtUnix\x12&\n" +
@@ -332,7 +296,7 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"last_error\x18\t \x01(\tR\tlastError\x12)\n" +
 	"\x11last_seen_at_unix\x18\n" +
 	" \x01(\x03R\x0elastSeenAtUnix\x12\x16\n" +
-	"\x06status\x18\v \x01(\tR\x06status2\xa0\x01\n" +
+	"\x06status\x18\v \x01(\tR\x06statusJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x052\xa0\x01\n" +
 	"\aGateway\x12E\n" +
 	"\tHeartbeat\x12 .ruto_v1.GatewayHeartbeatRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
 	"\x04List\x12\x16.google.protobuf.Empty\x1a\x1c.ruto_v1.GatewayListResponse\"\x10\x82\xd3\xe4\x93\x02\n" +

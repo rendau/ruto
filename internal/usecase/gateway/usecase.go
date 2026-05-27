@@ -39,9 +39,7 @@ func (u *Usecase) Heartbeat(_ context.Context, req *Heartbeat) error {
 
 	item := &Item{
 		GatewayID:       gatewayID,
-		PodUID:          strings.TrimSpace(req.PodUID),
 		PodName:         strings.TrimSpace(req.PodName),
-		NodeName:        strings.TrimSpace(req.NodeName),
 		HostName:        strings.TrimSpace(req.HostName),
 		SnapshotVersion: strings.TrimSpace(req.SnapshotVersion),
 		LastApplyAtUnix: req.LastApplyAtUnix,

@@ -176,9 +176,7 @@ func (s *Service) sendHeartbeat() error {
 
 	_, err := s.gatewayClient.Heartbeat(ctx, &ruto_v1.GatewayHeartbeatRequest{
 		GatewayId:       s.identity.GatewayID,
-		PodUid:          s.identity.PodUID,
 		PodName:         s.identity.PodName,
-		NodeName:        s.identity.NodeName,
 		HostName:        s.identity.HostName,
 		SnapshotVersion: s.currentVersion,
 		LastApplyAtUnix: s.lastApplyAt,

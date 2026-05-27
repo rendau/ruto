@@ -207,8 +207,8 @@ onMounted(() => {
                 </span>
               </td>
               <td :title="formatUnixTime(gateway.last_apply_at_unix)">{{ formatApplyAge(gateway.last_apply_at_unix) }}</td>
-              <td :title="gateway.node_name || gateway.host_name || ''">
-                {{ gateway.pod_name || gateway.node_name || gateway.host_name || "n/a" }}
+              <td :title="gateway.pod_name || gateway.host_name || ''">
+                {{ gateway.pod_name || gateway.host_name || "n/a" }}
               </td>
             </tr>
             <tr v-if="gateways.length === 0">

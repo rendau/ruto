@@ -1284,13 +1284,7 @@
         "gateway_id": {
           "type": "string"
         },
-        "pod_uid": {
-          "type": "string"
-        },
         "pod_name": {
-          "type": "string"
-        },
-        "node_name": {
           "type": "string"
         },
         "host_name": {

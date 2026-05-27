@@ -14,9 +14,7 @@ func DecodeGatewayHeartbeatReq(v *ruto_v1.GatewayHeartbeatRequest) *usecase.Hear
 
 	return &usecase.Heartbeat{
 		GatewayID:       v.GatewayId,
-		PodUID:          v.PodUid,
 		PodName:         v.PodName,
-		NodeName:        v.NodeName,
 		HostName:        v.HostName,
 		SnapshotVersion: v.SnapshotVersion,
 		LastApplyAtUnix: v.LastApplyAtUnix,
@@ -38,9 +36,7 @@ func EncodeGatewayStateItem(item *usecase.Item, _ int) *ruto_v1.GatewayStateItem
 
 	return &ruto_v1.GatewayStateItem{
 		GatewayId:       item.GatewayID,
-		PodUid:          item.PodUID,
 		PodName:         item.PodName,
-		NodeName:        item.NodeName,
 		HostName:        item.HostName,
 		SnapshotVersion: item.SnapshotVersion,
 		LastApplyAtUnix: item.LastApplyAtUnix,
