@@ -92,10 +92,7 @@ func (u *Usecase) List(ctx context.Context) ([]*Item, error) {
 	}
 
 	sort.Slice(items, func(i, j int) bool {
-		if items[i].LastSeenAtUnix == items[j].LastSeenAtUnix {
-			return items[i].GatewayID < items[j].GatewayID
-		}
-		return items[i].LastSeenAtUnix > items[j].LastSeenAtUnix
+		return items[i].GatewayID < items[j].GatewayID
 	})
 
 	return items, nil
