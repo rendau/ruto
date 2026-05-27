@@ -195,9 +195,6 @@ func (a *App) Init() error {
 
 	// system server
 	systemHandler := http.NewServeMux()
-	systemHandler.HandleFunc("/healthcheck", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
 	a.systemServer = &http.Server{
 		Addr:              ":" + strconv.Itoa(configCore.Conf.SystemPort),
 		Handler:           systemHandler,

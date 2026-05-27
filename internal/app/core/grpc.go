@@ -61,6 +61,7 @@ func (s *GrpcServer) Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to listen grpc: %w", err)
 	}
+
 	go func() {
 		err = s.server.Serve(lis)
 		if err != nil {
