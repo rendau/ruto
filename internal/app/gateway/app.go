@@ -2,8 +2,11 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/rendau/ruto/internal/app/common"
@@ -11,11 +14,16 @@ import (
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
 )
 
+const (
+	systemPort = 3003
+)
+
 type App struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	gw *serviceGwP.Service
+	gw           *serviceGwP.Service
+	systemServer *http.Server
 
 	exitCode int
 }
@@ -49,12 +57,33 @@ func (a *App) Init() error {
 
 	a.gw = gwService
 
+	// system server
+	systemHandler := http.NewServeMux()
+	systemHandler.HandleFunc("/healthcheck", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	a.systemServer = &http.Server{
+		Addr:              ":" + strconv.Itoa(systemPort),
+		Handler:           systemHandler,
+		ReadHeaderTimeout: 2 * time.Second,
+	}
+
 	return nil
 }
 
 func (a *App) Start() {
 	slog.Info("Starting gateway")
+
 	a.gw.Start()
+
+	// system server
+	go func() {
+		err := a.systemServer.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("system server stopped unexpectedly", "error", err)
+		}
+	}()
+	slog.Info("system-server started " + a.systemServer.Addr)
 }
 
 func (a *App) Wait() {
@@ -65,9 +94,20 @@ func (a *App) Stop() {
 	slog.Info("Shutting down gateway...")
 
 	a.ctxCancel()
+
 	if err := a.gw.Stop(time.Minute); err != nil {
 		slog.Error("gw stop error", "error", err)
 		a.exitCode = 1
+	}
+
+	// system server
+	{
+		ctx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer ctxCancel()
+		if err := a.systemServer.Shutdown(ctx); err != nil {
+			slog.Error("system-server shutdown error", "error", err)
+			a.exitCode = 1
+		}
 	}
 }
 

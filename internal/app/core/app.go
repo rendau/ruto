@@ -43,13 +43,18 @@ import (
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
 
+const (
+	systemPort = 3003
+)
+
 type App struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	pgpool     *pgxpool.Pool
-	grpcServer *GrpcServer
-	httpServer *http.Server
+	pgpool       *pgxpool.Pool
+	grpcServer   *GrpcServer
+	httpServer   *http.Server
+	systemServer *http.Server
 
 	exitCode int
 }
@@ -192,6 +197,17 @@ func (a *App) Init() error {
 		MaxHeaderBytes:    300 * 1024,
 	}
 
+	// system server
+	systemHandler := http.NewServeMux()
+	systemHandler.HandleFunc("/healthcheck", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	a.systemServer = &http.Server{
+		Addr:              ":" + strconv.Itoa(systemPort),
+		Handler:           systemHandler,
+		ReadHeaderTimeout: 2 * time.Second,
+	}
+
 	return nil
 }
 
@@ -212,6 +228,15 @@ func (a *App) Start() error {
 	}()
 	slog.Info("http-server started " + a.httpServer.Addr)
 
+	// system server
+	go func() {
+		err := a.systemServer.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("system server stopped unexpectedly", "error", err)
+		}
+	}()
+	slog.Info("system-server started " + a.systemServer.Addr)
+
 	return nil
 }
 
@@ -224,14 +249,28 @@ func (a *App) Stop() {
 
 	a.ctxCancel()
 
-	ctx, ctxCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer ctxCancel()
-	if err := a.httpServer.Shutdown(ctx); err != nil {
-		slog.Error("http-server shutdown error", "error", err)
-		a.exitCode = 1
+	// grpc gateway server
+	{
+		ctx, ctxCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer ctxCancel()
+		if err := a.httpServer.Shutdown(ctx); err != nil {
+			slog.Error("http-server shutdown error", "error", err)
+			a.exitCode = 1
+		}
 	}
 
+	// grpc server
 	a.grpcServer.Stop()
+
+	// system server
+	{
+		ctx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer ctxCancel()
+		if err := a.systemServer.Shutdown(ctx); err != nil {
+			slog.Error("system-server shutdown error", "error", err)
+			a.exitCode = 1
+		}
+	}
 }
 
 func (a *App) Exit() {
