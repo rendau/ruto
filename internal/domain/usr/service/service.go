@@ -37,13 +37,24 @@ func (s *Service) Get(ctx context.Context, id int64, errNE bool) (*model.Usr, bo
 	return result, true, nil
 }
 
-func (s *Service) GetByUsernamePassword(ctx context.Context, username, password string) (*model.Usr, bool, error) {
-	result, found, err := s.repoDb.GetByUsernamePassword(ctx, username, password)
+func (s *Service) AuthByUsernamePassword(ctx context.Context, username, password string) (*model.Usr, bool, error) {
+	result, found, err := s.repoDb.GetByUsername(ctx, username)
 	if err != nil {
-		return nil, false, fmt.Errorf("repoDb.GetByUsernamePassword: %w", err)
+		return nil, false, fmt.Errorf("repoDb.GetByUsername: %w", err)
+	}
+	if !found {
+		return nil, false, nil
 	}
 
-	return result, found, nil
+	ok, err := comparePassword(result.Password, password)
+	if err != nil {
+		return nil, false, fmt.Errorf("comparePassword: %w", err)
+	}
+	if ok {
+		return result, true, nil
+	}
+
+	return nil, false, nil
 }
 
 func (s *Service) HasAny(ctx context.Context) (bool, error) {
@@ -55,6 +66,14 @@ func (s *Service) HasAny(ctx context.Context) (bool, error) {
 }
 
 func (s *Service) Create(ctx context.Context, obj *model.Edit) (int64, error) {
+	if obj != nil && obj.Password != nil {
+		passwordHash, err := hashPassword(*obj.Password)
+		if err != nil {
+			return 0, fmt.Errorf("hashPassword: %w", err)
+		}
+		obj.Password = &passwordHash
+	}
+
 	newId, err := s.repoDb.Create(ctx, obj)
 	if err != nil {
 		return 0, fmt.Errorf("repoDb.Create: %w", err)
@@ -64,6 +83,14 @@ func (s *Service) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 }
 
 func (s *Service) Update(ctx context.Context, id int64, obj *model.Edit) error {
+	if obj != nil && obj.Password != nil {
+		passwordHash, err := hashPassword(*obj.Password)
+		if err != nil {
+			return fmt.Errorf("hashPassword: %w", err)
+		}
+		obj.Password = &passwordHash
+	}
+
 	err := s.repoDb.Update(ctx, id, obj)
 	if err != nil {
 		return fmt.Errorf("repoDb.Update: %w", err)

@@ -24,9 +24,9 @@ func New(srv ServiceI, sessionSvc SessionServiceI) *Usecase {
 func (u *Usecase) Login(ctx context.Context, username, password string) (string, error) {
 	username = strings.TrimSpace(username)
 
-	item, found, err := u.svc.GetByUsernamePassword(ctx, username, password)
+	item, found, err := u.svc.AuthByUsernamePassword(ctx, username, password)
 	if err != nil {
-		return "", fmt.Errorf("svc.GetByUsernamePassword: %w", err)
+		return "", fmt.Errorf("svc.AuthByUsernamePassword: %w", err)
 	}
 	if !found || !item.Active {
 		return "", errs.NotAuthorized

@@ -77,10 +77,9 @@ func (r *Repo) Get(ctx context.Context, id int64) (*domainModel.Usr, bool, error
 	return repoModel.EncodeSelect(m, 0), true, nil
 }
 
-func (r *Repo) GetByUsernamePassword(ctx context.Context, username, password string) (*domainModel.Usr, bool, error) {
-	m := &repoModel.GetByUsernameAndPassword{}
+func (r *Repo) GetByUsername(ctx context.Context, username string) (*domainModel.Usr, bool, error) {
+	m := &repoModel.GetByUsername{}
 	m.Username = username
-	m.Password = password
 
 	found, err := r.ModelStore.Get(ctx, m)
 	if err != nil {

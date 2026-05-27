@@ -47,10 +47,10 @@ func EncodeSelect(v *Select, _ int) *domainModel.Usr {
 	}
 }
 
-type GetByUsernameAndPassword struct {
+type GetByUsername struct {
 	Select
 }
 
-func (m *GetByUsernameAndPassword) PKColumnMap() map[string]any {
-	return map[string]any{"username": m.Username, "password": m.Password}
+func (m *GetByUsername) PKColumnMap() map[string]any {
+	return map[string]any{"username": m.Username}
 }
