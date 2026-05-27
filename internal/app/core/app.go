@@ -150,7 +150,7 @@ func (a *App) Init() error {
 	})
 
 	// grpc-gateway
-	handler, err := GrpcGatewayCreateHandler(func(mux *runtime.ServeMux) error {
+	grpcGwHandler, err := GrpcGatewayCreateHandler(func(mux *runtime.ServeMux) error {
 		opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 		conn, dialErr := grpc.NewClient("localhost:"+strconv.Itoa(configCore.Conf.GrpcPort), opts...)
 		if dialErr != nil {
@@ -178,6 +178,12 @@ func (a *App) Init() error {
 	if err != nil {
 		return fmt.Errorf("grpc gateway create handler: %w", err)
 	}
+
+	handler := http.NewServeMux()
+	handler.Handle("/api", http.RedirectHandler("/api/", http.StatusMovedPermanently))
+	handler.Handle("/api/", http.StripPrefix("/api", grpcGwHandler))
+	handler.Handle("/", NewAdminSPAHandler())
+
 	a.httpServer = &http.Server{
 		Addr:              ":" + strconv.Itoa(configCore.Conf.HttpPort),
 		Handler:           handler,

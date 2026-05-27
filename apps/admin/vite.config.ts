@@ -1,10 +1,11 @@
 import { defineConfig, loadEnv } from "vite";
+// @ts-ignore
 import vue from "@vitejs/plugin-vue";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const port = Number(env.VITE_PORT || "5173");
-  const host = env.VITE_HOST || "127.0.0.1";
+  const port = Number(env.VITE_PORT || "80");
+  const host = env.VITE_HOST || "0.0.0.0";
 
   return {
     plugins: [vue()],
