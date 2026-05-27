@@ -3,6 +3,7 @@ package gw
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/samber/lo"
@@ -20,6 +21,7 @@ type Service struct {
 	jwk         *jwk.Service
 	coreClient  *core_client.Service
 	logRequests bool
+	ready       atomic.Bool
 }
 
 func New(globalCtx context.Context, serverPort int, configAddress string, logRequests bool) (*Service, error) {
@@ -31,6 +33,7 @@ func New(globalCtx context.Context, serverPort int, configAddress string, logReq
 		jwk:         jwk.New(globalCtx),
 		logRequests: logRequests,
 	}
+	service.ready.Store(false)
 
 	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig)
 	if err != nil {
@@ -63,6 +66,8 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 	s.server.SetHandler(httpHandler)
 
+	s.ready.Store(true)
+
 	// set jwk URLs
 	jwkUrls := lo.Map(conf.Jwt, func(item rootModel.RootJwt, _ int) string {
 		return item.JwkUrl
@@ -70,4 +75,8 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	s.jwk.SetUrls(jwkUrls)
 
 	return nil
+}
+
+func (s *Service) IsReady() bool {
+	return s.ready.Load()
 }
