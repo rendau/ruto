@@ -10,6 +10,7 @@ import (
 	"github.com/goccy/go-json"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
@@ -67,13 +68,13 @@ func New(
 		service.conn, err = grpc.NewClient(
 			"dns:///"+address,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			// grpc.WithKeepaliveParams(
-			// 	keepalive.ClientParameters{
-			// 		Time:                10 * time.Second,
-			// 		Timeout:             3 * time.Second,
-			// 		PermitWithoutStream: true,
-			// 	},
-			// ),
+			grpc.WithKeepaliveParams(
+				keepalive.ClientParameters{
+					Time:                10 * time.Second,
+					Timeout:             3 * time.Second,
+					PermitWithoutStream: true,
+				},
+			),
 			// grpc.WithDefaultServiceConfig(serviceConfig),
 		)
 		if err != nil {
