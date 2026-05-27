@@ -37,7 +37,12 @@ func (a *App) Init() error {
 		return fmt.Errorf("CORE_GRPC_ADDRESS is required")
 	}
 
-	gwService, err := serviceGwP.New(a.ctx, configGateway.Conf.HttpPort, configGateway.Conf.CoreGrpcAddress)
+	gwService, err := serviceGwP.New(
+		a.ctx,
+		configGateway.Conf.HttpPort,
+		configGateway.Conf.CoreGrpcAddress,
+		configGateway.Conf.LogRequests,
+	)
 	if err != nil {
 		return fmt.Errorf("gw-server New: %w", err)
 	}

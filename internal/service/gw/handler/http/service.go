@@ -19,13 +19,13 @@ type Service struct {
 	h http.Handler
 }
 
-func New(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI) (*Service, error) {
+func New(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequests bool) (*Service, error) {
 	err := snapshot.Normalize()
 	if err != nil {
 		return nil, fmt.Errorf("snapshot normalize: %w", err)
 	}
 
-	handler, err := buildHandler(snapshot, jwkGetter)
+	handler, err := buildHandler(snapshot, jwkGetter, logRequests)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -39,7 +39,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI) (_ http.Handler, finalErr error) {
+func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequests bool) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)
@@ -87,5 +87,7 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI) (_ http.Ha
 		}
 	}
 
-	return router, nil
+	return middleware.Chain(router,
+		middleware.NewRequestLog(logRequests),
+	), nil
 }

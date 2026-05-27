@@ -167,7 +167,7 @@ func BenchmarkServiceServeHTTP(b *testing.B) {
 						},
 					},
 				},
-			}, bc.jwk)
+			}, bc.jwk, false)
 			if err != nil {
 				b.Fatalf("New() error: %v", err)
 			}

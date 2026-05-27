@@ -84,7 +84,7 @@ func TestServiceBuild_ProxyByConfig(t *testing.T) {
 						},
 					},
 				},
-			}, nil)
+			}, nil, false)
 			require.NoError(t, err)
 
 			rw := httptest.NewRecorder()
@@ -139,7 +139,7 @@ func TestServiceBuild_ProxyByConfig_AnyMethod(t *testing.T) {
 						},
 					},
 				},
-			}, nil)
+			}, nil, false)
 			require.NoError(t, err)
 
 			rw := httptest.NewRecorder()
@@ -176,7 +176,7 @@ func TestServiceBuild_DuplicateRoute(t *testing.T) {
 				},
 			},
 		},
-	}, nil)
+	}, nil, false)
 	require.NoError(t, err)
 }
 
@@ -210,7 +210,7 @@ func TestServiceBuild_PaymentRoutesDoNotConflict(t *testing.T) {
 				},
 			},
 		},
-	}, nil)
+	}, nil, false)
 	require.NoError(t, err)
 
 	t.Run("remote by id", func(t *testing.T) {
@@ -443,7 +443,7 @@ func TestServiceBuild_Auth(t *testing.T) {
 						},
 					},
 				},
-			}, nil)
+			}, nil, false)
 			require.NoError(t, err)
 
 			rw := httptest.NewRecorder()

@@ -15,19 +15,21 @@ import (
 )
 
 type Service struct {
-	globalCtx  context.Context
-	server     *localHttp.Service
-	jwk        *jwk.Service
-	coreClient *core_client.Service
+	globalCtx   context.Context
+	server      *localHttp.Service
+	jwk         *jwk.Service
+	coreClient  *core_client.Service
+	logRequests bool
 }
 
-func New(globalCtx context.Context, serverPort int, configAddress string) (*Service, error) {
+func New(globalCtx context.Context, serverPort int, configAddress string, logRequests bool) (*Service, error) {
 	var err error
 
 	service := &Service{
-		globalCtx: globalCtx,
-		server:    localHttp.New(serverPort),
-		jwk:       jwk.New(globalCtx),
+		globalCtx:   globalCtx,
+		server:      localHttp.New(serverPort),
+		jwk:         jwk.New(globalCtx),
+		logRequests: logRequests,
 	}
 
 	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig)
@@ -55,7 +57,7 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf, s.jwk)
+	httpHandler, err := handlerHttp.New(conf, s.jwk, s.logRequests)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}
