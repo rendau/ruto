@@ -56,9 +56,9 @@ func New(
 		  "methodConfig":[{
 			"name":[{}],
 			"retryPolicy":{
-			  "MaxAttempts":4,
+			  "MaxAttempts":6,
 			  "InitialBackoff":"0.1s",
-			  "MaxBackoff":"1s",
+			  "MaxBackoff":"2s",
 			  "BackoffMultiplier":2,
 			  "RetryableStatusCodes":["UNAVAILABLE"]
 			}
