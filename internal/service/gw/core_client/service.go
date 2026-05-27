@@ -10,7 +10,6 @@ import (
 	"github.com/goccy/go-json"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
@@ -52,30 +51,30 @@ func New(
 	}
 
 	if address != "" {
-		serviceConfig := `{
-		  "loadBalancingConfig":[{"round_robin":{}}],
-		  "methodConfig":[{
-			"name":[{}],
-			"retryPolicy":{
-			  "MaxAttempts":6,
-			  "InitialBackoff":"0.1s",
-			  "MaxBackoff":"2s",
-			  "BackoffMultiplier":2,
-			  "RetryableStatusCodes":["UNAVAILABLE"]
-			}
-		  }]
-		}`
+		// serviceConfig := `{
+		//   "loadBalancingConfig":[{"round_robin":{}}],
+		//   "methodConfig":[{
+		// 	"name":[{}],
+		// 	"retryPolicy":{
+		// 	  "MaxAttempts":6,
+		// 	  "InitialBackoff":"0.1s",
+		// 	  "MaxBackoff":"2s",
+		// 	  "BackoffMultiplier":2,
+		// 	  "RetryableStatusCodes":["UNAVAILABLE"]
+		// 	}
+		//   }]
+		// }`
 		service.conn, err = grpc.NewClient(
 			"dns:///"+address,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithKeepaliveParams(
-				keepalive.ClientParameters{
-					Time:                10 * time.Second,
-					Timeout:             3 * time.Second,
-					PermitWithoutStream: true,
-				},
-			),
-			grpc.WithDefaultServiceConfig(serviceConfig),
+			// grpc.WithKeepaliveParams(
+			// 	keepalive.ClientParameters{
+			// 		Time:                10 * time.Second,
+			// 		Timeout:             3 * time.Second,
+			// 		PermitWithoutStream: true,
+			// 	},
+			// ),
+			// grpc.WithDefaultServiceConfig(serviceConfig),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("grpc.NewClient: %w", err)
