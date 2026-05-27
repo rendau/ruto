@@ -51,9 +51,23 @@ func New(
 	}
 
 	if address != "" {
+		serviceConfig := `{
+		  "loadBalancingConfig":[{"round_robin":{}}],
+		  "methodConfig":[{
+			"name":[{}],
+			"retryPolicy":{
+			  "MaxAttempts":4,
+			  "InitialBackoff":"0.1s",
+			  "MaxBackoff":"1s",
+			  "BackoffMultiplier":2,
+			  "RetryableStatusCodes":["UNAVAILABLE"]
+			}
+		  }]
+		}`
 		service.conn, err = grpc.NewClient(
 			"dns:///"+address,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithDefaultServiceConfig(serviceConfig),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("grpc.NewClient: %w", err)
