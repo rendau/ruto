@@ -12,6 +12,8 @@ var Conf = struct {
 	Debug    bool   `env:"DEBUG" envDefault:"false"`
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
+	SystemPort int `env:"SYSTEM_PORT" envDefault:"3003"`
+
 	GrpcPort int  `env:"GRPC_PORT" envDefault:"5050"`
 	HttpPort int  `env:"HTTP_PORT" envDefault:"80"`
 	HttpCors bool `env:"HTTP_CORS" envDefault:"false"`

@@ -14,10 +14,6 @@ import (
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
 )
 
-const (
-	systemPort = 3003
-)
-
 type App struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -67,7 +63,7 @@ func (a *App) Init() error {
 		}
 	})
 	a.systemServer = &http.Server{
-		Addr:              ":" + strconv.Itoa(systemPort),
+		Addr:              ":" + strconv.Itoa(configGateway.Conf.SystemPort),
 		Handler:           systemHandler,
 		ReadHeaderTimeout: 2 * time.Second,
 	}

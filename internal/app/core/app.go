@@ -43,10 +43,6 @@ import (
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
 
-const (
-	systemPort = 3003
-)
-
 type App struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -203,7 +199,7 @@ func (a *App) Init() error {
 		w.WriteHeader(http.StatusOK)
 	})
 	a.systemServer = &http.Server{
-		Addr:              ":" + strconv.Itoa(systemPort),
+		Addr:              ":" + strconv.Itoa(configCore.Conf.SystemPort),
 		Handler:           systemHandler,
 		ReadHeaderTimeout: 2 * time.Second,
 	}
