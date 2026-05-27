@@ -91,7 +91,27 @@ func (u *Usecase) List(ctx context.Context) ([]*Item, error) {
 		items = append(items, item)
 	}
 
+	statusOrder := func(status string) int {
+		switch status {
+		case "online":
+			return 0
+		case "stale":
+			return 1
+		case "offline":
+			return 2
+		default:
+			return 3
+		}
+	}
+
 	sort.Slice(items, func(i, j int) bool {
+		leftStatusOrder := statusOrder(items[i].Status)
+		rightStatusOrder := statusOrder(items[j].Status)
+
+		if leftStatusOrder != rightStatusOrder {
+			return leftStatusOrder < rightStatusOrder
+		}
+
 		return items[i].GatewayID < items[j].GatewayID
 	})
 
