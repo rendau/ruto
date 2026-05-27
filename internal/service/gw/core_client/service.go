@@ -52,7 +52,7 @@ func New(
 
 	if address != "" {
 		service.conn, err = grpc.NewClient(
-			address,
+			"dns:///"+address,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		if err != nil {
