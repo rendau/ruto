@@ -87,7 +87,12 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequest
 		}
 	}
 
-	return middleware.Chain(router,
+	outerMiddlewares := []middleware.Middleware{
 		middleware.NewRequestLog(logRequests),
-	), nil
+	}
+	if snapshot.Cors.Enabled {
+		outerMiddlewares = append(outerMiddlewares, middleware.NewCors(snapshot.Cors))
+	}
+
+	return middleware.Chain(router, outerMiddlewares...), nil
 }
