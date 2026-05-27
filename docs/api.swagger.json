@@ -771,6 +771,28 @@
         ]
       }
     },
+    "/usr/bootstrap/status": {
+      "get": {
+        "operationId": "Usr_BootstrapStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1UsrBootstrapStatusRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Usr"
+        ]
+      }
+    },
     "/usr/login": {
       "post": {
         "operationId": "Usr_Login",
@@ -1531,6 +1553,14 @@
             "type": "object",
             "$ref": "#/definitions/ruto_v1StatsMethodStats"
           }
+        }
+      }
+    },
+    "ruto_v1UsrBootstrapStatusRep": {
+      "type": "object",
+      "properties": {
+        "can_create_first_admin": {
+          "type": "boolean"
         }
       }
     },

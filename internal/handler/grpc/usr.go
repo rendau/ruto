@@ -77,6 +77,17 @@ func (h *Usr) Login(ctx context.Context, req *ruto_v1.UsrLoginReq) (*ruto_v1.Usr
 	}, nil
 }
 
+func (h *Usr) BootstrapStatus(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.UsrBootstrapStatusRep, error) {
+	canCreateFirstAdmin, err := h.usecase.BootstrapStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ruto_v1.UsrBootstrapStatusRep{
+		CanCreateFirstAdmin: canCreateFirstAdmin,
+	}, nil
+}
+
 func (h *Usr) GetProfile(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.UsrMain, error) {
 	item, err := h.usecase.GetProfile(ctx)
 	if err != nil {

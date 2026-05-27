@@ -167,6 +167,10 @@ export interface UsrLoginRep {
   jwt: string;
 }
 
+export interface UsrBootstrapStatusRep {
+  can_create_first_admin: boolean;
+}
+
 export interface StatsMethodStats {
   method: string;
   total: number;

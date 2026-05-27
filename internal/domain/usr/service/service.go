@@ -46,6 +46,14 @@ func (s *Service) GetByUsernamePassword(ctx context.Context, username, password 
 	return result, found, nil
 }
 
+func (s *Service) HasAny(ctx context.Context) (bool, error) {
+	result, err := s.repoDb.HasAny(ctx)
+	if err != nil {
+		return false, fmt.Errorf("repoDb.HasAny: %w", err)
+	}
+	return result, nil
+}
+
 func (s *Service) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 	newId, err := s.repoDb.Create(ctx, obj)
 	if err != nil {

@@ -93,6 +93,15 @@ func (r *Repo) GetByUsernamePassword(ctx context.Context, username, password str
 	return repoModel.EncodeSelect(&m.Select, 0), true, nil
 }
 
+func (r *Repo) HasAny(ctx context.Context) (bool, error) {
+	var exists bool
+	err := r.Con.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM usr)").Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("Con.QueryRow: %w", err)
+	}
+	return exists, nil
+}
+
 func (r *Repo) Create(ctx context.Context, obj *domainModel.Edit) (int64, error) {
 	m := repoModel.DecodeUpsertEdit(obj)
 

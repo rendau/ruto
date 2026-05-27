@@ -172,6 +172,7 @@ func (a *App) Init() error {
 				return fmt.Errorf("grpc-gateway: register grpc-handler: %w", registerErr)
 			}
 		}
+
 		return nil
 	})
 	if err != nil {

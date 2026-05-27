@@ -27,6 +27,9 @@ service Usr {
   rpc Login(UsrLoginReq) returns (UsrLoginRep) {
     option (google.api.http) = { post: "/usr/login" body: "*" };
   };
+  rpc BootstrapStatus(google.protobuf.Empty) returns (UsrBootstrapStatusRep) {
+    option (google.api.http) = { get: "/usr/bootstrap/status" };
+  };
   rpc GetProfile(google.protobuf.Empty) returns (UsrMain) {
     option (google.api.http) = { get: "/usr/profile" };
   };
@@ -86,6 +89,10 @@ message UsrLoginReq {
 
 message UsrLoginRep {
   string jwt = 1;
+}
+
+message UsrBootstrapStatusRep {
+  bool can_create_first_admin = 1;
 }
 
 message UsrUpdateProfileReq {

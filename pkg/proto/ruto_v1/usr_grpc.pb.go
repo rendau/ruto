@@ -20,14 +20,15 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Usr_List_FullMethodName          = "/ruto_v1.Usr/List"
-	Usr_Get_FullMethodName           = "/ruto_v1.Usr/Get"
-	Usr_Create_FullMethodName        = "/ruto_v1.Usr/Create"
-	Usr_Update_FullMethodName        = "/ruto_v1.Usr/Update"
-	Usr_Delete_FullMethodName        = "/ruto_v1.Usr/Delete"
-	Usr_Login_FullMethodName         = "/ruto_v1.Usr/Login"
-	Usr_GetProfile_FullMethodName    = "/ruto_v1.Usr/GetProfile"
-	Usr_UpdateProfile_FullMethodName = "/ruto_v1.Usr/UpdateProfile"
+	Usr_List_FullMethodName            = "/ruto_v1.Usr/List"
+	Usr_Get_FullMethodName             = "/ruto_v1.Usr/Get"
+	Usr_Create_FullMethodName          = "/ruto_v1.Usr/Create"
+	Usr_Update_FullMethodName          = "/ruto_v1.Usr/Update"
+	Usr_Delete_FullMethodName          = "/ruto_v1.Usr/Delete"
+	Usr_Login_FullMethodName           = "/ruto_v1.Usr/Login"
+	Usr_BootstrapStatus_FullMethodName = "/ruto_v1.Usr/BootstrapStatus"
+	Usr_GetProfile_FullMethodName      = "/ruto_v1.Usr/GetProfile"
+	Usr_UpdateProfile_FullMethodName   = "/ruto_v1.Usr/UpdateProfile"
 )
 
 // UsrClient is the client API for Usr service.
@@ -40,6 +41,7 @@ type UsrClient interface {
 	Update(ctx context.Context, in *UsrEdit, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *UsrGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Login(ctx context.Context, in *UsrLoginReq, opts ...grpc.CallOption) (*UsrLoginRep, error)
+	BootstrapStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrBootstrapStatusRep, error)
 	GetProfile(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrMain, error)
 	UpdateProfile(ctx context.Context, in *UsrUpdateProfileReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -112,6 +114,16 @@ func (c *usrClient) Login(ctx context.Context, in *UsrLoginReq, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *usrClient) BootstrapStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrBootstrapStatusRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UsrBootstrapStatusRep)
+	err := c.cc.Invoke(ctx, Usr_BootstrapStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *usrClient) GetProfile(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrMain, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UsrMain)
@@ -142,6 +154,7 @@ type UsrServer interface {
 	Update(context.Context, *UsrEdit) (*emptypb.Empty, error)
 	Delete(context.Context, *UsrGetReq) (*emptypb.Empty, error)
 	Login(context.Context, *UsrLoginReq) (*UsrLoginRep, error)
+	BootstrapStatus(context.Context, *emptypb.Empty) (*UsrBootstrapStatusRep, error)
 	GetProfile(context.Context, *emptypb.Empty) (*UsrMain, error)
 	UpdateProfile(context.Context, *UsrUpdateProfileReq) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUsrServer()
@@ -171,6 +184,9 @@ func (UnimplementedUsrServer) Delete(context.Context, *UsrGetReq) (*emptypb.Empt
 }
 func (UnimplementedUsrServer) Login(context.Context, *UsrLoginReq) (*UsrLoginRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedUsrServer) BootstrapStatus(context.Context, *emptypb.Empty) (*UsrBootstrapStatusRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BootstrapStatus not implemented")
 }
 func (UnimplementedUsrServer) GetProfile(context.Context, *emptypb.Empty) (*UsrMain, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProfile not implemented")
@@ -307,6 +323,24 @@ func _Usr_Login_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Usr_BootstrapStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UsrServer).BootstrapStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Usr_BootstrapStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UsrServer).BootstrapStatus(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Usr_GetProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -373,6 +407,10 @@ var Usr_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _Usr_Login_Handler,
+		},
+		{
+			MethodName: "BootstrapStatus",
+			Handler:    _Usr_BootstrapStatus_Handler,
 		},
 		{
 			MethodName: "GetProfile",

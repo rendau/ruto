@@ -40,6 +40,14 @@ func (u *Usecase) Login(ctx context.Context, username, password string) (string,
 	return token, nil
 }
 
+func (u *Usecase) BootstrapStatus(ctx context.Context) (bool, error) {
+	hasAny, err := u.svc.HasAny(ctx)
+	if err != nil {
+		return false, fmt.Errorf("svc.HasAny: %w", err)
+	}
+	return !hasAny, nil
+}
+
 func (u *Usecase) GetProfile(ctx context.Context) (*model.Usr, error) {
 	extractedSession := u.sessionSvc.FromContext(ctx)
 	if extractedSession.Id == 0 {
@@ -134,12 +142,24 @@ func (u *Usecase) Get(ctx context.Context, id int64) (*model.Usr, error) {
 }
 
 func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (int64, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
-		return 0, errs.NotAuthorized
+	if obj == nil {
+		obj = &model.Edit{}
 	}
-	if !extractedSession.IsAdmin {
+
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id > 0 && !extractedSession.IsAdmin {
 		return 0, errs.NoPermission
+	}
+	if extractedSession.Id == 0 {
+		hasAny, err := u.svc.HasAny(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("svc.HasAny: %w", err)
+		}
+		if hasAny {
+			return 0, errs.NotAuthorized
+		}
+		obj.IsAdmin = new(true)
+		obj.Active = new(true)
 	}
 
 	if err := u.validateEdit(obj, true); err != nil {

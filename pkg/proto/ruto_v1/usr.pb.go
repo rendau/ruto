@@ -555,6 +555,50 @@ func (x *UsrLoginRep) GetJwt() string {
 	return ""
 }
 
+type UsrBootstrapStatusRep struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	CanCreateFirstAdmin bool                   `protobuf:"varint,1,opt,name=can_create_first_admin,json=canCreateFirstAdmin,proto3" json:"can_create_first_admin,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *UsrBootstrapStatusRep) Reset() {
+	*x = UsrBootstrapStatusRep{}
+	mi := &file_ruto_v1_usr_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsrBootstrapStatusRep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsrBootstrapStatusRep) ProtoMessage() {}
+
+func (x *UsrBootstrapStatusRep) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_usr_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsrBootstrapStatusRep.ProtoReflect.Descriptor instead.
+func (*UsrBootstrapStatusRep) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UsrBootstrapStatusRep) GetCanCreateFirstAdmin() bool {
+	if x != nil {
+		return x.CanCreateFirstAdmin
+	}
+	return false
+}
+
 type UsrUpdateProfileReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
@@ -565,7 +609,7 @@ type UsrUpdateProfileReq struct {
 
 func (x *UsrUpdateProfileReq) Reset() {
 	*x = UsrUpdateProfileReq{}
-	mi := &file_ruto_v1_usr_proto_msgTypes[9]
+	mi := &file_ruto_v1_usr_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -577,7 +621,7 @@ func (x *UsrUpdateProfileReq) String() string {
 func (*UsrUpdateProfileReq) ProtoMessage() {}
 
 func (x *UsrUpdateProfileReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_usr_proto_msgTypes[9]
+	mi := &file_ruto_v1_usr_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -590,7 +634,7 @@ func (x *UsrUpdateProfileReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrUpdateProfileReq.ProtoReflect.Descriptor instead.
 func (*UsrUpdateProfileReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{9}
+	return file_ruto_v1_usr_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UsrUpdateProfileReq) GetName() string {
@@ -660,12 +704,14 @@ const file_ruto_v1_usr_proto_rawDesc = "" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x1f\n" +
 	"\vUsrLoginRep\x12\x10\n" +
-	"\x03jwt\x18\x01 \x01(\tR\x03jwt\"e\n" +
+	"\x03jwt\x18\x01 \x01(\tR\x03jwt\"L\n" +
+	"\x15UsrBootstrapStatusRep\x123\n" +
+	"\x16can_create_first_admin\x18\x01 \x01(\bR\x13canCreateFirstAdmin\"e\n" +
 	"\x13UsrUpdateProfileReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1f\n" +
 	"\bpassword\x18\x02 \x01(\tH\x01R\bpassword\x88\x01\x01B\a\n" +
 	"\x05_nameB\v\n" +
-	"\t_password2\xd8\x04\n" +
+	"\t_password2\xc2\x05\n" +
 	"\x03Usr\x12>\n" +
 	"\x04List\x12\x13.ruto_v1.UsrListReq\x1a\x13.ruto_v1.UsrListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/usr\x12>\n" +
 	"\x03Get\x12\x12.ruto_v1.UsrGetReq\x1a\x10.ruto_v1.UsrMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/usr/{id}\x12D\n" +
@@ -673,7 +719,8 @@ const file_ruto_v1_usr_proto_rawDesc = "" +
 	"\x06Update\x12\x10.ruto_v1.UsrEdit\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/usr/{id}\x12G\n" +
 	"\x06Delete\x12\x12.ruto_v1.UsrGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/usr/{id}\x12J\n" +
 	"\x05Login\x12\x14.ruto_v1.UsrLoginReq\x1a\x14.ruto_v1.UsrLoginRep\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*\"\n" +
-	"/usr/login\x12L\n" +
+	"/usr/login\x12h\n" +
+	"\x0fBootstrapStatus\x12\x16.google.protobuf.Empty\x1a\x1e.ruto_v1.UsrBootstrapStatusRep\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/usr/bootstrap/status\x12L\n" +
 	"\n" +
 	"GetProfile\x12\x16.google.protobuf.Empty\x1a\x10.ruto_v1.UsrMain\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/usr/profile\x12^\n" +
 	"\rUpdateProfile\x12\x1c.ruto_v1.UsrUpdateProfileReq\x1a\x16.google.protobuf.Empty\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\x1a\f/usr/profileB\n" +
@@ -691,25 +738,26 @@ func file_ruto_v1_usr_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_usr_proto_rawDescData
 }
 
-var file_ruto_v1_usr_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_ruto_v1_usr_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_ruto_v1_usr_proto_goTypes = []any{
-	(*UsrMain)(nil),             // 0: ruto_v1.UsrMain
-	(*UsrCreate)(nil),           // 1: ruto_v1.UsrCreate
-	(*UsrEdit)(nil),             // 2: ruto_v1.UsrEdit
-	(*UsrGetReq)(nil),           // 3: ruto_v1.UsrGetReq
-	(*UsrListReq)(nil),          // 4: ruto_v1.UsrListReq
-	(*UsrListRep)(nil),          // 5: ruto_v1.UsrListRep
-	(*UsrCreateRep)(nil),        // 6: ruto_v1.UsrCreateRep
-	(*UsrLoginReq)(nil),         // 7: ruto_v1.UsrLoginReq
-	(*UsrLoginRep)(nil),         // 8: ruto_v1.UsrLoginRep
-	(*UsrUpdateProfileReq)(nil), // 9: ruto_v1.UsrUpdateProfileReq
-	(*ListParamsSt)(nil),        // 10: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),    // 11: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),       // 12: google.protobuf.Empty
+	(*UsrMain)(nil),               // 0: ruto_v1.UsrMain
+	(*UsrCreate)(nil),             // 1: ruto_v1.UsrCreate
+	(*UsrEdit)(nil),               // 2: ruto_v1.UsrEdit
+	(*UsrGetReq)(nil),             // 3: ruto_v1.UsrGetReq
+	(*UsrListReq)(nil),            // 4: ruto_v1.UsrListReq
+	(*UsrListRep)(nil),            // 5: ruto_v1.UsrListRep
+	(*UsrCreateRep)(nil),          // 6: ruto_v1.UsrCreateRep
+	(*UsrLoginReq)(nil),           // 7: ruto_v1.UsrLoginReq
+	(*UsrLoginRep)(nil),           // 8: ruto_v1.UsrLoginRep
+	(*UsrBootstrapStatusRep)(nil), // 9: ruto_v1.UsrBootstrapStatusRep
+	(*UsrUpdateProfileReq)(nil),   // 10: ruto_v1.UsrUpdateProfileReq
+	(*ListParamsSt)(nil),          // 11: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),      // 12: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),         // 13: google.protobuf.Empty
 }
 var file_ruto_v1_usr_proto_depIdxs = []int32{
-	10, // 0: ruto_v1.UsrListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	11, // 1: ruto_v1.UsrListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	11, // 0: ruto_v1.UsrListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	12, // 1: ruto_v1.UsrListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
 	0,  // 2: ruto_v1.UsrListRep.results:type_name -> ruto_v1.UsrMain
 	4,  // 3: ruto_v1.Usr.List:input_type -> ruto_v1.UsrListReq
 	3,  // 4: ruto_v1.Usr.Get:input_type -> ruto_v1.UsrGetReq
@@ -717,18 +765,20 @@ var file_ruto_v1_usr_proto_depIdxs = []int32{
 	2,  // 6: ruto_v1.Usr.Update:input_type -> ruto_v1.UsrEdit
 	3,  // 7: ruto_v1.Usr.Delete:input_type -> ruto_v1.UsrGetReq
 	7,  // 8: ruto_v1.Usr.Login:input_type -> ruto_v1.UsrLoginReq
-	12, // 9: ruto_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
-	9,  // 10: ruto_v1.Usr.UpdateProfile:input_type -> ruto_v1.UsrUpdateProfileReq
-	5,  // 11: ruto_v1.Usr.List:output_type -> ruto_v1.UsrListRep
-	0,  // 12: ruto_v1.Usr.Get:output_type -> ruto_v1.UsrMain
-	6,  // 13: ruto_v1.Usr.Create:output_type -> ruto_v1.UsrCreateRep
-	12, // 14: ruto_v1.Usr.Update:output_type -> google.protobuf.Empty
-	12, // 15: ruto_v1.Usr.Delete:output_type -> google.protobuf.Empty
-	8,  // 16: ruto_v1.Usr.Login:output_type -> ruto_v1.UsrLoginRep
-	0,  // 17: ruto_v1.Usr.GetProfile:output_type -> ruto_v1.UsrMain
-	12, // 18: ruto_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
-	11, // [11:19] is the sub-list for method output_type
-	3,  // [3:11] is the sub-list for method input_type
+	13, // 9: ruto_v1.Usr.BootstrapStatus:input_type -> google.protobuf.Empty
+	13, // 10: ruto_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
+	10, // 11: ruto_v1.Usr.UpdateProfile:input_type -> ruto_v1.UsrUpdateProfileReq
+	5,  // 12: ruto_v1.Usr.List:output_type -> ruto_v1.UsrListRep
+	0,  // 13: ruto_v1.Usr.Get:output_type -> ruto_v1.UsrMain
+	6,  // 14: ruto_v1.Usr.Create:output_type -> ruto_v1.UsrCreateRep
+	13, // 15: ruto_v1.Usr.Update:output_type -> google.protobuf.Empty
+	13, // 16: ruto_v1.Usr.Delete:output_type -> google.protobuf.Empty
+	8,  // 17: ruto_v1.Usr.Login:output_type -> ruto_v1.UsrLoginRep
+	9,  // 18: ruto_v1.Usr.BootstrapStatus:output_type -> ruto_v1.UsrBootstrapStatusRep
+	0,  // 19: ruto_v1.Usr.GetProfile:output_type -> ruto_v1.UsrMain
+	13, // 20: ruto_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
+	12, // [12:21] is the sub-list for method output_type
+	3,  // [3:12] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -743,14 +793,14 @@ func file_ruto_v1_usr_proto_init() {
 	file_ruto_v1_usr_proto_msgTypes[1].OneofWrappers = []any{}
 	file_ruto_v1_usr_proto_msgTypes[2].OneofWrappers = []any{}
 	file_ruto_v1_usr_proto_msgTypes[4].OneofWrappers = []any{}
-	file_ruto_v1_usr_proto_msgTypes[9].OneofWrappers = []any{}
+	file_ruto_v1_usr_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_usr_proto_rawDesc), len(file_ruto_v1_usr_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

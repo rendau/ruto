@@ -17,7 +17,8 @@ import type {
   RootJwtKidsReq,
   RootJwtKidsRep,
   UsrLoginRep,
-  UsrMain
+  UsrMain,
+  UsrBootstrapStatusRep
 } from "../types/api";
 import { API_BASE_URL } from "./config";
 import { clearSession, getToken, renewTokenOnce, setCredentials, setToken } from "./auth-session";
@@ -134,6 +135,10 @@ export function logout(): void {
 
 export function getProfile(): Promise<UsrMain> {
   return apiFetch<UsrMain>("/usr/profile");
+}
+
+export function getBootstrapStatus(): Promise<UsrBootstrapStatusRep> {
+  return apiFetch<UsrBootstrapStatusRep>("/usr/bootstrap/status");
 }
 
 export function updateProfile(req: { name?: string; password?: string }): Promise<void> {
