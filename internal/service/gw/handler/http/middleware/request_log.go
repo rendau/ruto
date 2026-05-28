@@ -22,7 +22,7 @@ func NewRequestLog(enabled bool) Middleware {
 			statusIsOk := statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices
 
 			if enabled || !statusIsOk {
-				logMessageSuffix := r.Method + " " + r.URL.Path + "(" + strconv.Itoa(statusCode) + ")"
+				logMessageSuffix := r.Method + " " + r.URL.Path + " (" + strconv.Itoa(statusCode) + ")"
 				logArgs := []any{
 					"status", statusCode,
 					"method", r.Method,
