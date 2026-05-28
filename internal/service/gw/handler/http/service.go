@@ -48,6 +48,8 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequest
 
 	router := chi.NewRouter()
 
+	metricsMiddleware := middleware.NewMetrics()
+
 	var routePath string
 
 	for _, app := range snapshot.Apps {
@@ -75,6 +77,7 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequest
 
 			handler := middleware.Chain(appHandler,
 				middleware.NewWithRequest(snapshot, app, endpoint),
+				metricsMiddleware,
 				auth.New(snapshot, app, endpoint, jwkGetter),
 				middleware.NewStripPrefix(app.PathPrefix),
 			)
@@ -88,7 +91,6 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequest
 	}
 
 	outerMiddlewares := []middleware.Middleware{
-		middleware.NewMetrics(),
 		middleware.NewRequestLog(logRequests),
 	}
 	if snapshot.Cors.Enabled {
