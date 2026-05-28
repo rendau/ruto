@@ -49,6 +49,12 @@ func TestAuthorize(t *testing.T) {
 		jwtv5.MapClaims{"sub": "u1", "roles": []string{"moderator", "admin"}},
 		privateKey,
 	)
+	validTokenWithoutRoles := signToken(
+		jwtv5.SigningMethodRS256,
+		itemKid,
+		jwtv5.MapClaims{"sub": "u1"},
+		privateKey,
+	)
 	keycloakResourceAccessToken := signToken(
 		jwtv5.SigningMethodRS256,
 		itemKid,
@@ -175,6 +181,13 @@ func TestAuthorize(t *testing.T) {
 			name:      "authorized",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid, Roles: []string{"moderator"}},
 			header:    "Bearer " + validToken,
+			jwkGetter: testJWKGetter,
+			want:      true,
+		},
+		{
+			name:      "authorized when role is not required and token has no roles claims",
+			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
+			header:    "Bearer " + validTokenWithoutRoles,
 			jwkGetter: testJWKGetter,
 			want:      true,
 		},

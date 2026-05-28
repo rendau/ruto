@@ -74,6 +74,10 @@ func (a *Jwt) Authorize(r *http.Request) bool {
 		return false
 	}
 
+	if len(a.requiredRoleMap) == 0 {
+		return true
+	}
+
 	if !hasAnyRole(claims, a.checkRole) {
 		return false
 	}
