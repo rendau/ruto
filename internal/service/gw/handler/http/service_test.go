@@ -230,6 +230,74 @@ func TestServiceBuild_PaymentRoutesDoNotConflict(t *testing.T) {
 	})
 }
 
+func TestServiceBuild_RewriteRedirectLocationWithPathPrefix(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}))
+	defer backend.Close()
+
+	s, err := New(&rootModel.Root{
+		BaseUrl: "https://public.example",
+		Apps: []*appModel.App{
+			{
+				Active:     true,
+				PathPrefix: "api",
+				Backend: appModel.AppBackend{
+					Url: backend.URL + "/svc",
+				},
+				Endpoints: []*endpointModel.Endpoint{
+					{
+						Active: true,
+						Method: http.MethodGet,
+						Path:   "users",
+					},
+				},
+			},
+		},
+	}, nil, false)
+	require.NoError(t, err)
+
+	rw := httptest.NewRecorder()
+	s.ServeHTTP(rw, httptest.NewRequest(http.MethodGet, "https://public.example/api/users", nil))
+
+	require.Equal(t, http.StatusFound, rw.Code)
+	require.Equal(t, "/api/login", rw.Header().Get("Location"))
+}
+
+func TestServiceBuild_RewritePrefixedRedirectLocationToo(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/api/login", http.StatusFound)
+	}))
+	defer backend.Close()
+
+	s, err := New(&rootModel.Root{
+		BaseUrl: "https://public.example",
+		Apps: []*appModel.App{
+			{
+				Active:     true,
+				PathPrefix: "api",
+				Backend: appModel.AppBackend{
+					Url: backend.URL + "/svc",
+				},
+				Endpoints: []*endpointModel.Endpoint{
+					{
+						Active: true,
+						Method: http.MethodGet,
+						Path:   "users",
+					},
+				},
+			},
+		},
+	}, nil, false)
+	require.NoError(t, err)
+
+	rw := httptest.NewRecorder()
+	s.ServeHTTP(rw, httptest.NewRequest(http.MethodGet, "https://public.example/api/users", nil))
+
+	require.Equal(t, http.StatusFound, rw.Code)
+	require.Equal(t, "/api/api/login", rw.Header().Get("Location"))
+}
+
 func TestServiceBuild_Auth(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

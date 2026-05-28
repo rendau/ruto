@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"time"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
@@ -49,9 +50,40 @@ func NewProxy(app *appModel.App) http.Handler {
 
 			// r.SetXForwarded()
 		},
+		ModifyResponse: func(resp *http.Response) error {
+			location := resp.Header.Get("Location")
+			if location == "" {
+				return nil
+			}
+
+			ctxReq := request.Extract(resp.Request.Context())
+			if ctxReq == nil {
+				return nil
+			}
+
+			resp.Header.Set("Location", rewriteRedirectLocation(location, ctxReq.App.PathPrefix))
+
+			return nil
+		},
 		// ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 		// },
 	}
 
 	return proxy
+}
+
+func rewriteRedirectLocation(location, pathPrefix string) string {
+	if pathPrefix == "" {
+		return location
+	}
+
+	// Keep absolute and host-relative redirects untouched.
+	if strings.Contains(location, "://") || strings.HasPrefix(location, "//") {
+		return location
+	}
+	if !strings.HasPrefix(location, "/") {
+		return location
+	}
+
+	return pathPrefix + location
 }
