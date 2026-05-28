@@ -39,6 +39,12 @@ func NewProxy(app *appModel.App) http.Handler {
 
 			if endpoint.Backend.CustomPath != "" {
 				r.Out.URL.Path = backendUrl.JoinPath(endpoint.Backend.CustomPath).Path
+				slog.Debug(
+					"custom path set",
+					"final_path", r.Out.URL.Path,
+					"custom_path", endpoint.Backend.CustomPath,
+					"backend_url", backendUrl.String(),
+				)
 			}
 
 			// r.SetXForwarded()
