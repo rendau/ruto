@@ -1055,6 +1055,42 @@ h3 {
   white-space: nowrap;
 }
 
+.swagger-diff-panel {
+  margin-bottom: 14px;
+}
+
+.swagger-diff-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.swagger-endpoint-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 7px;
+}
+
+.swagger-endpoint-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.swagger-endpoint-path {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.swagger-add-button {
+  padding: 5px 8px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
 .endpoint-path-link {
   color: #cfe2ff;
   text-decoration: underline;
@@ -1636,6 +1672,10 @@ h3 {
   .endpoints-filter-select {
     min-width: 0;
     flex: 1 1 180px;
+  }
+
+  .swagger-diff-grid {
+    grid-template-columns: 1fr;
   }
 }
 

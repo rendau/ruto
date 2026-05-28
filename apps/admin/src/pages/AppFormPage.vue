@@ -26,7 +26,8 @@ const form = ref<AppMain>({
   path_prefix: "",
   name: "",
   backend: {
-    url: ""
+    url: "",
+    swagger_url: ""
   },
   auth: {
     enabled: true,
@@ -116,6 +117,10 @@ onMounted(() => {
     <label class="field">
       <span>Backend URL</span>
       <input v-model="form.backend.url" placeholder="https://example.com" required />
+    </label>
+    <label class="field">
+      <span>Swagger URL</span>
+      <input v-model="form.backend.swagger_url" placeholder="https://example.com/swagger.json" />
     </label>
     <div class="field">
       <span>Auth</span>

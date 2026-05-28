@@ -235,6 +235,36 @@
         ]
       }
     },
+    "/app/{id}/swagger/endpoints-diff": {
+      "get": {
+        "operationId": "App_GetSwaggerEndpointsDiff",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1AppSwaggerEndpointsDiffRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "App"
+        ]
+      }
+    },
     "/endpoint": {
       "get": {
         "operationId": "Endpoint_List",
@@ -1020,6 +1050,9 @@
       "properties": {
         "url": {
           "type": "string"
+        },
+        "swagger_url": {
+          "type": "string"
         }
       }
     },
@@ -1066,6 +1099,36 @@
         },
         "auth": {
           "$ref": "#/definitions/ruto_v1Auth"
+        }
+      }
+    },
+    "ruto_v1AppSwaggerEndpoint": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "ruto_v1AppSwaggerEndpointsDiffRep": {
+      "type": "object",
+      "properties": {
+        "unregistered": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1AppSwaggerEndpoint"
+          }
+        },
+        "registered_invalid": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1AppSwaggerEndpoint"
+          }
         }
       }
     },

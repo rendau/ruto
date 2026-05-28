@@ -13,6 +13,10 @@ const router = useRouter();
 const isEdit = computed(() => typeof route.params.id === "string" && route.params.id.length > 0);
 const endpointId = computed(() => (typeof route.params.id === "string" ? route.params.id : ""));
 const appIdFromRoute = computed(() => (typeof route.params.appId === "string" ? route.params.appId : ""));
+const prefillMethodFromQuery = computed(() =>
+  typeof route.query.method === "string" ? route.query.method.trim().toUpperCase() : ""
+);
+const prefillPathFromQuery = computed(() => (typeof route.query.path === "string" ? route.query.path.trim() : ""));
 
 const loading = ref(false);
 const saving = ref(false);
@@ -38,6 +42,15 @@ const form = ref<EndpointMain>({
 const appDisplayName = computed(() => appName.value || form.value.app_id || "-");
 const endpointMethodOptions = ["*", "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE"];
 
+function applyPrefillFromQuery() {
+  if (prefillMethodFromQuery.value && endpointMethodOptions.includes(prefillMethodFromQuery.value)) {
+    form.value.method = prefillMethodFromQuery.value;
+  }
+  if (prefillPathFromQuery.value) {
+    form.value.path = prefillPathFromQuery.value;
+  }
+}
+
 async function loadAppName() {
   if (!form.value.app_id) {
     appName.value = "";
@@ -53,6 +66,7 @@ async function loadAppName() {
 
 async function load() {
   if (!isEdit.value) {
+    applyPrefillFromQuery();
     await loadAppName();
     return;
   }

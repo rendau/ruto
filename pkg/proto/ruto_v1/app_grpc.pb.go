@@ -20,11 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	App_List_FullMethodName   = "/ruto_v1.App/List"
-	App_Get_FullMethodName    = "/ruto_v1.App/Get"
-	App_Create_FullMethodName = "/ruto_v1.App/Create"
-	App_Update_FullMethodName = "/ruto_v1.App/Update"
-	App_Delete_FullMethodName = "/ruto_v1.App/Delete"
+	App_List_FullMethodName                    = "/ruto_v1.App/List"
+	App_Get_FullMethodName                     = "/ruto_v1.App/Get"
+	App_Create_FullMethodName                  = "/ruto_v1.App/Create"
+	App_Update_FullMethodName                  = "/ruto_v1.App/Update"
+	App_Delete_FullMethodName                  = "/ruto_v1.App/Delete"
+	App_GetSwaggerEndpointsDiff_FullMethodName = "/ruto_v1.App/GetSwaggerEndpointsDiff"
 )
 
 // AppClient is the client API for App service.
@@ -36,6 +37,7 @@ type AppClient interface {
 	Create(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*AppCreateRep, error)
 	Update(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetSwaggerEndpointsDiff(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppSwaggerEndpointsDiffRep, error)
 }
 
 type appClient struct {
@@ -96,6 +98,16 @@ func (c *appClient) Delete(ctx context.Context, in *AppGetReq, opts ...grpc.Call
 	return out, nil
 }
 
+func (c *appClient) GetSwaggerEndpointsDiff(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppSwaggerEndpointsDiffRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AppSwaggerEndpointsDiffRep)
+	err := c.cc.Invoke(ctx, App_GetSwaggerEndpointsDiff_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AppServer is the server API for App service.
 // All implementations must embed UnimplementedAppServer
 // for forward compatibility.
@@ -105,6 +117,7 @@ type AppServer interface {
 	Create(context.Context, *AppMain) (*AppCreateRep, error)
 	Update(context.Context, *AppMain) (*emptypb.Empty, error)
 	Delete(context.Context, *AppGetReq) (*emptypb.Empty, error)
+	GetSwaggerEndpointsDiff(context.Context, *AppGetReq) (*AppSwaggerEndpointsDiffRep, error)
 	mustEmbedUnimplementedAppServer()
 }
 
@@ -129,6 +142,9 @@ func (UnimplementedAppServer) Update(context.Context, *AppMain) (*emptypb.Empty,
 }
 func (UnimplementedAppServer) Delete(context.Context, *AppGetReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
+}
+func (UnimplementedAppServer) GetSwaggerEndpointsDiff(context.Context, *AppGetReq) (*AppSwaggerEndpointsDiffRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSwaggerEndpointsDiff not implemented")
 }
 func (UnimplementedAppServer) mustEmbedUnimplementedAppServer() {}
 func (UnimplementedAppServer) testEmbeddedByValue()             {}
@@ -241,6 +257,24 @@ func _App_Delete_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
+func _App_GetSwaggerEndpointsDiff_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AppGetReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AppServer).GetSwaggerEndpointsDiff(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: App_GetSwaggerEndpointsDiff_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AppServer).GetSwaggerEndpointsDiff(ctx, req.(*AppGetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // App_ServiceDesc is the grpc.ServiceDesc for App service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -267,6 +301,10 @@ var App_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Delete",
 			Handler:    _App_Delete_Handler,
+		},
+		{
+			MethodName: "GetSwaggerEndpointsDiff",
+			Handler:    _App_GetSwaggerEndpointsDiff_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

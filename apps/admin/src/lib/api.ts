@@ -2,6 +2,7 @@ import type {
   AppCreateRep,
   AppListRep,
   AppMain,
+  AppSwaggerEndpointsDiffRep,
   EndpointCreateRep,
   EndpointListRep,
   EndpointMain,
@@ -213,6 +214,10 @@ export function deleteApp(id: string): Promise<void> {
   return apiFetch<void>(`/app/${id}`, {
     method: "DELETE"
   });
+}
+
+export function getAppSwaggerEndpointsDiff(id: string): Promise<AppSwaggerEndpointsDiffRep> {
+  return apiFetch<AppSwaggerEndpointsDiffRep>(`/app/${id}/swagger/endpoints-diff`);
 }
 
 export function listEndpoints(req?: { app_id?: string; active?: boolean }): Promise<EndpointListRep> {

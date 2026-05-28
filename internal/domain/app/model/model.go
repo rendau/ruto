@@ -26,8 +26,10 @@ type App struct {
 }
 
 type AppBackend struct {
-	Url       string   `json:"url"`
-	ParsedUrl *url.URL `json:"-"`
+	Url              string   `json:"url"`
+	ParsedUrl        *url.URL `json:"-"`
+	SwaggerUrl       string   `json:"swagger_url"`
+	ParsedSwaggerUrl *url.URL `json:"-"`
 }
 
 func (m *App) String() string {
@@ -73,6 +75,22 @@ func (m *AppBackend) Normalize() error {
 	if m.ParsedUrl.Host == "" {
 		return fmt.Errorf("url: host cannot be empty")
 	}
+
+	m.SwaggerUrl = strings.TrimSpace(m.SwaggerUrl)
+	m.ParsedSwaggerUrl = nil
+	if m.SwaggerUrl != "" {
+		m.ParsedSwaggerUrl, err = url.Parse(m.SwaggerUrl)
+		if err != nil {
+			return fmt.Errorf("swagger_url: %w", err)
+		}
+		if m.ParsedSwaggerUrl.Scheme != "http" && m.ParsedSwaggerUrl.Scheme != "https" {
+			return fmt.Errorf("swagger_url: scheme must be http or https")
+		}
+		if m.ParsedSwaggerUrl.Host == "" {
+			return fmt.Errorf("swagger_url: host cannot be empty")
+		}
+	}
+
 	return nil
 }
 

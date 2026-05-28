@@ -85,6 +85,7 @@ export interface RootJwtKidsReq {
 
 export interface AppBackend {
   url: string;
+  swagger_url: string;
 }
 
 export interface AppMain {
@@ -103,6 +104,16 @@ export interface AppListRep {
 
 export interface AppCreateRep {
   id: string;
+}
+
+export interface AppSwaggerEndpoint {
+  method: string;
+  path: string;
+}
+
+export interface AppSwaggerEndpointsDiffRep {
+  unregistered: AppSwaggerEndpoint[];
+  registered_invalid: AppSwaggerEndpoint[];
 }
 
 export interface EndpointBackend {

@@ -32,6 +32,7 @@ import (
 	cacheRepoRedisP "github.com/rendau/ruto/internal/service/cache/repo/redis"
 	cacheServiceP "github.com/rendau/ruto/internal/service/cache/service"
 	serviceMigrateP "github.com/rendau/ruto/internal/service/migrate"
+	serviceSwaggerP "github.com/rendau/ruto/internal/service/swagger"
 	usecaseAppP "github.com/rendau/ruto/internal/usecase/app"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 	usecaseGatewayP "github.com/rendau/ruto/internal/usecase/gateway"
@@ -97,12 +98,13 @@ func (a *App) Init() error {
 	// app
 	domainAppRepoDb := domainAppRepoDbP.New(a.pgpool)
 	domainAppService := domainAppServiceP.New(domainAppRepoDb)
-	usecaseApp := usecaseAppP.New(domainAppService, sessionService)
+	domainEndpointRepoDb := domainEndpointRepoDbP.New(a.pgpool)
+	domainEndpointService := domainEndpointServiceP.New(domainEndpointRepoDb)
+	swaggerService := serviceSwaggerP.New(10 * time.Second)
+	usecaseApp := usecaseAppP.New(domainAppService, domainEndpointService, swaggerService, sessionService)
 	handlerGrpcApp := handlerGrpcP.NewApp(usecaseApp)
 
 	// endpoint
-	domainEndpointRepoDb := domainEndpointRepoDbP.New(a.pgpool)
-	domainEndpointService := domainEndpointServiceP.New(domainEndpointRepoDb)
 	usecaseEndpoint := usecaseEndpointP.New(domainEndpointService, sessionService)
 	handlerGrpcEndpoint := handlerGrpcP.NewEndpoint(usecaseEndpoint)
 

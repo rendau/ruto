@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/rendau/ruto/internal/domain/app/model"
+	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
+	swaggerService "github.com/rendau/ruto/internal/service/swagger"
 )
 
 type ServiceI interface {
@@ -17,4 +19,12 @@ type ServiceI interface {
 
 type SessionServiceI interface {
 	FromContext(ctx context.Context) *sessionModel.Session
+}
+
+type EndpointServiceI interface {
+	List(ctx context.Context, pars *endpointModel.ListReq) ([]*endpointModel.Endpoint, int64, error)
+}
+
+type SwaggerServiceI interface {
+	LoadEndpoints(ctx context.Context, swaggerURL string) ([]swaggerService.Endpoint, error)
 }

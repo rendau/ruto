@@ -4,6 +4,7 @@ import (
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
 	"github.com/rendau/ruto/internal/domain/app/model"
+	usecaseApp "github.com/rendau/ruto/internal/usecase/app"
 )
 
 func EncodeAppMain(v *model.App, _ int) *ruto_v1.AppMain {
@@ -39,7 +40,8 @@ func DecodeAppMain(v *ruto_v1.AppMain) *model.App {
 
 func EncodeAppBackend(x model.AppBackend) *ruto_v1.AppBackend {
 	return &ruto_v1.AppBackend{
-		Url: x.Url,
+		Url:        x.Url,
+		SwaggerUrl: x.SwaggerUrl,
 	}
 }
 
@@ -48,6 +50,28 @@ func DecodeAppBackend(x *ruto_v1.AppBackend) model.AppBackend {
 		return model.AppBackend{}
 	}
 	return model.AppBackend{
-		Url: x.Url,
+		Url:        x.Url,
+		SwaggerUrl: x.SwaggerUrl,
 	}
+}
+
+func EncodeSwaggerEndpointDiff(x *usecaseApp.SwaggerEndpointsDiff) *ruto_v1.AppSwaggerEndpointsDiffRep {
+	if x == nil {
+		return &ruto_v1.AppSwaggerEndpointsDiffRep{}
+	}
+	return &ruto_v1.AppSwaggerEndpointsDiffRep{
+		Unregistered:      loMapSwaggerEndpoints(x.Unregistered),
+		RegisteredInvalid: loMapSwaggerEndpoints(x.RegisteredInvalid),
+	}
+}
+
+func loMapSwaggerEndpoints(items []usecaseApp.SwaggerEndpoint) []*ruto_v1.AppSwaggerEndpoint {
+	result := make([]*ruto_v1.AppSwaggerEndpoint, 0, len(items))
+	for _, item := range items {
+		result = append(result, &ruto_v1.AppSwaggerEndpoint{
+			Method: item.Method,
+			Path:   item.Path,
+		})
+	}
+	return result
 }

@@ -67,3 +67,11 @@ func (h *App) Delete(ctx context.Context, req *ruto_v1.AppGetReq) (*emptypb.Empt
 	}
 	return &emptypb.Empty{}, nil
 }
+
+func (h *App) GetSwaggerEndpointsDiff(ctx context.Context, req *ruto_v1.AppGetReq) (*ruto_v1.AppSwaggerEndpointsDiffRep, error) {
+	rep, err := h.usecase.GetSwaggerEndpointsDiff(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeSwaggerEndpointDiff(rep), nil
+}
