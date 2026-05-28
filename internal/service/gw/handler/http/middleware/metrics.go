@@ -56,7 +56,6 @@ var (
 			metricsLabelAppName,
 			metricsLabelHTTPMethod,
 			metricsLabelFullPath,
-			metricsLabelStatusCode,
 		})
 	}()
 )
@@ -103,7 +102,6 @@ func NewMetrics() Middleware {
 				appName,
 				r.Method,
 				fullPath,
-				statusCodeStr,
 			).Observe(time.Since(startAt).Seconds())
 		})
 	}
