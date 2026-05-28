@@ -74,12 +74,10 @@ func (a *Jwt) Authorize(r *http.Request) bool {
 		return false
 	}
 
-	if len(a.requiredRoleMap) == 0 {
-		return true
-	}
-
-	if !hasAnyRole(claims, a.checkRole) {
-		return false
+	if len(a.requiredRoleMap) > 0 {
+		if !hasAnyRole(claims, a.checkRole) {
+			return false
+		}
 	}
 
 	return true
@@ -97,8 +95,5 @@ func (a *Jwt) checkKid(kid string) bool {
 }
 
 func (a *Jwt) checkRole(role string) bool {
-	if len(a.requiredRoleMap) == 0 {
-		return true
-	}
 	return a.requiredRoleMap[role]
 }
