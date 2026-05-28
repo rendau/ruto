@@ -43,9 +43,15 @@ var (
 			return nil
 		}
 		return metrics.Factory.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "gw_http_request_duration_seconds",
-			Help:    "Gateway HTTP request duration in seconds.",
-			Buckets: prometheus.DefBuckets,
+			Name: "gw_http_request_duration_seconds",
+			Help: "Gateway HTTP request duration in seconds.",
+			Buckets: []float64{
+				0.005,
+				0.02,
+				0.1,
+				0.5,
+				2,
+			},
 		}, []string{
 			metricsLabelAppName,
 			metricsLabelHTTPMethod,
