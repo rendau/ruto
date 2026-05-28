@@ -24,7 +24,7 @@ func NewRequestLog(enabled bool) Middleware {
 				"method", r.Method,
 				"path", r.URL.Path,
 				"query", r.URL.RawQuery,
-				"headers", r.Header,
+				// "headers", r.Header,
 				"host", r.Host,
 				"remote_addr", r.RemoteAddr,
 				"user_agent", r.UserAgent(),
