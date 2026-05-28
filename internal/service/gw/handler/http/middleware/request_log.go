@@ -3,6 +3,7 @@ package middleware
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -18,23 +19,27 @@ func NewRequestLog(enabled bool) Middleware {
 			if statusCode == 0 {
 				statusCode = http.StatusOK
 			}
+			statusIsOk := statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices
 
-			logArgs := []any{
-				"status", statusCode,
-				"method", r.Method,
-				"path", r.URL.Path,
-				"query", r.URL.RawQuery,
-				// "headers", r.Header,
-				"host", r.Host,
-				"remote_addr", r.RemoteAddr,
-				"user_agent", r.UserAgent(),
-				"duration", time.Since(startAt).String(),
-			}
+			if enabled || !statusIsOk {
+				logMessageSuffix := r.Method + " " + r.URL.Path + "(" + strconv.Itoa(statusCode) + ")"
+				logArgs := []any{
+					"status", statusCode,
+					"method", r.Method,
+					"path", r.URL.Path,
+					"query", r.URL.RawQuery,
+					// "headers", r.Header,
+					"host", r.Host,
+					"remote_addr", r.RemoteAddr,
+					"user_agent", r.UserAgent(),
+					"duration", time.Since(startAt).String(),
+				}
 
-			if statusCode < http.StatusOK || statusCode > http.StatusMultipleChoices-1 {
-				slog.Info("gw request error", logArgs...)
-			} else if enabled {
-				slog.Info("gw request", logArgs...)
+				if statusCode < http.StatusOK || statusCode > http.StatusMultipleChoices-1 {
+					slog.Info("gw request error "+logMessageSuffix, logArgs...)
+				} else if enabled {
+					slog.Info("gw request "+logMessageSuffix, logArgs...)
+				}
 			}
 		})
 	}
