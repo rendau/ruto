@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { RouterLink, useRoute, useRouter } from "vue-router";
+import { computed, onMounted, ref, watch } from "vue";
+import { onBeforeRouteLeave, RouterLink, useRoute, useRouter, type RouteLocationNormalizedLoaded } from "vue-router";
 import { deleteApp, deleteEndpoint, getApp, getAppSwaggerEndpointsDiff, listEndpoints, updateApp } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain, AppSwaggerEndpoint, EndpointMain } from "../types/api";
@@ -27,6 +27,8 @@ const swaggerUnregistered = ref<AppSwaggerEndpoint[]>([]);
 const swaggerRegisteredInvalid = ref<AppSwaggerEndpoint[]>([]);
 const swaggerDiffLoading = ref(false);
 const swaggerDiffError = ref("");
+const swaggerPanelOpen = ref(false);
+const swaggerDiffLoaded = ref(false);
 
 type EndpointAuthIcon = {
   key: "ip_validation" | "jwt" | "basic" | "api_key";
@@ -136,6 +138,72 @@ const hasEndpointFilters = computed(() => {
   );
 });
 
+type SavedEndpointFilters = {
+  endpoint_search?: string;
+  auth_visibility_filter?: "all" | "public" | "protected";
+  active_filter?: "all" | "active" | "inactive";
+  http_method_filter?: string;
+};
+
+function endpointFiltersStorageKey(): string {
+  return `app-details:endpoint-filters:${id.value || "_"}`;
+}
+
+function restoreEndpointFilters() {
+  const raw = window.sessionStorage.getItem(endpointFiltersStorageKey());
+  if (!raw) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as SavedEndpointFilters;
+    endpointSearch.value = typeof parsed.endpoint_search === "string" ? parsed.endpoint_search : "";
+    authVisibilityFilter.value =
+      parsed.auth_visibility_filter === "public" || parsed.auth_visibility_filter === "protected"
+        ? parsed.auth_visibility_filter
+        : "all";
+    activeFilter.value =
+      parsed.active_filter === "active" || parsed.active_filter === "inactive" ? parsed.active_filter : "all";
+    httpMethodFilter.value = typeof parsed.http_method_filter === "string" ? parsed.http_method_filter : "all";
+  } catch {
+    endpointSearch.value = "";
+    authVisibilityFilter.value = "all";
+    activeFilter.value = "all";
+    httpMethodFilter.value = "all";
+  }
+}
+
+function persistEndpointFilters() {
+  const payload: SavedEndpointFilters = {
+    endpoint_search: endpointSearch.value,
+    auth_visibility_filter: authVisibilityFilter.value,
+    active_filter: activeFilter.value,
+    http_method_filter: httpMethodFilter.value
+  };
+  window.sessionStorage.setItem(endpointFiltersStorageKey(), JSON.stringify(payload));
+}
+
+function clearPersistedEndpointFilters() {
+  window.sessionStorage.removeItem(endpointFiltersStorageKey());
+}
+
+function isWithinCurrentAppContext(to: RouteLocationNormalizedLoaded): boolean {
+  const name = typeof to.name === "string" ? to.name : "";
+  const currentAppId = id.value;
+
+  if (name === "app-details" || name === "app-edit") {
+    return typeof to.params.id === "string" && to.params.id === currentAppId;
+  }
+  if (name === "endpoint-create") {
+    return typeof to.params.appId === "string" && to.params.appId === currentAppId;
+  }
+  if (name === "endpoint-details" || name === "endpoint-edit") {
+    return true;
+  }
+
+  return false;
+}
+
 function firstPathSegment(path: string): string {
   const normalized = (path || "").trim();
   if (!normalized || normalized === "/") {
@@ -226,31 +294,53 @@ async function load() {
   swaggerDiffError.value = "";
   swaggerUnregistered.value = [];
   swaggerRegisteredInvalid.value = [];
+  swaggerPanelOpen.value = false;
+  swaggerDiffLoaded.value = false;
   try {
     app.value = await getApp(id.value);
     const endpointList = await listEndpoints({
       app_id: id.value
     });
     endpoints.value = endpointList.results;
-
-    if (app.value.backend.swagger_url) {
-      swaggerDiffLoading.value = true;
-      try {
-        const diffRep = await getAppSwaggerEndpointsDiff(id.value);
-        swaggerUnregistered.value = diffRep.unregistered || [];
-        swaggerRegisteredInvalid.value = diffRep.registered_invalid || [];
-      } catch (error) {
-        swaggerDiffError.value = error instanceof Error ? error.message : "Unable to load swagger endpoints";
-      } finally {
-        swaggerDiffLoading.value = false;
-      }
-    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load application";
   } finally {
     loading.value = false;
     swaggerDiffLoading.value = false;
   }
+}
+
+async function loadSwaggerDiff() {
+  if (!app.value || !app.value.backend.swagger_url || swaggerDiffLoading.value || swaggerDiffLoaded.value) {
+    return;
+  }
+
+  swaggerDiffLoading.value = true;
+  swaggerDiffError.value = "";
+  try {
+    const diffRep = await getAppSwaggerEndpointsDiff(id.value);
+    swaggerUnregistered.value = diffRep.unregistered || [];
+    swaggerRegisteredInvalid.value = diffRep.registered_invalid || [];
+    swaggerDiffLoaded.value = true;
+  } catch (error) {
+    swaggerDiffError.value = error instanceof Error ? error.message : "Unable to load swagger endpoints";
+  } finally {
+    swaggerDiffLoading.value = false;
+  }
+}
+
+function toggleSwaggerPanel() {
+  if (!app.value?.backend.swagger_url) {
+    return;
+  }
+  swaggerPanelOpen.value = !swaggerPanelOpen.value;
+  if (swaggerPanelOpen.value) {
+    void loadSwaggerDiff();
+  }
+}
+
+function closeSwaggerPanel() {
+  swaggerPanelOpen.value = false;
 }
 
 async function removeEndpoint(endpoint: EndpointMain) {
@@ -327,13 +417,39 @@ async function toggleAppActive() {
 }
 
 onMounted(() => {
+  restoreEndpointFilters();
   void load();
+});
+
+watch([id, endpointSearch, authVisibilityFilter, activeFilter, httpMethodFilter], () => {
+  persistEndpointFilters();
+});
+
+onBeforeRouteLeave((to) => {
+  if (!isWithinCurrentAppContext(to)) {
+    clearPersistedEndpointFilters();
+  }
 });
 </script>
 
 <template>
   <div class="actions page-top-actions">
     <RouterLink class="primary-button" :to="{ name: 'endpoint-create', params: { appId: id } }">Create Endpoint</RouterLink>
+    <button
+      v-if="app?.backend.swagger_url"
+      class="secondary-button swagger-toggle-button"
+      :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
+      @click="toggleSwaggerPanel"
+    >
+      <svg class="icon-action-svg swagger-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
+        <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
+        <path d="M10 8h4" />
+        <path d="M10 12h4" />
+        <path d="M10 16h4" />
+      </svg>
+      <span>Swagger</span>
+    </button>
     <button
       v-if="app"
       :class="app.active ? 'danger-button' : 'primary-button'"
@@ -380,60 +496,75 @@ onMounted(() => {
         <strong>{{ app.backend.url }}</strong>
       </div>
       <div>
-        <span class="label">Swagger URL</span>
-        <strong>{{ app.backend.swagger_url || "-" }}</strong>
-      </div>
-      <div>
         <span class="label">Status</span>
         <strong>{{ app.active ? "active" : "inactive" }}</strong>
       </div>
     </section>
 
-    <section v-if="app.backend.swagger_url" class="panel swagger-diff-panel">
-      <div class="page-header compact endpoints-head">
-        <h3>Swagger Diff</h3>
-      </div>
-      <p v-if="swaggerDiffLoading" class="muted">Loading swagger endpoints...</p>
-      <p v-else-if="swaggerDiffError" class="error">{{ swaggerDiffError }}</p>
-      <template v-else>
-        <div class="swagger-diff-grid">
-          <div>
-            <div class="label">Not Registered</div>
-            <ul v-if="swaggerUnregistered.length > 0" class="swagger-endpoint-list">
-              <li v-for="item in swaggerUnregistered" :key="`missing-${item.method}-${item.path}`" class="swagger-endpoint-item">
-                <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
-                <span class="swagger-endpoint-path">{{ item.path }}</span>
-                <RouterLink
-                  class="secondary-button swagger-add-button"
-                  :to="{
-                    name: 'endpoint-create',
-                    params: { appId: id },
-                    query: { method: item.method, path: item.path }
-                  }"
-                >
-                  Add
-                </RouterLink>
-              </li>
-            </ul>
-            <p v-else class="muted">No missing endpoints.</p>
-          </div>
-          <div>
-            <div class="label">Registered Invalid</div>
-            <ul v-if="swaggerRegisteredInvalid.length > 0" class="swagger-endpoint-list">
-              <li
-                v-for="item in swaggerRegisteredInvalid"
-                :key="`invalid-${item.method}-${item.path}`"
-                class="swagger-endpoint-item"
-              >
-                <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
-                <span class="swagger-endpoint-path">{{ item.path }}</span>
-              </li>
-            </ul>
-            <p v-else class="muted">No invalid registrations.</p>
-          </div>
+    <Transition name="swagger-panel">
+      <section v-if="app.backend.swagger_url && swaggerPanelOpen" class="panel swagger-diff-panel">
+        <button
+          class="icon-action-button secondary swagger-close-icon"
+          type="button"
+          title="Close Swagger Diff"
+          aria-label="Close Swagger Diff"
+          @click="closeSwaggerPanel"
+        >
+          <span class="icon-action-glyph">✕</span>
+        </button>
+        <div class="page-header endpoints-head swagger-panel-head">
+          <h3>Swagger Diff</h3>
         </div>
-      </template>
-    </section>
+        <p v-if="swaggerDiffLoading" class="muted">Loading swagger endpoints...</p>
+        <p v-else-if="swaggerDiffError" class="error">{{ swaggerDiffError }}</p>
+        <template v-else>
+          <div class="swagger-diff-grid">
+            <div class="swagger-diff-column">
+              <div class="swagger-diff-title-row">
+                <div class="label">Not Registered</div>
+                <span class="swagger-diff-count">{{ swaggerUnregistered.length }}</span>
+              </div>
+              <ul v-if="swaggerUnregistered.length > 0" class="swagger-endpoint-list">
+                <li v-for="item in swaggerUnregistered" :key="`missing-${item.method}-${item.path}`" class="swagger-endpoint-item">
+                  <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
+                  <span class="swagger-endpoint-path">{{ item.path }}</span>
+                  <RouterLink
+                    class="primary-button swagger-add-button"
+                    :to="{
+                      name: 'endpoint-create',
+                      params: { appId: id },
+                      query: { method: item.method, path: item.path }
+                    }"
+                    :aria-label="`Add endpoint ${item.method} ${item.path}`"
+                  >
+                    <span class="swagger-add-plus">+</span>
+                    <span>Add</span>
+                  </RouterLink>
+                </li>
+              </ul>
+              <p v-else class="muted">No missing endpoints.</p>
+            </div>
+            <div class="swagger-diff-column">
+              <div class="swagger-diff-title-row">
+                <div class="label">Registered Invalid</div>
+                <span class="swagger-diff-count">{{ swaggerRegisteredInvalid.length }}</span>
+              </div>
+              <ul v-if="swaggerRegisteredInvalid.length > 0" class="swagger-endpoint-list">
+                <li
+                  v-for="item in swaggerRegisteredInvalid"
+                  :key="`invalid-${item.method}-${item.path}`"
+                  class="swagger-endpoint-item"
+                >
+                  <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
+                  <span class="swagger-endpoint-path">{{ item.path }}</span>
+                </li>
+              </ul>
+              <p v-else class="muted">No invalid registrations.</p>
+            </div>
+          </div>
+        </template>
+      </section>
+    </Transition>
 
     <div class="page-header compact endpoints-head">
       <h3>Endpoints</h3>

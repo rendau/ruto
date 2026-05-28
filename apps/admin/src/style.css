@@ -1056,13 +1056,82 @@ h3 {
 }
 
 .swagger-diff-panel {
+  position: relative;
   margin-bottom: 14px;
+}
+
+.swagger-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #14607a;
+  color: #e8fbff;
+}
+
+.swagger-toggle-button:hover,
+.swagger-toggle-button:focus-visible {
+  background: #1b7390;
+}
+
+.swagger-toggle-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .swagger-diff-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 28px;
+  align-items: start;
+  align-content: start;
+}
+
+.swagger-panel-head {
+  margin-top: 0;
+  margin-bottom: 12px;
+  padding-right: 42px;
+}
+
+.swagger-close-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  z-index: 1;
+  background: #c73c3c;
+  color: #fff;
+}
+
+.swagger-close-icon:hover,
+.swagger-close-icon:focus-visible {
+  background: #d84a4a;
+}
+
+.swagger-diff-column {
+  display: grid;
+  gap: 8px;
+}
+
+.swagger-diff-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.swagger-diff-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  border-radius: 999px;
+  padding: 0 7px;
+  background: #2d4464;
+  color: #b9cce6;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .swagger-endpoint-list {
@@ -1070,25 +1139,64 @@ h3 {
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 7px;
+  gap: 9px;
 }
 
 .swagger-endpoint-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   min-width: 0;
+  border: 1px solid #3d5679;
+  border-radius: 8px;
+  padding: 8px;
+  background: #243553;
 }
 
 .swagger-endpoint-path {
   min-width: 0;
   overflow-wrap: anywhere;
+  color: #dce7f8;
+  line-height: 1.35;
 }
 
 .swagger-add-button {
-  padding: 5px 8px;
-  font-size: 12px;
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 11px;
   line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: 6px;
+  white-space: nowrap;
+  background: #2f9e44;
+  color: #fff;
+}
+
+.swagger-add-button:hover,
+.swagger-add-button:focus-visible {
+  background: #36ad4b;
+}
+
+.swagger-add-plus {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.swagger-panel-enter-active,
+.swagger-panel-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform-origin: top center;
+}
+
+.swagger-panel-enter-from,
+.swagger-panel-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .endpoint-path-link {
@@ -1145,6 +1253,21 @@ h3 {
 
 .endpoints-filters .icon-action-button.secondary:not(:disabled):hover .icon-action-glyph {
   color: #8fd0ff;
+}
+
+.endpoints-filters .icon-action-button.secondary:not(:disabled) {
+  background: #c73c3c;
+  color: #fff;
+}
+
+.endpoints-filters .icon-action-button.secondary:not(:disabled):hover,
+.endpoints-filters .icon-action-button.secondary:not(:disabled):focus-visible {
+  background: #d84a4a;
+}
+
+.endpoints-filters .icon-action-button.secondary:not(:disabled):hover .icon-action-glyph,
+.endpoints-filters .icon-action-button.secondary:not(:disabled):focus-visible .icon-action-glyph {
+  color: #fff;
 }
 
 .endpoints-table {
@@ -1676,6 +1799,7 @@ h3 {
 
   .swagger-diff-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 
