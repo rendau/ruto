@@ -44,13 +44,3 @@ func NewRequestLog(enabled bool) Middleware {
 		})
 	}
 }
-
-type responseStatusWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (w *responseStatusWriter) WriteHeader(statusCode int) {
-	w.statusCode = statusCode
-	w.ResponseWriter.WriteHeader(statusCode)
-}

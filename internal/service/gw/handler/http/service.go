@@ -88,6 +88,7 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequest
 	}
 
 	outerMiddlewares := []middleware.Middleware{
+		middleware.NewMetrics(),
 		middleware.NewRequestLog(logRequests),
 	}
 	if snapshot.Cors.Enabled {

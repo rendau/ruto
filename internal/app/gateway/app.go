@@ -9,8 +9,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/rendau/ruto/internal/app/common"
 	configGateway "github.com/rendau/ruto/internal/config/gateway"
+	"github.com/rendau/ruto/internal/infra/metrics"
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
 )
 
@@ -62,6 +65,9 @@ func (a *App) Init() error {
 			w.WriteHeader(http.StatusOK)
 		}
 	})
+	if metrics.Enabled {
+		systemHandler.Handle("/metrics", promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{}))
+	}
 	a.systemServer = &http.Server{
 		Addr:              ":" + strconv.Itoa(configGateway.Conf.SystemPort),
 		Handler:           systemHandler,
