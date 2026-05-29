@@ -1142,6 +1142,16 @@ h3 {
   gap: 9px;
 }
 
+.swagger-endpoint-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.swagger-endpoint-group {
+  display: grid;
+  gap: 8px;
+}
+
 .swagger-endpoint-item {
   display: grid;
   grid-template-columns: 78px minmax(0, 1fr) auto;
@@ -1154,10 +1164,21 @@ h3 {
   background: #243553;
 }
 
+.swagger-endpoint-item-invalid {
+  grid-template-columns: 78px minmax(0, 1fr);
+}
+
 .swagger-endpoint-path {
   min-width: 0;
   overflow-wrap: anywhere;
   color: #dce7f8;
+  line-height: 1.35;
+}
+
+.swagger-endpoint-reason {
+  grid-column: 1 / -1;
+  color: #9cb1cd;
+  font-size: 12px;
   line-height: 1.35;
 }
 

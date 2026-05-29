@@ -78,6 +78,9 @@ func (a *App) Init() error {
 	// session
 	sessionService := domainSessionServiceP.New(configCore.Conf.AdminJWTSecret)
 
+	// swagger
+	swaggerService := serviceSwaggerP.New(10 * time.Second)
+
 	// cache
 	var cacheRepo cacheServiceP.RepoI
 	if configCore.Conf.RedisAddr != "" {
@@ -100,7 +103,6 @@ func (a *App) Init() error {
 	domainAppService := domainAppServiceP.New(domainAppRepoDb)
 	domainEndpointRepoDb := domainEndpointRepoDbP.New(a.pgpool)
 	domainEndpointService := domainEndpointServiceP.New(domainEndpointRepoDb)
-	swaggerService := serviceSwaggerP.New(10 * time.Second)
 	usecaseApp := usecaseAppP.New(domainAppService, domainEndpointService, swaggerService, sessionService)
 	handlerGrpcApp := handlerGrpcP.NewApp(usecaseApp)
 

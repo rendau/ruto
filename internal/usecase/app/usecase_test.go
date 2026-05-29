@@ -119,3 +119,46 @@ func TestUsecase_GetSwaggerEndpointsDiff(t *testing.T) {
 		{Method: "*", Path: "/status"},
 	}, rep.RegisteredInvalid)
 }
+
+func TestUsecase_GetSwaggerEndpointsDiff_PathVariableNamesIgnored(t *testing.T) {
+	t.Parallel()
+
+	uc := New(
+		&testAppService{
+			get: func(_ context.Context, id string, _ bool) (*appModel.App, bool, error) {
+				require.Equal(t, "app-id", id)
+				return &appModel.App{
+					Id: "app-id",
+					Backend: appModel.AppBackend{
+						SwaggerUrl: "https://example.local/swagger.json",
+					},
+				}, true, nil
+			},
+		},
+		&testEndpointService{
+			list: func(_ context.Context, pars *endpointModel.ListReq) ([]*endpointModel.Endpoint, int64, error) {
+				require.NotNil(t, pars.AppId)
+				require.Equal(t, "app-id", *pars.AppId)
+				return []*endpointModel.Endpoint{
+					{Method: "GET", Path: "/users/{id}"},
+					{Method: "POST", Path: "/users/:userId/orders/{order_id}"},
+				}, 2, nil
+			},
+		},
+		&testSwaggerService{
+			loadEndpoints: func(_ context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
+				require.Equal(t, "https://example.local/swagger.json", swaggerURL)
+				return []swaggerService.Endpoint{
+					{Method: "GET", Path: "/users/{userId}"},
+					{Method: "POST", Path: "/users/{id}/orders/{id2}"},
+				}, nil
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+	)
+
+	rep, err := uc.GetSwaggerEndpointsDiff(context.Background(), "app-id")
+	require.NoError(t, err)
+	require.Empty(t, rep.Unregistered)
+	require.Empty(t, rep.RegisteredInvalid)
+}

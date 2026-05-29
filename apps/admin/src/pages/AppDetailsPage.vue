@@ -129,6 +129,81 @@ const endpointGroups = computed(() => {
     });
 });
 
+type SwaggerEndpointGroup = {
+  segment: string;
+  items: AppSwaggerEndpoint[];
+};
+
+function sortSwaggerEndpoints(a: AppSwaggerEndpoint, b: AppSwaggerEndpoint): number {
+  const pathCompare = normalizedRoutePath(a.path).localeCompare(normalizedRoutePath(b.path));
+  if (pathCompare !== 0) {
+    return pathCompare;
+  }
+  return (a.method || "").localeCompare(b.method || "");
+}
+
+function groupSwaggerEndpoints(items: AppSwaggerEndpoint[]): SwaggerEndpointGroup[] {
+  const groups = new Map<string, AppSwaggerEndpoint[]>();
+  for (const item of items) {
+    const key = firstPathSegment(item.path);
+    const current = groups.get(key);
+    if (current) {
+      current.push(item);
+    } else {
+      groups.set(key, [item]);
+    }
+  }
+
+  return Array.from(groups.entries())
+    .map(([segment, groupItems]) => ({
+      segment,
+      items: [...groupItems].sort((a, b) => sortSwaggerEndpoints(a, b))
+    }))
+    .sort((a, b) => {
+      if (a.segment === "/" && b.segment !== "/") {
+        return -1;
+      }
+      if (a.segment !== "/" && b.segment === "/") {
+        return 1;
+      }
+      return a.segment.localeCompare(b.segment);
+    });
+}
+
+const swaggerUnregisteredGroups = computed(() => groupSwaggerEndpoints(swaggerUnregistered.value));
+const swaggerRegisteredInvalidGroups = computed(() => groupSwaggerEndpoints(swaggerRegisteredInvalid.value));
+const swaggerUnregisteredMethodsByPath = computed(() => {
+  const result = new Map<string, string[]>();
+  for (const item of swaggerUnregistered.value) {
+    const path = normalizedRoutePath(item.path);
+    const method = (item.method || "").trim().toUpperCase();
+    if (!method) {
+      continue;
+    }
+    const current = result.get(path);
+    if (current) {
+      if (!current.includes(method)) {
+        current.push(method);
+      }
+    } else {
+      result.set(path, [method]);
+    }
+  }
+  for (const methods of result.values()) {
+    methods.sort((a, b) => a.localeCompare(b));
+  }
+  return result;
+});
+
+function registeredInvalidReason(item: AppSwaggerEndpoint): string {
+  const path = normalizedRoutePath(item.path);
+  const swaggerMethods = swaggerUnregisteredMethodsByPath.value.get(path) || [];
+  if (swaggerMethods.length > 0) {
+    return "Неверно зарегистрирован";
+  }
+  return "Отсутствует в Swagger";
+}
+
 const hasEndpointFilters = computed(() => {
   return (
     endpointSearch.value.trim() !== "" ||
@@ -524,24 +599,36 @@ onBeforeRouteLeave((to) => {
                 <div class="label">Not Registered</div>
                 <span class="swagger-diff-count">{{ swaggerUnregistered.length }}</span>
               </div>
-              <ul v-if="swaggerUnregistered.length > 0" class="swagger-endpoint-list">
-                <li v-for="item in swaggerUnregistered" :key="`missing-${item.method}-${item.path}`" class="swagger-endpoint-item">
-                  <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
-                  <span class="swagger-endpoint-path">{{ item.path }}</span>
-                  <RouterLink
-                    class="primary-button swagger-add-button"
-                    :to="{
-                      name: 'endpoint-create',
-                      params: { appId: id },
-                      query: { method: item.method, path: item.path }
-                    }"
-                    :aria-label="`Add endpoint ${item.method} ${item.path}`"
-                  >
-                    <span class="swagger-add-plus">+</span>
-                    <span>Add</span>
-                  </RouterLink>
-                </li>
-              </ul>
+              <div v-if="swaggerUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
+                <section v-for="group in swaggerUnregisteredGroups" :key="`missing-group-${group.segment}`" class="swagger-endpoint-group">
+                  <div class="endpoint-group-head">
+                    <span class="endpoint-group-segment">{{ group.segment }}</span>
+                    <span class="endpoint-group-count">{{ group.items.length }}</span>
+                  </div>
+                  <ul class="swagger-endpoint-list">
+                    <li
+                      v-for="item in group.items"
+                      :key="`missing-${group.segment}-${item.method}-${item.path}`"
+                      class="swagger-endpoint-item"
+                    >
+                      <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
+                      <span class="swagger-endpoint-path">{{ item.path }}</span>
+                      <RouterLink
+                        class="primary-button swagger-add-button"
+                        :to="{
+                          name: 'endpoint-create',
+                          params: { appId: id },
+                          query: { method: item.method, path: item.path }
+                        }"
+                        :aria-label="`Add endpoint ${item.method} ${item.path}`"
+                      >
+                        <span class="swagger-add-plus">+</span>
+                        <span>Add</span>
+                      </RouterLink>
+                    </li>
+                  </ul>
+                </section>
+              </div>
               <p v-else class="muted">No missing endpoints.</p>
             </div>
             <div class="swagger-diff-column">
@@ -549,16 +636,29 @@ onBeforeRouteLeave((to) => {
                 <div class="label">Registered Invalid</div>
                 <span class="swagger-diff-count">{{ swaggerRegisteredInvalid.length }}</span>
               </div>
-              <ul v-if="swaggerRegisteredInvalid.length > 0" class="swagger-endpoint-list">
-                <li
-                  v-for="item in swaggerRegisteredInvalid"
-                  :key="`invalid-${item.method}-${item.path}`"
-                  class="swagger-endpoint-item"
+              <div v-if="swaggerRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
+                <section
+                  v-for="group in swaggerRegisteredInvalidGroups"
+                  :key="`invalid-group-${group.segment}`"
+                  class="swagger-endpoint-group"
                 >
-                  <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
-                  <span class="swagger-endpoint-path">{{ item.path }}</span>
-                </li>
-              </ul>
+                  <div class="endpoint-group-head">
+                    <span class="endpoint-group-segment">{{ group.segment }}</span>
+                    <span class="endpoint-group-count">{{ group.items.length }}</span>
+                  </div>
+                  <ul class="swagger-endpoint-list">
+                    <li
+                      v-for="item in group.items"
+                      :key="`invalid-${group.segment}-${item.method}-${item.path}`"
+                      class="swagger-endpoint-item swagger-endpoint-item-invalid"
+                    >
+                      <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
+                      <span class="swagger-endpoint-path">{{ item.path }}</span>
+                      <span class="swagger-endpoint-reason">{{ registeredInvalidReason(item) }}</span>
+                    </li>
+                  </ul>
+                </section>
+              </div>
               <p v-else class="muted">No invalid registrations.</p>
             </div>
           </div>
