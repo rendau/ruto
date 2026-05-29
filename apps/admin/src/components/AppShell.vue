@@ -155,6 +155,10 @@ async function deploy() {
   if (deploying.value) {
     return;
   }
+  const approved = window.confirm("Start deploy snapshot to gateways?");
+  if (!approved) {
+    return;
+  }
   deploying.value = true;
   try {
     await deploySnapshot();

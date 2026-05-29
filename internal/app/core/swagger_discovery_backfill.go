@@ -59,7 +59,6 @@ func backfillAppSwaggerURLs(
 			swaggerURL, discoverErr := appUsecase.GetSwaggerURLByBackendURL(ctx, item.Backend.Url)
 			if discoverErr != nil {
 				discoveryFail++
-				slog.Warn("app swagger discovery failed", "app_id", item.Id, "backend_url", item.Backend.Url, "error", discoverErr)
 				continue
 			}
 			if strings.TrimSpace(swaggerURL) == "" {
@@ -69,12 +68,10 @@ func backfillAppSwaggerURLs(
 			item.Backend.SwaggerUrl = swaggerURL
 			if updateErr := appUsecase.Update(ctx, item.Id, item); updateErr != nil {
 				discoveryFail++
-				slog.Warn("app swagger update failed", "app_id", item.Id, "swagger_url", swaggerURL, "error", updateErr)
 				continue
 			}
 
 			updated++
-			slog.Info("app swagger URL discovered", "app_id", item.Id, "swagger_url", swaggerURL)
 		}
 
 		if int64(len(items)) < pageSize {
@@ -88,7 +85,7 @@ func backfillAppSwaggerURLs(
 		"apps_processed", processed,
 		"apps_updated", updated,
 		"errors", discoveryFail,
-		"duration_ms", time.Since(startedAt).Milliseconds(),
+		"duration", time.Since(startedAt).String(),
 	)
 
 	return nil
