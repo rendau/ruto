@@ -25,9 +25,9 @@ func (u *Usecase) GetSwaggerURLByBackendURL(ctx context.Context, backendURL stri
 
 	for _, candidateURL := range buildSwaggerCandidates(normalizedBaseURL) {
 		probeCtx, cancel := context.WithTimeout(ctx, swaggerProbeTimeout)
-		_, loadErr := u.swaggerSvc.LoadEndpoints(probeCtx, candidateURL)
+		endpoints, loadErr := u.swaggerSvc.LoadEndpoints(probeCtx, candidateURL)
 		cancel()
-		if loadErr == nil {
+		if loadErr == nil && len(endpoints) > 0 {
 			return candidateURL, nil
 		}
 	}
