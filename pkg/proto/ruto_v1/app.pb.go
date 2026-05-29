@@ -455,6 +455,94 @@ func (x *AppSwaggerEndpointsDiffRep) GetRegisteredInvalid() []*AppSwaggerEndpoin
 	return nil
 }
 
+type AppGetSwaggerUrlByBackendUrlReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BackendUrl    string                 `protobuf:"bytes,1,opt,name=backend_url,json=backendUrl,proto3" json:"backend_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppGetSwaggerUrlByBackendUrlReq) Reset() {
+	*x = AppGetSwaggerUrlByBackendUrlReq{}
+	mi := &file_ruto_v1_app_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppGetSwaggerUrlByBackendUrlReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppGetSwaggerUrlByBackendUrlReq) ProtoMessage() {}
+
+func (x *AppGetSwaggerUrlByBackendUrlReq) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_app_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppGetSwaggerUrlByBackendUrlReq.ProtoReflect.Descriptor instead.
+func (*AppGetSwaggerUrlByBackendUrlReq) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_app_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AppGetSwaggerUrlByBackendUrlReq) GetBackendUrl() string {
+	if x != nil {
+		return x.BackendUrl
+	}
+	return ""
+}
+
+type AppGetSwaggerUrlByBackendUrlRep struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SwaggerUrl    string                 `protobuf:"bytes,1,opt,name=swagger_url,json=swaggerUrl,proto3" json:"swagger_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppGetSwaggerUrlByBackendUrlRep) Reset() {
+	*x = AppGetSwaggerUrlByBackendUrlRep{}
+	mi := &file_ruto_v1_app_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppGetSwaggerUrlByBackendUrlRep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppGetSwaggerUrlByBackendUrlRep) ProtoMessage() {}
+
+func (x *AppGetSwaggerUrlByBackendUrlRep) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_app_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppGetSwaggerUrlByBackendUrlRep.ProtoReflect.Descriptor instead.
+func (*AppGetSwaggerUrlByBackendUrlRep) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_app_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AppGetSwaggerUrlByBackendUrlRep) GetSwaggerUrl() string {
+	if x != nil {
+		return x.SwaggerUrl
+	}
+	return ""
+}
+
 var File_ruto_v1_app_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_app_proto_rawDesc = "" +
@@ -492,14 +580,21 @@ const file_ruto_v1_app_proto_rawDesc = "" +
 	"\x04path\x18\x02 \x01(\tR\x04path\"\xa9\x01\n" +
 	"\x1aAppSwaggerEndpointsDiffRep\x12?\n" +
 	"\funregistered\x18\x01 \x03(\v2\x1b.ruto_v1.AppSwaggerEndpointR\funregistered\x12J\n" +
-	"\x12registered_invalid\x18\x02 \x03(\v2\x1b.ruto_v1.AppSwaggerEndpointR\x11registeredInvalid2\xda\x03\n" +
+	"\x12registered_invalid\x18\x02 \x03(\v2\x1b.ruto_v1.AppSwaggerEndpointR\x11registeredInvalid\"B\n" +
+	"\x1fAppGetSwaggerUrlByBackendUrlReq\x12\x1f\n" +
+	"\vbackend_url\x18\x01 \x01(\tR\n" +
+	"backendUrl\"B\n" +
+	"\x1fAppGetSwaggerUrlByBackendUrlRep\x12\x1f\n" +
+	"\vswagger_url\x18\x01 \x01(\tR\n" +
+	"swaggerUrl2\xf5\x04\n" +
 	"\x03App\x12>\n" +
 	"\x04List\x12\x13.ruto_v1.AppListReq\x1a\x13.ruto_v1.AppListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/app\x12>\n" +
 	"\x03Get\x12\x12.ruto_v1.AppGetReq\x1a\x10.ruto_v1.AppMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/app/{id}\x12B\n" +
 	"\x06Create\x12\x10.ruto_v1.AppMain\x1a\x15.ruto_v1.AppCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/app\x12H\n" +
 	"\x06Update\x12\x10.ruto_v1.AppMain\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/app/{id}\x12G\n" +
 	"\x06Delete\x12\x12.ruto_v1.AppGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/app/{id}\x12|\n" +
-	"\x17GetSwaggerEndpointsDiff\x12\x12.ruto_v1.AppGetReq\x1a#.ruto_v1.AppSwaggerEndpointsDiffRep\"(\x82\xd3\xe4\x93\x02\"\x12 /app/{id}/swagger/endpoints-diffB\n" +
+	"\x17GetSwaggerEndpointsDiff\x12\x12.ruto_v1.AppGetReq\x1a#.ruto_v1.AppSwaggerEndpointsDiffRep\"(\x82\xd3\xe4\x93\x02\"\x12 /app/{id}/swagger/endpoints-diff\x12\x98\x01\n" +
+	"\x19GetSwaggerUrlByBackendUrl\x12(.ruto_v1.AppGetSwaggerUrlByBackendUrlReq\x1a(.ruto_v1.AppGetSwaggerUrlByBackendUrlRep\"'\x82\xd3\xe4\x93\x02!\x12\x1f/app/swagger/url/by-backend-urlB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
 var (
@@ -514,26 +609,28 @@ func file_ruto_v1_app_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_app_proto_rawDescData
 }
 
-var file_ruto_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_ruto_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_ruto_v1_app_proto_goTypes = []any{
-	(*AppMain)(nil),                    // 0: ruto_v1.AppMain
-	(*AppGetReq)(nil),                  // 1: ruto_v1.AppGetReq
-	(*AppListReq)(nil),                 // 2: ruto_v1.AppListReq
-	(*AppListRep)(nil),                 // 3: ruto_v1.AppListRep
-	(*AppCreateRep)(nil),               // 4: ruto_v1.AppCreateRep
-	(*AppBackend)(nil),                 // 5: ruto_v1.AppBackend
-	(*AppSwaggerEndpoint)(nil),         // 6: ruto_v1.AppSwaggerEndpoint
-	(*AppSwaggerEndpointsDiffRep)(nil), // 7: ruto_v1.AppSwaggerEndpointsDiffRep
-	(*Auth)(nil),                       // 8: ruto_v1.Auth
-	(*ListParamsSt)(nil),               // 9: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),           // 10: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),              // 11: google.protobuf.Empty
+	(*AppMain)(nil),                         // 0: ruto_v1.AppMain
+	(*AppGetReq)(nil),                       // 1: ruto_v1.AppGetReq
+	(*AppListReq)(nil),                      // 2: ruto_v1.AppListReq
+	(*AppListRep)(nil),                      // 3: ruto_v1.AppListRep
+	(*AppCreateRep)(nil),                    // 4: ruto_v1.AppCreateRep
+	(*AppBackend)(nil),                      // 5: ruto_v1.AppBackend
+	(*AppSwaggerEndpoint)(nil),              // 6: ruto_v1.AppSwaggerEndpoint
+	(*AppSwaggerEndpointsDiffRep)(nil),      // 7: ruto_v1.AppSwaggerEndpointsDiffRep
+	(*AppGetSwaggerUrlByBackendUrlReq)(nil), // 8: ruto_v1.AppGetSwaggerUrlByBackendUrlReq
+	(*AppGetSwaggerUrlByBackendUrlRep)(nil), // 9: ruto_v1.AppGetSwaggerUrlByBackendUrlRep
+	(*Auth)(nil),                            // 10: ruto_v1.Auth
+	(*ListParamsSt)(nil),                    // 11: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),                // 12: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),                   // 13: google.protobuf.Empty
 }
 var file_ruto_v1_app_proto_depIdxs = []int32{
 	5,  // 0: ruto_v1.AppMain.backend:type_name -> ruto_v1.AppBackend
-	8,  // 1: ruto_v1.AppMain.auth:type_name -> ruto_v1.Auth
-	9,  // 2: ruto_v1.AppListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	10, // 3: ruto_v1.AppListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	10, // 1: ruto_v1.AppMain.auth:type_name -> ruto_v1.Auth
+	11, // 2: ruto_v1.AppListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	12, // 3: ruto_v1.AppListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
 	0,  // 4: ruto_v1.AppListRep.results:type_name -> ruto_v1.AppMain
 	6,  // 5: ruto_v1.AppSwaggerEndpointsDiffRep.unregistered:type_name -> ruto_v1.AppSwaggerEndpoint
 	6,  // 6: ruto_v1.AppSwaggerEndpointsDiffRep.registered_invalid:type_name -> ruto_v1.AppSwaggerEndpoint
@@ -543,14 +640,16 @@ var file_ruto_v1_app_proto_depIdxs = []int32{
 	0,  // 10: ruto_v1.App.Update:input_type -> ruto_v1.AppMain
 	1,  // 11: ruto_v1.App.Delete:input_type -> ruto_v1.AppGetReq
 	1,  // 12: ruto_v1.App.GetSwaggerEndpointsDiff:input_type -> ruto_v1.AppGetReq
-	3,  // 13: ruto_v1.App.List:output_type -> ruto_v1.AppListRep
-	0,  // 14: ruto_v1.App.Get:output_type -> ruto_v1.AppMain
-	4,  // 15: ruto_v1.App.Create:output_type -> ruto_v1.AppCreateRep
-	11, // 16: ruto_v1.App.Update:output_type -> google.protobuf.Empty
-	11, // 17: ruto_v1.App.Delete:output_type -> google.protobuf.Empty
-	7,  // 18: ruto_v1.App.GetSwaggerEndpointsDiff:output_type -> ruto_v1.AppSwaggerEndpointsDiffRep
-	13, // [13:19] is the sub-list for method output_type
-	7,  // [7:13] is the sub-list for method input_type
+	8,  // 13: ruto_v1.App.GetSwaggerUrlByBackendUrl:input_type -> ruto_v1.AppGetSwaggerUrlByBackendUrlReq
+	3,  // 14: ruto_v1.App.List:output_type -> ruto_v1.AppListRep
+	0,  // 15: ruto_v1.App.Get:output_type -> ruto_v1.AppMain
+	4,  // 16: ruto_v1.App.Create:output_type -> ruto_v1.AppCreateRep
+	13, // 17: ruto_v1.App.Update:output_type -> google.protobuf.Empty
+	13, // 18: ruto_v1.App.Delete:output_type -> google.protobuf.Empty
+	7,  // 19: ruto_v1.App.GetSwaggerEndpointsDiff:output_type -> ruto_v1.AppSwaggerEndpointsDiffRep
+	9,  // 20: ruto_v1.App.GetSwaggerUrlByBackendUrl:output_type -> ruto_v1.AppGetSwaggerUrlByBackendUrlRep
+	14, // [14:21] is the sub-list for method output_type
+	7,  // [7:14] is the sub-list for method input_type
 	7,  // [7:7] is the sub-list for extension type_name
 	7,  // [7:7] is the sub-list for extension extendee
 	0,  // [0:7] is the sub-list for field type_name
@@ -570,7 +669,7 @@ func file_ruto_v1_app_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_app_proto_rawDesc), len(file_ruto_v1_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

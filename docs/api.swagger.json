@@ -139,6 +139,36 @@
         ]
       }
     },
+    "/app/swagger/url/by-backend-url": {
+      "get": {
+        "operationId": "App_GetSwaggerUrlByBackendUrl",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1AppGetSwaggerUrlByBackendUrlRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "backend_url",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "App"
+        ]
+      }
+    },
     "/app/{id}": {
       "get": {
         "operationId": "App_Get",
@@ -1060,6 +1090,14 @@
       "type": "object",
       "properties": {
         "id": {
+          "type": "string"
+        }
+      }
+    },
+    "ruto_v1AppGetSwaggerUrlByBackendUrlRep": {
+      "type": "object",
+      "properties": {
+        "swagger_url": {
           "type": "string"
         }
       }

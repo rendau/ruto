@@ -75,3 +75,17 @@ func (h *App) GetSwaggerEndpointsDiff(ctx context.Context, req *ruto_v1.AppGetRe
 	}
 	return dto.EncodeSwaggerEndpointDiff(rep), nil
 }
+
+func (h *App) GetSwaggerUrlByBackendUrl(
+	ctx context.Context,
+	req *ruto_v1.AppGetSwaggerUrlByBackendUrlReq,
+) (*ruto_v1.AppGetSwaggerUrlByBackendUrlRep, error) {
+	swaggerURL, err := h.usecase.GetSwaggerURLByBackendURL(ctx, req.GetBackendUrl())
+	if err != nil {
+		return nil, err
+	}
+
+	return &ruto_v1.AppGetSwaggerUrlByBackendUrlRep{
+		SwaggerUrl: swaggerURL,
+	}, nil
+}

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createApp, getApp, getRoot, getRootJwtKidsByUrls, updateApp } from "../lib/api";
+import { createApp, getApp, getAppSwaggerUrlByBackendUrl, getRoot, getRootJwtKidsByUrls, updateApp } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
 import { normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
@@ -19,6 +19,10 @@ const loading = ref(false);
 const saving = ref(false);
 const errorMessage = ref("");
 const jwtKidOptions = ref<string[]>([]);
+const discoveringSwagger = ref(false);
+const autoDetectedSwaggerUrl = ref("");
+let discoverTimer: ReturnType<typeof setTimeout> | null = null;
+let discoverRequestSeq = 0;
 
 const form = ref<AppMain>({
   id: "",
@@ -49,6 +53,9 @@ async function load() {
       ...item,
       auth: normalizeAuth(item.auth)
     };
+    if (!form.value.backend.swagger_url.trim()) {
+      await discoverSwaggerUrl(form.value.backend.url);
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load app";
   } finally {
@@ -92,8 +99,81 @@ async function submit() {
   }
 }
 
+function onSwaggerUrlInput() {
+  if (form.value.backend.swagger_url.trim() !== autoDetectedSwaggerUrl.value) {
+    autoDetectedSwaggerUrl.value = "";
+  }
+}
+
+async function discoverSwaggerUrl(backendUrl: string) {
+  const normalizedBackendUrl = backendUrl.trim();
+  if (!normalizedBackendUrl) {
+    discoveringSwagger.value = false;
+    return;
+  }
+
+  const requestId = ++discoverRequestSeq;
+  discoveringSwagger.value = true;
+
+  try {
+    const rep = await getAppSwaggerUrlByBackendUrl({ backend_url: normalizedBackendUrl });
+    if (requestId != discoverRequestSeq) {
+      return;
+    }
+
+    const foundSwaggerUrl = (rep.swagger_url || "").trim();
+    if (!foundSwaggerUrl) {
+      return;
+    }
+
+    const currentSwaggerUrl = form.value.backend.swagger_url.trim();
+    if (currentSwaggerUrl && currentSwaggerUrl !== autoDetectedSwaggerUrl.value) {
+      return;
+    }
+
+    form.value.backend.swagger_url = foundSwaggerUrl;
+    autoDetectedSwaggerUrl.value = foundSwaggerUrl;
+  } catch {
+    // user can still input swagger URL manually
+  } finally {
+    if (requestId == discoverRequestSeq) {
+      discoveringSwagger.value = false;
+    }
+  }
+}
+
+function queueSwaggerDiscovery() {
+  if (isEdit.value) {
+    return;
+  }
+  if (discoverTimer) {
+    clearTimeout(discoverTimer);
+  }
+  discoverTimer = setTimeout(() => {
+    void discoverSwaggerUrl(form.value.backend.url);
+  }, 600);
+}
+
+function triggerSwaggerDiscoveryNow() {
+  if (isEdit.value) {
+    return;
+  }
+  if (discoverTimer) {
+    clearTimeout(discoverTimer);
+    discoverTimer = null;
+  }
+  void discoverSwaggerUrl(form.value.backend.url);
+}
+
 onMounted(() => {
   void Promise.all([load(), loadJwtKidOptions()]);
+});
+
+onBeforeUnmount(() => {
+  if (discoverTimer) {
+    clearTimeout(discoverTimer);
+  }
+  discoverRequestSeq++;
 });
 </script>
 
@@ -116,11 +196,22 @@ onMounted(() => {
     </label>
     <label class="field">
       <span>Backend URL</span>
-      <input v-model="form.backend.url" placeholder="https://example.com" required />
+      <input
+        v-model="form.backend.url"
+        placeholder="https://example.com"
+        required
+        @input="queueSwaggerDiscovery"
+        @blur="triggerSwaggerDiscoveryNow"
+      />
     </label>
     <label class="field">
       <span>Swagger URL</span>
-      <input v-model="form.backend.swagger_url" placeholder="https://example.com/swagger.json" />
+      <input
+        v-model="form.backend.swagger_url"
+        placeholder="https://example.com/swagger.json"
+        @input="onSwaggerUrlInput"
+      />
+      <small v-if="discoveringSwagger && !isEdit" class="muted">Searching swagger URL...</small>
     </label>
     <div class="field">
       <span>Auth</span>

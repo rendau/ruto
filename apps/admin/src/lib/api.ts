@@ -2,6 +2,8 @@ import type {
   AppCreateRep,
   AppListRep,
   AppMain,
+  AppGetSwaggerUrlByBackendUrlRep,
+  AppGetSwaggerUrlByBackendUrlReq,
   AppSwaggerEndpointsDiffRep,
   EndpointCreateRep,
   EndpointListRep,
@@ -218,6 +220,14 @@ export function deleteApp(id: string): Promise<void> {
 
 export function getAppSwaggerEndpointsDiff(id: string): Promise<AppSwaggerEndpointsDiffRep> {
   return apiFetch<AppSwaggerEndpointsDiffRep>(`/app/${id}/swagger/endpoints-diff`);
+}
+
+export function getAppSwaggerUrlByBackendUrl(req: AppGetSwaggerUrlByBackendUrlReq): Promise<AppGetSwaggerUrlByBackendUrlRep> {
+  return apiFetch<AppGetSwaggerUrlByBackendUrlRep>(
+    withQuery("/app/swagger/url/by-backend-url", {
+      backend_url: req.backend_url
+    })
+  );
 }
 
 export function listEndpoints(req?: { app_id?: string; active?: boolean }): Promise<EndpointListRep> {
