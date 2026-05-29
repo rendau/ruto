@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { onBeforeRouteLeave, RouterLink, useRoute, useRouter, type RouteLocationNormalizedLoaded } from "vue-router";
-import { deleteApp, deleteEndpoint, getApp, getAppSwaggerEndpointsDiff, listEndpoints, updateApp } from "../lib/api";
+import { createEndpoint, deleteApp, deleteEndpoint, getApp, getAppSwaggerEndpointsDiff, listEndpoints, updateApp } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain, AppSwaggerEndpoint, EndpointMain } from "../types/api";
 import { useAppsStore } from "../stores/apps";
@@ -29,6 +29,8 @@ const swaggerDiffLoading = ref(false);
 const swaggerDiffError = ref("");
 const swaggerPanelOpen = ref(false);
 const swaggerDiffLoaded = ref(false);
+const swaggerBulkAdding = ref(false);
+const swaggerSelectedKeys = ref<Record<string, boolean>>({});
 
 type EndpointAuthIcon = {
   key: "ip_validation" | "jwt" | "basic" | "api_key";
@@ -172,6 +174,22 @@ function groupSwaggerEndpoints(items: AppSwaggerEndpoint[]): SwaggerEndpointGrou
 
 const swaggerUnregisteredGroups = computed(() => groupSwaggerEndpoints(swaggerUnregistered.value));
 const swaggerRegisteredInvalidGroups = computed(() => groupSwaggerEndpoints(swaggerRegisteredInvalid.value));
+const swaggerSelectedCount = computed(() => {
+  const values = Object.values(swaggerSelectedKeys.value);
+  let selected = 0;
+  for (const value of values) {
+    if (value) {
+      selected++;
+    }
+  }
+  return selected;
+});
+const allSwaggerUnregisteredSelected = computed(() => {
+  if (swaggerUnregistered.value.length === 0) {
+    return false;
+  }
+  return swaggerUnregistered.value.every((item) => Boolean(swaggerSelectedKeys.value[swaggerEndpointKey(item)]));
+});
 const swaggerUnregisteredMethodsByPath = computed(() => {
   const result = new Map<string, string[]>();
   for (const item of swaggerUnregistered.value) {
@@ -202,6 +220,89 @@ function registeredInvalidReason(item: AppSwaggerEndpoint): string {
     return "Incorrectly registered";
   }
   return "Missing in Swagger";
+}
+
+function swaggerEndpointKey(item: AppSwaggerEndpoint): string {
+  const method = (item.method || "").trim().toUpperCase();
+  const path = normalizedRoutePath(item.path);
+  return `${method} ${path}`;
+}
+
+function isSwaggerSelected(item: AppSwaggerEndpoint): boolean {
+  return Boolean(swaggerSelectedKeys.value[swaggerEndpointKey(item)]);
+}
+
+function toggleSwaggerSelection(item: AppSwaggerEndpoint, nextValue: boolean) {
+  const key = swaggerEndpointKey(item);
+  swaggerSelectedKeys.value = {
+    ...swaggerSelectedKeys.value,
+    [key]: nextValue
+  };
+}
+
+function clearSwaggerSelection() {
+  swaggerSelectedKeys.value = {};
+}
+
+function pruneSwaggerSelection() {
+  if (swaggerUnregistered.value.length === 0) {
+    clearSwaggerSelection();
+    return;
+  }
+  const allowed = new Set(swaggerUnregistered.value.map((item) => swaggerEndpointKey(item)));
+  const next: Record<string, boolean> = {};
+  for (const [key, selected] of Object.entries(swaggerSelectedKeys.value)) {
+    if (selected && allowed.has(key)) {
+      next[key] = true;
+    }
+  }
+  swaggerSelectedKeys.value = next;
+}
+
+function toggleSelectAllSwaggerUnregistered(nextValue: boolean) {
+  if (!nextValue || swaggerUnregistered.value.length === 0) {
+    clearSwaggerSelection();
+    return;
+  }
+  const next: Record<string, boolean> = {};
+  for (const item of swaggerUnregistered.value) {
+    next[swaggerEndpointKey(item)] = true;
+  }
+  swaggerSelectedKeys.value = next;
+}
+
+function onSwaggerSelectAllChange(event: Event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) {
+    return;
+  }
+  toggleSelectAllSwaggerUnregistered(target.checked);
+}
+
+function onSwaggerItemSelectChange(item: AppSwaggerEndpoint, event: Event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) {
+    return;
+  }
+  toggleSwaggerSelection(item, target.checked);
+}
+
+function buildDefaultEndpointPayload(item: AppSwaggerEndpoint): EndpointMain {
+  return {
+    id: "",
+    app_id: id.value,
+    active: true,
+    method: (item.method || "").trim().toUpperCase() || "GET",
+    path: normalizedRoutePath(item.path),
+    backend: {
+      custom_path: ""
+    },
+    auth: {
+      enabled: true,
+      mode: "extend",
+      methods: []
+    }
+  };
 }
 
 const hasEndpointFilters = computed(() => {
@@ -435,6 +536,7 @@ async function loadSwaggerDiff() {
     const diffRep = await getAppSwaggerEndpointsDiff(id.value);
     swaggerUnregistered.value = diffRep.unregistered || [];
     swaggerRegisteredInvalid.value = diffRep.registered_invalid || [];
+    pruneSwaggerSelection();
     swaggerDiffLoaded.value = true;
   } catch (error) {
     swaggerDiffError.value = error instanceof Error ? error.message : "Unable to load swagger endpoints";
@@ -455,6 +557,52 @@ function toggleSwaggerPanel() {
 
 function closeSwaggerPanel() {
   swaggerPanelOpen.value = false;
+}
+
+async function addSelectedSwaggerEndpoints() {
+  if (swaggerBulkAdding.value || swaggerSelectedCount.value === 0) {
+    return;
+  }
+
+  const selectedItems = swaggerUnregistered.value.filter((item) => isSwaggerSelected(item));
+  if (selectedItems.length === 0) {
+    return;
+  }
+
+  const approved = window.confirm(`Add ${selectedItems.length} endpoint(s) with default settings?`);
+  if (!approved) {
+    return;
+  }
+
+  swaggerBulkAdding.value = true;
+  errorMessage.value = "";
+
+  let successCount = 0;
+  let failureCount = 0;
+
+  try {
+    for (const item of selectedItems) {
+      try {
+        await createEndpoint(buildDefaultEndpointPayload(item));
+        successCount++;
+      } catch {
+        failureCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      notifySuccess(`Added ${successCount} endpoint(s)`);
+      clearSwaggerSelection();
+      swaggerDiffLoaded.value = false;
+      await load();
+    }
+
+    if (failureCount > 0) {
+      notifyError(`Failed to add ${failureCount} endpoint(s). Check duplicates or validation.`);
+    }
+  } finally {
+    swaggerBulkAdding.value = false;
+  }
 }
 
 async function removeEndpoint(endpoint: EndpointMain) {
@@ -542,6 +690,10 @@ watch([id, endpointSearch, authVisibilityFilter, activeFilter, httpMethodFilter]
 
 watch([id, swaggerPanelOpen], () => {
   persistSwaggerPanelState();
+});
+
+watch(swaggerUnregistered, () => {
+  pruneSwaggerSelection();
 });
 
 onBeforeRouteLeave((to) => {
@@ -644,6 +796,25 @@ onBeforeRouteLeave((to) => {
                 <div class="label">Not Registered</div>
                 <span class="swagger-diff-count">{{ swaggerUnregistered.length }}</span>
               </div>
+              <div v-if="swaggerUnregistered.length > 0" class="swagger-bulk-actions">
+                <label class="swagger-select-all">
+                  <input
+                    type="checkbox"
+                    :checked="allSwaggerUnregisteredSelected"
+                    :disabled="swaggerBulkAdding"
+                    @change="onSwaggerSelectAllChange"
+                  />
+                  <span>Select all</span>
+                </label>
+                <button
+                  class="primary-button swagger-bulk-add-button"
+                  type="button"
+                  :disabled="swaggerBulkAdding || swaggerSelectedCount === 0"
+                  @click="addSelectedSwaggerEndpoints"
+                >
+                  {{ swaggerBulkAdding ? "Adding..." : `Add selected (${swaggerSelectedCount})` }}
+                </button>
+              </div>
               <div v-if="swaggerUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
                 <section v-for="group in swaggerUnregisteredGroups" :key="`missing-group-${group.segment}`" class="swagger-endpoint-group">
                   <div class="endpoint-group-head">
@@ -656,6 +827,14 @@ onBeforeRouteLeave((to) => {
                       :key="`missing-${group.segment}-${item.method}-${item.path}`"
                       class="swagger-endpoint-item"
                     >
+                      <label class="swagger-item-select">
+                        <input
+                          type="checkbox"
+                          :checked="isSwaggerSelected(item)"
+                          :disabled="swaggerBulkAdding"
+                          @change="onSwaggerItemSelectChange(item, $event)"
+                        />
+                      </label>
                       <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
                       <span class="swagger-endpoint-path">{{ item.path }}</span>
                       <RouterLink

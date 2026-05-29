@@ -4,6 +4,9 @@
   color: #dce7f8;
   background: #0f1726;
   text-size-adjust: 100%;
+  --button-hover-translate-y: -1px;
+  --button-active-translate-y: 0;
+  --button-transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.22s ease, transform 0.16s ease;
 }
 
 * {
@@ -115,6 +118,18 @@ textarea {
   line-height: 1.35;
   text-align: left;
   cursor: pointer;
+  transition: var(--button-transition);
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  background: #2a3d5c;
+  box-shadow: 0 8px 18px rgba(21, 33, 52, 0.32);
+  transform: translateY(var(--button-hover-translate-y));
+}
+
+.nav-link:active {
+  transform: translateY(var(--button-active-translate-y));
 }
 
 .nav-link.router-link-active {
@@ -156,6 +171,7 @@ textarea {
   color: #fff;
   font: inherit;
   cursor: pointer;
+  transition: var(--button-transition);
 }
 
 .nav-icon-button:disabled {
@@ -188,6 +204,7 @@ textarea {
   color: #fff;
   font-size: 14px;
   line-height: 1;
+  transition: var(--button-transition);
 }
 
 .apps-create-icon:hover {
@@ -390,6 +407,7 @@ textarea {
   color: #d5e1f4;
   cursor: pointer;
   padding: 0;
+  transition: var(--button-transition);
 }
 
 .topbar-title {
@@ -420,6 +438,7 @@ textarea {
   padding: 7px 10px;
   cursor: pointer;
   max-width: 100%;
+  transition: var(--button-transition);
 }
 
 .user-name {
@@ -472,6 +491,7 @@ textarea {
   padding: 8px 10px;
   cursor: pointer;
   text-align: left;
+  transition: var(--button-transition);
 }
 
 .menu-item:hover {
@@ -672,6 +692,7 @@ h3 {
   border-radius: 6px;
   padding: 8px 12px;
   cursor: pointer;
+  transition: var(--button-transition);
 }
 
 .icon-action-button {
@@ -685,6 +706,7 @@ h3 {
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
+  transition: var(--button-transition);
 }
 
 .icon-action-glyph {
@@ -742,6 +764,113 @@ h3 {
 .danger-text-button {
   background: #4d2a31;
   color: #ffccce;
+}
+
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.danger-button:focus-visible,
+.link-button:focus-visible,
+.danger-text-button:focus-visible,
+.icon-action-button:focus-visible,
+.nav-icon-button:focus-visible,
+.mobile-menu-button:focus-visible,
+.user-trigger:focus-visible,
+.apps-create-icon:focus-visible {
+  outline: 2px solid #8fd0ff;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .primary-button:not(:disabled):hover {
+    background: #2861dd;
+    box-shadow: 0 8px 20px rgba(30, 75, 184, 0.35);
+    transform: translateY(var(--button-hover-translate-y));
+  }
+
+  .secondary-button:not(:disabled):hover,
+  .link-button:not(:disabled):hover {
+    background: #355179;
+    box-shadow: 0 8px 18px rgba(34, 50, 77, 0.35);
+    transform: translateY(var(--button-hover-translate-y));
+  }
+
+  .danger-button:not(:disabled):hover,
+  .danger-text-button:not(:disabled):hover {
+    background: #d84a4a;
+    box-shadow: 0 8px 18px rgba(128, 35, 35, 0.36);
+    transform: translateY(var(--button-hover-translate-y));
+  }
+
+  .icon-action-button.secondary:not(:disabled):hover {
+    background: #36527b;
+    box-shadow: 0 6px 16px rgba(34, 50, 77, 0.35);
+    transform: translateY(var(--button-hover-translate-y));
+  }
+
+  .icon-action-button.primary:not(:disabled):hover {
+    background: #2861dd;
+    box-shadow: 0 6px 16px rgba(30, 75, 184, 0.35);
+    transform: translateY(var(--button-hover-translate-y));
+  }
+
+  .icon-action-button.danger:not(:disabled):hover {
+    background: #d84a4a;
+    box-shadow: 0 6px 16px rgba(128, 35, 35, 0.35);
+    transform: translateY(var(--button-hover-translate-y));
+  }
+
+  .nav-icon-button:not(:disabled):hover,
+  .apps-create-icon:hover {
+    background: #2861dd;
+    box-shadow: 0 6px 16px rgba(30, 75, 184, 0.35);
+    transform: translateY(var(--button-hover-translate-y));
+  }
+
+  .mobile-menu-button:not(:disabled):hover {
+    border-color: #56759f;
+    background: #2a3d5b;
+    transform: translateY(var(--button-hover-translate-y));
+  }
+
+  .user-trigger:not(:disabled):hover {
+    border-color: #4d6a95;
+    background: #2d4262;
+    box-shadow: 0 8px 18px rgba(25, 37, 58, 0.35);
+    transform: translateY(var(--button-hover-translate-y));
+  }
+
+  .menu-item:not(:disabled):hover {
+    transform: translateY(var(--button-hover-translate-y));
+  }
+}
+
+.primary-button:not(:disabled):active,
+.secondary-button:not(:disabled):active,
+.danger-button:not(:disabled):active,
+.link-button:not(:disabled):active,
+.danger-text-button:not(:disabled):active,
+.icon-action-button:not(:disabled):active,
+.nav-icon-button:not(:disabled):active,
+.mobile-menu-button:not(:disabled):active,
+.user-trigger:not(:disabled):active,
+.apps-create-icon:active {
+  transform: translateY(var(--button-active-translate-y));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary-button,
+  .secondary-button,
+  .danger-button,
+  .link-button,
+  .danger-text-button,
+  .icon-action-button,
+  .nav-icon-button,
+  .mobile-menu-button,
+  .user-trigger,
+  .menu-item,
+  .apps-create-icon {
+    transition: none;
+  }
 }
 
 .error {
@@ -1222,7 +1351,7 @@ h3 {
 
 .swagger-endpoint-item {
   display: grid;
-  grid-template-columns: 78px minmax(0, 1fr) auto;
+  grid-template-columns: auto 78px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -1248,6 +1377,44 @@ h3 {
   color: #9cb1cd;
   font-size: 12px;
   line-height: 1.35;
+}
+
+.swagger-bulk-actions {
+  margin-top: 8px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.swagger-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #c6d5eb;
+  font-size: 12px;
+}
+
+.swagger-select-all input,
+.swagger-item-select input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2d72ff;
+  cursor: pointer;
+}
+
+.swagger-item-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swagger-bulk-add-button {
+  min-height: 28px;
+  padding: 5px 10px;
+  font-size: 12px;
 }
 
 .swagger-add-button {
@@ -2026,7 +2193,8 @@ h3 {
   .secondary-button,
   .danger-button,
   .link-button,
-  .danger-text-button {
+  .danger-text-button,
+  .nav-link {
     min-height: 40px;
   }
 
