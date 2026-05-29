@@ -55,6 +55,56 @@ func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsSwaggerJSON(t *testing.T) 
 	require.NotEmpty(t, attempted)
 }
 
+func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerJSON(t *testing.T) {
+	t.Parallel()
+
+	var attempted []string
+	uc := New(
+		nil,
+		nil,
+		&testSwaggerService{
+			loadEndpoints: func(_ context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
+				attempted = append(attempted, swaggerURL)
+				if swaggerURL == "https://example.local/service/docs/api.swagger.json" {
+					return []swaggerService.Endpoint{}, nil
+				}
+				return nil, errors.New("not found")
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+	)
+
+	result, err := uc.GetSwaggerURLByBackendURL(context.Background(), "https://example.local/service")
+	require.NoError(t, err)
+	require.Equal(t, "https://example.local/service/docs/api.swagger.json", result)
+	require.NotEmpty(t, attempted)
+}
+
+func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerYAML(t *testing.T) {
+	t.Parallel()
+
+	var attempted []string
+	uc := New(
+		nil,
+		nil,
+		&testSwaggerService{
+			loadEndpoints: func(_ context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
+				attempted = append(attempted, swaggerURL)
+				if swaggerURL == "https://example.local/service/docs/api.swagger.yaml" {
+					return []swaggerService.Endpoint{}, nil
+				}
+				return nil, errors.New("not found")
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+	)
+
+	result, err := uc.GetSwaggerURLByBackendURL(context.Background(), "https://example.local/service")
+	require.NoError(t, err)
+	require.Equal(t, "https://example.local/service/docs/api.swagger.yaml", result)
+	require.NotEmpty(t, attempted)
+}
+
 func TestUsecase_GetSwaggerURLByBackendURL_NotFound(t *testing.T) {
 	t.Parallel()
 
