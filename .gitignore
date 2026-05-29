@@ -23,5 +23,5 @@ cover.html
 .DS_Store
 .gocache
 
-core
-gateway
+/core
+/gateway
