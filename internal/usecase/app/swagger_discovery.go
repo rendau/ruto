@@ -7,10 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/rendau/ruto/internal/errs"
 )
 
-const swaggerProbeTimeout = 1500 * time.Millisecond
+const swaggerProbeTimeout = time.Second
+const swaggerProbeWorkers = 4
 
 func (u *Usecase) GetSwaggerURLByBackendURL(ctx context.Context, backendURL string) (string, error) {
 	extractedSession := u.sessionSvc.FromContext(ctx)
@@ -23,16 +26,58 @@ func (u *Usecase) GetSwaggerURLByBackendURL(ctx context.Context, backendURL stri
 		return "", errs.InvalidRequest
 	}
 
-	for _, candidateURL := range buildSwaggerCandidates(normalizedBaseURL) {
-		probeCtx, cancel := context.WithTimeout(ctx, swaggerProbeTimeout)
-		endpoints, loadErr := u.swaggerSvc.LoadEndpoints(probeCtx, candidateURL)
-		cancel()
-		if loadErr == nil && len(endpoints) > 0 {
-			return candidateURL, nil
-		}
+	return u.discoverSwaggerURL(ctx, buildSwaggerCandidates(normalizedBaseURL)), nil
+}
+
+func (u *Usecase) discoverSwaggerURL(ctx context.Context, candidates []string) string {
+	if len(candidates) == 0 {
+		return ""
 	}
 
-	return "", nil
+	workers := swaggerProbeWorkers
+	if workers > len(candidates) {
+		workers = len(candidates)
+	}
+	if workers < 1 {
+		workers = 1
+	}
+
+	discoveryCtx, cancelDiscovery := context.WithCancel(ctx)
+	defer cancelDiscovery()
+	group, groupCtx := errgroup.WithContext(discoveryCtx)
+	group.SetLimit(workers)
+	result := make(chan string, 1)
+
+	for _, candidateURL := range candidates {
+		candidateURL := candidateURL
+		group.Go(func() error {
+			if groupCtx.Err() != nil {
+				return nil
+			}
+
+			probeCtx, cancel := context.WithTimeout(groupCtx, swaggerProbeTimeout)
+			endpoints, loadErr := u.swaggerSvc.LoadEndpoints(probeCtx, candidateURL)
+			cancel()
+
+			if loadErr == nil && len(endpoints) > 0 {
+				select {
+				case result <- candidateURL:
+					cancelDiscovery()
+				default:
+				}
+			}
+			return nil
+		})
+	}
+
+	_ = group.Wait()
+	close(result)
+
+	for candidateURL := range result {
+		return candidateURL
+	}
+
+	return ""
 }
 
 func normalizeBaseURL(raw string) (*url.URL, error) {

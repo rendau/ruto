@@ -2,8 +2,10 @@ package swagger
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"time"
 )
@@ -21,8 +23,19 @@ func New(timeout time.Duration) *Service {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
 	}
+
 	return &Service{
-		httpClient: &http.Client{Timeout: timeout},
+		httpClient: &http.Client{
+			Timeout: timeout,
+			Transport: &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout: time.Second,
+				}).DialContext,
+				TLSHandshakeTimeout: time.Second,
+				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+				MaxIdleConnsPerHost: 20,
+			},
+		},
 	}
 }
 
