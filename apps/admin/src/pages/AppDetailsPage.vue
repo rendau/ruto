@@ -29,6 +29,7 @@ const swaggerDiffLoading = ref(false);
 const swaggerDiffError = ref("");
 const swaggerPanelOpen = ref(false);
 const swaggerDiffLoaded = ref(false);
+const swaggerRegisteredInvalidOpen = ref(false);
 const swaggerBulkAdding = ref(false);
 const swaggerSelectedKeys = ref<Record<string, boolean>>({});
 
@@ -184,12 +185,6 @@ const swaggerSelectedCount = computed(() => {
   }
   return selected;
 });
-const allSwaggerUnregisteredSelected = computed(() => {
-  if (swaggerUnregistered.value.length === 0) {
-    return false;
-  }
-  return swaggerUnregistered.value.every((item) => Boolean(swaggerSelectedKeys.value[swaggerEndpointKey(item)]));
-});
 const swaggerUnregisteredMethodsByPath = computed(() => {
   const result = new Map<string, string[]>();
   for (const item of swaggerUnregistered.value) {
@@ -257,26 +252,6 @@ function pruneSwaggerSelection() {
     }
   }
   swaggerSelectedKeys.value = next;
-}
-
-function toggleSelectAllSwaggerUnregistered(nextValue: boolean) {
-  if (!nextValue || swaggerUnregistered.value.length === 0) {
-    clearSwaggerSelection();
-    return;
-  }
-  const next: Record<string, boolean> = {};
-  for (const item of swaggerUnregistered.value) {
-    next[swaggerEndpointKey(item)] = true;
-  }
-  swaggerSelectedKeys.value = next;
-}
-
-function onSwaggerSelectAllChange(event: Event) {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement)) {
-    return;
-  }
-  toggleSelectAllSwaggerUnregistered(target.checked);
 }
 
 function onSwaggerItemSelectChange(item: AppSwaggerEndpoint, event: Event) {
@@ -559,6 +534,10 @@ function closeSwaggerPanel() {
   swaggerPanelOpen.value = false;
 }
 
+function toggleSwaggerRegisteredInvalid() {
+  swaggerRegisteredInvalidOpen.value = !swaggerRegisteredInvalidOpen.value;
+}
+
 async function addSelectedSwaggerEndpoints() {
   if (swaggerBulkAdding.value || swaggerSelectedCount.value === 0) {
     return;
@@ -790,100 +769,104 @@ onBeforeRouteLeave((to) => {
         <p v-if="swaggerDiffLoading" class="muted">Loading swagger endpoints...</p>
         <p v-else-if="swaggerDiffError" class="error">{{ swaggerDiffError }}</p>
         <template v-else>
+          <div v-if="swaggerRegisteredInvalid.length > 0" class="swagger-invalid-toggle-wrap">
+            <button class="secondary-button swagger-invalid-toggle-button" type="button" @click="toggleSwaggerRegisteredInvalid">
+              {{
+                swaggerRegisteredInvalidOpen
+                  ? `Hide Registered Invalid (${swaggerRegisteredInvalid.length})`
+                  : `Show Registered Invalid (${swaggerRegisteredInvalid.length})`
+              }}
+            </button>
+          </div>
           <div class="swagger-diff-grid">
+            <div v-if="swaggerRegisteredInvalidOpen" class="swagger-diff-column">
+              <div class="swagger-diff-title-row">
+                <div class="label">Registered Invalid</div>
+                <span class="swagger-diff-count">{{ swaggerRegisteredInvalid.length }}</span>
+              </div>
+              <div class="swagger-section-box">
+                <div v-if="swaggerRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
+                  <section
+                    v-for="group in swaggerRegisteredInvalidGroups"
+                    :key="`invalid-group-${group.segment}`"
+                    class="swagger-endpoint-group"
+                  >
+                    <div class="endpoint-group-head">
+                      <span class="endpoint-group-segment">{{ group.segment }}</span>
+                      <span class="endpoint-group-count">{{ group.items.length }}</span>
+                    </div>
+                    <ul class="swagger-endpoint-list">
+                      <li
+                        v-for="item in group.items"
+                        :key="`invalid-${group.segment}-${item.method}-${item.path}`"
+                        class="swagger-endpoint-item swagger-endpoint-item-invalid"
+                      >
+                        <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
+                        <span class="swagger-endpoint-path">{{ item.path }}</span>
+                        <span class="swagger-endpoint-reason">{{ registeredInvalidReason(item) }}</span>
+                      </li>
+                    </ul>
+                  </section>
+                </div>
+                <p v-else class="muted">No invalid registrations.</p>
+              </div>
+            </div>
             <div class="swagger-diff-column">
               <div class="swagger-diff-title-row">
                 <div class="label">Not Registered</div>
                 <span class="swagger-diff-count">{{ swaggerUnregistered.length }}</span>
               </div>
-              <div v-if="swaggerUnregistered.length > 0" class="swagger-bulk-actions">
-                <label class="swagger-select-all">
-                  <input
-                    type="checkbox"
-                    :checked="allSwaggerUnregisteredSelected"
-                    :disabled="swaggerBulkAdding"
-                    @change="onSwaggerSelectAllChange"
-                  />
-                  <span>Select all</span>
-                </label>
-                <button
-                  class="primary-button swagger-bulk-add-button"
-                  type="button"
-                  :disabled="swaggerBulkAdding || swaggerSelectedCount === 0"
-                  @click="addSelectedSwaggerEndpoints"
-                >
-                  {{ swaggerBulkAdding ? "Adding..." : `Add selected (${swaggerSelectedCount})` }}
-                </button>
-              </div>
-              <div v-if="swaggerUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
-                <section v-for="group in swaggerUnregisteredGroups" :key="`missing-group-${group.segment}`" class="swagger-endpoint-group">
-                  <div class="endpoint-group-head">
-                    <span class="endpoint-group-segment">{{ group.segment }}</span>
-                    <span class="endpoint-group-count">{{ group.items.length }}</span>
-                  </div>
-                  <ul class="swagger-endpoint-list">
-                    <li
-                      v-for="item in group.items"
-                      :key="`missing-${group.segment}-${item.method}-${item.path}`"
-                      class="swagger-endpoint-item"
-                    >
-                      <label class="swagger-item-select">
-                        <input
-                          type="checkbox"
-                          :checked="isSwaggerSelected(item)"
-                          :disabled="swaggerBulkAdding"
-                          @change="onSwaggerItemSelectChange(item, $event)"
-                        />
-                      </label>
-                      <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
-                      <span class="swagger-endpoint-path">{{ item.path }}</span>
-                      <RouterLink
-                        class="primary-button swagger-add-button"
-                        :to="{
-                          name: 'endpoint-create',
-                          params: { appId: id },
-                          query: { method: item.method, path: item.path }
-                        }"
-                        :aria-label="`Add endpoint ${item.method} ${item.path}`"
+              <div class="swagger-section-box">
+                <div v-if="swaggerUnregistered.length > 0" class="swagger-bulk-actions">
+                  <button
+                    class="primary-button swagger-bulk-add-button"
+                    type="button"
+                    :disabled="swaggerBulkAdding || swaggerSelectedCount === 0"
+                    @click="addSelectedSwaggerEndpoints"
+                  >
+                    {{ swaggerBulkAdding ? "Adding..." : `Add selected (${swaggerSelectedCount})` }}
+                  </button>
+                </div>
+                <div v-if="swaggerUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
+                  <section v-for="group in swaggerUnregisteredGroups" :key="`missing-group-${group.segment}`" class="swagger-endpoint-group">
+                    <div class="endpoint-group-head">
+                      <span class="endpoint-group-segment">{{ group.segment }}</span>
+                      <span class="endpoint-group-count">{{ group.items.length }}</span>
+                    </div>
+                    <ul class="swagger-endpoint-list">
+                      <li
+                        v-for="item in group.items"
+                        :key="`missing-${group.segment}-${item.method}-${item.path}`"
+                        class="swagger-endpoint-item"
                       >
-                        <span class="swagger-add-plus">+</span>
-                        <span>Add</span>
-                      </RouterLink>
-                    </li>
-                  </ul>
-                </section>
+                        <label class="swagger-item-select">
+                          <input
+                            type="checkbox"
+                            :checked="isSwaggerSelected(item)"
+                            :disabled="swaggerBulkAdding"
+                            @change="onSwaggerItemSelectChange(item, $event)"
+                          />
+                        </label>
+                        <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
+                        <span class="swagger-endpoint-path">{{ item.path }}</span>
+                        <RouterLink
+                          class="primary-button swagger-add-button"
+                          :to="{
+                            name: 'endpoint-create',
+                            params: { appId: id },
+                            query: { method: item.method, path: item.path }
+                          }"
+                          :aria-label="`Add endpoint ${item.method} ${item.path}`"
+                        >
+                          <span class="swagger-add-plus">+</span>
+                          <span>Add</span>
+                        </RouterLink>
+                      </li>
+                    </ul>
+                  </section>
+                </div>
+                <p v-else class="muted">No missing endpoints.</p>
               </div>
-              <p v-else class="muted">No missing endpoints.</p>
-            </div>
-            <div class="swagger-diff-column">
-              <div class="swagger-diff-title-row">
-                <div class="label">Registered Invalid</div>
-                <span class="swagger-diff-count">{{ swaggerRegisteredInvalid.length }}</span>
-              </div>
-              <div v-if="swaggerRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
-                <section
-                  v-for="group in swaggerRegisteredInvalidGroups"
-                  :key="`invalid-group-${group.segment}`"
-                  class="swagger-endpoint-group"
-                >
-                  <div class="endpoint-group-head">
-                    <span class="endpoint-group-segment">{{ group.segment }}</span>
-                    <span class="endpoint-group-count">{{ group.items.length }}</span>
-                  </div>
-                  <ul class="swagger-endpoint-list">
-                    <li
-                      v-for="item in group.items"
-                      :key="`invalid-${group.segment}-${item.method}-${item.path}`"
-                      class="swagger-endpoint-item swagger-endpoint-item-invalid"
-                    >
-                      <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
-                      <span class="swagger-endpoint-path">{{ item.path }}</span>
-                      <span class="swagger-endpoint-reason">{{ registeredInvalidReason(item) }}</span>
-                    </li>
-                  </ul>
-                </section>
-              </div>
-              <p v-else class="muted">No invalid registrations.</p>
             </div>
           </div>
         </template>

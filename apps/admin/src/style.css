@@ -1277,8 +1277,8 @@ h3 {
 
 .swagger-diff-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
   align-content: start;
 }
@@ -1379,25 +1379,22 @@ h3 {
   line-height: 1.35;
 }
 
+.swagger-section-box {
+  border: 1px solid #3d5679;
+  border-radius: 8px;
+  background: #1f304b;
+  padding: 10px;
+}
+
 .swagger-bulk-actions {
-  margin-top: 8px;
   margin-bottom: 10px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.swagger-select-all {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #c6d5eb;
-  font-size: 12px;
-}
-
-.swagger-select-all input,
 .swagger-item-select input {
   width: 16px;
   height: 16px;
@@ -1412,6 +1409,17 @@ h3 {
 }
 
 .swagger-bulk-add-button {
+  min-height: 28px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.swagger-invalid-toggle-wrap {
+  margin-top: 8px;
+  margin-bottom: 10px;
+}
+
+.swagger-invalid-toggle-button {
   min-height: 28px;
   padding: 5px 10px;
   font-size: 12px;

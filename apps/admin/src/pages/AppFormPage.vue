@@ -54,7 +54,7 @@ async function load() {
       auth: normalizeAuth(item.auth)
     };
     if (!form.value.backend.swagger_url.trim()) {
-      await discoverSwaggerUrl(form.value.backend.url);
+      void discoverSwaggerUrl(form.value.backend.url);
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load app";
