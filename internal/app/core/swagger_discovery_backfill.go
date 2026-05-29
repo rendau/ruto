@@ -158,12 +158,14 @@ func backfillAppSwaggerURLs(
 		page++
 	}
 
+	durStr := time.Since(startedAt).String()
+
 	slog.Info(
-		"app swagger discovery on start finished",
+		"app swagger discovery on start finished "+durStr,
 		"apps_processed", processed,
 		"apps_updated", updated,
 		"errors", discoveryFail,
-		"duration", time.Since(startedAt).String(),
+		"duration", durStr,
 	)
 
 	return nil
