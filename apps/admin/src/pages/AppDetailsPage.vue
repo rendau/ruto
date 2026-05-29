@@ -199,9 +199,9 @@ function registeredInvalidReason(item: AppSwaggerEndpoint): string {
   const path = normalizedRoutePath(item.path);
   const swaggerMethods = swaggerUnregisteredMethodsByPath.value.get(path) || [];
   if (swaggerMethods.length > 0) {
-    return "Неверно зарегистрирован";
+    return "Incorrectly registered";
   }
-  return "Отсутствует в Swagger";
+  return "Missing in Swagger";
 }
 
 const hasEndpointFilters = computed(() => {
@@ -220,8 +220,16 @@ type SavedEndpointFilters = {
   http_method_filter?: string;
 };
 
+type SavedSwaggerPanelState = {
+  open?: boolean;
+};
+
 function endpointFiltersStorageKey(): string {
   return `app-details:endpoint-filters:${id.value || "_"}`;
+}
+
+function swaggerPanelStorageKey(): string {
+  return `app-details:swagger-panel:${id.value || "_"}`;
 }
 
 function restoreEndpointFilters() {
@@ -248,6 +256,21 @@ function restoreEndpointFilters() {
   }
 }
 
+function restoreSwaggerPanelState() {
+  const raw = window.sessionStorage.getItem(swaggerPanelStorageKey());
+  if (!raw) {
+    swaggerPanelOpen.value = false;
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as SavedSwaggerPanelState;
+    swaggerPanelOpen.value = Boolean(parsed.open);
+  } catch {
+    swaggerPanelOpen.value = false;
+  }
+}
+
 function persistEndpointFilters() {
   const payload: SavedEndpointFilters = {
     endpoint_search: endpointSearch.value,
@@ -258,8 +281,19 @@ function persistEndpointFilters() {
   window.sessionStorage.setItem(endpointFiltersStorageKey(), JSON.stringify(payload));
 }
 
+function persistSwaggerPanelState() {
+  const payload: SavedSwaggerPanelState = {
+    open: swaggerPanelOpen.value
+  };
+  window.sessionStorage.setItem(swaggerPanelStorageKey(), JSON.stringify(payload));
+}
+
 function clearPersistedEndpointFilters() {
   window.sessionStorage.removeItem(endpointFiltersStorageKey());
+}
+
+function clearPersistedSwaggerPanelState() {
+  window.sessionStorage.removeItem(swaggerPanelStorageKey());
 }
 
 function isWithinCurrentAppContext(to: RouteLocationNormalizedLoaded): boolean {
@@ -369,7 +403,6 @@ async function load() {
   swaggerDiffError.value = "";
   swaggerUnregistered.value = [];
   swaggerRegisteredInvalid.value = [];
-  swaggerPanelOpen.value = false;
   swaggerDiffLoaded.value = false;
   try {
     app.value = await getApp(id.value);
@@ -377,6 +410,12 @@ async function load() {
       app_id: id.value
     });
     endpoints.value = endpointList.results;
+    if (!app.value.backend.swagger_url) {
+      swaggerPanelOpen.value = false;
+    }
+    if (swaggerPanelOpen.value) {
+      void loadSwaggerDiff();
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load application";
   } finally {
@@ -493,6 +532,7 @@ async function toggleAppActive() {
 
 onMounted(() => {
   restoreEndpointFilters();
+  restoreSwaggerPanelState();
   void load();
 });
 
@@ -500,9 +540,14 @@ watch([id, endpointSearch, authVisibilityFilter, activeFilter, httpMethodFilter]
   persistEndpointFilters();
 });
 
+watch([id, swaggerPanelOpen], () => {
+  persistSwaggerPanelState();
+});
+
 onBeforeRouteLeave((to) => {
   if (!isWithinCurrentAppContext(to)) {
     clearPersistedEndpointFilters();
+    clearPersistedSwaggerPanelState();
   }
 });
 </script>
