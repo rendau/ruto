@@ -3,10 +3,12 @@ package swagger
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -72,4 +74,17 @@ func (s *Service) LoadEndpoints(ctx context.Context, swaggerURL string) ([]Endpo
 	}
 
 	return nil, fmt.Errorf("unable to parse swagger document as JSON or YAML: json: %v; yaml: %v", err, yamlErr)
+}
+
+func IsDialError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var opErr *net.OpError
+	if !errors.As(err, &opErr) {
+		return false
+	}
+
+	return strings.EqualFold(opErr.Op, "dial")
 }

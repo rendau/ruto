@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"path"
 	"strings"
@@ -10,10 +11,13 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/rendau/ruto/internal/errs"
+	swaggerService "github.com/rendau/ruto/internal/service/swagger"
 )
 
 const swaggerProbeTimeout = time.Second
 const swaggerProbeWorkers = 4
+
+var errStopSwaggerDiscovery = errors.New("stop swagger discovery")
 
 func (u *Usecase) GetSwaggerURLByBackendURL(ctx context.Context, backendURL string) (string, error) {
 	extractedSession := u.sessionSvc.FromContext(ctx)
@@ -42,14 +46,11 @@ func (u *Usecase) discoverSwaggerURL(ctx context.Context, candidates []string) s
 		workers = 1
 	}
 
-	discoveryCtx, cancelDiscovery := context.WithCancel(ctx)
-	defer cancelDiscovery()
-	group, groupCtx := errgroup.WithContext(discoveryCtx)
+	group, groupCtx := errgroup.WithContext(ctx)
 	group.SetLimit(workers)
 	result := make(chan string, 1)
 
 	for _, candidateURL := range candidates {
-		candidateURL := candidateURL
 		group.Go(func() error {
 			if groupCtx.Err() != nil {
 				return nil
@@ -58,13 +59,19 @@ func (u *Usecase) discoverSwaggerURL(ctx context.Context, candidates []string) s
 			probeCtx, cancel := context.WithTimeout(groupCtx, swaggerProbeTimeout)
 			endpoints, loadErr := u.swaggerSvc.LoadEndpoints(probeCtx, candidateURL)
 			cancel()
+			if loadErr != nil {
+				if swaggerService.IsDialError(loadErr) {
+					return errStopSwaggerDiscovery
+				}
+				return nil
+			}
 
-			if loadErr == nil && len(endpoints) > 0 {
+			if len(endpoints) > 0 {
 				select {
 				case result <- candidateURL:
-					cancelDiscovery()
 				default:
 				}
+				return errStopSwaggerDiscovery
 			}
 			return nil
 		})
