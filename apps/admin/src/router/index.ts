@@ -10,6 +10,8 @@ import RootFormPage from "../pages/RootFormPage.vue";
 import ProfilePage from "../pages/ProfilePage.vue";
 import UsersPage from "../pages/UsersPage.vue";
 import UsersFormPage from "../pages/UsersFormPage.vue";
+import GatewaysPage from "../pages/GatewaysPage.vue";
+import GatewayDetailsPage from "../pages/GatewayDetailsPage.vue";
 import { useAuthStore } from "../stores/auth";
 
 export const router = createRouter({
@@ -70,6 +72,16 @@ export const router = createRouter({
           path: "profile",
           name: "profile",
           component: ProfilePage
+        },
+        {
+          path: "gateways",
+          name: "gateways",
+          component: GatewaysPage
+        },
+        {
+          path: "gateways/:id",
+          name: "gateway-details",
+          component: GatewayDetailsPage
         },
         {
           path: "users",

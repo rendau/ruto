@@ -45,6 +45,10 @@ const pageTitle = computed(() => {
       return "Root Settings";
     case "profile":
       return "Profile";
+    case "gateways":
+      return "Gateways";
+    case "gateway-details":
+      return "Gateway";
     case "users":
       return "Users";
     case "users-create":
@@ -227,6 +231,12 @@ onBeforeUnmount(() => {
           <span class="nav-link-content">
             <span class="icon users-icon" aria-hidden="true">👥</span>
             <span>Users</span>
+          </span>
+        </RouterLink>
+        <RouterLink class="nav-link with-icon" to="/gateways">
+          <span class="nav-link-content">
+            <span class="icon" aria-hidden="true">◉</span>
+            <span>Gateways</span>
           </span>
         </RouterLink>
       </nav>

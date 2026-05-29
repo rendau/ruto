@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 import { getSnapshotVersion, getStats, listGateways } from "../lib/api";
 import { formatUnixAge, formatUnixDateTime } from "../lib/datetime";
 import { notifyError } from "../lib/notify";
 import type { GatewayStateItem, StatsResponse } from "../types/api";
 
+const router = useRouter();
 const loading = ref(false);
 const stats = ref<StatsResponse | null>(null);
 const gateways = ref<GatewayStateItem[]>([]);
@@ -93,6 +95,10 @@ function shortVersion(value: string): string {
     return value;
   }
   return `${value.slice(0, 12)}...`;
+}
+
+function openGatewayDetails(gatewayId: string): void {
+  void router.push({ name: "gateway-details", params: { id: gatewayId } });
 }
 
 onMounted(() => {
@@ -194,7 +200,15 @@ onMounted(() => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="gateway in gateways" :key="gateway.gateway_id">
+            <tr
+              v-for="gateway in gateways"
+              :key="gateway.gateway_id"
+              class="gateway-row-link"
+              tabindex="0"
+              @click="openGatewayDetails(gateway.gateway_id)"
+              @keydown.enter.prevent="openGatewayDetails(gateway.gateway_id)"
+              @keydown.space.prevent="openGatewayDetails(gateway.gateway_id)"
+            >
               <td>{{ gateway.gateway_id }}</td>
               <td>
                 <span class="status-chip" :class="{ inactive: gateway.status !== 'online' }">
