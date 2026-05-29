@@ -109,9 +109,11 @@ func (a *App) Init() error {
 
 	if configCore.Conf.AppSwaggerDiscoveryOnStart {
 		systemCtx := sessionService.WithContext(a.ctx, &sessionModel.Session{Id: 1, IsAdmin: true})
-		if err := backfillAppSwaggerURLs(systemCtx, domainAppService, usecaseApp); err != nil {
-			slog.Error("app swagger discovery on start failed", "error", err)
-		}
+		go func() {
+			if err := backfillAppSwaggerURLs(systemCtx, domainAppService, usecaseApp); err != nil {
+				slog.Error("app swagger discovery on start failed", "error", err)
+			}
+		}()
 	}
 
 	// endpoint
