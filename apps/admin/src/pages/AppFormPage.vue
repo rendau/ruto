@@ -206,12 +206,15 @@ onBeforeUnmount(() => {
     </label>
     <label class="field">
       <span>Swagger URL</span>
-      <input
-        v-model="form.backend.swagger_url"
-        placeholder="https://example.com/swagger.json"
-        @input="onSwaggerUrlInput"
-      />
-      <small v-if="discoveringSwagger && !isEdit" class="muted">Searching swagger URL...</small>
+      <div class="input-with-indicator">
+        <input
+          v-model="form.backend.swagger_url"
+          class="swagger-input"
+          placeholder="https://example.com/swagger.json"
+          @input="onSwaggerUrlInput"
+        />
+        <span v-if="discoveringSwagger" class="inline-spinner" role="status" aria-label="Searching swagger URL" />
+      </div>
     </label>
     <div class="field">
       <span>Auth</span>
@@ -226,3 +229,33 @@ onBeforeUnmount(() => {
     </div>
   </form>
 </template>
+
+<style scoped>
+.input-with-indicator {
+  position: relative;
+}
+
+.inline-spinner {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid #7c8ba5;
+  border-top-color: #dce7f8;
+  animation: spin 0.7s linear infinite;
+  pointer-events: none;
+}
+
+.swagger-input {
+  padding-right: 36px;
+}
+
+@keyframes spin {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+</style>
