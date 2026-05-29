@@ -28,6 +28,8 @@ var Conf = struct {
 
 	LegacyDMBaseURL      string `env:"LEGACY_DM_BASE_URL"`
 	LegacyDMRefreshToken string `env:"LEGACY_DM_REFRESH_TOKEN"`
+
+	AppSwaggerDiscoveryOnStart bool `env:"APP_SWAGGER_DISCOVERY_ON_START" envDefault:"false"`
 }{}
 
 func init() {

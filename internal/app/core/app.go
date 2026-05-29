@@ -22,6 +22,7 @@ import (
 	domainEndpointServiceP "github.com/rendau/ruto/internal/domain/endpoint/service"
 	domainRootRepoDbP "github.com/rendau/ruto/internal/domain/root/repo/db"
 	domainRootServiceP "github.com/rendau/ruto/internal/domain/root/service"
+	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	domainSessionServiceP "github.com/rendau/ruto/internal/domain/session/service"
 	domainSnapshotRepoDbP "github.com/rendau/ruto/internal/domain/snapshot/repo/db"
 	domainSnapshotServiceP "github.com/rendau/ruto/internal/domain/snapshot/service"
@@ -105,6 +106,13 @@ func (a *App) Init() error {
 	domainEndpointService := domainEndpointServiceP.New(domainEndpointRepoDb)
 	usecaseApp := usecaseAppP.New(domainAppService, domainEndpointService, swaggerService, sessionService)
 	handlerGrpcApp := handlerGrpcP.NewApp(usecaseApp)
+
+	if configCore.Conf.AppSwaggerDiscoveryOnStart {
+		systemCtx := sessionService.WithContext(a.ctx, &sessionModel.Session{Id: 1, IsAdmin: true})
+		if err := backfillAppSwaggerURLs(systemCtx, domainAppService, usecaseApp); err != nil {
+			slog.Error("app swagger discovery on start failed", "error", err)
+		}
+	}
 
 	// endpoint
 	usecaseEndpoint := usecaseEndpointP.New(domainEndpointService, sessionService)
