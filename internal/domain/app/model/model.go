@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/samber/lo"
+
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -59,6 +61,12 @@ func (m *App) Normalize() error {
 	return nil
 }
 
+func (m *App) ActiveEndpoints() []*endpointModel.Endpoint {
+	return lo.FilterMap(m.Endpoints, func(v *endpointModel.Endpoint, _ int) (*endpointModel.Endpoint, bool) {
+		return v, v.Active
+	})
+}
+
 func (m *AppBackend) Normalize() error {
 	var err error
 	m.Url = strings.TrimSpace(m.Url)
@@ -92,6 +100,13 @@ func (m *AppBackend) Normalize() error {
 	}
 
 	return nil
+}
+
+func (m *App) GetFullPathForEndpoint(endpointPath string) string {
+	if endpointPath == "" {
+		return m.PathPrefix
+	}
+	return m.PathPrefix + "/" + endpointPath
 }
 
 type ListReq struct {

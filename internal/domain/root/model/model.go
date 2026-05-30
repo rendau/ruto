@@ -56,6 +56,12 @@ func (m *Root) Normalize() error {
 	return nil
 }
 
+func (m *Root) ActiveApps() []*appModel.App {
+	return lo.FilterMap(m.Apps, func(v *appModel.App, _ int) (*appModel.App, bool) {
+		return v, v.Active
+	})
+}
+
 func (m *RootCors) Normalize() error {
 	m.MaxAge = strings.TrimSpace(m.MaxAge)
 	m.AllowOrigins = lo.FilterMap(m.AllowOrigins, func(v string, _ int) (string, bool) {

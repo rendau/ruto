@@ -2,9 +2,9 @@ package basic
 
 import (
 	"crypto/subtle"
-	"net/http"
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
+	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
 )
 
 type Authorizer struct {
@@ -15,13 +15,14 @@ func New(conf *authModel.AuthMethodBasic) *Authorizer {
 	return &Authorizer{conf: conf}
 }
 
-func (a *Authorizer) Authorize(r *http.Request) bool {
+func (a *Authorizer) Authorize(req *model.AuthRequest) bool {
 	if len(a.conf.Users) == 0 {
 		return false
 	}
 
-	username, password, ok := r.BasicAuth()
-	if !ok {
+	username, password := req.ExtractBasic()
+
+	if username == "" {
 		return false
 	}
 

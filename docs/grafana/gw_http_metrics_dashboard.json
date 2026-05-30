@@ -114,20 +114,9 @@
           "legendFormat": "all",
           "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (status_code) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\"}[$__rate_interval]))",
-          "legendFormat": "status {{status_code}}",
-          "range": true,
-          "refId": "B"
         }
       ],
-      "title": "RPS (Total + Status Code)",
+      "title": "RPS (Total)",
       "type": "timeseries"
     },
     {
@@ -294,8 +283,8 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "sum by (app_name) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",app_name!=\"__unknown__\",app_name=~\"${app:regex}\"}[$__rate_interval]))",
-          "legendFormat": "{{app_name}}",
+          "expr": "sum by (app) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",app=~\"${app:regex}\"}[$__rate_interval]))",
+          "legendFormat": "{{app}}",
           "range": true,
           "refId": "A"
         }
@@ -359,8 +348,8 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "sum by (app_name) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",app_name!=\"__unknown__\",app_name=~\"${app:regex}\"}[$__rate_interval])) / sum by (app_name) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",app_name!=\"__unknown__\",app_name=~\"${app:regex}\"}[$__rate_interval]))",
-          "legendFormat": "{{app_name}}",
+          "expr": "sum by (app) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",app=~\"${app:regex}\"}[$__rate_interval])) / sum by (app) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",app=~\"${app:regex}\"}[$__rate_interval]))",
+          "legendFormat": "{{app}}",
           "range": true,
           "refId": "A"
         }
@@ -374,154 +363,11 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 34
-      },
-      "id": 7,
-      "panels": [],
-      "title": "По методам",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${ds}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "req/s",
-            "drawStyle": "line",
-            "fillOpacity": 14,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true
-          },
-          "decimals": 2,
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 35
-      },
-      "id": 8,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "sortBy": "lastNotNull",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (http_method) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",app_name=~\"${app:regex}\"}[$__rate_interval]))",
-          "legendFormat": "{{http_method}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "RPS by Method",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${ds}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "seconds",
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true
-          },
-          "decimals": 3,
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 43
-      },
-      "id": 9,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "sortBy": "lastNotNull",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (http_method) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",app_name=~\"${app:regex}\"}[$__rate_interval])) / sum by (http_method) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",app_name=~\"${app:regex}\"}[$__rate_interval]))",
-          "legendFormat": "{{http_method}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Duration avg by Method",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
         "y": 51
       },
       "id": 10,
       "panels": [],
-      "title": "По fullPath",
+      "title": "По route (method label)",
       "type": "row"
     },
     {
@@ -580,13 +426,13 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "topk(15, sum by (full_path) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",app_name=~\"${app:regex}\",full_path!=\"__unknown__\"}[$__rate_interval])))",
-          "legendFormat": "{{full_path}}",
+          "expr": "topk(15, sum by (method) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",app=~\"${app:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{method}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "RPS by FullPath (Top 15)",
+      "title": "RPS by Route (Top 15)",
       "type": "timeseries"
     },
     {
@@ -645,91 +491,13 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "topk(15, sum by (full_path) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",app_name=~\"${app:regex}\",full_path!=\"__unknown__\"}[$__rate_interval])) / sum by (full_path) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",app_name=~\"${app:regex}\",full_path!=\"__unknown__\"}[$__rate_interval])))",
-          "legendFormat": "{{full_path}}",
+          "expr": "topk(15, sum by (method) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",app=~\"${app:regex}\"}[$__rate_interval])) / sum by (method) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",app=~\"${app:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{method}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Duration avg by FullPath (Top 15)",
-      "type": "timeseries"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 72
-      },
-      "id": 13,
-      "panels": [],
-      "title": "RPS по AuthEnabled",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${ds}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "req/s",
-            "drawStyle": "line",
-            "fillOpacity": 18,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": true
-          },
-          "decimals": 2,
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 73
-      },
-      "id": 14,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max",
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "sortBy": "lastNotNull",
-          "sortDesc": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${ds}"
-          },
-          "editorMode": "code",
-          "expr": "sum by (auth_enabled) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\"}[$__rate_interval]))",
-          "legendFormat": "auth_enabled={{auth_enabled}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "RPS by AuthEnabled",
+      "title": "Duration avg by Route (Top 15)",
       "type": "timeseries"
     }
   ],
@@ -796,14 +564,14 @@
           "type": "prometheus",
           "uid": "${ds}"
         },
-        "definition": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\",app_name!=\"__unknown__\"}, app_name)",
+        "definition": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\"}, app)",
         "hide": 0,
         "includeAll": true,
-        "label": "App (for Method/FullPath tabs)",
+        "label": "App (for Route tabs)",
         "multi": false,
         "name": "app",
         "options": [],
-        "query": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\",app_name!=\"__unknown__\"}, app_name)",
+        "query": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\"}, app)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,

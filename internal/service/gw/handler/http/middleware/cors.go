@@ -9,9 +9,7 @@ import (
 
 func NewCors(conf rootModel.RootCors) Middleware {
 	if !conf.Enabled {
-		return func(next http.Handler) http.Handler {
-			return next
-		}
+		return func(next http.Handler) http.Handler { return next }
 	}
 
 	allowedOrigins := make(map[string]struct{}, len(conf.AllowOrigins))

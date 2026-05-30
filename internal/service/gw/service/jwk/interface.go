@@ -1,9 +1,9 @@
-package jwt
+package jwk
 
 import (
 	"crypto/rsa"
 )
 
-type JwkGetterI interface {
+type PublicKeyGetter interface {
 	GetPublicKey(kid string) (*rsa.PublicKey, string)
 }

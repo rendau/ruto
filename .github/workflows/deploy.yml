@@ -15,10 +15,10 @@ jobs:
       matrix:
         include:
           - service: core
-            image: ruto-core:latest
+            image: ruto-core:v1
             dockerfile: docker/core.Dockerfile
           - service: gateway
-            image: ruto-gateway:latest
+            image: ruto-gateway:v1
             dockerfile: docker/gateway.Dockerfile
     env:
       OWNER: ${{ github.repository_owner }}

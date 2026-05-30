@@ -15,6 +15,7 @@ import (
 	configGateway "github.com/rendau/ruto/internal/config/gateway"
 	"github.com/rendau/ruto/internal/infra/metrics"
 	serviceGwP "github.com/rendau/ruto/internal/service/gw"
+	serviceGwServiceJwkP "github.com/rendau/ruto/internal/service/gw/service/jwk"
 )
 
 type App struct {
@@ -100,6 +101,8 @@ func (a *App) Stop() {
 	slog.Info("Shutting down gateway...")
 
 	a.ctxCancel()
+
+	serviceGwServiceJwkP.Stop()
 
 	if err := a.gw.Stop(time.Minute); err != nil {
 		slog.Error("gw stop error", "error", err)

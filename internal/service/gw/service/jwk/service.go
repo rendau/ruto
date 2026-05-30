@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -14,6 +13,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/goccy/go-json"
+
+	"github.com/rendau/ruto/internal/constant"
 	"github.com/rendau/ruto/internal/errs"
 )
 
@@ -21,17 +23,25 @@ const (
 	ScrapeInterval = 10 * time.Minute
 )
 
+var (
+	instance *Service
+)
+
 type Service struct {
-	globalCtx  context.Context
+	ctx        context.Context
+	ctxCancel  context.CancelFunc
 	urlStore   atomic.Pointer[[]string]
 	itemStore  atomic.Pointer[map[string]*Item]
 	loadMu     sync.Mutex
 	httpClient *http.Client
 }
 
-func New(globalCtx context.Context) *Service {
-	return &Service{
-		globalCtx: globalCtx,
+func init() {
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
+	instance = &Service{
+		ctx:       ctx,
+		ctxCancel: ctxCancel,
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 			Transport: &http.Transport{
@@ -40,14 +50,16 @@ func New(globalCtx context.Context) *Service {
 				}).DialContext,
 				TLSHandshakeTimeout: 2 * time.Second,
 				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-				MaxIdleConnsPerHost: 10,
+				MaxIdleConnsPerHost: 2,
 			},
 		},
 	}
+
+	go instance.worker()
 }
 
-func (s *Service) Start() {
-	go s.worker()
+func Ins() *Service {
+	return instance
 }
 
 func (s *Service) SetUrls(urls []string) {
@@ -64,6 +76,10 @@ func (s *Service) GetPublicKey(kid string) (*rsa.PublicKey, string) {
 	return nil, ""
 }
 
+func Stop() {
+	instance.ctxCancel()
+}
+
 func (s *Service) getUrls() []string {
 	urlsPtr := s.urlStore.Load()
 	if urlsPtr == nil || *urlsPtr == nil {
@@ -77,12 +93,12 @@ func (s *Service) worker() {
 	ticker := time.NewTicker(ScrapeInterval)
 	defer ticker.Stop()
 
-	for s.globalCtx.Err() == nil {
+	for s.ctx.Err() == nil {
 		s.load()
 
 		select {
 		case <-ticker.C:
-		case <-s.globalCtx.Done():
+		case <-s.ctx.Done():
 		}
 	}
 }
@@ -100,10 +116,14 @@ func (s *Service) getItems() map[string]*Item {
 }
 
 func (s *Service) load() {
+	if s.ctx.Err() != nil {
+		return
+	}
+
 	s.loadMu.Lock()
 	defer s.loadMu.Unlock()
 
-	ctx := s.globalCtx
+	ctx := s.ctx
 
 	urls := s.getUrls()
 	if len(urls) == 0 {
@@ -134,7 +154,14 @@ func (s *Service) load() {
 			continue
 		}
 
+		if ctx.Err() != nil {
+			return
+		}
+
 		for _, item = range itemSet.Keys {
+			if !constant.IsSupportedJWTAlgorithm(item.Alg) {
+				continue
+			}
 			item.RSAPublicKey, err = toRSAPublicKey(item)
 			if err != nil {
 				slog.Error(

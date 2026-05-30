@@ -1,46 +1,40 @@
 package middleware
 
 import (
-	"log/slog"
 	"net/http"
-	"strconv"
-	"time"
+
+	domAppModel "github.com/rendau/ruto/internal/domain/app/model"
+	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/rw_wrapper"
+	"github.com/rendau/ruto/internal/service/gw/service/log"
 )
 
-func NewRequestLog(enabled bool) Middleware {
+func NewRequestLog(
+	app *domAppModel.App,
+	ep *domEndpointModel.Endpoint,
+	routePath string,
+	accessLog bool,
+) Middleware {
+	if ep.Method != "" {
+		routePath = ep.Method + " " + routePath
+	}
+
+	service := log.New(app, ep, routePath, accessLog)
+	if service == nil {
+		return func(next http.Handler) http.Handler { return next }
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			startAt := time.Now()
-			rw := &responseStatusWriter{ResponseWriter: w}
-
-			next.ServeHTTP(rw, r)
-
-			statusCode := rw.statusCode
-			if statusCode == 0 {
-				statusCode = http.StatusOK
-			}
-			statusIsOk := statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices
-
-			if enabled || !statusIsOk {
-				logMessageSuffix := r.Method + " " + r.URL.Path + " (" + strconv.Itoa(statusCode) + ")"
-				logArgs := []any{
-					"status", statusCode,
-					"method", r.Method,
-					"path", r.URL.Path,
-					"query", r.URL.RawQuery,
+			service.Serve(func() ([]any, string, error) {
+				rw := rw_wrapper.New(w)
+				next.ServeHTTP(rw, r)
+				return []any{
 					// "headers", r.Header,
 					"host", r.Host,
 					"remote_addr", r.RemoteAddr,
-					"user_agent", r.UserAgent(),
-					"duration", time.Since(startAt).String(),
-				}
-
-				if statusCode < http.StatusOK || statusCode > http.StatusMultipleChoices-1 {
-					slog.Info("gw request error "+logMessageSuffix, logArgs...)
-				} else if enabled {
-					slog.Info("gw request "+logMessageSuffix, logArgs...)
-				}
-			}
+				}, rw.GetStatusCodeStr(), rw.GetStatusCodeErr()
+			})
 		})
 	}
 }

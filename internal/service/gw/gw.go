@@ -11,27 +11,25 @@ import (
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/core_client"
 	handlerHttp "github.com/rendau/ruto/internal/service/gw/handler/http"
-	"github.com/rendau/ruto/internal/service/gw/jwk"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
+	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 )
 
 type Service struct {
-	globalCtx   context.Context
-	server      *localHttp.Service
-	jwk         *jwk.Service
-	coreClient  *core_client.Service
-	logRequests bool
-	ready       atomic.Bool
+	globalCtx  context.Context
+	server     *localHttp.Service
+	coreClient *core_client.Service
+	accessLog  bool
+	ready      atomic.Bool
 }
 
-func New(globalCtx context.Context, serverPort int, configAddress string, logRequests bool) (*Service, error) {
+func New(globalCtx context.Context, serverPort int, configAddress string, accessLog bool) (*Service, error) {
 	var err error
 
 	service := &Service{
-		globalCtx:   globalCtx,
-		server:      localHttp.New(serverPort),
-		jwk:         jwk.New(globalCtx),
-		logRequests: logRequests,
+		globalCtx: globalCtx,
+		server:    localHttp.New(serverPort),
+		accessLog: accessLog,
 	}
 	service.ready.Store(false)
 
@@ -44,7 +42,6 @@ func New(globalCtx context.Context, serverPort int, configAddress string, logReq
 }
 
 func (s *Service) Start() {
-	s.jwk.Start()
 	s.coreClient.Start()
 	s.server.Start()
 }
@@ -60,7 +57,7 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf, s.jwk, s.logRequests)
+	httpHandler, err := handlerHttp.New(conf, s.accessLog)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}
@@ -72,7 +69,7 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	jwkUrls := lo.Map(conf.Jwt, func(item rootModel.RootJwt, _ int) string {
 		return item.JwkUrl
 	})
-	s.jwk.SetUrls(jwkUrls)
+	jwk.Ins().SetUrls(jwkUrls)
 
 	return nil
 }

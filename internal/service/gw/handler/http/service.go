@@ -5,13 +5,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/samber/lo"
 
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
-	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth"
-	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware/auth/jwt"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 )
 
@@ -19,13 +15,13 @@ type Service struct {
 	h http.Handler
 }
 
-func New(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequests bool) (*Service, error) {
+func New(snapshot *rootModel.Root, accessLog bool) (*Service, error) {
 	err := snapshot.Normalize()
 	if err != nil {
 		return nil, fmt.Errorf("snapshot normalize: %w", err)
 	}
 
-	handler, err := buildHandler(snapshot, jwkGetter, logRequests)
+	handler, err := buildHandler(snapshot, accessLog)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -39,7 +35,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequests bool) (_ http.Handler, finalErr error) {
+func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)
@@ -47,55 +43,40 @@ func buildHandler(snapshot *rootModel.Root, jwkGetter jwt.JwkGetterI, logRequest
 	}()
 
 	router := chi.NewRouter()
+	sharedTransport := proxy.NewTransport()
 
-	metricsMiddleware := middleware.NewMetrics()
-
-	var routePath string
-
-	for _, app := range snapshot.Apps {
-		if !app.Active {
+	for _, app := range snapshot.ActiveApps() {
+		endpoints := app.ActiveEndpoints()
+		if len(endpoints) == 0 {
 			continue
 		}
 
-		// filter endpoints
-		filteredEndpoints := lo.Filter(app.Endpoints, func(endpoint *endpointModel.Endpoint, _ int) bool {
-			return endpoint.Active
-		})
-		if len(filteredEndpoints) == 0 {
-			continue
-		}
+		appProxyHandler := http.StripPrefix(app.PathPrefix, proxy.NewProxy(app, "", sharedTransport))
 
-		// proxy
-		appHandler := proxy.NewProxy(app)
+		for _, ep := range endpoints {
+			routePath := app.GetFullPathForEndpoint(ep.Path)
 
-		for _, endpoint := range filteredEndpoints {
-			if endpoint.Path == "" {
-				routePath = app.PathPrefix
-			} else {
-				routePath = app.PathPrefix + "/" + endpoint.Path
+			proxyHandler := appProxyHandler
+			if ep.Backend.CustomPath != "" {
+				proxyHandler = http.StripPrefix(
+					app.PathPrefix,
+					proxy.NewProxy(app, ep.Backend.CustomPath, sharedTransport),
+				)
 			}
 
-			handler := middleware.Chain(appHandler,
-				middleware.NewWithRequest(snapshot, app, endpoint),
-				metricsMiddleware,
-				auth.New(snapshot, app, endpoint, jwkGetter),
-				middleware.NewStripPrefix(app.PathPrefix),
+			handler := middleware.Chain(proxyHandler,
+				middleware.NewMetrics(app, ep, routePath),
+				middleware.NewRequestLog(app, ep, routePath, accessLog),
+				middleware.NewAuth(snapshot, app, ep),
 			)
 
-			if endpoint.Method == "*" {
+			if ep.Method == "*" {
 				router.Handle(routePath, handler)
 			} else {
-				router.Method(endpoint.Method, routePath, handler)
+				router.Method(ep.Method, routePath, handler)
 			}
 		}
 	}
 
-	outerMiddlewares := []middleware.Middleware{
-		middleware.NewRequestLog(logRequests),
-	}
-	if snapshot.Cors.Enabled {
-		outerMiddlewares = append(outerMiddlewares, middleware.NewCors(snapshot.Cors))
-	}
-
-	return middleware.Chain(router, outerMiddlewares...), nil
+	return middleware.NewCors(snapshot.Cors)(router), nil
 }
