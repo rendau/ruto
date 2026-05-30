@@ -51,7 +51,7 @@ func (s *Service) Serve(f serveFunc) {
 
 	if err != nil {
 		logArgs = append(logArgs, "error", err.Error())
-		slog.Error("access log error "+logMessageSuffix, logArgs...)
+		slog.Info("access log error "+logMessageSuffix, logArgs...)
 	} else {
 		slog.Info("access log "+logMessageSuffix, logArgs...)
 	}
