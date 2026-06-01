@@ -17,7 +17,8 @@ type AuthRequest struct {
 	token          authToken
 	basic          authBasic
 	apiKeyByHeader map[string]string
-	ips            []string
+	remoteIP       netip.Addr
+	ipAddrs        authIPs
 }
 
 type authToken struct {
@@ -29,6 +30,11 @@ type authBasic struct {
 	username string
 	password string
 	isSet    bool
+}
+
+type authIPs struct {
+	value []netip.Addr
+	isSet bool
 }
 
 func NewAuthRequest() *AuthRequest {
@@ -45,6 +51,7 @@ func (r *AuthRequest) SetHttpQueryParams(qPars url.Values) {
 
 func (r *AuthRequest) SetRemoteAddr(remoteAddr string) {
 	r.RemoteAddr = strings.TrimSpace(remoteAddr)
+	r.remoteIP, _ = parseRemoteAddrIP(r.RemoteAddr)
 }
 
 func (r *AuthRequest) ExtractToken() (finalResult string) {
@@ -132,17 +139,26 @@ func (r *AuthRequest) ExtractAPIKey(header string) (finalResult string) {
 	return value
 }
 
-func (r *AuthRequest) ExtractIPs() (finalResult []string) {
-	if r.ips != nil {
-		return r.ips
+func (r *AuthRequest) ExtractIPAddrs() (finalResult []netip.Addr) {
+	if r.ipAddrs.isSet {
+		return r.ipAddrs.value
 	}
 
 	defer func() {
-		r.ips = finalResult
+		r.ipAddrs.value = finalResult
+		r.ipAddrs.isSet = true
 	}()
 
-	result := make([]string, 0, 10)
-	seen := make(map[string]struct{}, 10)
+	result := make([]netip.Addr, 0, 10)
+	seen := make(map[netip.Addr]struct{}, 10)
+
+	appendParsedIP := func(ip netip.Addr) {
+		if _, ok := seen[ip]; ok {
+			return
+		}
+		seen[ip] = struct{}{}
+		result = append(result, ip)
+	}
 
 	appendIP := func(raw string) {
 		if raw = strings.TrimSpace(raw); raw == "" {
@@ -152,12 +168,7 @@ func (r *AuthRequest) ExtractIPs() (finalResult []string) {
 		if err != nil {
 			return
 		}
-		ipStr := ip.String()
-		if _, ok := seen[ipStr]; ok {
-			return
-		}
-		seen[ipStr] = struct{}{}
-		result = append(result, ipStr)
+		appendParsedIP(ip)
 	}
 
 	appendIPList := func(raw string) {
@@ -168,27 +179,40 @@ func (r *AuthRequest) ExtractIPs() (finalResult []string) {
 			appendIP(x)
 		}
 	}
-	appendRemoteIP := func(raw string) {
-		if raw == "" {
-			return
-		}
-		appendIP(raw)
-		host, _, err := net.SplitHostPort(raw)
-		if err != nil {
-			return
-		}
-		appendIP(host)
-	}
-
 	appendIPList(r.getHeaderValue("X-Forwarded-For"))
 	appendIP(r.getHeaderValue("X-Real-Ip"))
 	appendIP(r.getHeaderValue("Cf-Connecting-Ip"))
 	appendIP(r.getHeaderValue("True-Client-Ip"))
 	appendIP(r.getHeaderValue("X-Client-Ip"))
 	appendIP(r.getHeaderValue("X-Cluster-Client-Ip"))
-	appendRemoteIP(r.RemoteAddr)
 
 	return result
+}
+
+func (r *AuthRequest) ExtractRemoteAddrIP() netip.Addr {
+	return r.remoteIP
+}
+
+func parseRemoteAddrIP(raw string) (netip.Addr, bool) {
+	if raw == "" {
+		return netip.Addr{}, false
+	}
+
+	if ip, err := netip.ParseAddr(raw); err == nil {
+		return ip, true
+	}
+
+	host, _, err := net.SplitHostPort(raw)
+	if err != nil {
+		return netip.Addr{}, false
+	}
+
+	ip, err := netip.ParseAddr(strings.TrimSpace(host))
+	if err != nil {
+		return netip.Addr{}, false
+	}
+
+	return ip, true
 }
 
 func (r *AuthRequest) findValue(headerKey, queryParamKey string) string {

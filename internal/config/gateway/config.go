@@ -19,6 +19,8 @@ var Conf = struct {
 	LogRequests bool `env:"LOG_REQUESTS" envDefault:"false"`
 
 	CoreGrpcAddress string `env:"CORE_GRPC_ADDRESS"`
+
+	TrustedProxyAddresses []string `env:"TRUSTED_PROXY_ADDRESSES" envSeparator:","`
 }{}
 
 func init() {

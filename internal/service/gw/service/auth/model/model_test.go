@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/base64"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"testing"
 
@@ -40,7 +41,7 @@ func TestAuthRequestExtractAPIKey(t *testing.T) {
 	require.Equal(t, "from-header", req.ExtractAPIKey("X-Api-Key"))
 }
 
-func TestAuthRequestExtractIPs(t *testing.T) {
+func TestAuthRequestExtractIPAddrs(t *testing.T) {
 	t.Skip("temporarily disabled")
 
 	req := &AuthRequest{
@@ -50,5 +51,13 @@ func TestAuthRequestExtractIPs(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, []string{"10.0.0.1", "10.0.0.2", "10.0.0.3"}, req.ExtractIPs())
+	require.Equal(
+		t,
+		[]netip.Addr{
+			netip.MustParseAddr("10.0.0.1"),
+			netip.MustParseAddr("10.0.0.2"),
+			netip.MustParseAddr("10.0.0.3"),
+		},
+		req.ExtractIPAddrs(),
+	)
 }
