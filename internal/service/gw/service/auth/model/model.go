@@ -16,15 +16,21 @@ type AuthRequest struct {
 	QueryParams url.Values
 	RemoteAddr  string
 
-	token          *string
-	basic          *authBasic
+	token          authToken
+	basic          authBasic
 	apiKeyByHeader map[string]string
 	ips            []string
+}
+
+type authToken struct {
+	value string
+	isSet bool
 }
 
 type authBasic struct {
 	username string
 	password string
+	isSet    bool
 }
 
 func NewAuthRequest() *AuthRequest {
@@ -44,12 +50,13 @@ func (r *AuthRequest) SetRemoteAddr(remoteAddr string) {
 }
 
 func (r *AuthRequest) ExtractToken() (finalResult string) {
-	if r.token != nil {
-		return *r.token
+	if r.token.isSet {
+		return r.token.value
 	}
 
 	defer func() {
-		r.token = new(finalResult)
+		r.token.value = finalResult
+		r.token.isSet = true
 	}()
 
 	value := r.findValue("Authorization", "auth_token")
@@ -78,15 +85,14 @@ func (r *AuthRequest) ExtractToken() (finalResult string) {
 }
 
 func (r *AuthRequest) ExtractBasic() (finalUsername string, finalPassword string) {
-	if r.basic != nil {
+	if r.basic.isSet {
 		return r.basic.username, r.basic.password
 	}
 
 	defer func() {
-		r.basic = &authBasic{
-			username: finalUsername,
-			password: finalPassword,
-		}
+		r.basic.username = finalUsername
+		r.basic.password = finalPassword
+		r.basic.isSet = true
 	}()
 
 	headerValue := r.getHeaderValue("Authorization")
