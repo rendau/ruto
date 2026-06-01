@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"crypto/tls"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -61,6 +62,13 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 			}
 			resp.Header.Set("Location", app.PathPrefix+location)
 			return nil
+		},
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			if r.Context().Err() != nil {
+				return
+			}
+			slog.Error("proxy error "+r.Method+" "+r.URL.Path, "error", err)
+			w.WriteHeader(http.StatusBadGateway)
 		},
 	}
 
