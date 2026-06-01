@@ -7,8 +7,6 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
-
-	"github.com/samber/lo"
 )
 
 type AuthRequest struct {
@@ -140,10 +138,11 @@ func (r *AuthRequest) ExtractIPs() (finalResult []string) {
 	}
 
 	defer func() {
-		r.ips = lo.Uniq(finalResult)
+		r.ips = finalResult
 	}()
 
 	result := make([]string, 0, 10)
+	seen := make(map[string]struct{}, 10)
 
 	appendIP := func(raw string) {
 		if raw = strings.TrimSpace(raw); raw == "" {
@@ -153,7 +152,12 @@ func (r *AuthRequest) ExtractIPs() (finalResult []string) {
 		if err != nil {
 			return
 		}
-		result = append(result, ip.String())
+		ipStr := ip.String()
+		if _, ok := seen[ipStr]; ok {
+			return
+		}
+		seen[ipStr] = struct{}{}
+		result = append(result, ipStr)
 	}
 
 	appendIPList := func(raw string) {
