@@ -176,13 +176,13 @@ func (r *AuthRequest) ExtractIPs() (finalResult []string) {
 		appendIP(host)
 	}
 
-	appendRemoteIP(r.RemoteAddr)
 	appendIPList(r.getHeaderValue("X-Forwarded-For"))
 	appendIP(r.getHeaderValue("X-Real-Ip"))
 	appendIP(r.getHeaderValue("Cf-Connecting-Ip"))
 	appendIP(r.getHeaderValue("True-Client-Ip"))
 	appendIP(r.getHeaderValue("X-Client-Ip"))
 	appendIP(r.getHeaderValue("X-Cluster-Client-Ip"))
+	appendRemoteIP(r.RemoteAddr)
 
 	return result
 }

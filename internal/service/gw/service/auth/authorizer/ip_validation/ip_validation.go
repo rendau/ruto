@@ -39,6 +39,7 @@ func (a *Authorizer) Authorize(req *model.AuthRequest) bool {
 		"ip_validation is temporarily disabled: allow all",
 		"ips", req.ExtractIPs(),
 		"allowed_ips", allowedIPs,
+		"remote_addr", req.RemoteAddr,
 	)
 	return true
 }
