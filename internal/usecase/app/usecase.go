@@ -160,12 +160,16 @@ func (u *Usecase) validateEdit(ctx context.Context, obj *model.App, selfID strin
 	if obj == nil {
 		return fmt.Errorf("obj: nil")
 	}
+
 	if err := obj.Normalize(); err != nil {
 		return fmt.Errorf("normalize: %w", err)
 	}
+
+	// ensure unique app name
 	if err := u.ensureUniqueAppName(ctx, obj.Name, selfID); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -176,40 +180,29 @@ func (u *Usecase) ensureUniqueAppName(ctx context.Context, appName, selfID strin
 		return nil
 	}
 
-	const pageSize int64 = 500
-	var page int64 = 0
-
-	for {
-		items, _, err := u.svc.List(ctx, &model.ListReq{
-			ListParams: commonModel.ListParams{
-				Page:     page,
-				PageSize: pageSize,
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("svc.List: %w", err)
-		}
-
-		for _, item := range items {
-			if item == nil || strings.TrimSpace(item.Id) == selfID {
-				continue
-			}
-			if strings.EqualFold(strings.TrimSpace(item.Name), appName) {
-				return errs.ErrFull{
-					Err:  errs.InvalidRequest,
-					Desc: "app name must be unique",
-					Fields: map[string]string{
-						"name": "already exists",
-					},
-				}
-			}
-		}
-
-		if len(items) < int(pageSize) {
-			break
-		}
-		page++
+	listReq := &model.ListReq{
+		ListParams: commonModel.ListParams{
+			PageSize: 1,
+		},
+		NameEqCI: &appName,
+	}
+	if selfID != "" {
+		listReq.ExcludeID = &selfID
 	}
 
-	return nil
+	items, _, err := u.svc.List(ctx, listReq)
+	if err != nil {
+		return fmt.Errorf("svc.List: %w", err)
+	}
+	if len(items) == 0 {
+		return nil
+	}
+
+	return errs.ErrFull{
+		Err:  errs.InvalidRequest,
+		Desc: "app name must be unique",
+		Fields: map[string]string{
+			"name": "already exists",
+		},
+	}
 }

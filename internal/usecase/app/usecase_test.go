@@ -196,7 +196,10 @@ func TestUsecase_Create_DuplicateAppName(t *testing.T) {
 	uc := New(
 		&testEditAppService{
 			list: func(_ context.Context, pars *appModel.ListReq) ([]*appModel.App, int64, error) {
-				require.EqualValues(t, 0, pars.Page)
+				require.EqualValues(t, 1, pars.PageSize)
+				require.NotNil(t, pars.NameEqCI)
+				require.Equal(t, "gateway api", *pars.NameEqCI)
+				require.Nil(t, pars.ExcludeID)
 				return []*appModel.App{
 					{Id: "app-1", Name: "Gateway API"},
 				}, 1, nil
@@ -233,10 +236,13 @@ func TestUsecase_Update_SameAppNameForSelfAllowed(t *testing.T) {
 	updateCalled := false
 	uc := New(
 		&testEditAppService{
-			list: func(_ context.Context, _ *appModel.ListReq) ([]*appModel.App, int64, error) {
-				return []*appModel.App{
-					{Id: "app-1", Name: "Gateway API"},
-				}, 1, nil
+			list: func(_ context.Context, pars *appModel.ListReq) ([]*appModel.App, int64, error) {
+				require.EqualValues(t, 1, pars.PageSize)
+				require.NotNil(t, pars.NameEqCI)
+				require.Equal(t, "gateway api", *pars.NameEqCI)
+				require.NotNil(t, pars.ExcludeID)
+				require.Equal(t, "app-1", *pars.ExcludeID)
+				return nil, 0, nil
 			},
 			create: func(_ context.Context, _ *appModel.App) (string, error) {
 				panic("unexpected call")

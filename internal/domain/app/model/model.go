@@ -131,5 +131,7 @@ func (m *App) GetFullPathForEndpoint(endpointPath string) string {
 type ListReq struct {
 	commonModel.ListParams
 
-	Active *bool
+	Active    *bool
+	NameEqCI  *string
+	ExcludeID *string
 }

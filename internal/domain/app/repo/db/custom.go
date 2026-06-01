@@ -20,6 +20,12 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 	if pars.Active != nil {
 		conditions["active"] = *pars.Active
 	}
+	if pars.NameEqCI != nil {
+		conditionExps["LOWER(data ->> 'name') = LOWER(?)"] = []any{*pars.NameEqCI}
+	}
+	if pars.ExcludeID != nil {
+		conditionExps["id != ?"] = []any{*pars.ExcludeID}
+	}
 
 	return conditions, conditionExps
 }

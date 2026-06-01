@@ -43,6 +43,10 @@ func TestUsecase_BackfillSwaggerURLs(t *testing.T) {
 	var updates []*appModel.App
 	svc := &testBackfillAppService{
 		list: func(_ context.Context, pars *appModel.ListReq) ([]*appModel.App, int64, error) {
+			if pars.NameEqCI != nil {
+				require.NotNil(t, pars.ExcludeID)
+				return nil, 0, nil
+			}
 			require.EqualValues(t, 0, pars.Page)
 			return []*appModel.App{
 				{
