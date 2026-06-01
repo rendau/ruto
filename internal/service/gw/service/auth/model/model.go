@@ -12,7 +12,7 @@ import (
 )
 
 type AuthRequest struct {
-	Headers     url.Values
+	Headers     http.Header
 	QueryParams url.Values
 	RemoteAddr  string
 
@@ -32,7 +32,7 @@ func NewAuthRequest() *AuthRequest {
 }
 
 func (r *AuthRequest) SetHttpHeader(headers http.Header) {
-	r.Headers = url.Values(headers)
+	r.Headers = headers
 }
 
 func (r *AuthRequest) SetHttpQueryParams(qPars url.Values) {
@@ -89,7 +89,7 @@ func (r *AuthRequest) ExtractBasic() (finalUsername string, finalPassword string
 		}
 	}()
 
-	headerValue := r.getHeadersValue("Authorization")
+	headerValue := r.getHeaderValue("Authorization")
 	if headerValue == "" {
 		return "", ""
 	}
@@ -171,40 +171,40 @@ func (r *AuthRequest) ExtractIPs() (finalResult []string) {
 	}
 
 	appendRemoteIP(r.RemoteAddr)
-	appendIPList(r.getHeadersValue("X-Forwarded-For"))
-	appendIP(r.getHeadersValue("X-Real-Ip"))
-	appendIP(r.getHeadersValue("Cf-Connecting-Ip"))
-	appendIP(r.getHeadersValue("True-Client-Ip"))
-	appendIP(r.getHeadersValue("X-Client-Ip"))
-	appendIP(r.getHeadersValue("X-Cluster-Client-Ip"))
+	appendIPList(r.getHeaderValue("X-Forwarded-For"))
+	appendIP(r.getHeaderValue("X-Real-Ip"))
+	appendIP(r.getHeaderValue("Cf-Connecting-Ip"))
+	appendIP(r.getHeaderValue("True-Client-Ip"))
+	appendIP(r.getHeaderValue("X-Client-Ip"))
+	appendIP(r.getHeaderValue("X-Cluster-Client-Ip"))
 
 	return result
 }
 
 func (r *AuthRequest) findValue(headerKey, queryParamKey string) string {
-	val := r.getHeadersValue(headerKey)
+	val := r.getHeaderValue(headerKey)
 	if val == "" {
-		val = r.getQueryParamsValue(queryParamKey)
+		val = r.getQueryParamValue(queryParamKey)
 	}
 	return val
 }
 
-func (r *AuthRequest) getHeadersValue(key string) string {
-	return getValueFromUrlValues(r.Headers, key)
-}
-
-func (r *AuthRequest) getQueryParamsValue(key string) string {
-	return getValueFromUrlValues(r.QueryParams, key)
-}
-
-func getValueFromUrlValues(source url.Values, key string) string {
-	if key == "" || source == nil || len(source) == 0 {
+func (r *AuthRequest) getHeaderValue(key string) string {
+	if key == "" || r.Headers == nil || len(r.Headers) == 0 {
 		return ""
 	}
 
-	val := strings.TrimSpace(source.Get(key))
+	return strings.TrimSpace(r.Headers.Get(key))
+}
+
+func (r *AuthRequest) getQueryParamValue(key string) string {
+	if key == "" || r.QueryParams == nil || len(r.QueryParams) == 0 {
+		return ""
+	}
+
+	val := strings.TrimSpace(r.QueryParams.Get(key))
 	if val == "" {
-		val = strings.TrimSpace(source.Get(strings.ToLower(key)))
+		val = strings.TrimSpace(r.QueryParams.Get(strings.ToLower(key)))
 	}
 
 	return val

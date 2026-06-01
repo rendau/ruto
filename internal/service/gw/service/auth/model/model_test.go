@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/base64"
+	"net/http"
 	"net/url"
 	"testing"
 
@@ -14,7 +15,7 @@ func TestAuthRequestExtractBasic(t *testing.T) {
 	token := base64.StdEncoding.EncodeToString([]byte("admin:secret"))
 
 	req := &AuthRequest{
-		Headers: url.Values{
+		Headers: http.Header{
 			"authorization": {"Basic " + token},
 		},
 	}
@@ -28,7 +29,7 @@ func TestAuthRequestExtractAPIKey(t *testing.T) {
 	t.Skip("temporarily disabled")
 
 	req := &AuthRequest{
-		Headers: url.Values{
+		Headers: http.Header{
 			"x-api-key": {"from-header"},
 		},
 		QueryParams: url.Values{
@@ -43,7 +44,7 @@ func TestAuthRequestExtractIPs(t *testing.T) {
 	t.Skip("temporarily disabled")
 
 	req := &AuthRequest{
-		Headers: url.Values{
+		Headers: http.Header{
 			"x-forwarded-for": {"10.0.0.1, invalid, 10.0.0.2"},
 			"x-real-ip":       {"10.0.0.3"},
 		},
