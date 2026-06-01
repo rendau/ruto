@@ -214,13 +214,14 @@ export interface StatsResponse {
 
 export interface GatewayStateItem {
   gateway_id: string;
-  pod_name: string;
   host_name: string;
   snapshot_version: string;
   last_apply_at_unix: number;
   started_at_unix: number;
   last_error: string;
   last_seen_at_unix: number;
+  memory_alloc_bytes: number;
+  goroutines_count: number;
   status: "online" | "stale" | "offline";
 }
 

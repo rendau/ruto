@@ -725,7 +725,7 @@ onBeforeRouteLeave((to) => {
       aria-label="Delete App"
       @click="removeApp"
     >
-      <span class="icon-action-glyph">✕</span>
+      <span class="icon-action-glyph">🗑</span>
     </button>
   </div>
 
@@ -994,7 +994,7 @@ onBeforeRouteLeave((to) => {
               aria-label="Delete Endpoint"
               @click="removeEndpoint(endpoint)"
             >
-              <span class="icon-action-glyph">{{ deletingEndpointId === endpoint.id ? "…" : "✕" }}</span>
+              <span class="icon-action-glyph">{{ deletingEndpointId === endpoint.id ? "…" : "🗑" }}</span>
             </button>
           </td>
         </tr>
@@ -1070,7 +1070,7 @@ onBeforeRouteLeave((to) => {
                 aria-label="Delete Endpoint"
                 @click="removeEndpoint(endpoint)"
               >
-                <span class="icon-action-glyph">{{ deletingEndpointId === endpoint.id ? "…" : "✕" }}</span>
+                <span class="icon-action-glyph">{{ deletingEndpointId === endpoint.id ? "…" : "🗑" }}</span>
               </button>
             </div>
           </article>

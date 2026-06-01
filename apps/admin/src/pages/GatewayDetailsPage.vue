@@ -57,6 +57,15 @@ function formatUnixAgeValue(value: unknown): string {
   return formatUnixAge(value, "n/a");
 }
 
+function formatMemoryBytes(value: unknown): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return "n/a";
+  }
+  const mib = amount / (1024 * 1024);
+  return `${mib.toFixed(mib >= 100 ? 0 : 1)} MiB`;
+}
+
 async function copySnapshotVersion(value: string): Promise<void> {
   const trimmed = (value || "").trim();
   if (!trimmed) {
@@ -170,6 +179,14 @@ onMounted(() => {
         <div>
           <span class="label">Last Apply</span>
           <strong>{{ formatUnixAgeValue(gateway.last_apply_at_unix) }}</strong>
+        </div>
+        <div>
+          <span class="label">Memory Alloc</span>
+          <strong>{{ formatMemoryBytes(gateway.memory_alloc_bytes) }}</strong>
+        </div>
+        <div>
+          <span class="label">Goroutines</span>
+          <strong>{{ gateway.goroutines_count || "n/a" }}</strong>
         </div>
       </div>
 

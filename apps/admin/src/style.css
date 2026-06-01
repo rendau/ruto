@@ -716,6 +716,7 @@ h3 {
   align-items: center;
   justify-content: center;
   line-height: 1;
+  color: white;
 }
 
 .icon-action-button.secondary {
@@ -1194,6 +1195,32 @@ h3 {
 
 .gateway-row-link:hover td {
   background: #273b59;
+}
+
+.gateway-primary {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.gateway-secondary {
+  margin-top: 2px;
+  color: #93adc7;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.gateway-resources-cell {
+  min-width: 122px;
+}
+
+.gateway-resources-main {
+  font-weight: 600;
+}
+
+.gateway-resources-sub {
+  margin-top: 2px;
+  color: #93adc7;
+  font-size: 12px;
 }
 
 .gateway-details-summary strong,

@@ -1385,9 +1385,6 @@
         "gateway_id": {
           "type": "string"
         },
-        "pod_name": {
-          "type": "string"
-        },
         "host_name": {
           "type": "string"
         },
@@ -1411,6 +1408,14 @@
         },
         "status": {
           "type": "string"
+        },
+        "memory_alloc_bytes": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "goroutines_count": {
+          "type": "integer",
+          "format": "int64"
         }
       }
     },

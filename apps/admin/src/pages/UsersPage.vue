@@ -214,7 +214,7 @@ onMounted(() => {
                   aria-label="Delete User"
                   @click="removeUser(user)"
                 >
-                  <span class="icon-action-glyph">{{ removingId === toUserId(user.id) ? "…" : "✕" }}</span>
+                  <span class="icon-action-glyph">{{ removingId === toUserId(user.id) ? "…" : "🗑" }}</span>
                 </button>
               </div>
             </td>
@@ -280,7 +280,7 @@ onMounted(() => {
             aria-label="Delete User"
             @click="removeUser(user)"
           >
-            <span class="icon-action-glyph">{{ removingId === toUserId(user.id) ? "…" : "✕" }}</span>
+            <span class="icon-action-glyph">{{ removingId === toUserId(user.id) ? "…" : "🗑" }}</span>
           </button>
         </div>
       </article>

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"runtime"
 	"strings"
 	"time"
 
@@ -182,14 +183,18 @@ func (s *Service) sendHeartbeat() error {
 	ctx, cancel := context.WithTimeout(s.globalCtx, 3*time.Second)
 	defer cancel()
 
+	memStats := runtime.MemStats{}
+	runtime.ReadMemStats(&memStats)
+
 	_, err := s.gatewayClient.Heartbeat(ctx, &ruto_v1.GatewayHeartbeatRequest{
-		GatewayId:       s.identity.GatewayID,
-		PodName:         s.identity.PodName,
-		HostName:        s.identity.HostName,
-		SnapshotVersion: s.currentVersion,
-		LastApplyAtUnix: s.lastApplyAt,
-		StartedAtUnix:   s.startedAtUnix,
-		LastError:       lastError,
+		GatewayId:        s.identity.GatewayID,
+		HostName:         s.identity.HostName,
+		SnapshotVersion:  s.currentVersion,
+		LastApplyAtUnix:  s.lastApplyAt,
+		StartedAtUnix:    s.startedAtUnix,
+		LastError:        lastError,
+		MemoryAllocBytes: memStats.Alloc,
+		GoroutinesCount:  uint32(runtime.NumGoroutine()),
 	})
 	if err != nil && s.globalCtx.Err() == nil {
 		return fmt.Errorf("gatewayClient.Heartbeat: %w", err)

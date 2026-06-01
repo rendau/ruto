@@ -13,13 +13,14 @@ func DecodeGatewayHeartbeatReq(v *ruto_v1.GatewayHeartbeatRequest) *usecase.Hear
 	}
 
 	return &usecase.Heartbeat{
-		GatewayID:       v.GatewayId,
-		PodName:         v.PodName,
-		HostName:        v.HostName,
-		SnapshotVersion: v.SnapshotVersion,
-		LastApplyAtUnix: v.LastApplyAtUnix,
-		StartedAtUnix:   v.StartedAtUnix,
-		LastError:       v.LastError,
+		GatewayID:        v.GatewayId,
+		HostName:         v.HostName,
+		SnapshotVersion:  v.SnapshotVersion,
+		LastApplyAtUnix:  v.LastApplyAtUnix,
+		StartedAtUnix:    v.StartedAtUnix,
+		LastError:        v.LastError,
+		MemoryAllocBytes: v.MemoryAllocBytes,
+		GoroutinesCount:  v.GoroutinesCount,
 	}
 }
 
@@ -35,14 +36,15 @@ func EncodeGatewayStateItem(item *usecase.Item, _ int) *ruto_v1.GatewayStateItem
 	}
 
 	return &ruto_v1.GatewayStateItem{
-		GatewayId:       item.GatewayID,
-		PodName:         item.PodName,
-		HostName:        item.HostName,
-		SnapshotVersion: item.SnapshotVersion,
-		LastApplyAtUnix: item.LastApplyAtUnix,
-		StartedAtUnix:   item.StartedAtUnix,
-		LastError:       item.LastError,
-		LastSeenAtUnix:  item.LastSeenAtUnix,
-		Status:          item.Status,
+		GatewayId:        item.GatewayID,
+		HostName:         item.HostName,
+		SnapshotVersion:  item.SnapshotVersion,
+		LastApplyAtUnix:  item.LastApplyAtUnix,
+		StartedAtUnix:    item.StartedAtUnix,
+		LastError:        item.LastError,
+		LastSeenAtUnix:   item.LastSeenAtUnix,
+		Status:           item.Status,
+		MemoryAllocBytes: item.MemoryAllocBytes,
+		GoroutinesCount:  item.GoroutinesCount,
 	}
 }

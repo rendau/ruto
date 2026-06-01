@@ -49,6 +49,15 @@ function formatUnixAgeValue(value: unknown): string {
   return formatUnixAge(value, "n/a");
 }
 
+function formatMemoryBytes(value: unknown): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return "n/a";
+  }
+  const mib = amount / (1024 * 1024);
+  return `${mib.toFixed(mib >= 100 ? 0 : 1)} MiB`;
+}
+
 function openGatewayDetails(gatewayId: string): void {
   void router.push({ name: "gateway-details", params: { id: gatewayId } });
 }
@@ -104,7 +113,7 @@ onMounted(() => {
             <th>Current Applied</th>
             <th>Last Seen</th>
             <th>Last Apply</th>
-            <th>Runtime</th>
+            <th>Resources</th>
           </tr>
         </thead>
         <tbody>
@@ -117,7 +126,10 @@ onMounted(() => {
             @keydown.enter.prevent="openGatewayDetails(gateway.gateway_id)"
             @keydown.space.prevent="openGatewayDetails(gateway.gateway_id)"
           >
-            <td>{{ gateway.gateway_id }}</td>
+            <td :title="gateway.host_name || ''">
+              <div class="gateway-primary">{{ gateway.gateway_id }}</div>
+              <div class="gateway-secondary">{{ gateway.host_name || "n/a" }}</div>
+            </td>
             <td>
               <span class="status-chip" :class="{ inactive: gateway.status !== 'online' }">
                 {{ gateway.status }}
@@ -130,7 +142,10 @@ onMounted(() => {
             </td>
             <td :title="formatUnixTime(gateway.last_seen_at_unix)">{{ formatUnixAgeValue(gateway.last_seen_at_unix) }}</td>
             <td :title="formatUnixTime(gateway.last_apply_at_unix)">{{ formatUnixAgeValue(gateway.last_apply_at_unix) }}</td>
-            <td :title="gateway.host_name || ''">{{ gateway.host_name || "n/a" }}</td>
+            <td class="gateway-resources-cell">
+              <div class="gateway-resources-main">{{ formatMemoryBytes(gateway.memory_alloc_bytes) }}</div>
+              <div class="gateway-resources-sub">{{ gateway.goroutines_count }} go</div>
+            </td>
           </tr>
           <tr v-if="!loading && gateways.length === 0">
             <td colspan="6" class="muted">No gateways reported yet.</td>

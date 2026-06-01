@@ -273,7 +273,7 @@ function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "all
             </label>
           </div>
           <button class="icon-action-button danger" type="button" aria-label="Remove method" title="Remove method" @click="removeMethod(methodIndex)">
-            <span class="icon-action-glyph">×</span>
+            <span class="icon-action-glyph">🗑</span>
           </button>
         </div>
 

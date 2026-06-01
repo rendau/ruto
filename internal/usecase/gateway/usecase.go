@@ -38,14 +38,15 @@ func (u *Usecase) Heartbeat(_ context.Context, req *Heartbeat) error {
 	}
 
 	item := &Item{
-		GatewayID:       gatewayID,
-		PodName:         strings.TrimSpace(req.PodName),
-		HostName:        strings.TrimSpace(req.HostName),
-		SnapshotVersion: strings.TrimSpace(req.SnapshotVersion),
-		LastApplyAtUnix: req.LastApplyAtUnix,
-		StartedAtUnix:   req.StartedAtUnix,
-		LastError:       strings.TrimSpace(req.LastError),
-		LastSeenAtUnix:  time.Now().Unix(),
+		GatewayID:        gatewayID,
+		HostName:         strings.TrimSpace(req.HostName),
+		SnapshotVersion:  strings.TrimSpace(req.SnapshotVersion),
+		LastApplyAtUnix:  req.LastApplyAtUnix,
+		StartedAtUnix:    req.StartedAtUnix,
+		LastError:        strings.TrimSpace(req.LastError),
+		LastSeenAtUnix:   time.Now().Unix(),
+		MemoryAllocBytes: req.MemoryAllocBytes,
+		GoroutinesCount:  req.GoroutinesCount,
 	}
 
 	if err := u.cache.SetJsonObj(gatewayID, item, itemTTL); err != nil {

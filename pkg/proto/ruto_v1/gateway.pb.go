@@ -24,16 +24,17 @@ const (
 )
 
 type GatewayHeartbeatRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	GatewayId       string                 `protobuf:"bytes,1,opt,name=gateway_id,json=gatewayId,proto3" json:"gateway_id,omitempty"`
-	PodName         string                 `protobuf:"bytes,3,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
-	HostName        string                 `protobuf:"bytes,5,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
-	SnapshotVersion string                 `protobuf:"bytes,6,opt,name=snapshot_version,json=snapshotVersion,proto3" json:"snapshot_version,omitempty"`
-	LastApplyAtUnix int64                  `protobuf:"varint,7,opt,name=last_apply_at_unix,json=lastApplyAtUnix,proto3" json:"last_apply_at_unix,omitempty"`
-	StartedAtUnix   int64                  `protobuf:"varint,8,opt,name=started_at_unix,json=startedAtUnix,proto3" json:"started_at_unix,omitempty"`
-	LastError       string                 `protobuf:"bytes,9,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	GatewayId        string                 `protobuf:"bytes,1,opt,name=gateway_id,json=gatewayId,proto3" json:"gateway_id,omitempty"`
+	HostName         string                 `protobuf:"bytes,5,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
+	SnapshotVersion  string                 `protobuf:"bytes,6,opt,name=snapshot_version,json=snapshotVersion,proto3" json:"snapshot_version,omitempty"`
+	LastApplyAtUnix  int64                  `protobuf:"varint,7,opt,name=last_apply_at_unix,json=lastApplyAtUnix,proto3" json:"last_apply_at_unix,omitempty"`
+	StartedAtUnix    int64                  `protobuf:"varint,8,opt,name=started_at_unix,json=startedAtUnix,proto3" json:"started_at_unix,omitempty"`
+	LastError        string                 `protobuf:"bytes,9,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	MemoryAllocBytes uint64                 `protobuf:"varint,10,opt,name=memory_alloc_bytes,json=memoryAllocBytes,proto3" json:"memory_alloc_bytes,omitempty"`
+	GoroutinesCount  uint32                 `protobuf:"varint,11,opt,name=goroutines_count,json=goroutinesCount,proto3" json:"goroutines_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GatewayHeartbeatRequest) Reset() {
@@ -73,13 +74,6 @@ func (x *GatewayHeartbeatRequest) GetGatewayId() string {
 	return ""
 }
 
-func (x *GatewayHeartbeatRequest) GetPodName() string {
-	if x != nil {
-		return x.PodName
-	}
-	return ""
-}
-
 func (x *GatewayHeartbeatRequest) GetHostName() string {
 	if x != nil {
 		return x.HostName
@@ -113,6 +107,20 @@ func (x *GatewayHeartbeatRequest) GetLastError() string {
 		return x.LastError
 	}
 	return ""
+}
+
+func (x *GatewayHeartbeatRequest) GetMemoryAllocBytes() uint64 {
+	if x != nil {
+		return x.MemoryAllocBytes
+	}
+	return 0
+}
+
+func (x *GatewayHeartbeatRequest) GetGoroutinesCount() uint32 {
+	if x != nil {
+		return x.GoroutinesCount
+	}
+	return 0
 }
 
 type GatewayListResponse struct {
@@ -160,18 +168,19 @@ func (x *GatewayListResponse) GetResults() []*GatewayStateItem {
 }
 
 type GatewayStateItem struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	GatewayId       string                 `protobuf:"bytes,1,opt,name=gateway_id,json=gatewayId,proto3" json:"gateway_id,omitempty"`
-	PodName         string                 `protobuf:"bytes,3,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
-	HostName        string                 `protobuf:"bytes,5,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
-	SnapshotVersion string                 `protobuf:"bytes,6,opt,name=snapshot_version,json=snapshotVersion,proto3" json:"snapshot_version,omitempty"`
-	LastApplyAtUnix int64                  `protobuf:"varint,7,opt,name=last_apply_at_unix,json=lastApplyAtUnix,proto3" json:"last_apply_at_unix,omitempty"`
-	StartedAtUnix   int64                  `protobuf:"varint,8,opt,name=started_at_unix,json=startedAtUnix,proto3" json:"started_at_unix,omitempty"`
-	LastError       string                 `protobuf:"bytes,9,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
-	LastSeenAtUnix  int64                  `protobuf:"varint,10,opt,name=last_seen_at_unix,json=lastSeenAtUnix,proto3" json:"last_seen_at_unix,omitempty"`
-	Status          string                 `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	GatewayId        string                 `protobuf:"bytes,1,opt,name=gateway_id,json=gatewayId,proto3" json:"gateway_id,omitempty"`
+	HostName         string                 `protobuf:"bytes,5,opt,name=host_name,json=hostName,proto3" json:"host_name,omitempty"`
+	SnapshotVersion  string                 `protobuf:"bytes,6,opt,name=snapshot_version,json=snapshotVersion,proto3" json:"snapshot_version,omitempty"`
+	LastApplyAtUnix  int64                  `protobuf:"varint,7,opt,name=last_apply_at_unix,json=lastApplyAtUnix,proto3" json:"last_apply_at_unix,omitempty"`
+	StartedAtUnix    int64                  `protobuf:"varint,8,opt,name=started_at_unix,json=startedAtUnix,proto3" json:"started_at_unix,omitempty"`
+	LastError        string                 `protobuf:"bytes,9,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	LastSeenAtUnix   int64                  `protobuf:"varint,10,opt,name=last_seen_at_unix,json=lastSeenAtUnix,proto3" json:"last_seen_at_unix,omitempty"`
+	Status           string                 `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
+	MemoryAllocBytes uint64                 `protobuf:"varint,12,opt,name=memory_alloc_bytes,json=memoryAllocBytes,proto3" json:"memory_alloc_bytes,omitempty"`
+	GoroutinesCount  uint32                 `protobuf:"varint,13,opt,name=goroutines_count,json=goroutinesCount,proto3" json:"goroutines_count,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GatewayStateItem) Reset() {
@@ -207,13 +216,6 @@ func (*GatewayStateItem) Descriptor() ([]byte, []int) {
 func (x *GatewayStateItem) GetGatewayId() string {
 	if x != nil {
 		return x.GatewayId
-	}
-	return ""
-}
-
-func (x *GatewayStateItem) GetPodName() string {
-	if x != nil {
-		return x.PodName
 	}
 	return ""
 }
@@ -267,27 +269,42 @@ func (x *GatewayStateItem) GetStatus() string {
 	return ""
 }
 
+func (x *GatewayStateItem) GetMemoryAllocBytes() uint64 {
+	if x != nil {
+		return x.MemoryAllocBytes
+	}
+	return 0
+}
+
+func (x *GatewayStateItem) GetGoroutinesCount() uint32 {
+	if x != nil {
+		return x.GoroutinesCount
+	}
+	return 0
+}
+
 var File_ruto_v1_gateway_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"\n" +
-	"\x15ruto_v1/gateway.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x9b\x02\n" +
+	"\x15ruto_v1/gateway.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xd3\x02\n" +
 	"\x17GatewayHeartbeatRequest\x12\x1d\n" +
 	"\n" +
-	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x19\n" +
-	"\bpod_name\x18\x03 \x01(\tR\apodName\x12\x1b\n" +
+	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x1b\n" +
 	"\thost_name\x18\x05 \x01(\tR\bhostName\x12)\n" +
 	"\x10snapshot_version\x18\x06 \x01(\tR\x0fsnapshotVersion\x12+\n" +
 	"\x12last_apply_at_unix\x18\a \x01(\x03R\x0flastApplyAtUnix\x12&\n" +
 	"\x0fstarted_at_unix\x18\b \x01(\x03R\rstartedAtUnix\x12\x1d\n" +
 	"\n" +
-	"last_error\x18\t \x01(\tR\tlastErrorJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05\"J\n" +
+	"last_error\x18\t \x01(\tR\tlastError\x12,\n" +
+	"\x12memory_alloc_bytes\x18\n" +
+	" \x01(\x04R\x10memoryAllocBytes\x12)\n" +
+	"\x10goroutines_count\x18\v \x01(\rR\x0fgoroutinesCountJ\x04\b\x03\x10\x04\"J\n" +
 	"\x13GatewayListResponse\x123\n" +
-	"\aresults\x18\x01 \x03(\v2\x19.ruto_v1.GatewayStateItemR\aresults\"\xd7\x02\n" +
+	"\aresults\x18\x01 \x03(\v2\x19.ruto_v1.GatewayStateItemR\aresults\"\x8f\x03\n" +
 	"\x10GatewayStateItem\x12\x1d\n" +
 	"\n" +
-	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x19\n" +
-	"\bpod_name\x18\x03 \x01(\tR\apodName\x12\x1b\n" +
+	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x1b\n" +
 	"\thost_name\x18\x05 \x01(\tR\bhostName\x12)\n" +
 	"\x10snapshot_version\x18\x06 \x01(\tR\x0fsnapshotVersion\x12+\n" +
 	"\x12last_apply_at_unix\x18\a \x01(\x03R\x0flastApplyAtUnix\x12&\n" +
@@ -296,7 +313,9 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"last_error\x18\t \x01(\tR\tlastError\x12)\n" +
 	"\x11last_seen_at_unix\x18\n" +
 	" \x01(\x03R\x0elastSeenAtUnix\x12\x16\n" +
-	"\x06status\x18\v \x01(\tR\x06statusJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x052\xa0\x01\n" +
+	"\x06status\x18\v \x01(\tR\x06status\x12,\n" +
+	"\x12memory_alloc_bytes\x18\f \x01(\x04R\x10memoryAllocBytes\x12)\n" +
+	"\x10goroutines_count\x18\r \x01(\rR\x0fgoroutinesCountJ\x04\b\x03\x10\x042\xa0\x01\n" +
 	"\aGateway\x12E\n" +
 	"\tHeartbeat\x12 .ruto_v1.GatewayHeartbeatRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
 	"\x04List\x12\x16.google.protobuf.Empty\x1a\x1c.ruto_v1.GatewayListResponse\"\x10\x82\xd3\xe4\x93\x02\n" +
