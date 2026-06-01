@@ -38,7 +38,7 @@ func (a *Authorizer) Authorize(req *model.AuthRequest) bool {
 		return true
 	}
 
-	slog.Info(
+	slog.Warn(
 		"ip_validation: access denied",
 		"ips", lo.Map(req.ExtractIPAddrs(), func(ip netip.Addr, _ int) string { return ip.String() }),
 		"client_ip", clientIP.String(),
