@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -14,38 +15,45 @@ type Service struct {
 	addr           string
 	server         *gogrpc.Server
 	lis            net.Listener
-	handlerWrapper *handlerWrapper
+	handlerWrapper *handlerWrapperT
 }
 
 func New(port int) *Service {
-	handlerWrapper := newHandlerWrapper()
+	handlerWr := newHandlerWrapper()
 	server := gogrpc.NewServer(
-		gogrpc.UnknownServiceHandler(handlerWrapper.Handle),
-		gogrpc.ForceServerCodec(rawCodec{}),
+		gogrpc.UnknownServiceHandler(handlerWr.Handle),
 	)
 
 	return &Service{
 		addr:           ":" + strconv.Itoa(port),
 		server:         server,
-		handlerWrapper: handlerWrapper,
+		handlerWrapper: handlerWr,
 	}
 }
 
-func (s *Service) Start() error {
+func (s *Service) Start() {
+	go s.run()
+	slog.Info("gw-grpc-server started " + s.addr)
+}
+
+func (s *Service) run() {
 	lis, err := net.Listen("tcp", s.addr)
 	if err != nil {
-		return fmt.Errorf("net.Listen: %w", err)
+		slog.Error("gw-grpc-server net.Listen",
+			"error", fmt.Errorf("net.Listen: %w", err),
+			"addr", s.addr,
+		)
+		return
 	}
 	s.lis = lis
 
-	go func() {
-		if serveErr := s.server.Serve(lis); serveErr != nil {
-			slog.Error("gw-grpc-server stopped", "error", serveErr)
-		}
-	}()
-
-	slog.Info("gw-grpc-server started " + lis.Addr().String())
-	return nil
+	serveErr := s.server.Serve(lis)
+	if serveErr != nil && !errors.Is(serveErr, gogrpc.ErrServerStopped) {
+		slog.Error("gw-grpc-server Serve",
+			"error", serveErr,
+			"addr", s.addr,
+		)
+	}
 }
 
 func (s *Service) Stop(timeout time.Duration) error {
@@ -64,6 +72,6 @@ func (s *Service) Stop(timeout time.Duration) error {
 	}
 }
 
-func (s *Service) SetUnknownHandler(handler gogrpc.StreamHandler) {
+func (s *Service) SetHandler(handler Handler) {
 	s.handlerWrapper.setHandler(handler)
 }

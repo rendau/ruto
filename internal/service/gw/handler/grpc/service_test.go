@@ -134,7 +134,7 @@ func TestProxy_MissingAppMetadata(t *testing.T) {
 	require.Error(t, err)
 	st, ok := status.FromError(err)
 	require.True(t, ok)
-	require.Equal(t, codes.InvalidArgument, st.Code())
+	require.Equal(t, codes.NotFound, st.Code())
 }
 
 func TestProxy_DuplicateMethodResolvedByAppName(t *testing.T) {
@@ -253,8 +253,8 @@ func runGatewayProxyServer(t *testing.T, svc *Service) (string, func()) {
 	port := getFreeTCPPort(t)
 
 	server := gwGrpcServer.New(port)
-	server.SetUnknownHandler(svc.Handle)
-	require.NoError(t, server.Start())
+	server.SetHandler(svc)
+	server.Start()
 
 	return "127.0.0.1:" + strconv.Itoa(port), func() {
 		_ = server.Stop(3 * time.Second)
@@ -282,7 +282,7 @@ func buildSnapshotForBackend(t *testing.T, backendAddr string) *rootModel.Root {
 	port, err := strconv.Atoi(portRaw)
 	require.NoError(t, err)
 
-	return &rootModel.Root{
+	snapshot := &rootModel.Root{
 		Auth: authModel.Auth{
 			Enabled: false,
 			Mode:    "extend",
@@ -336,6 +336,9 @@ func buildSnapshotForBackend(t *testing.T, backendAddr string) *rootModel.Root {
 			},
 		},
 	}
+
+	require.NoError(t, snapshot.Normalize())
+	return snapshot
 }
 
 func buildSnapshotForTwoBackends(t *testing.T, backendAddr1, backendAddr2 string) *rootModel.Root {
@@ -351,7 +354,7 @@ func buildSnapshotForTwoBackends(t *testing.T, backendAddr1, backendAddr2 string
 	port2, err := strconv.Atoi(portRaw2)
 	require.NoError(t, err)
 
-	return &rootModel.Root{
+	snapshot := &rootModel.Root{
 		Auth: authModel.Auth{
 			Enabled: false,
 			Mode:    "extend",
@@ -421,4 +424,7 @@ func buildSnapshotForTwoBackends(t *testing.T, backendAddr1, backendAddr2 string
 			},
 		},
 	}
+
+	require.NoError(t, snapshot.Normalize())
+	return snapshot
 }

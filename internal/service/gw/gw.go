@@ -3,7 +3,6 @@ package gw
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"sync/atomic"
 	"time"
 
@@ -52,9 +51,7 @@ func (s *Service) Start() {
 	s.coreClient.Start()
 	s.httpServer.Start()
 	if s.grpcServer != nil {
-		if err := s.grpcServer.Start(); err != nil {
-			slog.Error("gw grpc server start failed", "error", err)
-		}
+		s.grpcServer.Start()
 	}
 }
 
@@ -88,7 +85,7 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 		if grpcErr != nil {
 			return fmt.Errorf("handlerGrpc.New: %w", grpcErr)
 		}
-		s.grpcServer.SetUnknownHandler(grpcHandler.Handle)
+		s.grpcServer.SetHandler(grpcHandler)
 	}
 
 	s.ready.Store(true)

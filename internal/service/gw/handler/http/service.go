@@ -17,11 +17,6 @@ type Service struct {
 }
 
 func New(snapshot *rootModel.Root, accessLog bool) (*Service, error) {
-	err := snapshot.Normalize()
-	if err != nil {
-		return nil, fmt.Errorf("snapshot normalize: %w", err)
-	}
-
 	handler, err := buildHandler(snapshot, accessLog)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
@@ -55,7 +50,7 @@ func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, fin
 		appProxyHandler := http.StripPrefix(app.PathPrefix, proxy.NewProxy(app, "", sharedTransport))
 
 		for _, ep := range endpoints {
-			if ep.Type == endpointModel.TypeGRPC {
+			if ep.Type == "" || ep.Type == endpointModel.TypeHTTP {
 				continue
 			}
 

@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
 
+	"github.com/mwitkow/grpc-proxy/proxy"
 	gogrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -27,9 +27,10 @@ import (
 )
 
 type Service struct {
-	snapshot *rootModel.Root
-	conns    sync.Map
-	routes   map[string]map[string]*route
+	snapshot          *rootModel.Root
+	conns             sync.Map
+	routes            map[string]*route
+	transparentHandle gogrpc.StreamHandler
 }
 
 type route struct {
@@ -40,30 +41,65 @@ type route struct {
 	metrics  *serviceMetrics.Service
 }
 
-type grpcTransport struct {
-	stream     gogrpc.ServerStream
-	fullMethod string
-}
+type routeCtxKey struct{}
 
 const (
 	metadataHeaderAppName = "x-ruto-app-name"
+	routeKeySep           = "\x1f"
 )
 
 func New(snapshot *rootModel.Root, accessLog bool) (*Service, error) {
-	if err := snapshot.Normalize(); err != nil {
-		return nil, fmt.Errorf("snapshot normalize: %w", err)
-	}
-
 	service := &Service{
 		snapshot: snapshot,
-		routes:   map[string]map[string]*route{},
 	}
+	service.transparentHandle = proxy.TransparentHandler(service.director)
 
-	if err := service.buildRoutes(accessLog); err != nil {
+	routes, err := service.buildRoutes(accessLog)
+	if err != nil {
 		return nil, fmt.Errorf("build routes: %w", err)
 	}
+	service.routes = routes
 
 	return service, nil
+}
+
+func (s *Service) buildRoutes(accessLog bool) (map[string]*route, error) {
+	routes := make(map[string]*route)
+
+	for _, app := range s.snapshot.ActiveApps() {
+		if app.GrpcPort <= 0 {
+			continue
+		}
+
+		for _, ep := range app.ActiveEndpoints() {
+			if ep.Type != endpointModel.TypeGRPC {
+				continue
+			}
+
+			routeKey := composeRouteKey(app.Name, ep.Grpc.Path)
+			if _, exists := routes[routeKey]; exists {
+				slog.Warn(
+					"duplicate grpc endpoint path for app name",
+					"path", ep.Grpc.Path,
+					"app", app.Name,
+					"endpoint", ep.Id,
+				)
+				continue
+			}
+
+			routeName := fmt.Sprintf("(%s)%s", app.Name, ep.Grpc.Path)
+
+			routes[routeKey] = &route{
+				app:      app,
+				endpoint: ep,
+				auth:     serviceAuth.New(s.snapshot, app, ep),
+				log:      serviceLog.New(app, ep, "GRPC "+routeName, accessLog),
+				metrics:  serviceMetrics.New(app, ep, "GRPC "+routeName),
+			}
+		}
+	}
+
+	return routes, nil
 }
 
 func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
@@ -72,34 +108,27 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 		return status.Error(codes.InvalidArgument, "missing method")
 	}
 
-	appName := strings.TrimSpace(metadataValue(stream.Context(), metadataHeaderAppName))
-	if appName == "" {
-		return status.Errorf(codes.InvalidArgument, "missing metadata header: %s", metadataHeaderAppName)
+	rt := s.resolveRoute(stream.Context(), fullMethod)
+	if rt == nil {
+		return status.Error(codes.NotFound, "route not found")
 	}
 
-	routesByMethod, ok := s.routes[fullMethod]
-	if !ok {
-		return status.Error(codes.NotFound, "endpoint not found")
+	if rt.auth != nil {
+		authReq := authModel.NewAuthRequest()
+		authReq.SetHttpHeader(headersFromMetadata(stream.Context()))
+		authReq.SetRemoteAddr(remoteAddrFromContext(stream.Context()))
+		if !rt.auth.Check(authReq) {
+			return status.Error(codes.Unauthenticated, "unauthorized")
+		}
 	}
 
-	rt, ok := routesByMethod[normalizeAppName(appName)]
-	if !ok {
-		return status.Error(codes.NotFound, "endpoint not found")
+	streamWithRoute := &serverStreamWithContext{
+		ServerStream: stream,
+		ctx:          context.WithValue(stream.Context(), routeCtxKey{}, rt),
 	}
 
-	authReq := authModel.NewAuthRequest()
-	authReq.SetHttpHeader(headersFromMetadata(stream.Context()))
-	authReq.SetRemoteAddr(extractRemoteAddr(stream.Context()))
-	if rt.auth != nil && !rt.auth.Check(authReq) {
-		return status.Error(codes.Unauthenticated, "unauthorized")
-	}
-
-	transport := &grpcTransport{
-		stream:     stream,
-		fullMethod: fullMethod,
-	}
 	serve := func() error {
-		return s.forward(transport.stream, transport.fullMethod, rt.app)
+		return s.transparentHandle(nil, streamWithRoute)
 	}
 
 	var (
@@ -115,8 +144,10 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 		rt.log.Serve(func() ([]any, string, error) {
 			serveErr, statusLabel = runForwardWithStatus(serve)
 			return []any{
-				"host", metadataValue(stream.Context(), ":authority"),
-				"remote_addr", authReq.RemoteAddr,
+				"app_name", rt.app.Name,
+				"grpc_service", rt.endpoint.Grpc.Service,
+				"grpc_method", rt.endpoint.Grpc.Method,
+				"grpc_path", rt.endpoint.Grpc.Path,
 			}, statusLabel, serveErr
 		})
 	}
@@ -136,66 +167,53 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 	if grpcStatus, ok := status.FromError(serveErr); ok {
 		return grpcStatus.Err()
 	}
+
 	return status.Errorf(codes.Internal, "gateway forward failed: %v", serveErr)
 }
 
-func (s *Service) buildRoutes(accessLog bool) error {
-	for _, app := range s.snapshot.ActiveApps() {
-		if app.GrpcPort <= 0 {
-			continue
-		}
-
-		for _, ep := range app.ActiveEndpoints() {
-			if ep.Type != endpointModel.TypeGRPC {
-				continue
-			}
-
-			routePath := strings.TrimSpace(ep.Grpc.Path)
-			if routePath == "" {
-				continue
-			}
-
-			appName := strings.TrimSpace(app.Name)
-			if appName == "" {
-				slog.Warn(
-					"skip grpc endpoint with empty app name",
-					"path", routePath,
-					"app", app.Name,
-					"endpoint", ep.Id,
-				)
-				continue
-			}
-
-			routesByMethod := s.routes[routePath]
-			if routesByMethod == nil {
-				routesByMethod = map[string]*route{}
-				s.routes[routePath] = routesByMethod
-			}
-			appRouteKey := normalizeAppName(appName)
-			if _, exists := routesByMethod[appRouteKey]; exists {
-				slog.Warn(
-					"duplicate grpc endpoint path for app name",
-					"path", routePath,
-					"app_name", appName,
-					"app", app.Name,
-					"endpoint", ep.Id,
-				)
-			}
-
-			routesByMethod[appRouteKey] = &route{
-				app:      app,
-				endpoint: ep,
-				auth:     serviceAuth.New(s.snapshot, app, ep),
-				log:      serviceLog.New(app, ep, "GRPC "+routePath, accessLog),
-				metrics:  serviceMetrics.New(app, ep, "GRPC "+routePath),
-			}
+func (s *Service) director(ctx context.Context, fullMethod string) (context.Context, gogrpc.ClientConnInterface, error) {
+	rt, ok := ctx.Value(routeCtxKey{}).(*route)
+	if !ok || rt == nil {
+		rt = s.resolveRoute(ctx, fullMethod)
+		if rt == nil {
+			return nil, nil, status.Error(codes.NotFound, "route not found")
 		}
 	}
-	return nil
+
+	target := rt.app.GrpcAddress()
+	if target == "" {
+		return nil, nil, status.Error(codes.FailedPrecondition, "app grpc_port is not configured")
+	}
+
+	conn, err := s.getConn(target)
+	if err != nil {
+		return nil, nil, status.Errorf(codes.Unavailable, "dial backend: %v", err)
+	}
+
+	inMd, _ := metadata.FromIncomingContext(ctx)
+	outMd := metadata.MD{}
+	for k, values := range inMd {
+		if strings.HasPrefix(k, ":") {
+			continue
+		}
+		outMd[k] = append([]string(nil), values...)
+	}
+
+	return metadata.NewOutgoingContext(ctx, outMd), conn, nil
 }
 
-func normalizeAppName(v string) string {
-	return strings.ToLower(strings.TrimSpace(v))
+func (s *Service) resolveRoute(ctx context.Context, fullMethod string) *route {
+	appName := strings.TrimSpace(metadataValue(ctx, metadataHeaderAppName))
+	if appName == "" {
+		return nil
+	}
+
+	rt, ok := s.routes[composeRouteKey(appName, fullMethod)]
+	if !ok {
+		return nil
+	}
+
+	return rt
 }
 
 func runForwardWithStatus(f func() error) (error, string) {
@@ -210,69 +228,6 @@ func runForwardWithStatus(f func() error) (error, string) {
 		return err, codes.DeadlineExceeded.String()
 	}
 	return err, codes.Internal.String()
-}
-
-func (s *Service) forward(stream gogrpc.ServerStream, fullMethod string, app *appModel.App) error {
-	target := app.GrpcAddress()
-	if target == "" {
-		return status.Error(codes.FailedPrecondition, "app grpc_port is not configured")
-	}
-
-	conn, err := s.getConn(target)
-	if err != nil {
-		return status.Errorf(codes.Unavailable, "dial backend: %v", err)
-	}
-
-	inMd, _ := metadata.FromIncomingContext(stream.Context())
-	outMd := metadata.MD{}
-	for k, values := range inMd {
-		if strings.HasPrefix(k, ":") {
-			continue
-		}
-		outMd[k] = append([]string(nil), values...)
-	}
-	outCtx := metadata.NewOutgoingContext(stream.Context(), outMd)
-	clientStream, err := conn.NewStream(
-		outCtx,
-		&gogrpc.StreamDesc{ServerStreams: true, ClientStreams: true},
-		fullMethod,
-		gogrpc.ForceCodec(rawCodec{}),
-	)
-	if err != nil {
-		return status.Errorf(codes.Unavailable, "open backend stream: %v", err)
-	}
-
-	backendClosed := make(chan error, 1)
-	clientClosed := make(chan error, 1)
-
-	go func() {
-		clientClosed <- pumpClientToBackend(stream, clientStream)
-	}()
-	go func() {
-		backendClosed <- pumpBackendToClient(stream, clientStream)
-	}()
-
-	var firstErr error
-	for i := 0; i < 2; i++ {
-		select {
-		case err := <-clientClosed:
-			if err != nil && firstErr == nil {
-				firstErr = err
-			}
-		case err := <-backendClosed:
-			if err != nil && firstErr == nil {
-				firstErr = err
-			}
-		}
-	}
-
-	stream.SetTrailer(clientStream.Trailer())
-
-	if firstErr != nil {
-		return firstErr
-	}
-
-	return nil
 }
 
 func (s *Service) getConn(target string) (*gogrpc.ClientConn, error) {
@@ -294,51 +249,6 @@ func (s *Service) getConn(target string) (*gogrpc.ClientConn, error) {
 	}
 
 	return newConn, nil
-}
-
-func pumpClientToBackend(serverStream gogrpc.ServerStream, clientStream gogrpc.ClientStream) error {
-	for {
-		msg := &rawFrame{}
-		if err := serverStream.RecvMsg(msg); err != nil {
-			if err == io.EOF {
-				return clientStream.CloseSend()
-			}
-			return err
-		}
-		if err := clientStream.SendMsg(msg); err != nil {
-			return err
-		}
-	}
-}
-
-func pumpBackendToClient(serverStream gogrpc.ServerStream, clientStream gogrpc.ClientStream) error {
-	headers, err := clientStream.Header()
-	if err == nil && len(headers) > 0 {
-		if sendErr := serverStream.SendHeader(headers); sendErr != nil {
-			return sendErr
-		}
-	}
-
-	for {
-		msg := &rawFrame{}
-		if err := clientStream.RecvMsg(msg); err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		if err := serverStream.SendMsg(msg); err != nil {
-			return err
-		}
-	}
-}
-
-func extractRemoteAddr(ctx context.Context) string {
-	p, ok := peer.FromContext(ctx)
-	if !ok || p == nil || p.Addr == nil {
-		return ""
-	}
-	return p.Addr.String()
 }
 
 func headersFromMetadata(ctx context.Context) http.Header {
@@ -365,4 +275,15 @@ func metadataValue(ctx context.Context, key string) string {
 		return ""
 	}
 	return values[0]
+}
+
+func composeRouteKey(appName, method string) string {
+	return strings.ToLower(appName) + routeKeySep + method
+}
+
+func remoteAddrFromContext(ctx context.Context) string {
+	if p, ok := peer.FromContext(ctx); ok && p != nil && p.Addr != nil {
+		return p.Addr.String()
+	}
+	return ""
 }

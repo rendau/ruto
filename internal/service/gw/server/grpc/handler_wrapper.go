@@ -4,31 +4,31 @@ import (
 	"sync/atomic"
 
 	gogrpc "google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-type handlerWrapper struct {
-	handler atomic.Pointer[gogrpc.StreamHandler]
+type handlerWrapperT struct {
+	hhStore atomic.Pointer[handlerHolderT]
 }
 
-func newHandlerWrapper() *handlerWrapper {
-	w := &handlerWrapper{}
-	defaultHandler := gogrpc.StreamHandler(func(_ any, _ gogrpc.ServerStream) error {
-		return status.Error(codes.Unimplemented, "gateway grpc proxy is not configured")
+type handlerHolderT struct {
+	h Handler
+}
+
+func newHandlerWrapper() *handlerWrapperT {
+	wrapper := &handlerWrapperT{}
+	wrapper.hhStore.Store(&handlerHolderT{
+		h: unconfiguredHandler{},
 	})
-	w.handler.Store(&defaultHandler)
-	return w
+	return wrapper
 }
 
-func (w *handlerWrapper) Handle(srv any, stream gogrpc.ServerStream) error {
-	h := w.handler.Load()
-	return (*h)(srv, stream)
-}
-
-func (w *handlerWrapper) setHandler(handler gogrpc.StreamHandler) {
-	if handler == nil {
-		return
+func (s *handlerWrapperT) setHandler(h Handler) {
+	if h != nil {
+		s.hhStore.Store(&handlerHolderT{h: h})
 	}
-	w.handler.Store(&handler)
+}
+
+func (s *handlerWrapperT) Handle(srv any, stream gogrpc.ServerStream) error {
+	holder := s.hhStore.Load()
+	return holder.h.Handle(srv, stream)
 }
