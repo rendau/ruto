@@ -48,6 +48,7 @@ func (a *App) Init() error {
 	gwService, err := serviceGwP.New(
 		a.ctx,
 		configGateway.Conf.HttpPort,
+		configGateway.Conf.GrpcPort,
 		configGateway.Conf.CoreGrpcAddress,
 		configGateway.Conf.LogRequests,
 	)

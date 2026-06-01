@@ -15,6 +15,8 @@ func EncodeEndpointMain(v *model.Endpoint, _ int) *ruto_v1.EndpointMain {
 		Path:    v.Path,
 		Backend: EncodeEndpointBackend(v.Backend),
 		Auth:    EncodeEndpointAuth(v.Auth),
+		Type:    string(v.Type),
+		Grpc:    EncodeEndpointGrpc(v.Grpc),
 	}
 }
 
@@ -27,6 +29,8 @@ func DecodeEndpointMain(v *ruto_v1.EndpointMain) *model.Endpoint {
 		Path:    v.Path,
 		Backend: DecodeEndpointBackend(v.Backend),
 		Auth:    DecodeEndpointAuth(v.Auth),
+		Type:    model.Type(v.Type),
+		Grpc:    DecodeEndpointGrpc(v.Grpc),
 	}
 }
 
@@ -50,5 +54,24 @@ func DecodeEndpointBackend(x *ruto_v1.EndpointBackend) model.Backend {
 	}
 	return model.Backend{
 		CustomPath: x.CustomPath,
+	}
+}
+
+func EncodeEndpointGrpc(v model.Grpc) *ruto_v1.EndpointGrpc {
+	return &ruto_v1.EndpointGrpc{
+		Service: v.Service,
+		Method:  v.Method,
+		Path:    v.Path,
+	}
+}
+
+func DecodeEndpointGrpc(v *ruto_v1.EndpointGrpc) model.Grpc {
+	if v == nil {
+		return model.Grpc{}
+	}
+	return model.Grpc{
+		Service: v.Service,
+		Method:  v.Method,
+		Path:    v.Path,
 	}
 }

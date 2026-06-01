@@ -2,8 +2,10 @@ package model
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/samber/lo"
@@ -24,6 +26,7 @@ type App struct {
 	Name       string                    `json:"name"`
 	Backend    AppBackend                `json:"backend"`
 	Auth       authModel.Auth            `json:"auth"`
+	GrpcPort   int                       `json:"grpc_port"`
 	Endpoints  []*endpointModel.Endpoint `json:"endpoints"`
 }
 
@@ -50,6 +53,9 @@ func (m *App) Normalize() error {
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
 	}
+	if m.GrpcPort < 0 || m.GrpcPort > 65535 {
+		return fmt.Errorf("grpc_port: invalid")
+	}
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
@@ -65,6 +71,19 @@ func (m *App) ActiveEndpoints() []*endpointModel.Endpoint {
 	return lo.FilterMap(m.Endpoints, func(v *endpointModel.Endpoint, _ int) (*endpointModel.Endpoint, bool) {
 		return v, v.Active
 	})
+}
+
+func (m *App) GrpcAddress() string {
+	if m == nil || m.Backend.ParsedUrl == nil || m.GrpcPort <= 0 {
+		return ""
+	}
+
+	host := m.Backend.ParsedUrl.Hostname()
+	if host == "" {
+		return ""
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(m.GrpcPort))
 }
 
 func (m *AppBackend) Normalize() error {

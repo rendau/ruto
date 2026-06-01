@@ -15,6 +15,7 @@ func EncodeAppMain(v *model.App, _ int) *ruto_v1.AppMain {
 		Name:       v.Name,
 		Backend:    EncodeAppBackend(v.Backend),
 		Auth:       EncodeEndpointAuth(v.Auth),
+		GrpcPort:   uint32(v.GrpcPort),
 	}
 }
 
@@ -33,6 +34,7 @@ func DecodeAppMain(v *ruto_v1.AppMain) *model.App {
 		Name:       v.Name,
 		Backend:    DecodeAppBackend(v.Backend),
 		Auth:       DecodeEndpointAuth(v.Auth),
+		GrpcPort:   int(v.GrpcPort),
 	}
 }
 

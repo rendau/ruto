@@ -31,6 +31,7 @@ type AppMain struct {
 	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Backend       *AppBackend            `protobuf:"bytes,5,opt,name=backend,proto3" json:"backend,omitempty"`
 	Auth          *Auth                  `protobuf:"bytes,6,opt,name=auth,proto3" json:"auth,omitempty"`
+	GrpcPort      uint32                 `protobuf:"varint,7,opt,name=grpc_port,json=grpcPort,proto3" json:"grpc_port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -105,6 +106,13 @@ func (x *AppMain) GetAuth() *Auth {
 		return x.Auth
 	}
 	return nil
+}
+
+func (x *AppMain) GetGrpcPort() uint32 {
+	if x != nil {
+		return x.GrpcPort
+	}
+	return 0
 }
 
 type AppGetReq struct {
@@ -547,7 +555,7 @@ var File_ruto_v1_app_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_app_proto_rawDesc = "" +
 	"\n" +
-	"\x11ruto_v1/app.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12ruto_v1/auth.proto\x1a\x14ruto_v1/common.proto\"\xb8\x01\n" +
+	"\x11ruto_v1/app.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12ruto_v1/auth.proto\x1a\x14ruto_v1/common.proto\"\xd5\x01\n" +
 	"\aAppMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x1f\n" +
@@ -555,7 +563,8 @@ const file_ruto_v1_app_proto_rawDesc = "" +
 	"pathPrefix\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12-\n" +
 	"\abackend\x18\x05 \x01(\v2\x13.ruto_v1.AppBackendR\abackend\x12!\n" +
-	"\x04auth\x18\x06 \x01(\v2\r.ruto_v1.AuthR\x04auth\"\x1b\n" +
+	"\x04auth\x18\x06 \x01(\v2\r.ruto_v1.AuthR\x04auth\x12\x1b\n" +
+	"\tgrpc_port\x18\a \x01(\rR\bgrpcPort\"\x1b\n" +
 	"\tAppGetReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"l\n" +
 	"\n" +

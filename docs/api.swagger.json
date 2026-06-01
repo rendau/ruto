@@ -1137,6 +1137,10 @@
         },
         "auth": {
           "$ref": "#/definitions/ruto_v1Auth"
+        },
+        "grpc_port": {
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
@@ -1187,6 +1191,10 @@
         },
         "auth": {
           "$ref": "#/definitions/ruto_v1Auth"
+        },
+        "grpc_port": {
+          "type": "integer",
+          "format": "int64"
         }
       }
     },
@@ -1303,6 +1311,20 @@
         }
       }
     },
+    "ruto_v1EndpointGrpc": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
     "ruto_v1EndpointListRep": {
       "type": "object",
       "properties": {
@@ -1341,6 +1363,13 @@
         },
         "auth": {
           "$ref": "#/definitions/ruto_v1Auth"
+        },
+        "type": {
+          "type": "string",
+          "title": "http | grpc"
+        },
+        "grpc": {
+          "$ref": "#/definitions/ruto_v1EndpointGrpc"
         }
       }
     },
@@ -1364,6 +1393,13 @@
         },
         "auth": {
           "$ref": "#/definitions/ruto_v1Auth"
+        },
+        "type": {
+          "type": "string",
+          "title": "http | grpc"
+        },
+        "grpc": {
+          "$ref": "#/definitions/ruto_v1EndpointGrpc"
         }
       }
     },

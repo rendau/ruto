@@ -3,6 +3,7 @@ package gw
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync/atomic"
 	"time"
 
@@ -10,26 +11,32 @@ import (
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/core_client"
+	handlerGrpc "github.com/rendau/ruto/internal/service/gw/handler/grpc"
 	handlerHttp "github.com/rendau/ruto/internal/service/gw/handler/http"
+	localGrpc "github.com/rendau/ruto/internal/service/gw/server/grpc"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 )
 
 type Service struct {
 	globalCtx  context.Context
-	server     *localHttp.Service
+	httpServer *localHttp.Service
+	grpcServer *localGrpc.Service
 	coreClient *core_client.Service
 	accessLog  bool
 	ready      atomic.Bool
 }
 
-func New(globalCtx context.Context, serverPort int, configAddress string, accessLog bool) (*Service, error) {
+func New(globalCtx context.Context, httpPort, grpcPort int, configAddress string, accessLog bool) (*Service, error) {
 	var err error
 
 	service := &Service{
-		globalCtx: globalCtx,
-		server:    localHttp.New(serverPort),
-		accessLog: accessLog,
+		globalCtx:  globalCtx,
+		httpServer: localHttp.New(httpPort),
+		accessLog:  accessLog,
+	}
+	if grpcPort > 0 {
+		service.grpcServer = localGrpc.New(grpcPort)
 	}
 	service.ready.Store(false)
 
@@ -43,11 +50,24 @@ func New(globalCtx context.Context, serverPort int, configAddress string, access
 
 func (s *Service) Start() {
 	s.coreClient.Start()
-	s.server.Start()
+	s.httpServer.Start()
+	if s.grpcServer != nil {
+		if err := s.grpcServer.Start(); err != nil {
+			slog.Error("gw grpc server start failed", "error", err)
+		}
+	}
 }
 
 func (s *Service) Stop(timeout time.Duration) error {
-	return s.server.Stop(timeout)
+	if err := s.httpServer.Stop(timeout); err != nil {
+		return err
+	}
+	if s.grpcServer != nil {
+		if err := s.grpcServer.Stop(timeout); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) SetConfig(conf *rootModel.Root) error {
@@ -61,7 +81,15 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}
-	s.server.SetHandler(httpHandler)
+	s.httpServer.SetHandler(httpHandler)
+
+	if s.grpcServer != nil {
+		grpcHandler, grpcErr := handlerGrpc.New(conf, s.accessLog)
+		if grpcErr != nil {
+			return fmt.Errorf("handlerGrpc.New: %w", grpcErr)
+		}
+		s.grpcServer.SetUnknownHandler(grpcHandler.Handle)
+	}
 
 	s.ready.Store(true)
 

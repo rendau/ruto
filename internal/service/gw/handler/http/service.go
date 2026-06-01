@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
@@ -54,6 +55,10 @@ func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, fin
 		appProxyHandler := http.StripPrefix(app.PathPrefix, proxy.NewProxy(app, "", sharedTransport))
 
 		for _, ep := range endpoints {
+			if ep.Type == endpointModel.TypeGRPC {
+				continue
+			}
+
 			routePath := app.GetFullPathForEndpoint(ep.Path)
 
 			proxyHandler := appProxyHandler

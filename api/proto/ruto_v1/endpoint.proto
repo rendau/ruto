@@ -35,6 +35,8 @@ message EndpointMain {
   string path = 5;
   EndpointBackend backend = 6;
   Auth auth = 7;
+  string type = 8; // http | grpc
+  EndpointGrpc grpc = 9;
 }
 
 message EndpointGetReq {
@@ -58,4 +60,10 @@ message EndpointCreateRep {
 
 message EndpointBackend {
   string custom_path = 1;
+}
+
+message EndpointGrpc {
+  string service = 1;
+  string method = 2;
+  string path = 3;
 }

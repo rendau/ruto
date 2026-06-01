@@ -40,6 +40,7 @@ message AppMain {
   string name = 4;
   AppBackend backend = 5;
   Auth auth = 6;
+  uint32 grpc_port = 7;
 }
 
 message AppGetReq {

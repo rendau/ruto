@@ -15,6 +15,7 @@ var Conf = struct {
 	SystemPort int `env:"SYSTEM_PORT" envDefault:"3003"`
 
 	HttpPort int `env:"HTTP_PORT"`
+	GrpcPort int `env:"GRPC_PORT"`
 
 	LogRequests bool `env:"LOG_REQUESTS" envDefault:"false"`
 

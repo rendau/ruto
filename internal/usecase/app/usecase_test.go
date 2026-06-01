@@ -45,6 +45,32 @@ func (s *testAppService) Delete(_ context.Context, _ string) error {
 	panic("unexpected call")
 }
 
+type testEditAppService struct {
+	list   func(ctx context.Context, pars *appModel.ListReq) ([]*appModel.App, int64, error)
+	create func(ctx context.Context, obj *appModel.App) (string, error)
+	update func(ctx context.Context, id string, obj *appModel.App) error
+}
+
+func (s *testEditAppService) List(ctx context.Context, pars *appModel.ListReq) ([]*appModel.App, int64, error) {
+	return s.list(ctx, pars)
+}
+
+func (s *testEditAppService) Get(_ context.Context, _ string, _ bool) (*appModel.App, bool, error) {
+	panic("unexpected call")
+}
+
+func (s *testEditAppService) Create(ctx context.Context, obj *appModel.App) (string, error) {
+	return s.create(ctx, obj)
+}
+
+func (s *testEditAppService) Update(ctx context.Context, id string, obj *appModel.App) error {
+	return s.update(ctx, id, obj)
+}
+
+func (s *testEditAppService) Delete(_ context.Context, _ string) error {
+	panic("unexpected call")
+}
+
 type testEndpointService struct {
 	list func(ctx context.Context, pars *endpointModel.ListReq) ([]*endpointModel.Endpoint, int64, error)
 }
@@ -161,4 +187,79 @@ func TestUsecase_GetSwaggerEndpointsDiff_PathVariableNamesIgnored(t *testing.T) 
 	require.NoError(t, err)
 	require.Empty(t, rep.Unregistered)
 	require.Empty(t, rep.RegisteredInvalid)
+}
+
+func TestUsecase_Create_DuplicateAppName(t *testing.T) {
+	t.Parallel()
+
+	createCalled := false
+	uc := New(
+		&testEditAppService{
+			list: func(_ context.Context, pars *appModel.ListReq) ([]*appModel.App, int64, error) {
+				require.EqualValues(t, 0, pars.Page)
+				return []*appModel.App{
+					{Id: "app-1", Name: "Gateway API"},
+				}, 1, nil
+			},
+			create: func(_ context.Context, _ *appModel.App) (string, error) {
+				createCalled = true
+				return "new-id", nil
+			},
+			update: func(_ context.Context, _ string, _ *appModel.App) error {
+				panic("unexpected call")
+			},
+		},
+		nil,
+		nil,
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+	)
+
+	_, err := uc.Create(context.Background(), &appModel.App{
+		Active:     true,
+		PathPrefix: "/gateway",
+		Name:       "gateway api",
+		Backend: appModel.AppBackend{
+			Url: "https://example.local",
+		},
+	})
+	require.Error(t, err)
+	require.False(t, createCalled)
+	require.Contains(t, err.Error(), "app name must be unique")
+}
+
+func TestUsecase_Update_SameAppNameForSelfAllowed(t *testing.T) {
+	t.Parallel()
+
+	updateCalled := false
+	uc := New(
+		&testEditAppService{
+			list: func(_ context.Context, _ *appModel.ListReq) ([]*appModel.App, int64, error) {
+				return []*appModel.App{
+					{Id: "app-1", Name: "Gateway API"},
+				}, 1, nil
+			},
+			create: func(_ context.Context, _ *appModel.App) (string, error) {
+				panic("unexpected call")
+			},
+			update: func(_ context.Context, id string, _ *appModel.App) error {
+				updateCalled = true
+				require.Equal(t, "app-1", id)
+				return nil
+			},
+		},
+		nil,
+		nil,
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+	)
+
+	err := uc.Update(context.Background(), "app-1", &appModel.App{
+		Active:     true,
+		PathPrefix: "/gateway",
+		Name:       "gateway api",
+		Backend: appModel.AppBackend{
+			Url: "https://example.local",
+		},
+	})
+	require.NoError(t, err)
+	require.True(t, updateCalled)
 }
