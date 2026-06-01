@@ -90,5 +90,5 @@ func (s *Service) Serve(f serveFunc) {
 	httpRequestDurationSeconds.WithLabelValues(
 		s.app.Name,
 		s.method,
-	).Observe(float64(time.Since(startAt).Milliseconds()))
+	).Observe(time.Since(startAt).Seconds())
 }

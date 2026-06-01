@@ -151,7 +151,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "milliseconds",
+            "axisLabel": "seconds",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
@@ -192,15 +192,15 @@
               },
               {
                 "color": "orange",
-                "value": 200
+                "value": 0.2
               },
               {
                 "color": "red",
-                "value": 1000
+                "value": 1
               }
             ]
           },
-          "unit": "ms"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -391,7 +391,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "milliseconds",
+            "axisLabel": "seconds",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
@@ -432,11 +432,11 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.08
               }
             ]
           },
-          "unit": "ms"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -616,7 +616,7 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "milliseconds",
+            "axisLabel": "seconds",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
@@ -657,11 +657,11 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.08
               }
             ]
           },
-          "unit": "ms"
+          "unit": "s"
         },
         "overrides": []
       },
