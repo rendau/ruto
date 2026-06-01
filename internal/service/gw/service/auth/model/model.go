@@ -12,8 +12,8 @@ import (
 )
 
 type AuthRequest struct {
-	Headers     map[string]string
-	QueryParams map[string]string
+	Headers     url.Values
+	QueryParams url.Values
 	RemoteAddr  string
 
 	token          *string
@@ -32,21 +32,11 @@ func NewAuthRequest() *AuthRequest {
 }
 
 func (r *AuthRequest) SetHttpHeader(headers http.Header) {
-	r.Headers = make(map[string]string, len(headers))
-	for key, values := range headers {
-		if len(values) > 0 {
-			r.Headers[strings.ToLower(key)] = values[0]
-		}
-	}
+	r.Headers = url.Values(headers)
 }
 
 func (r *AuthRequest) SetHttpQueryParams(qPars url.Values) {
-	r.QueryParams = make(map[string]string, len(qPars))
-	for key, values := range qPars {
-		if len(values) > 0 {
-			r.QueryParams[strings.ToLower(key)] = values[0]
-		}
-	}
+	r.QueryParams = qPars
 }
 
 func (r *AuthRequest) SetRemoteAddr(remoteAddr string) {
@@ -62,14 +52,7 @@ func (r *AuthRequest) ExtractToken() (finalResult string) {
 		r.token = new(finalResult)
 	}()
 
-	var value string
-
-	if r.Headers != nil {
-		value = strings.TrimSpace(r.Headers["authorization"])
-	}
-	if value == "" && r.QueryParams != nil {
-		value = strings.TrimSpace(r.QueryParams["auth_token"])
-	}
+	value := r.findValue("Authorization", "auth_token")
 	if value == "" {
 		return ""
 	}
@@ -94,22 +77,19 @@ func (r *AuthRequest) ExtractToken() (finalResult string) {
 	return parts[1]
 }
 
-func (r *AuthRequest) ExtractBasic() (username string, password string) {
+func (r *AuthRequest) ExtractBasic() (finalUsername string, finalPassword string) {
 	if r.basic != nil {
 		return r.basic.username, r.basic.password
 	}
 
 	defer func() {
 		r.basic = &authBasic{
-			username: username,
-			password: password,
+			username: finalUsername,
+			password: finalPassword,
 		}
 	}()
 
-	headerValue := ""
-	if r.Headers != nil {
-		headerValue = strings.TrimSpace(r.Headers["authorization"])
-	}
+	headerValue := r.getHeadersValue("Authorization")
 	if headerValue == "" {
 		return "", ""
 	}
@@ -133,11 +113,6 @@ func (r *AuthRequest) ExtractBasic() (username string, password string) {
 }
 
 func (r *AuthRequest) ExtractAPIKey(header string) (finalResult string) {
-	header = strings.ToLower(header)
-	if header == "" {
-		return ""
-	}
-
 	if r.apiKeyByHeader == nil {
 		r.apiKeyByHeader = make(map[string]string, 1)
 	} else if result, ok := r.apiKeyByHeader[header]; ok {
@@ -148,13 +123,7 @@ func (r *AuthRequest) ExtractAPIKey(header string) (finalResult string) {
 		r.apiKeyByHeader[header] = finalResult
 	}()
 
-	var value string
-	if r.Headers != nil {
-		value = strings.TrimSpace(r.Headers[header])
-	}
-	if value == "" && r.QueryParams != nil {
-		value = strings.TrimSpace(r.QueryParams[header])
-	}
+	value := r.findValue(header, header)
 
 	return value
 }
@@ -174,17 +143,15 @@ func (r *AuthRequest) ExtractIPs() (finalResult []string) {
 		if raw = strings.TrimSpace(raw); raw == "" {
 			return
 		}
-
 		ip, err := netip.ParseAddr(raw)
 		if err != nil {
 			return
 		}
-
 		result = append(result, ip.String())
 	}
 
 	appendIPList := func(raw string) {
-		if raw = strings.TrimSpace(raw); raw == "" {
+		if raw == "" {
 			return
 		}
 		for _, x := range strings.Split(raw, ",") {
@@ -192,36 +159,53 @@ func (r *AuthRequest) ExtractIPs() (finalResult []string) {
 		}
 	}
 	appendRemoteIP := func(raw string) {
-		if raw = strings.TrimSpace(raw); raw == "" {
+		if raw == "" {
 			return
 		}
-
 		appendIP(raw)
-
 		host, _, err := net.SplitHostPort(raw)
 		if err != nil {
 			return
 		}
-
 		appendIP(host)
 	}
 
-	if r.Headers != nil {
-		appendIPList(r.Headers["x-forwarded-for"])
-		appendIP(r.Headers["x-real-ip"])
-		appendIP(r.Headers["cf-connecting-ip"])
-		appendIP(r.Headers["true-client-ip"])
-		appendIP(r.Headers["x-client-ip"])
-		appendIP(r.Headers["x-cluster-client-ip"])
-	}
 	appendRemoteIP(r.RemoteAddr)
+	appendIPList(r.getHeadersValue("X-Forwarded-For"))
+	appendIP(r.getHeadersValue("X-Real-Ip"))
+	appendIP(r.getHeadersValue("Cf-Connecting-Ip"))
+	appendIP(r.getHeadersValue("True-Client-Ip"))
+	appendIP(r.getHeadersValue("X-Client-Ip"))
+	appendIP(r.getHeadersValue("X-Cluster-Client-Ip"))
 
 	return result
 }
 
-func (r *AuthRequest) resetExtractedData() {
-	r.token = nil
-	r.basic = nil
-	r.apiKeyByHeader = nil
-	r.ips = nil
+func (r *AuthRequest) findValue(headerKey, queryParamKey string) string {
+	val := r.getHeadersValue(headerKey)
+	if val == "" {
+		val = r.getQueryParamsValue(queryParamKey)
+	}
+	return val
+}
+
+func (r *AuthRequest) getHeadersValue(key string) string {
+	return getValueFromUrlValues(r.Headers, key)
+}
+
+func (r *AuthRequest) getQueryParamsValue(key string) string {
+	return getValueFromUrlValues(r.QueryParams, key)
+}
+
+func getValueFromUrlValues(source url.Values, key string) string {
+	if key == "" || source == nil || len(source) == 0 {
+		return ""
+	}
+
+	val := strings.TrimSpace(source.Get(key))
+	if val == "" {
+		val = strings.TrimSpace(source.Get(strings.ToLower(key)))
+	}
+
+	return val
 }

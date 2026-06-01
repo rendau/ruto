@@ -3,6 +3,7 @@ package jwt
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"net/url"
 	"testing"
 
 	jwtv5 "github.com/golang-jwt/jwt/v5"
@@ -206,8 +207,8 @@ func TestAuthorize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := New(tt.conf, tt.jwkGetter).Authorize(&model.AuthRequest{
-				Headers: map[string]string{
-					"authorization": tt.token,
+				Headers: url.Values{
+					"authorization": {tt.token},
 				},
 			})
 			require.Equal(t, tt.want, got)

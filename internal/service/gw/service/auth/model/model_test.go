@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/base64"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,8 +14,8 @@ func TestAuthRequestExtractBasic(t *testing.T) {
 	token := base64.StdEncoding.EncodeToString([]byte("admin:secret"))
 
 	req := &AuthRequest{
-		Headers: map[string]string{
-			"authorization": "Basic " + token,
+		Headers: url.Values{
+			"authorization": {"Basic " + token},
 		},
 	}
 
@@ -27,11 +28,11 @@ func TestAuthRequestExtractAPIKey(t *testing.T) {
 	t.Skip("temporarily disabled")
 
 	req := &AuthRequest{
-		Headers: map[string]string{
-			"x-api-key": "from-header",
+		Headers: url.Values{
+			"x-api-key": {"from-header"},
 		},
-		QueryParams: map[string]string{
-			"x-api-key": "from-query",
+		QueryParams: url.Values{
+			"x-api-key": {"from-query"},
 		},
 	}
 
@@ -42,9 +43,9 @@ func TestAuthRequestExtractIPs(t *testing.T) {
 	t.Skip("temporarily disabled")
 
 	req := &AuthRequest{
-		Headers: map[string]string{
-			"x-forwarded-for": "10.0.0.1, invalid, 10.0.0.2",
-			"x-real-ip":       "10.0.0.3",
+		Headers: url.Values{
+			"x-forwarded-for": {"10.0.0.1, invalid, 10.0.0.2"},
+			"x-real-ip":       {"10.0.0.3"},
 		},
 	}
 
