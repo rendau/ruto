@@ -11,9 +11,13 @@ import (
 )
 
 const (
-	metricsLabelApp    = "app"
-	metricsLabelMethod = "method"
-	metricsLabelStatus = "status"
+	metricsLabelApp      = "app"
+	metricsLabelProtocol = "protocol"
+	metricsLabelMethod   = "method"
+	metricsLabelStatus   = "status"
+
+	metricsProtocolHTTP = "http"
+	metricsProtocolGRPC = "grpc"
 )
 
 var (
@@ -23,9 +27,10 @@ var (
 		}
 		return metrics.Factory.NewCounterVec(prometheus.CounterOpts{
 			Name: "gw_http_requests_total",
-			Help: "Total number of gateway HTTP requests.",
+			Help: "Total number of gateway requests.",
 		}, []string{
 			metricsLabelApp,
+			metricsLabelProtocol,
 			metricsLabelMethod,
 			metricsLabelStatus,
 		})
@@ -37,7 +42,7 @@ var (
 		}
 		return metrics.Factory.NewHistogramVec(prometheus.HistogramOpts{
 			Name: "gw_http_request_duration_seconds",
-			Help: "Gateway HTTP request duration in seconds.",
+			Help: "Gateway request duration in seconds.",
 			Buckets: []float64{
 				0.005,
 				0.02,
@@ -47,6 +52,7 @@ var (
 			},
 		}, []string{
 			metricsLabelApp,
+			metricsLabelProtocol,
 			metricsLabelMethod,
 		})
 	}()
@@ -55,9 +61,10 @@ var (
 type serveFunc func() string
 
 type Service struct {
-	app    *domAppModel.App
-	ep     *domEndpointModel.Endpoint
-	method string
+	app      *domAppModel.App
+	ep       *domEndpointModel.Endpoint
+	protocol string
+	method   string
 }
 
 func New(
@@ -70,9 +77,10 @@ func New(
 	}
 
 	return &Service{
-		app:    app,
-		ep:     ep,
-		method: method,
+		app:      app,
+		ep:       ep,
+		protocol: protocolFromEndpoint(ep),
+		method:   method,
 	}
 }
 
@@ -83,12 +91,21 @@ func (s *Service) Serve(f serveFunc) {
 
 	httpRequestsTotal.WithLabelValues(
 		s.app.Name,
+		s.protocol,
 		s.method,
 		status,
 	).Inc()
 
 	httpRequestDurationSeconds.WithLabelValues(
 		s.app.Name,
+		s.protocol,
 		s.method,
 	).Observe(time.Since(startAt).Seconds())
+}
+
+func protocolFromEndpoint(ep *domEndpointModel.Endpoint) string {
+	if ep != nil && ep.Type == domEndpointModel.TypeGRPC {
+		return metricsProtocolGRPC
+	}
+	return metricsProtocolHTTP
 }

@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { onBeforeRouteLeave, RouterLink, useRoute, useRouter, type RouteLocationNormalizedLoaded } from "vue-router";
 import { createEndpoint, deleteApp, deleteEndpoint, getApp, getAppSwaggerEndpointsDiff, listEndpoints, updateApp } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
-import type { AppMain, AppSwaggerEndpoint, EndpointMain } from "../types/api";
+import type { AppMain, AppSwaggerEndpoint, EndpointMain, EndpointType } from "../types/api";
 import { useAppsStore } from "../stores/apps";
 
 const route = useRoute();
@@ -20,6 +20,7 @@ const endpointSearch = ref("");
 const authVisibilityFilter = ref<"all" | "public" | "protected">("all");
 const activeFilter = ref<"all" | "active" | "inactive">("all");
 const httpMethodFilter = ref("all");
+const activeEndpointType = ref<EndpointType>("http");
 
 const app = ref<AppMain | null>(null);
 const endpoints = ref<EndpointMain[]>([]);
@@ -49,9 +50,17 @@ const methodSortOrder: Record<string, number> = {
   HEAD: 7
 };
 
+const protocolOptions: Array<{ value: EndpointType; label: string }> = [
+  { value: "http", label: "HTTP" },
+  { value: "grpc", label: "gRPC" }
+];
+const httpEndpoints = computed(() => endpoints.value.filter((endpoint) => endpointType(endpoint) === "http"));
+const grpcEndpoints = computed(() => endpoints.value.filter((endpoint) => endpointType(endpoint) === "grpc"));
+const activeProtocolTotal = computed(() => (activeEndpointType.value === "grpc" ? grpcEndpoints.value.length : httpEndpoints.value.length));
+
 const httpMethodOptions = computed(() => {
   const items = new Set<string>();
-  for (const endpoint of endpoints.value) {
+  for (const endpoint of httpEndpoints.value) {
     const method = (endpoint.method || "").trim().toUpperCase();
     if (method) {
       items.add(method);
@@ -70,13 +79,18 @@ const httpMethodOptions = computed(() => {
 const filteredEndpoints = computed(() => {
   const query = endpointSearch.value.trim().toLowerCase();
   return endpoints.value.filter((endpoint) => {
-    const path = normalizedRoutePath(endpoint.path);
-    const method = (endpoint.method || "").trim().toUpperCase();
+    const type = endpointType(endpoint);
+    const path = endpointRoutePath(endpoint);
+    const method = endpointRouteMethod(endpoint);
     const requiresAuth = endpointRequiresAuth(endpoint);
     const isActive = Boolean(endpoint.active);
 
+    if (type !== activeEndpointType.value) {
+      return false;
+    }
+
     if (query) {
-      const target = `${method} ${path}`.toLowerCase();
+      const target = `${method} ${path} ${endpoint.grpc?.service || ""} ${endpoint.grpc?.method || ""}`.toLowerCase();
       if (!target.includes(query)) {
         return false;
       }
@@ -96,7 +110,7 @@ const filteredEndpoints = computed(() => {
       return false;
     }
 
-    if (httpMethodFilter.value !== "all" && method !== httpMethodFilter.value) {
+    if (type === "http" && httpMethodFilter.value !== "all" && method !== httpMethodFilter.value) {
       return false;
     }
 
@@ -107,7 +121,7 @@ const filteredEndpoints = computed(() => {
 const endpointGroups = computed(() => {
   const groups = new Map<string, EndpointMain[]>();
   for (const endpoint of filteredEndpoints.value) {
-    const key = firstPathSegment(endpoint.path);
+    const key = firstPathSegment(endpointRoutePath(endpoint));
     const current = groups.get(key);
     if (current) {
       current.push(endpoint);
@@ -276,6 +290,12 @@ function buildDefaultEndpointPayload(item: AppSwaggerEndpoint): EndpointMain {
       enabled: true,
       mode: "extend",
       methods: []
+    },
+    type: "http",
+    grpc: {
+      service: "",
+      method: "",
+      path: ""
     }
   };
 }
@@ -402,11 +422,11 @@ function firstPathSegment(path: string): string {
 }
 
 function sortEndpoints(a: EndpointMain, b: EndpointMain): number {
-  const pathCompare = normalizedRoutePath(a.path).localeCompare(normalizedRoutePath(b.path));
+  const pathCompare = endpointRoutePath(a).localeCompare(endpointRoutePath(b));
   if (pathCompare !== 0) {
     return pathCompare;
   }
-  return (a.method || "").localeCompare(b.method || "");
+  return endpointRouteMethod(a).localeCompare(endpointRouteMethod(b));
 }
 
 function normalizedRoutePath(path: string): string {
@@ -447,6 +467,8 @@ function endpointRequiresAuth(endpoint: EndpointMain): boolean {
 function endpointMethodBadgeClass(method: string): string {
   const normalized = (method || "").trim().toUpperCase();
   switch (normalized) {
+    case "GRPC":
+      return "method-grpc";
     case "GET":
       return "method-get";
     case "POST":
@@ -464,6 +486,31 @@ function endpointMethodBadgeClass(method: string): string {
     default:
       return "method-other";
   }
+}
+
+function endpointType(endpoint: EndpointMain): EndpointType {
+  return endpoint.type === "grpc" ? "grpc" : "http";
+}
+
+function endpointRoutePath(endpoint: EndpointMain): string {
+  if (endpointType(endpoint) === "grpc") {
+    return normalizedRoutePath(endpoint.grpc?.path || endpoint.path);
+  }
+  return normalizedRoutePath(endpoint.path);
+}
+
+function endpointRouteMethod(endpoint: EndpointMain): string {
+  if (endpointType(endpoint) === "grpc") {
+    return "GRPC";
+  }
+  return (endpoint.method || "").trim().toUpperCase() || "*";
+}
+
+function endpointRouteTitle(endpoint: EndpointMain): string {
+  if (endpointType(endpoint) === "grpc") {
+    return `${endpoint.grpc?.service || ""}/${endpoint.grpc?.method || ""}`.trim() || endpointRoutePath(endpoint);
+  }
+  return `${endpointRouteMethod(endpoint)} ${endpointRoutePath(endpoint)}`;
 }
 
 function resetEndpointFilters() {
@@ -588,7 +635,7 @@ async function removeEndpoint(endpoint: EndpointMain) {
   if (deletingEndpointId.value) {
     return;
   }
-  const approved = window.confirm(`Delete endpoint ${endpoint.method} ${endpoint.path}?`);
+  const approved = window.confirm(`Delete endpoint ${endpointRouteTitle(endpoint)}?`);
   if (!approved) {
     return;
   }
@@ -685,22 +732,6 @@ onBeforeRouteLeave((to) => {
 
 <template>
   <div class="actions page-top-actions">
-    <RouterLink class="primary-button" :to="{ name: 'endpoint-create', params: { appId: id } }">Create Endpoint</RouterLink>
-    <button
-      v-if="app?.backend.swagger_url"
-      class="secondary-button swagger-toggle-button"
-      :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
-      @click="toggleSwaggerPanel"
-    >
-      <svg class="icon-action-svg swagger-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
-        <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
-        <path d="M10 8h4" />
-        <path d="M10 12h4" />
-        <path d="M10 16h4" />
-      </svg>
-      <span>Swagger</span>
-    </button>
     <button
       v-if="app"
       :class="app.active ? 'danger-button' : 'primary-button'"
@@ -747,13 +778,57 @@ onBeforeRouteLeave((to) => {
         <strong>{{ app.backend.url }}</strong>
       </div>
       <div>
+        <span class="label">gRPC Port</span>
+        <strong>{{ app.grpc_port || "disabled" }}</strong>
+      </div>
+      <div>
         <span class="label">Status</span>
         <strong>{{ app.active ? "active" : "inactive" }}</strong>
       </div>
     </section>
 
+    <div class="app-protocol-card">
+      <div class="protocol-tabs" role="tablist" aria-label="Endpoint Protocol">
+        <button
+          v-for="option in protocolOptions"
+          :key="option.value"
+          class="protocol-tab"
+          :class="{ active: activeEndpointType === option.value }"
+          type="button"
+          :aria-selected="activeEndpointType === option.value"
+          @click="activeEndpointType = option.value"
+        >
+          <span>{{ option.label }}</span>
+          <span class="protocol-tab-count">{{ option.value === "grpc" ? grpcEndpoints.length : httpEndpoints.length }}</span>
+        </button>
+      </div>
+      <div class="actions protocol-actions">
+        <RouterLink
+          class="primary-button"
+          :to="{ name: 'endpoint-create', params: { appId: id }, query: { type: activeEndpointType } }"
+        >
+          Create Endpoint
+        </RouterLink>
+        <button
+          v-if="activeEndpointType === 'http' && app?.backend.swagger_url"
+          class="secondary-button swagger-toggle-button"
+          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
+          @click="toggleSwaggerPanel"
+        >
+          <svg class="icon-action-svg swagger-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
+            <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
+            <path d="M10 8h4" />
+            <path d="M10 12h4" />
+            <path d="M10 16h4" />
+          </svg>
+          <span>Swagger</span>
+        </button>
+      </div>
+    </div>
+
     <Transition name="swagger-panel">
-      <section v-if="app.backend.swagger_url && swaggerPanelOpen" class="panel swagger-diff-panel">
+      <section v-if="activeEndpointType === 'http' && app.backend.swagger_url && swaggerPanelOpen" class="panel swagger-diff-panel">
         <button
           class="icon-action-button secondary swagger-close-icon"
           type="button"
@@ -854,7 +929,7 @@ onBeforeRouteLeave((to) => {
                           :to="{
                             name: 'endpoint-create',
                             params: { appId: id },
-                            query: { method: item.method, path: item.path }
+                            query: { type: 'http', method: item.method, path: item.path }
                           }"
                           :aria-label="`Add endpoint ${item.method} ${item.path}`"
                         >
@@ -874,8 +949,8 @@ onBeforeRouteLeave((to) => {
     </Transition>
 
     <div class="page-header compact endpoints-head">
-      <h3>Endpoints</h3>
-      <span class="muted endpoints-head-count">{{ filteredEndpoints.length }} / {{ endpoints.length }}</span>
+      <h3>{{ activeEndpointType === "grpc" ? "gRPC Endpoints" : "HTTP Endpoints" }}</h3>
+      <span class="muted endpoints-head-count">{{ filteredEndpoints.length }} / {{ activeProtocolTotal }}</span>
     </div>
     <div class="endpoints-filters">
       <input
@@ -895,7 +970,7 @@ onBeforeRouteLeave((to) => {
         <option value="active">Active</option>
         <option value="inactive">Inactive</option>
       </select>
-      <select v-model="httpMethodFilter" class="endpoints-filter-select" aria-label="Filter by HTTP method">
+      <select v-if="activeEndpointType === 'http'" v-model="httpMethodFilter" class="endpoints-filter-select" aria-label="Filter by HTTP method">
         <option value="all">All Methods</option>
         <option v-for="method in httpMethodOptions" :key="method" :value="method">{{ method }}</option>
       </select>
@@ -931,15 +1006,15 @@ onBeforeRouteLeave((to) => {
         </tr>
         <tr v-for="endpoint in group.items" :key="endpoint.id" class="endpoint-route-row">
           <td>
-            <span class="http-method-badge" :class="endpointMethodBadgeClass(endpoint.method)">{{ endpoint.method }}</span>
+            <span class="http-method-badge" :class="endpointMethodBadgeClass(endpointRouteMethod(endpoint))">{{ endpointRouteMethod(endpoint) }}</span>
           </td>
           <td class="endpoint-path-cell">
             <RouterLink
               class="endpoint-path-link"
               :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
-              :title="`${endpoint.method} ${normalizedRoutePath(endpoint.path)}`"
+              :title="endpointRouteTitle(endpoint)"
             >
-              {{ normalizedRoutePath(endpoint.path) }}
+              {{ endpointRoutePath(endpoint) }}
             </RouterLink>
           </td>
           <td>
@@ -1013,7 +1088,7 @@ onBeforeRouteLeave((to) => {
         <div class="endpoint-mobile-cards">
           <article v-for="endpoint in group.items" :key="`mobile-${endpoint.id}`" class="endpoint-mobile-card">
             <div class="endpoint-mobile-top">
-              <span class="http-method-badge" :class="endpointMethodBadgeClass(endpoint.method)">{{ endpoint.method }}</span>
+              <span class="http-method-badge" :class="endpointMethodBadgeClass(endpointRouteMethod(endpoint))">{{ endpointRouteMethod(endpoint) }}</span>
               <span class="status-chip" :class="{ inactive: !endpoint.active }">
                 {{ endpoint.active ? "active" : "inactive" }}
               </span>
@@ -1021,9 +1096,9 @@ onBeforeRouteLeave((to) => {
             <RouterLink
               class="endpoint-path-link endpoint-mobile-path"
               :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
-              :title="`${endpoint.method} ${normalizedRoutePath(endpoint.path)}`"
+              :title="endpointRouteTitle(endpoint)"
             >
-              {{ normalizedRoutePath(endpoint.path) }}
+              {{ endpointRoutePath(endpoint) }}
             </RouterLink>
             <div class="endpoint-auth endpoint-mobile-auth">
               <span

@@ -95,6 +95,7 @@ export interface AppMain {
   name: string;
   backend: AppBackend;
   auth: Auth;
+  grpc_port: number;
 }
 
 export interface AppListRep {
@@ -128,6 +129,14 @@ export interface EndpointBackend {
   custom_path: string;
 }
 
+export type EndpointType = "http" | "grpc";
+
+export interface EndpointGrpc {
+  service: string;
+  method: string;
+  path: string;
+}
+
 export interface EndpointMain {
   id: string;
   app_id: string;
@@ -136,6 +145,8 @@ export interface EndpointMain {
   path: string;
   backend: EndpointBackend;
   auth: Auth;
+  type: EndpointType;
+  grpc: EndpointGrpc;
 }
 
 export interface EndpointListRep {

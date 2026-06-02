@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Gateway HTTP metrics with namespace selector",
+  "description": "Gateway HTTP and gRPC metrics with namespace, protocol, and app selectors",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -128,7 +128,7 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "sum(rate({__name__=\"${namespace}_ruto_gw_http_requests_total\"}[$__rate_interval]))",
+          "expr": "sum(rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",protocol=~\"${protocol:regex}\"}[$__rate_interval]))",
           "legendFormat": "all",
           "range": true,
           "refId": "A"
@@ -238,7 +238,7 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_bucket\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_bucket\",protocol=~\"${protocol:regex}\"}[$__rate_interval])))",
           "legendFormat": "p95",
           "range": true,
           "refId": "A"
@@ -249,7 +249,7 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "sum(rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\"}[$__rate_interval])) / sum(rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\"}[$__rate_interval]))",
+          "expr": "sum(rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",protocol=~\"${protocol:regex}\"}[$__rate_interval])) / sum(rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",protocol=~\"${protocol:regex}\"}[$__rate_interval]))",
           "legendFormat": "avg",
           "range": true,
           "refId": "B"
@@ -368,7 +368,7 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "sum by (app) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",app=~\"${app:regex}\"}[$__rate_interval]))",
+          "expr": "sum by (app) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",protocol=~\"${protocol:regex}\",app=~\"${app:regex}\"}[$__rate_interval]))",
           "legendFormat": "{{app}}",
           "range": true,
           "refId": "A"
@@ -474,7 +474,7 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "sum by (app) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",app=~\"${app:regex}\"}[$__rate_interval])) / sum by (app) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",app=~\"${app:regex}\"}[$__rate_interval]))",
+          "expr": "sum by (app) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",protocol=~\"${protocol:regex}\",app=~\"${app:regex}\"}[$__rate_interval])) / sum by (app) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",protocol=~\"${protocol:regex}\",app=~\"${app:regex}\"}[$__rate_interval]))",
           "legendFormat": "{{app}}",
           "range": true,
           "refId": "A"
@@ -593,7 +593,7 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "topk(15, sum by (method) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",app=~\"${app:regex}\"}[$__rate_interval])))",
+          "expr": "topk(15, sum by (method) (rate({__name__=\"${namespace}_ruto_gw_http_requests_total\",protocol=~\"${protocol:regex}\",app=~\"${app:regex}\"}[$__rate_interval])))",
           "legendFormat": "{{method}}",
           "range": true,
           "refId": "A"
@@ -699,7 +699,7 @@
             "uid": "${ds}"
           },
           "editorMode": "code",
-          "expr": "topk(15, sum by (method) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",app=~\"${app:regex}\"}[$__rate_interval])) / sum by (method) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",app=~\"${app:regex}\"}[$__rate_interval])))",
+          "expr": "topk(15, sum by (method) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_sum\",protocol=~\"${protocol:regex}\",app=~\"${app:regex}\"}[$__rate_interval])) / sum by (method) (rate({__name__=\"${namespace}_ruto_gw_http_request_duration_seconds_count\",protocol=~\"${protocol:regex}\",app=~\"${app:regex}\"}[$__rate_interval])))",
           "legendFormat": "{{method}}",
           "range": true,
           "refId": "A"
@@ -764,12 +764,34 @@
           "type": "prometheus",
           "uid": "${ds}"
         },
-        "definition": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\"}, app)",
+        "definition": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\"}, protocol)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Protocol",
+        "multi": true,
+        "name": "protocol",
+        "query": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\"}, protocol)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${ds}"
+        },
+        "definition": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\",protocol=~\"${protocol:regex}\"}, app)",
         "includeAll": true,
         "label": "App (for Route tabs)",
         "name": "app",
         "options": [],
-        "query": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\"}, app)",
+        "query": "label_values({__name__=\"${namespace}_ruto_gw_http_requests_total\",protocol=~\"${protocol:regex}\"}, app)",
         "refresh": 1,
         "regex": "",
         "sort": 1,
@@ -783,7 +805,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "ruto",
+  "title": "Ruto Gateway Metrics",
   "uid": "gw-http-by-namespace",
   "version": 21
 }

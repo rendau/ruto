@@ -25,9 +25,18 @@ const app = ref<AppMain | null>(null);
 const rootBaseUrl = ref("");
 const appName = ref("");
 
-const endpointPath = computed(() => normalizedRoutePath(endpoint.value?.path || ""));
-const endpointMethod = computed(() => (endpoint.value?.method || "").trim().toUpperCase() || "*");
-const publicUrl = computed(() => {
+const endpointType = computed(() => (endpoint.value?.type === "grpc" ? "grpc" : "http"));
+const endpointPath = computed(() => {
+  if (endpointType.value === "grpc") {
+    return normalizedRoutePath(endpoint.value?.grpc?.path || endpoint.value?.path || "");
+  }
+  return normalizedRoutePath(endpoint.value?.path || "");
+});
+const endpointMethod = computed(() => (endpointType.value === "grpc" ? "GRPC" : (endpoint.value?.method || "").trim().toUpperCase() || "*"));
+const publicRoute = computed(() => {
+  if (endpointType.value === "grpc") {
+    return endpointPath.value;
+  }
   if (!app.value || !rootBaseUrl.value) {
     return "";
   }
@@ -37,6 +46,9 @@ const publicUrl = computed(() => {
 const backendUrl = computed(() => {
   if (!app.value) {
     return "";
+  }
+  if (endpointType.value === "grpc") {
+    return grpcBackendAddress(app.value);
   }
   const targetPath = endpoint.value?.backend.custom_path || endpoint.value?.path || "";
   return joinUrl(app.value.backend.url, targetPath);
@@ -70,9 +82,24 @@ function joinUrl(baseUrl: string, path: string): string {
   return cleanedPath ? `${base}/${cleanedPath}` : base;
 }
 
+function grpcBackendAddress(item: AppMain): string {
+  const port = Number(item.grpc_port || 0);
+  if (port <= 0) {
+    return "";
+  }
+  try {
+    const parsed = new URL(item.backend.url);
+    return `${parsed.hostname}:${port}`;
+  } catch {
+    return "";
+  }
+}
+
 function endpointMethodBadgeClass(method: string): string {
   const normalized = (method || "").trim().toUpperCase();
   switch (normalized) {
+    case "GRPC":
+      return "method-grpc";
     case "GET":
       return "method-get";
     case "POST":
@@ -291,6 +318,10 @@ onMounted(() => {
 
     <section class="summary-grid endpoint-summary-grid">
       <div>
+        <span class="label">Protocol</span>
+        <strong>{{ endpointType === "grpc" ? "gRPC" : "HTTP" }}</strong>
+      </div>
+      <div>
         <span class="label">Application</span>
         <strong>{{ appName || endpoint.app_id }}</strong>
       </div>
@@ -302,21 +333,29 @@ onMounted(() => {
         <span class="label">Endpoint ID</span>
         <strong class="endpoint-value-break">{{ endpoint.id }}</strong>
       </div>
-      <div>
+      <div v-if="endpointType === 'http'">
         <span class="label">Custom Backend Path</span>
         <strong>{{ endpoint.backend.custom_path || "inherit app backend path" }}</strong>
       </div>
+      <div v-if="endpointType === 'grpc'">
+        <span class="label">gRPC Service</span>
+        <strong>{{ endpoint.grpc.service }}</strong>
+      </div>
+      <div v-if="endpointType === 'grpc'">
+        <span class="label">gRPC Method</span>
+        <strong>{{ endpoint.grpc.method }}</strong>
+      </div>
       <div>
-        <span class="label">Public URL</span>
+        <span class="label">{{ endpointType === "grpc" ? "gRPC Path" : "Public URL" }}</span>
         <button
           class="endpoint-copy-link"
           type="button"
-          :disabled="!publicUrl"
-          title="Copy Public URL"
-          aria-label="Copy Public URL"
-          @click="copyUrl('Public URL', publicUrl)"
+          :disabled="!publicRoute"
+          :title="endpointType === 'grpc' ? 'Copy gRPC Path' : 'Copy Public URL'"
+          :aria-label="endpointType === 'grpc' ? 'Copy gRPC Path' : 'Copy Public URL'"
+          @click="copyUrl(endpointType === 'grpc' ? 'gRPC Path' : 'Public URL', publicRoute)"
         >
-          <span class="endpoint-copy-value" :class="{ muted: !publicUrl }">{{ publicUrl || "unavailable" }}</span>
+          <span class="endpoint-copy-value" :class="{ muted: !publicRoute }">{{ publicRoute || "unavailable" }}</span>
           <svg class="endpoint-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
             <rect x="9" y="9" width="10" height="10" rx="2" />
             <rect x="5" y="5" width="10" height="10" rx="2" />
@@ -324,14 +363,14 @@ onMounted(() => {
         </button>
       </div>
       <div>
-        <span class="label">Backend URL</span>
+        <span class="label">{{ endpointType === "grpc" ? "Backend gRPC Address" : "Backend URL" }}</span>
         <button
           class="endpoint-copy-link"
           type="button"
           :disabled="!backendUrl"
-          title="Copy Backend URL"
-          aria-label="Copy Backend URL"
-          @click="copyUrl('Backend URL', backendUrl)"
+          :title="endpointType === 'grpc' ? 'Copy Backend gRPC Address' : 'Copy Backend URL'"
+          :aria-label="endpointType === 'grpc' ? 'Copy Backend gRPC Address' : 'Copy Backend URL'"
+          @click="copyUrl(endpointType === 'grpc' ? 'Backend gRPC Address' : 'Backend URL', backendUrl)"
         >
           <span class="endpoint-copy-value" :class="{ muted: !backendUrl }">{{ backendUrl || "unavailable" }}</span>
           <svg class="endpoint-copy-icon" viewBox="0 0 24 24" aria-hidden="true">

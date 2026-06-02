@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -19,7 +18,6 @@ import (
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	domRootModel "github.com/rendau/ruto/internal/domain/root/model"
 	serviceAuth "github.com/rendau/ruto/internal/service/gw/service/auth"
-	serviceAuthModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"
 )
@@ -70,14 +68,23 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root, accessLog bool) (map[
 
 			routeName := fmt.Sprintf("(%s)%s", app.Name, ep.Grpc.Path)
 
-			routes[routeKey] = &route{
+			rt := &route{
 				app:               app,
 				endpoint:          ep,
 				targetGrpcAddress: targetGrpcAddress,
-				auth:              serviceAuth.New(snapshot, app, ep),
-				log:               serviceLog.New(app, ep, "GRPC "+routeName, accessLog),
-				metrics:           serviceMetrics.New(app, ep, "GRPC "+routeName),
 			}
+
+			authService := serviceAuth.New(snapshot, app, ep)
+			logService := serviceLog.New(app, ep, "GRPC "+routeName, accessLog)
+			metricsService := serviceMetrics.New(app, ep, "GRPC "+routeName)
+
+			rt.handler = chain(s.transparentHandle,
+				newMetricsMiddleware(metricsService),
+				newRequestLogMiddleware(logService, app, ep),
+				newAuthMiddleware(authService),
+			)
+
+			routes[routeKey] = rt
 		}
 	}
 
@@ -90,20 +97,9 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 		return status.Error(codes.InvalidArgument, "missing method")
 	}
 
-	md := metadataFromContext(stream.Context())
-
-	rt := s.resolveRoute(md, fullMethod)
+	rt := s.resolveRoute(metadataFromContext(stream.Context()), fullMethod)
 	if rt == nil {
 		return status.Error(codes.NotFound, "route not found")
-	}
-
-	if rt.auth != nil {
-		authReq := serviceAuthModel.NewAuthRequest()
-		authReq.SetHttpHeader(headersFromMetadata(md))
-		authReq.SetRemoteAddr(remoteAddrFromContext(stream.Context()))
-		if !rt.auth.Check(authReq) {
-			return status.Error(codes.Unauthenticated, "unauthorized")
-		}
 	}
 
 	streamWithRoute := &serverStreamWithContext{
@@ -111,48 +107,15 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 		ctx:          contextWithRoute(stream.Context(), rt),
 	}
 
-	serve := func() error {
-		return s.transparentHandle(nil, streamWithRoute)
-	}
-
-	var (
-		serveErr    error
-		statusLabel = codes.OK.String()
-	)
-
-	runWithLog := func() {
-		if rt.log == nil {
-			serveErr, statusLabel = runForwardWithStatus(serve)
-			return
-		}
-		rt.log.Serve(func() ([]any, string, error) {
-			serveErr, statusLabel = runForwardWithStatus(serve)
-			return []any{
-				"app_name", rt.app.Name,
-				"grpc_service", rt.endpoint.Grpc.Service,
-				"grpc_method", rt.endpoint.Grpc.Method,
-				"grpc_path", rt.endpoint.Grpc.Path,
-			}, statusLabel, serveErr
-		})
-	}
-
-	if rt.metrics != nil {
-		rt.metrics.Serve(func() string {
-			runWithLog()
-			return statusLabel
-		})
-	} else {
-		runWithLog()
-	}
-
-	if serveErr == nil {
+	err := rt.handler(nil, streamWithRoute)
+	if err == nil {
 		return nil
 	}
-	if grpcStatus, ok := status.FromError(serveErr); ok {
+	if grpcStatus, ok := status.FromError(err); ok {
 		return grpcStatus.Err()
 	}
 
-	return status.Errorf(codes.Internal, "gateway forward failed: %v", serveErr)
+	return status.Errorf(codes.Internal, "gateway forward failed: %v", err)
 }
 
 func (s *Service) director(ctx context.Context, _ string) (context.Context, gogrpc.ClientConnInterface, error) {
@@ -200,20 +163,6 @@ func (s *Service) getConn(target string) (*gogrpc.ClientConn, error) {
 	}
 
 	return newConn, nil
-}
-
-func runForwardWithStatus(f func() error) (error, string) {
-	err := f()
-	if err == nil {
-		return nil, codes.OK.String()
-	}
-	if st, ok := status.FromError(err); ok {
-		return err, st.Code().String()
-	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		return err, codes.DeadlineExceeded.String()
-	}
-	return err, codes.Internal.String()
 }
 
 func composeRouteKey(appName, method string) string {

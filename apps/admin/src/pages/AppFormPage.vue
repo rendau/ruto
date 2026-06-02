@@ -33,6 +33,7 @@ const form = ref<AppMain>({
     url: "",
     swagger_url: ""
   },
+  grpc_port: 0,
   auth: {
     enabled: true,
     mode: "extend",
@@ -51,6 +52,7 @@ async function load() {
     const item = await getApp(entityId.value);
     form.value = {
       ...item,
+      grpc_port: Number(item.grpc_port || 0),
       auth: normalizeAuth(item.auth)
     };
     if (!form.value.backend.swagger_url.trim()) {
@@ -78,16 +80,20 @@ async function loadJwtKidOptions() {
 async function submit() {
   saving.value = true;
   errorMessage.value = "";
+  const payload: AppMain = {
+    ...form.value,
+    grpc_port: Number(form.value.grpc_port || 0)
+  };
   try {
     if (isEdit.value) {
-      await updateApp(form.value);
+      await updateApp(payload);
       await appsStore.loadMenuApps();
       notifySuccess("Application updated");
-      await router.push({ name: "app-details", params: { id: form.value.id } });
+      await router.push({ name: "app-details", params: { id: payload.id } });
       return;
     }
 
-    const created = await createApp(form.value);
+    const created = await createApp(payload);
     await appsStore.loadMenuApps();
     notifySuccess("Application created");
     await router.push({ name: "app-details", params: { id: created.id } });
@@ -215,6 +221,10 @@ onBeforeUnmount(() => {
         />
         <span v-if="discoveringSwagger" class="inline-spinner" role="status" aria-label="Searching swagger URL" />
       </div>
+    </label>
+    <label class="field compact">
+      <span>gRPC Port</span>
+      <input v-model.number="form.grpc_port" type="number" min="0" max="65535" placeholder="0" />
     </label>
     <div class="field">
       <span>Auth</span>
