@@ -223,8 +223,7 @@ func shouldRetryOnErr(ctx context.Context, err error) bool {
 	if ctx.Err() != nil {
 		return false
 	}
-	var netErr net.Error
-	if errors.As(err, &netErr) {
+	if _, ok := errors.AsType[net.Error](err); ok {
 		return true
 	}
 	return true

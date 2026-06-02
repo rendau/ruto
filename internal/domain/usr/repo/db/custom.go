@@ -1,8 +1,10 @@
 package db
 
-import "strings"
+import (
+	"strings"
 
-import domainModel "github.com/rendau/ruto/internal/domain/usr/model"
+	domainModel "github.com/rendau/ruto/internal/domain/usr/model"
+)
 
 var (
 	allowedSortFields = map[string]string{

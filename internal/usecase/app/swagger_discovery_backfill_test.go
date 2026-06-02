@@ -77,8 +77,7 @@ func TestUsecase_BackfillSwaggerURLs(t *testing.T) {
 			}, 3, nil
 		},
 		update: func(_ context.Context, _ string, obj *appModel.App) error {
-			clone := *obj
-			updates = append(updates, &clone)
+			updates = append(updates, new(*obj))
 			return nil
 		},
 	}

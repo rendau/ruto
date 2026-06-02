@@ -40,7 +40,7 @@ func (m *Upsert) ReturningColumnMap() map[string]any {
 
 func (m *Upsert) UpdateColumnMap() map[string]any {
 	result := m.CreateColumnMap()
-	for k, _ := range m.PKColumnMap() {
+	for k := range m.PKColumnMap() {
 		delete(result, k)
 	}
 	return result
