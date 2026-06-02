@@ -587,6 +587,30 @@ h3 {
   margin-bottom: 14px;
 }
 
+.app-details-top-actions {
+  justify-content: flex-start;
+}
+
+.app-details-header-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.app-details-page-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-details-status-badge {
+  text-transform: lowercase;
+}
+
 .stack {
   display: grid;
   gap: 12px;

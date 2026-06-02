@@ -731,7 +731,13 @@ onBeforeRouteLeave((to) => {
 </script>
 
 <template>
-  <div class="actions page-top-actions">
+  <div class="actions page-top-actions app-details-top-actions">
+    <div v-if="app" class="app-details-header-meta">
+      <div class="app-details-page-title">{{ app.name }}</div>
+      <span class="status-chip app-details-status-badge" :class="{ inactive: !app.active }">
+        {{ app.active ? "active" : "inactive" }}
+      </span>
+    </div>
     <button
       v-if="app"
       :class="app.active ? 'danger-button' : 'primary-button'"
@@ -765,10 +771,6 @@ onBeforeRouteLeave((to) => {
 
   <template v-else-if="app">
     <section class="summary-grid">
-      <div>
-        <span class="label">Name</span>
-        <strong>{{ app.name }}</strong>
-      </div>
       <div>
         <span class="label">Path Prefix</span>
         <strong>{{ app.path_prefix }}</strong>
