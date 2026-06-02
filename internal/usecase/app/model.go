@@ -9,3 +9,9 @@ type SwaggerEndpointsDiff struct {
 	Unregistered      []SwaggerEndpoint
 	RegisteredInvalid []SwaggerEndpoint
 }
+
+type GrpcReflectionEndpoint struct {
+	Service string
+	Method  string
+	Path    string
+}

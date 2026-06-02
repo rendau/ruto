@@ -8,6 +8,7 @@ import (
 	"github.com/rendau/ruto/internal/domain/app/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	"github.com/rendau/ruto/internal/service/grpcreflect"
 
 	"github.com/rendau/ruto/internal/errs"
 )
@@ -154,6 +155,42 @@ func (u *Usecase) GetSwaggerEndpointsDiff(ctx context.Context, id string) (*Swag
 	}
 
 	return buildSwaggerEndpointsDiff(swaggerEndpoints, filteredEndpoints), nil
+}
+
+func (u *Usecase) GetGrpcReflectionEndpoints(ctx context.Context, id string) ([]GrpcReflectionEndpoint, error) {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return nil, errs.NotAuthorized
+	}
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, errs.IdRequired
+	}
+
+	appObj, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return nil, fmt.Errorf("svc.Get: %w", err)
+	}
+
+	address := appObj.GrpcAddress()
+	if address == "" {
+		return []GrpcReflectionEndpoint{}, nil
+	}
+
+	items, err := grpcreflect.LoadEndpoints(ctx, address)
+	if err != nil {
+		return nil, fmt.Errorf("grpc reflection: %w", err)
+	}
+
+	result := make([]GrpcReflectionEndpoint, 0, len(items))
+	for _, item := range items {
+		result = append(result, GrpcReflectionEndpoint{
+			Service: item.Service,
+			Method:  item.Method,
+			Path:    item.Path,
+		})
+	}
+	return result, nil
 }
 
 func (u *Usecase) validateEdit(ctx context.Context, obj *model.App, selfID string) error {

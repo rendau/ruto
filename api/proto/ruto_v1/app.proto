@@ -28,6 +28,9 @@ service App {
   rpc GetSwaggerEndpointsDiff(AppGetReq) returns (AppSwaggerEndpointsDiffRep) {
     option (google.api.http) = { get: "/app/{id}/swagger/endpoints-diff" };
   };
+  rpc GetGrpcReflectionEndpoints(AppGetReq) returns (AppGrpcReflectionEndpointsRep) {
+    option (google.api.http) = { get: "/app/{id}/grpc/reflection/endpoints" };
+  };
   rpc GetSwaggerUrlByBackendUrl(AppGetSwaggerUrlByBackendUrlReq) returns (AppGetSwaggerUrlByBackendUrlRep) {
     option (google.api.http) = { get: "/app/swagger/url/by-backend-url" };
   };
@@ -74,6 +77,16 @@ message AppSwaggerEndpoint {
 message AppSwaggerEndpointsDiffRep {
   repeated AppSwaggerEndpoint unregistered = 1;
   repeated AppSwaggerEndpoint registered_invalid = 2;
+}
+
+message AppGrpcReflectionEndpoint {
+  string service = 1;
+  string method = 2;
+  string path = 3;
+}
+
+message AppGrpcReflectionEndpointsRep {
+  repeated AppGrpcReflectionEndpoint results = 1;
 }
 
 message AppGetSwaggerUrlByBackendUrlReq {

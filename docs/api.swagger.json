@@ -265,6 +265,36 @@
         ]
       }
     },
+    "/app/{id}/grpc/reflection/endpoints": {
+      "get": {
+        "operationId": "App_GetGrpcReflectionEndpoints",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1AppGrpcReflectionEndpointsRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "App"
+        ]
+      }
+    },
     "/app/{id}/swagger/endpoints-diff": {
       "get": {
         "operationId": "App_GetSwaggerEndpointsDiff",
@@ -1099,6 +1129,32 @@
       "properties": {
         "swagger_url": {
           "type": "string"
+        }
+      }
+    },
+    "ruto_v1AppGrpcReflectionEndpoint": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "ruto_v1AppGrpcReflectionEndpointsRep": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1AppGrpcReflectionEndpoint"
+          }
         }
       }
     },

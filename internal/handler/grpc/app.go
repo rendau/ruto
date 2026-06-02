@@ -76,6 +76,14 @@ func (h *App) GetSwaggerEndpointsDiff(ctx context.Context, req *ruto_v1.AppGetRe
 	return dto.EncodeSwaggerEndpointDiff(rep), nil
 }
 
+func (h *App) GetGrpcReflectionEndpoints(ctx context.Context, req *ruto_v1.AppGetReq) (*ruto_v1.AppGrpcReflectionEndpointsRep, error) {
+	items, err := h.usecase.GetGrpcReflectionEndpoints(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeGrpcReflectionEndpoints(items), nil
+}
+
 func (h *App) GetSwaggerUrlByBackendUrl(
 	ctx context.Context,
 	req *ruto_v1.AppGetSwaggerUrlByBackendUrlReq,

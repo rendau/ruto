@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createEndpoint, getApp, getEndpoint, getRoot, getRootJwtKidsByUrls, updateEndpoint } from "../lib/api";
+import { createEndpoint, getApp, getAppGrpcReflectionEndpoints, getEndpoint, getRoot, getRootJwtKidsByUrls, updateEndpoint } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
 import { normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
-import type { EndpointMain, EndpointType } from "../types/api";
+import type { AppGrpcReflectionEndpoint, EndpointMain, EndpointType } from "../types/api";
 
 const route = useRoute();
 const router = useRouter();
@@ -25,6 +25,10 @@ const errorMessage = ref("");
 const appName = ref("");
 const jwtKidOptions = ref<string[]>([]);
 const lastAutoGrpcPath = ref("");
+const grpcReflectionLoading = ref(false);
+const grpcReflectionError = ref("");
+const grpcReflectionOptions = ref<AppGrpcReflectionEndpoint[]>([]);
+const selectedGrpcReflectionPath = ref("");
 
 const form = ref<EndpointMain>({
   id: "",
@@ -53,6 +57,7 @@ const protocolOptions: Array<{ value: EndpointType; label: string }> = [
   { value: "http", label: "HTTP" },
   { value: "grpc", label: "gRPC" }
 ];
+const grpcReflectionAvailable = computed(() => grpcReflectionOptions.value.length > 0);
 
 function normalizeLoadedEndpoint(item: EndpointMain): EndpointMain {
   const endpointType: EndpointType = item.type === "grpc" ? "grpc" : "http";
@@ -86,13 +91,40 @@ function applyPrefillFromQuery() {
 async function loadAppName() {
   if (!form.value.app_id) {
     appName.value = "";
+    grpcReflectionOptions.value = [];
     return;
   }
   try {
     const app = await getApp(form.value.app_id);
     appName.value = app.name;
+    if (Number(app.grpc_port || 0) > 0) {
+      await loadGrpcReflectionOptions();
+    } else {
+      grpcReflectionOptions.value = [];
+      grpcReflectionError.value = "";
+    }
   } catch {
     appName.value = "";
+    grpcReflectionOptions.value = [];
+  }
+}
+
+async function loadGrpcReflectionOptions() {
+  if (!form.value.app_id) {
+    grpcReflectionOptions.value = [];
+    return;
+  }
+  grpcReflectionLoading.value = true;
+  grpcReflectionError.value = "";
+  try {
+    const rep = await getAppGrpcReflectionEndpoints(form.value.app_id);
+    grpcReflectionOptions.value = rep.results || [];
+    syncSelectedGrpcReflectionPath();
+  } catch (error) {
+    grpcReflectionOptions.value = [];
+    grpcReflectionError.value = error instanceof Error ? error.message : "gRPC reflection unavailable";
+  } finally {
+    grpcReflectionLoading.value = false;
   }
 }
 
@@ -138,6 +170,28 @@ function normalizeGrpcPath(service: string, method: string, path: string): strin
     return "";
   }
   return `/${cleanService}/${cleanMethod}`;
+}
+
+function grpcReflectionOptionLabel(option: AppGrpcReflectionEndpoint): string {
+  return `${option.service}/${option.method}`;
+}
+
+function syncSelectedGrpcReflectionPath() {
+  const currentPath = normalizeGrpcPath(form.value.grpc.service, form.value.grpc.method, form.value.grpc.path);
+  const matched = grpcReflectionOptions.value.find((option) => option.path === currentPath);
+  selectedGrpcReflectionPath.value = matched?.path || "";
+}
+
+function applyGrpcReflectionOption(path: string) {
+  const selected = grpcReflectionOptions.value.find((option) => option.path === path);
+  if (!selected) {
+    return;
+  }
+  form.value.grpc.service = selected.service;
+  form.value.grpc.method = selected.method;
+  form.value.grpc.path = selected.path;
+  lastAutoGrpcPath.value = selected.path;
+  selectedGrpcReflectionPath.value = selected.path;
 }
 
 function buildPayload(): EndpointMain {
@@ -213,6 +267,16 @@ watch(
     const nextPath = normalizeGrpcPath(form.value.grpc.service, form.value.grpc.method, "");
     form.value.grpc.path = nextPath;
     lastAutoGrpcPath.value = nextPath;
+    syncSelectedGrpcReflectionPath();
+  }
+);
+
+watch(
+  () => form.value.grpc.path,
+  () => {
+    if (form.value.type === "grpc") {
+      syncSelectedGrpcReflectionPath();
+    }
   }
 );
 
@@ -271,6 +335,27 @@ onMounted(() => {
     </template>
 
     <template v-else>
+      <div class="field">
+        <span>Discovered gRPC Method</span>
+        <div class="grpc-reflection-row">
+          <select
+            v-model="selectedGrpcReflectionPath"
+            :disabled="grpcReflectionLoading || !grpcReflectionAvailable"
+            @change="applyGrpcReflectionOption(selectedGrpcReflectionPath)"
+          >
+            <option value="">
+              {{ grpcReflectionLoading ? "Loading reflection..." : grpcReflectionAvailable ? "Select method" : "No reflection methods" }}
+            </option>
+            <option v-for="option in grpcReflectionOptions" :key="option.path" :value="option.path">
+              {{ grpcReflectionOptionLabel(option) }}
+            </option>
+          </select>
+          <button class="secondary-button" type="button" :disabled="grpcReflectionLoading" @click="loadGrpcReflectionOptions">
+            {{ grpcReflectionLoading ? "Loading..." : "Refresh" }}
+          </button>
+        </div>
+        <span v-if="grpcReflectionError" class="muted">{{ grpcReflectionError }}</span>
+      </div>
       <label class="field">
         <span>gRPC Service</span>
         <input v-model="form.grpc.service" placeholder="package.Service" required />

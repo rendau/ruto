@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"github.com/samber/lo"
+
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
 	"github.com/rendau/ruto/internal/domain/app/model"
@@ -68,12 +70,22 @@ func EncodeSwaggerEndpointDiff(x *usecaseApp.SwaggerEndpointsDiff) *ruto_v1.AppS
 }
 
 func loMapSwaggerEndpoints(items []usecaseApp.SwaggerEndpoint) []*ruto_v1.AppSwaggerEndpoint {
-	result := make([]*ruto_v1.AppSwaggerEndpoint, 0, len(items))
-	for _, item := range items {
-		result = append(result, &ruto_v1.AppSwaggerEndpoint{
+	return lo.Map(items, func(item usecaseApp.SwaggerEndpoint, _ int) *ruto_v1.AppSwaggerEndpoint {
+		return &ruto_v1.AppSwaggerEndpoint{
 			Method: item.Method,
 			Path:   item.Path,
-		})
+		}
+	})
+}
+
+func EncodeGrpcReflectionEndpoints(items []usecaseApp.GrpcReflectionEndpoint) *ruto_v1.AppGrpcReflectionEndpointsRep {
+	return &ruto_v1.AppGrpcReflectionEndpointsRep{
+		Results: lo.Map(items, func(item usecaseApp.GrpcReflectionEndpoint, _ int) *ruto_v1.AppGrpcReflectionEndpoint {
+			return &ruto_v1.AppGrpcReflectionEndpoint{
+				Service: item.Service,
+				Method:  item.Method,
+				Path:    item.Path,
+			}
+		}),
 	}
-	return result
 }

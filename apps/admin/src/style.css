@@ -637,6 +637,20 @@ h3 {
   border-radius: 8px;
 }
 
+.grpc-reflection-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grpc-reflection-row select {
+  min-width: 0;
+}
+
+.grpc-reflection-row .secondary-button {
+  flex: 0 0 auto;
+}
+
 .check {
   display: flex;
   align-items: center;
@@ -2287,6 +2301,11 @@ h3 {
 
   .endpoints-filter-select {
     flex: 1 1 100%;
+  }
+
+  .grpc-reflection-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .auth-method-card-head,

@@ -1,5 +1,6 @@
 import type {
   AppCreateRep,
+  AppGrpcReflectionEndpointsRep,
   AppListRep,
   AppMain,
   AppGetSwaggerUrlByBackendUrlRep,
@@ -220,6 +221,10 @@ export function deleteApp(id: string): Promise<void> {
 
 export function getAppSwaggerEndpointsDiff(id: string): Promise<AppSwaggerEndpointsDiffRep> {
   return apiFetch<AppSwaggerEndpointsDiffRep>(`/app/${id}/swagger/endpoints-diff`);
+}
+
+export function getAppGrpcReflectionEndpoints(id: string): Promise<AppGrpcReflectionEndpointsRep> {
+  return apiFetch<AppGrpcReflectionEndpointsRep>(`/app/${id}/grpc/reflection/endpoints`);
 }
 
 export function getAppSwaggerUrlByBackendUrl(req: AppGetSwaggerUrlByBackendUrlReq): Promise<AppGetSwaggerUrlByBackendUrlRep> {

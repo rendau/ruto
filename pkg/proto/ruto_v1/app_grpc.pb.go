@@ -20,13 +20,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	App_List_FullMethodName                      = "/ruto_v1.App/List"
-	App_Get_FullMethodName                       = "/ruto_v1.App/Get"
-	App_Create_FullMethodName                    = "/ruto_v1.App/Create"
-	App_Update_FullMethodName                    = "/ruto_v1.App/Update"
-	App_Delete_FullMethodName                    = "/ruto_v1.App/Delete"
-	App_GetSwaggerEndpointsDiff_FullMethodName   = "/ruto_v1.App/GetSwaggerEndpointsDiff"
-	App_GetSwaggerUrlByBackendUrl_FullMethodName = "/ruto_v1.App/GetSwaggerUrlByBackendUrl"
+	App_List_FullMethodName                       = "/ruto_v1.App/List"
+	App_Get_FullMethodName                        = "/ruto_v1.App/Get"
+	App_Create_FullMethodName                     = "/ruto_v1.App/Create"
+	App_Update_FullMethodName                     = "/ruto_v1.App/Update"
+	App_Delete_FullMethodName                     = "/ruto_v1.App/Delete"
+	App_GetSwaggerEndpointsDiff_FullMethodName    = "/ruto_v1.App/GetSwaggerEndpointsDiff"
+	App_GetGrpcReflectionEndpoints_FullMethodName = "/ruto_v1.App/GetGrpcReflectionEndpoints"
+	App_GetSwaggerUrlByBackendUrl_FullMethodName  = "/ruto_v1.App/GetSwaggerUrlByBackendUrl"
 )
 
 // AppClient is the client API for App service.
@@ -39,6 +40,7 @@ type AppClient interface {
 	Update(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetSwaggerEndpointsDiff(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppSwaggerEndpointsDiffRep, error)
+	GetGrpcReflectionEndpoints(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppGrpcReflectionEndpointsRep, error)
 	GetSwaggerUrlByBackendUrl(ctx context.Context, in *AppGetSwaggerUrlByBackendUrlReq, opts ...grpc.CallOption) (*AppGetSwaggerUrlByBackendUrlRep, error)
 }
 
@@ -110,6 +112,16 @@ func (c *appClient) GetSwaggerEndpointsDiff(ctx context.Context, in *AppGetReq, 
 	return out, nil
 }
 
+func (c *appClient) GetGrpcReflectionEndpoints(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppGrpcReflectionEndpointsRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AppGrpcReflectionEndpointsRep)
+	err := c.cc.Invoke(ctx, App_GetGrpcReflectionEndpoints_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *appClient) GetSwaggerUrlByBackendUrl(ctx context.Context, in *AppGetSwaggerUrlByBackendUrlReq, opts ...grpc.CallOption) (*AppGetSwaggerUrlByBackendUrlRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AppGetSwaggerUrlByBackendUrlRep)
@@ -130,6 +142,7 @@ type AppServer interface {
 	Update(context.Context, *AppMain) (*emptypb.Empty, error)
 	Delete(context.Context, *AppGetReq) (*emptypb.Empty, error)
 	GetSwaggerEndpointsDiff(context.Context, *AppGetReq) (*AppSwaggerEndpointsDiffRep, error)
+	GetGrpcReflectionEndpoints(context.Context, *AppGetReq) (*AppGrpcReflectionEndpointsRep, error)
 	GetSwaggerUrlByBackendUrl(context.Context, *AppGetSwaggerUrlByBackendUrlReq) (*AppGetSwaggerUrlByBackendUrlRep, error)
 	mustEmbedUnimplementedAppServer()
 }
@@ -158,6 +171,9 @@ func (UnimplementedAppServer) Delete(context.Context, *AppGetReq) (*emptypb.Empt
 }
 func (UnimplementedAppServer) GetSwaggerEndpointsDiff(context.Context, *AppGetReq) (*AppSwaggerEndpointsDiffRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSwaggerEndpointsDiff not implemented")
+}
+func (UnimplementedAppServer) GetGrpcReflectionEndpoints(context.Context, *AppGetReq) (*AppGrpcReflectionEndpointsRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGrpcReflectionEndpoints not implemented")
 }
 func (UnimplementedAppServer) GetSwaggerUrlByBackendUrl(context.Context, *AppGetSwaggerUrlByBackendUrlReq) (*AppGetSwaggerUrlByBackendUrlRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSwaggerUrlByBackendUrl not implemented")
@@ -291,6 +307,24 @@ func _App_GetSwaggerEndpointsDiff_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _App_GetGrpcReflectionEndpoints_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AppGetReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AppServer).GetGrpcReflectionEndpoints(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: App_GetGrpcReflectionEndpoints_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AppServer).GetGrpcReflectionEndpoints(ctx, req.(*AppGetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _App_GetSwaggerUrlByBackendUrl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AppGetSwaggerUrlByBackendUrlReq)
 	if err := dec(in); err != nil {
@@ -339,6 +373,10 @@ var App_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSwaggerEndpointsDiff",
 			Handler:    _App_GetSwaggerEndpointsDiff_Handler,
+		},
+		{
+			MethodName: "GetGrpcReflectionEndpoints",
+			Handler:    _App_GetGrpcReflectionEndpoints_Handler,
 		},
 		{
 			MethodName: "GetSwaggerUrlByBackendUrl",

@@ -25,6 +25,7 @@ import (
 type Service struct {
 	conns             sync.Map
 	routes            map[string]*route
+	reflectionRoutes  map[string]*reflectionRoute
 	transparentHandle gogrpc.StreamHandler
 }
 
@@ -37,6 +38,7 @@ func New(snapshot *domRootModel.Root, accessLog bool) (*Service, error) {
 		return nil, fmt.Errorf("build routes: %w", err)
 	}
 	service.routes = routes
+	service.reflectionRoutes = service.buildReflectionRoutes(snapshot)
 
 	return service, nil
 }

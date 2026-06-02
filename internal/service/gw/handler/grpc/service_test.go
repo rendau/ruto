@@ -15,6 +15,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	grpcTesting "google.golang.org/grpc/interop/grpc_testing"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
+	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	"google.golang.org/grpc/status"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
@@ -182,6 +184,114 @@ func TestProxy_DuplicateMethodResolvedByAppName(t *testing.T) {
 	require.Equal(t, []byte("backend-2:ping"), rep2.GetPayload().GetBody())
 }
 
+func TestReflection_ListServicesFilteredByRegisteredEndpoints(t *testing.T) {
+	t.Parallel()
+
+	backendAddr, backendStop := runBackendTestService(t)
+	defer backendStop()
+
+	svc, err := New(buildSnapshotForBackend(t, backendAddr), false)
+	require.NoError(t, err)
+
+	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
+	defer gatewayStop()
+
+	conn, err := gogrpc.NewClient(gatewayAddr, gogrpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
+
+	stream, err := reflectionv1alpha.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
+	require.NoError(t, err)
+	require.NoError(t, stream.Send(&reflectionv1alpha.ServerReflectionRequest{
+		MessageRequest: &reflectionv1alpha.ServerReflectionRequest_ListServices{
+			ListServices: "",
+		},
+	}))
+	require.NoError(t, stream.CloseSend())
+
+	resp, err := stream.Recv()
+	require.NoError(t, err)
+	require.NotNil(t, resp.GetListServicesResponse())
+	require.Equal(t, []*reflectionv1alpha.ServiceResponse{
+		{Name: "grpc.testing.TestService"},
+	}, resp.GetListServicesResponse().GetService())
+}
+
+func TestReflection_FileContainingRegisteredSymbolProxiedToBackend(t *testing.T) {
+	t.Parallel()
+
+	backendAddr, backendStop := runBackendTestService(t)
+	defer backendStop()
+
+	svc, err := New(buildSnapshotForBackend(t, backendAddr), false)
+	require.NoError(t, err)
+
+	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
+	defer gatewayStop()
+
+	conn, err := gogrpc.NewClient(gatewayAddr, gogrpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
+
+	stream, err := reflectionv1alpha.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
+	require.NoError(t, err)
+	require.NoError(t, stream.Send(&reflectionv1alpha.ServerReflectionRequest{
+		MessageRequest: &reflectionv1alpha.ServerReflectionRequest_FileContainingSymbol{
+			FileContainingSymbol: "grpc.testing.TestService",
+		},
+	}))
+	require.NoError(t, stream.CloseSend())
+
+	resp, err := stream.Recv()
+	require.NoError(t, err)
+	require.Nil(t, resp.GetErrorResponse())
+	require.NotNil(t, resp.GetFileDescriptorResponse())
+	require.NotEmpty(t, resp.GetFileDescriptorResponse().GetFileDescriptorProto())
+}
+
+func TestReflection_FileContainingUnregisteredSymbolRejected(t *testing.T) {
+	t.Parallel()
+
+	backendAddr, backendStop := runBackendTestService(t)
+	defer backendStop()
+
+	svc, err := New(buildSnapshotForBackend(t, backendAddr), false)
+	require.NoError(t, err)
+
+	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
+	defer gatewayStop()
+
+	conn, err := gogrpc.NewClient(gatewayAddr, gogrpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
+
+	stream, err := reflectionv1alpha.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
+	require.NoError(t, err)
+	require.NoError(t, stream.Send(&reflectionv1alpha.ServerReflectionRequest{
+		MessageRequest: &reflectionv1alpha.ServerReflectionRequest_FileContainingSymbol{
+			FileContainingSymbol: "grpc.testing.UnregisteredService",
+		},
+	}))
+	require.NoError(t, stream.CloseSend())
+
+	resp, err := stream.Recv()
+	require.NoError(t, err)
+	require.NotNil(t, resp.GetErrorResponse())
+	require.Equal(t, int32(codes.NotFound), resp.GetErrorResponse().GetErrorCode())
+}
+
 type testBackendServer struct {
 	grpcTesting.UnimplementedTestServiceServer
 	prefix string
@@ -236,6 +346,7 @@ func runBackendTestServiceWithPrefix(t *testing.T, prefix string) (string, func(
 
 	server := gogrpc.NewServer()
 	grpcTesting.RegisterTestServiceServer(server, &testBackendServer{prefix: prefix})
+	reflection.Register(server)
 
 	go func() {
 		_ = server.Serve(lis)

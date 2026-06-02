@@ -117,6 +117,16 @@ export interface AppSwaggerEndpointsDiffRep {
   registered_invalid: AppSwaggerEndpoint[];
 }
 
+export interface AppGrpcReflectionEndpoint {
+  service: string;
+  method: string;
+  path: string;
+}
+
+export interface AppGrpcReflectionEndpointsRep {
+  results: AppGrpcReflectionEndpoint[];
+}
+
 export interface AppGetSwaggerUrlByBackendUrlReq {
   backend_url: string;
 }
