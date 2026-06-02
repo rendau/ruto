@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -18,6 +19,8 @@ import (
 	"google.golang.org/grpc/reflection"
 	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
@@ -251,6 +254,76 @@ func TestReflection_FileContainingRegisteredSymbolProxiedToBackend(t *testing.T)
 	require.NotEmpty(t, resp.GetFileDescriptorResponse().GetFileDescriptorProto())
 }
 
+func TestReflection_FileDescriptorMethodsFilteredByRegisteredEndpoints(t *testing.T) {
+
+	backendAddr, backendStop := runBackendTestService(t)
+	defer backendStop()
+
+	svc, err := New(buildSnapshotForBackendUnaryOnly(t, backendAddr), false)
+	require.NoError(t, err)
+
+	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
+	defer gatewayStop()
+
+	conn, err := gogrpc.NewClient(gatewayAddr, gogrpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
+
+	stream, err := reflectionv1.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
+	require.NoError(t, err)
+	require.NoError(t, stream.Send(&reflectionv1.ServerReflectionRequest{
+		MessageRequest: &reflectionv1.ServerReflectionRequest_FileContainingSymbol{
+			FileContainingSymbol: "grpc.testing.TestService",
+		},
+	}))
+	require.NoError(t, stream.CloseSend())
+
+	resp, err := stream.Recv()
+	require.NoError(t, err)
+	require.Nil(t, resp.GetErrorResponse())
+
+	methods := reflectionResponseServiceMethods(t, resp, "grpc.testing.TestService")
+	require.Equal(t, []string{"UnaryCall"}, methods)
+}
+
+func TestReflection_FileContainingUnregisteredMethodRejected(t *testing.T) {
+
+	backendAddr, backendStop := runBackendTestService(t)
+	defer backendStop()
+
+	svc, err := New(buildSnapshotForBackendUnaryOnly(t, backendAddr), false)
+	require.NoError(t, err)
+
+	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
+	defer gatewayStop()
+
+	conn, err := gogrpc.NewClient(gatewayAddr, gogrpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
+
+	stream, err := reflectionv1.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
+	require.NoError(t, err)
+	require.NoError(t, stream.Send(&reflectionv1.ServerReflectionRequest{
+		MessageRequest: &reflectionv1.ServerReflectionRequest_FileContainingSymbol{
+			FileContainingSymbol: "grpc.testing.TestService.FullDuplexCall",
+		},
+	}))
+	require.NoError(t, stream.CloseSend())
+
+	resp, err := stream.Recv()
+	require.NoError(t, err)
+	require.NotNil(t, resp.GetErrorResponse())
+	require.Equal(t, int32(codes.NotFound), resp.GetErrorResponse().GetErrorCode())
+}
+
 func TestReflection_FileContainingUnregisteredSymbolRejected(t *testing.T) {
 
 	backendAddr, backendStop := runBackendTestService(t)
@@ -283,6 +356,34 @@ func TestReflection_FileContainingUnregisteredSymbolRejected(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp.GetErrorResponse())
 	require.Equal(t, int32(codes.NotFound), resp.GetErrorResponse().GetErrorCode())
+}
+
+func reflectionResponseServiceMethods(
+	t *testing.T,
+	resp *reflectionv1.ServerReflectionResponse,
+	serviceName string,
+) []string {
+	t.Helper()
+
+	fileResp := resp.GetFileDescriptorResponse()
+	require.NotNil(t, fileResp)
+
+	methods := make([]string, 0)
+	for _, raw := range fileResp.GetFileDescriptorProto() {
+		file := &descriptorpb.FileDescriptorProto{}
+		require.NoError(t, proto.Unmarshal(raw, file))
+
+		for _, svc := range file.GetService() {
+			if joinProtoName(file.GetPackage(), svc.GetName()) != serviceName {
+				continue
+			}
+			for _, method := range svc.GetMethod() {
+				methods = append(methods, method.GetName())
+			}
+		}
+	}
+	slices.Sort(methods)
+	return methods
 }
 
 type testBackendServer struct {
@@ -465,6 +566,15 @@ func buildSnapshotForBackend(t *testing.T, backendAddr string) *rootModel.Root {
 		},
 	}
 
+	require.NoError(t, snapshot.Normalize())
+	return snapshot
+}
+
+func buildSnapshotForBackendUnaryOnly(t *testing.T, backendAddr string) *rootModel.Root {
+	t.Helper()
+
+	snapshot := buildSnapshotForBackend(t, backendAddr)
+	snapshot.Apps[0].Endpoints = snapshot.Apps[0].Endpoints[:1]
 	require.NoError(t, snapshot.Normalize())
 	return snapshot
 }

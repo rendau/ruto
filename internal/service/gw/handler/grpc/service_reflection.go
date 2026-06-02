@@ -25,12 +25,17 @@ func (s *Service) buildReflectionRoutes(snapshot *domRootModel.Root) map[string]
 		}
 
 		services := make(map[string]struct{})
+		methods := make(map[string]map[string]struct{})
 		paths := make(map[string]struct{})
 		for _, ep := range app.ActiveEndpoints() {
 			if ep.Type != domEndpointModel.TypeGRPC {
 				continue
 			}
 			services[ep.Grpc.Service] = struct{}{}
+			if _, ok := methods[ep.Grpc.Service]; !ok {
+				methods[ep.Grpc.Service] = make(map[string]struct{})
+			}
+			methods[ep.Grpc.Service][ep.Grpc.Method] = struct{}{}
 			paths[ep.Grpc.Path] = struct{}{}
 		}
 		if len(services) == 0 {
@@ -40,6 +45,7 @@ func (s *Service) buildReflectionRoutes(snapshot *domRootModel.Root) map[string]
 		routes[strings.ToLower(app.Name)] = &reflectionRoute{
 			targetGrpcAddress: targetGrpcAddress,
 			services:          services,
+			methods:           methods,
 			paths:             paths,
 		}
 	}
@@ -96,6 +102,9 @@ func (s *Service) handleReflectionRequest(
 	resp, err := grpcreflect.SendSingleRequest(ctx, rt.targetGrpcAddress, req)
 	if err != nil {
 		return reflectionErrorResponse(req, codes.Unavailable, err.Error())
+	}
+	if err = rt.filterFileDescriptorResponse(resp.GetFileDescriptorResponse()); err != nil {
+		return reflectionErrorResponse(req, codes.Internal, err.Error())
 	}
 	return resp
 }
