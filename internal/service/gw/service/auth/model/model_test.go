@@ -24,12 +24,35 @@ func TestAuthRequestExtractBasic(t *testing.T) {
 	require.Equal(t, "secret", password)
 }
 
+func TestAuthRequestExtractTokenFromLowercaseHeader(t *testing.T) {
+	req := &AuthRequest{
+		Headers: http.Header{
+			"authorization": {"Bearer token"},
+		},
+	}
+
+	require.Equal(t, "token", req.ExtractToken())
+}
+
 func TestAuthRequestExtractAPIKey(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("X-Api-Key", "from-header")
 
 	req := &AuthRequest{
 		Headers: headers,
+		QueryParams: url.Values{
+			"x-api-key": {"from-query"},
+		},
+	}
+
+	require.Equal(t, "from-header", req.ExtractAPIKey("X-Api-Key"))
+}
+
+func TestAuthRequestExtractAPIKeyFromLowercaseHeader(t *testing.T) {
+	req := &AuthRequest{
+		Headers: http.Header{
+			"x-api-key": {"from-header"},
+		},
 		QueryParams: url.Values{
 			"x-api-key": {"from-query"},
 		},

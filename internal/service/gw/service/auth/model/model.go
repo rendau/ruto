@@ -7,6 +7,8 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 type AuthRequest struct {
@@ -228,7 +230,12 @@ func (r *AuthRequest) getHeaderValue(key string) string {
 		return ""
 	}
 
-	return strings.TrimSpace(r.Headers.Get(key))
+	val := strings.TrimSpace(r.Headers.Get(key))
+	if val == "" {
+		val = strings.TrimSpace(lo.FirstOrEmpty(r.Headers[strings.ToLower(key)]))
+	}
+
+	return val
 }
 
 func (r *AuthRequest) getQueryParamValue(key string) string {
