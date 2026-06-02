@@ -67,7 +67,7 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 			if r.Context().Err() != nil {
 				return
 			}
-			slog.Error("proxy error "+r.Method+" "+r.URL.Path, "error", err)
+			slog.Error("proxy error "+r.Method+" "+r.URL.Path, "error", err, "app_name", app.Name)
 			w.WriteHeader(http.StatusBadGateway)
 		},
 	}
