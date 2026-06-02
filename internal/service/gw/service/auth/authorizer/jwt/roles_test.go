@@ -24,8 +24,6 @@ func (r requiredRoleStoreT) hasRole(role string) bool {
 }
 
 func TestHasAnyRole(t *testing.T) {
-	t.Skip("temporarily disabled")
-
 	tests := []struct {
 		name          string
 		claims        map[string]any

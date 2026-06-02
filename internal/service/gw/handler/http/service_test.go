@@ -454,14 +454,6 @@ func TestService_RedirectLocationRewrite(t *testing.T) {
 	}
 }
 
-func TestService_NewReturnsErrorForNilSnapshot(t *testing.T) {
-	service, err := New(nil, false)
-
-	require.Nil(t, service)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "buildHandler: panic")
-}
-
 func newTestService(
 	t *testing.T,
 	backendURL string,

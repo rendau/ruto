@@ -298,7 +298,7 @@ type testBackendServer struct {
 }
 
 func (s *testBackendServer) UnaryCall(_ context.Context, req *grpcTesting.SimpleRequest) (*grpcTesting.SimpleResponse, error) {
-	inBody := []byte{}
+	inBody := make([]byte, 0)
 	if req.GetPayload() != nil {
 		inBody = req.GetPayload().GetBody()
 	}
@@ -319,7 +319,7 @@ func (s *testBackendServer) FullDuplexCall(stream gogrpc.BidiStreamingServer[grp
 			return err
 		}
 
-		inBody := []byte{}
+		inBody := make([]byte, 0)
 		if req.GetPayload() != nil {
 			inBody = req.GetPayload().GetBody()
 		}

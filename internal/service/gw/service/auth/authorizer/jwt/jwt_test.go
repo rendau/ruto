@@ -27,8 +27,6 @@ func (s *testJWKGetterT) GetPublicKey(kid string) (*rsa.PublicKey, string) {
 }
 
 func TestAuthorize(t *testing.T) {
-	// t.Skip("temporarily disabled")
-
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	publicKey := privateKey.PublicKey
@@ -206,10 +204,11 @@ func TestAuthorize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			headers := http.Header{}
+			headers.Set("Authorization", tt.token)
+
 			got := New(tt.conf, tt.jwkGetter).Authorize(&model.AuthRequest{
-				Headers: http.Header{
-					"authorization": {tt.token},
-				},
+				Headers: headers,
 			})
 			require.Equal(t, tt.want, got)
 		})

@@ -11,14 +11,12 @@ import (
 )
 
 func TestAuthRequestExtractBasic(t *testing.T) {
-	t.Skip("temporarily disabled")
-
 	token := base64.StdEncoding.EncodeToString([]byte("admin:secret"))
+	headers := http.Header{}
+	headers.Set("Authorization", "Basic "+token)
 
 	req := &AuthRequest{
-		Headers: http.Header{
-			"authorization": {"Basic " + token},
-		},
+		Headers: headers,
 	}
 
 	username, password := req.ExtractBasic()
@@ -27,12 +25,11 @@ func TestAuthRequestExtractBasic(t *testing.T) {
 }
 
 func TestAuthRequestExtractAPIKey(t *testing.T) {
-	t.Skip("temporarily disabled")
+	headers := http.Header{}
+	headers.Set("X-Api-Key", "from-header")
 
 	req := &AuthRequest{
-		Headers: http.Header{
-			"x-api-key": {"from-header"},
-		},
+		Headers: headers,
 		QueryParams: url.Values{
 			"x-api-key": {"from-query"},
 		},
@@ -42,13 +39,12 @@ func TestAuthRequestExtractAPIKey(t *testing.T) {
 }
 
 func TestAuthRequestExtractIPAddrs(t *testing.T) {
-	t.Skip("temporarily disabled")
+	headers := http.Header{}
+	headers.Set("X-Forwarded-For", "10.0.0.1, invalid, 10.0.0.2")
+	headers.Set("X-Real-Ip", "10.0.0.3")
 
 	req := &AuthRequest{
-		Headers: http.Header{
-			"x-forwarded-for": {"10.0.0.1, invalid, 10.0.0.2"},
-			"x-real-ip":       {"10.0.0.3"},
-		},
+		Headers: headers,
 	}
 
 	require.Equal(
