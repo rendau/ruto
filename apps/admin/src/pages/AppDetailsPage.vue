@@ -121,7 +121,7 @@ const filteredEndpoints = computed(() => {
 const endpointGroups = computed(() => {
   const groups = new Map<string, EndpointMain[]>();
   for (const endpoint of filteredEndpoints.value) {
-    const key = firstPathSegment(endpointRoutePath(endpoint));
+    const key = endpointGroupKey(endpoint);
     const current = groups.get(key);
     if (current) {
       current.push(endpoint);
@@ -131,8 +131,9 @@ const endpointGroups = computed(() => {
   }
 
   return Array.from(groups.entries())
-    .map(([segment, items]) => ({
-      segment,
+    .map(([key, items]) => ({
+      key,
+      segment: endpointGroupSegment(items[0], key),
       items: [...items].sort((a, b) => sortEndpoints(a, b))
     }))
     .sort((a, b) => {
@@ -496,11 +497,51 @@ function endpointType(endpoint: EndpointMain): EndpointType {
   return endpoint.type === "grpc" ? "grpc" : "http";
 }
 
+function endpointGroupKey(endpoint: EndpointMain): string {
+  if (endpointType(endpoint) === "grpc") {
+    const service = (endpoint.grpc?.service || "").trim();
+    if (service) {
+      return service;
+    }
+  }
+  return firstPathSegment(endpointRoutePath(endpoint));
+}
+
+function endpointGroupSegment(endpoint: EndpointMain, key: string): string {
+  if (endpointType(endpoint) === "grpc") {
+    const normalized = key.trim().replace(/^\//, "");
+    const methodIndex = normalized.indexOf("/");
+    const service = methodIndex >= 0 ? normalized.slice(0, methodIndex) : normalized;
+    if (!service) {
+      return "/";
+    }
+    const shortIndex = service.lastIndexOf(".");
+    return shortIndex >= 0 ? service.slice(shortIndex + 1) : service;
+  }
+  return key;
+}
+
 function endpointRoutePath(endpoint: EndpointMain): string {
   if (endpointType(endpoint) === "grpc") {
     return normalizedRoutePath(endpoint.grpc?.path || endpoint.path);
   }
   return normalizedRoutePath(endpoint.path);
+}
+
+function endpointDisplayPath(endpoint: EndpointMain): string {
+  if (endpointType(endpoint) === "grpc") {
+    const method = (endpoint.grpc?.method || "").trim();
+    if (method) {
+      return `/${method}`;
+    }
+    const normalized = endpointRoutePath(endpoint);
+    const parts = normalized.split("/").filter(Boolean);
+    if (parts.length === 0) {
+      return normalized;
+    }
+    return `/${parts[parts.length - 1]}`;
+  }
+  return endpointRoutePath(endpoint);
 }
 
 function endpointRouteMethod(endpoint: EndpointMain): string {
@@ -998,7 +1039,7 @@ onBeforeRouteLeave((to) => {
         </tr>
       </tbody>
 
-      <tbody v-for="(group, groupIndex) in endpointGroups" :key="group.segment">
+      <tbody v-for="(group, groupIndex) in endpointGroups" :key="group.key">
         <tr v-if="groupIndex > 0" class="endpoint-group-spacer" aria-hidden="true">
           <td colspan="5"></td>
         </tr>
@@ -1020,7 +1061,7 @@ onBeforeRouteLeave((to) => {
               :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
               :title="endpointRouteTitle(endpoint)"
             >
-              {{ endpointRoutePath(endpoint) }}
+              {{ endpointDisplayPath(endpoint) }}
             </RouterLink>
           </td>
           <td>
@@ -1054,14 +1095,6 @@ onBeforeRouteLeave((to) => {
           <td class="actions">
             <RouterLink
               class="icon-action-button secondary"
-              :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
-              title="View Endpoint"
-              aria-label="View Endpoint"
-            >
-              <span class="icon-action-glyph">◉</span>
-            </RouterLink>
-            <RouterLink
-              class="icon-action-button secondary"
               :to="{ name: 'endpoint-edit', params: { id: endpoint.id } }"
               title="Edit Endpoint"
               aria-label="Edit Endpoint"
@@ -1086,7 +1119,7 @@ onBeforeRouteLeave((to) => {
       <p v-if="endpointGroups.length === 0" class="muted endpoints-mobile-empty">
         {{ hasEndpointFilters ? "No endpoints match filters." : "No endpoints found." }}
       </p>
-      <section v-for="group in endpointGroups" :key="`mobile-${group.segment}`" class="endpoint-mobile-group">
+      <section v-for="group in endpointGroups" :key="`mobile-${group.key}`" class="endpoint-mobile-group">
         <div class="endpoint-group-head">
           <span class="endpoint-group-segment">{{ group.segment }}</span>
           <span class="endpoint-group-count">{{ group.items.length }}</span>
@@ -1104,7 +1137,7 @@ onBeforeRouteLeave((to) => {
               :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
               :title="endpointRouteTitle(endpoint)"
             >
-              {{ endpointRoutePath(endpoint) }}
+              {{ endpointDisplayPath(endpoint) }}
             </RouterLink>
             <div class="endpoint-auth endpoint-mobile-auth">
               <span
@@ -1128,14 +1161,6 @@ onBeforeRouteLeave((to) => {
               </div>
             </div>
             <div class="endpoint-mobile-actions">
-              <RouterLink
-                class="icon-action-button secondary"
-                :to="{ name: 'endpoint-details', params: { id: endpoint.id } }"
-                title="View Endpoint"
-                aria-label="View Endpoint"
-              >
-                <span class="icon-action-glyph">◉</span>
-              </RouterLink>
               <RouterLink
                 class="icon-action-button secondary"
                 :to="{ name: 'endpoint-edit', params: { id: endpoint.id } }"
