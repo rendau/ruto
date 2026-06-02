@@ -2,7 +2,7 @@ package grpc
 
 import (
 	gogrpc "google.golang.org/grpc"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
+	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 )
 
 type Handler interface {
@@ -10,5 +10,5 @@ type Handler interface {
 }
 
 type ReflectionHandler interface {
-	ServerReflectionInfo(reflectionv1alpha.ServerReflection_ServerReflectionInfoServer) error
+	ServerReflectionInfo(reflectionv1.ServerReflection_ServerReflectionInfoServer) error
 }

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"google.golang.org/grpc/codes"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
+	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 )
 
 type reflectionRoute struct {
@@ -14,21 +14,21 @@ type reflectionRoute struct {
 	paths             map[string]struct{}
 }
 
-func (r *reflectionRoute) listServicesResponse() *reflectionv1alpha.ListServiceResponse {
+func (r *reflectionRoute) listServicesResponse() *reflectionv1.ListServiceResponse {
 	names := make([]string, 0, len(r.services))
 	for serviceName := range r.services {
 		names = append(names, serviceName)
 	}
 	sort.Strings(names)
 
-	services := make([]*reflectionv1alpha.ServiceResponse, 0, len(names))
+	services := make([]*reflectionv1.ServiceResponse, 0, len(names))
 	for _, serviceName := range names {
-		services = append(services, &reflectionv1alpha.ServiceResponse{
+		services = append(services, &reflectionv1.ServiceResponse{
 			Name: serviceName,
 		})
 	}
 
-	return &reflectionv1alpha.ListServiceResponse{
+	return &reflectionv1.ListServiceResponse{
 		Service: services,
 	}
 }
@@ -53,19 +53,19 @@ func (r *reflectionRoute) isAllowedSymbol(symbol string) bool {
 }
 
 func reflectionErrorResponse(
-	req *reflectionv1alpha.ServerReflectionRequest,
+	req *reflectionv1.ServerReflectionRequest,
 	code codes.Code,
 	message string,
-) *reflectionv1alpha.ServerReflectionResponse {
+) *reflectionv1.ServerReflectionResponse {
 	validHost := ""
 	if req != nil {
 		validHost = req.GetHost()
 	}
-	return &reflectionv1alpha.ServerReflectionResponse{
+	return &reflectionv1.ServerReflectionResponse{
 		ValidHost:       validHost,
 		OriginalRequest: req,
-		MessageResponse: &reflectionv1alpha.ServerReflectionResponse_ErrorResponse{
-			ErrorResponse: &reflectionv1alpha.ErrorResponse{
+		MessageResponse: &reflectionv1.ServerReflectionResponse_ErrorResponse{
+			ErrorResponse: &reflectionv1.ErrorResponse{
 				ErrorCode:    int32(code),
 				ErrorMessage: message,
 			},

@@ -5,7 +5,7 @@ import (
 
 	gogrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
+	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/grpc/status"
 )
 
@@ -36,7 +36,7 @@ func (s *handlerWrapperT) Handle(srv any, stream gogrpc.ServerStream) error {
 	return holder.h.Handle(srv, stream)
 }
 
-func (s *handlerWrapperT) ServerReflectionInfo(stream reflectionv1alpha.ServerReflection_ServerReflectionInfoServer) error {
+func (s *handlerWrapperT) ServerReflectionInfo(stream reflectionv1.ServerReflection_ServerReflectionInfoServer) error {
 	holder := s.hhStore.Load()
 	handler, ok := holder.h.(ReflectionHandler)
 	if !ok {

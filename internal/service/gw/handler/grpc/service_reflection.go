@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
+	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/grpc/status"
 
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -47,7 +47,7 @@ func (s *Service) buildReflectionRoutes(snapshot *domRootModel.Root) map[string]
 	return routes
 }
 
-func (s *Service) ServerReflectionInfo(stream reflectionv1alpha.ServerReflection_ServerReflectionInfoServer) error {
+func (s *Service) ServerReflectionInfo(stream reflectionv1.ServerReflection_ServerReflectionInfoServer) error {
 	md := metadataFromContext(stream.Context())
 	rt := s.resolveReflectionRoute(md)
 	if rt == nil {
@@ -73,17 +73,17 @@ func (s *Service) ServerReflectionInfo(stream reflectionv1alpha.ServerReflection
 func (s *Service) handleReflectionRequest(
 	ctx context.Context,
 	rt *reflectionRoute,
-	req *reflectionv1alpha.ServerReflectionRequest,
-) *reflectionv1alpha.ServerReflectionResponse {
+	req *reflectionv1.ServerReflectionRequest,
+) *reflectionv1.ServerReflectionResponse {
 	if req == nil {
 		return reflectionErrorResponse(req, codes.InvalidArgument, "request is nil")
 	}
 
-	if _, ok := req.GetMessageRequest().(*reflectionv1alpha.ServerReflectionRequest_ListServices); ok {
-		return &reflectionv1alpha.ServerReflectionResponse{
+	if _, ok := req.GetMessageRequest().(*reflectionv1.ServerReflectionRequest_ListServices); ok {
+		return &reflectionv1.ServerReflectionResponse{
 			ValidHost:       req.GetHost(),
 			OriginalRequest: req,
-			MessageResponse: &reflectionv1alpha.ServerReflectionResponse_ListServicesResponse{
+			MessageResponse: &reflectionv1.ServerReflectionResponse_ListServicesResponse{
 				ListServicesResponse: rt.listServicesResponse(),
 			},
 		}

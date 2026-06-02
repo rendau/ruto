@@ -16,7 +16,7 @@ import (
 	grpcTesting "google.golang.org/grpc/interop/grpc_testing"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
+	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/grpc/status"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
@@ -199,10 +199,10 @@ func TestReflection_ListServicesFilteredByRegisteredEndpoints(t *testing.T) {
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
-	stream, err := reflectionv1alpha.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
+	stream, err := reflectionv1.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
 	require.NoError(t, err)
-	require.NoError(t, stream.Send(&reflectionv1alpha.ServerReflectionRequest{
-		MessageRequest: &reflectionv1alpha.ServerReflectionRequest_ListServices{
+	require.NoError(t, stream.Send(&reflectionv1.ServerReflectionRequest{
+		MessageRequest: &reflectionv1.ServerReflectionRequest_ListServices{
 			ListServices: "",
 		},
 	}))
@@ -211,7 +211,7 @@ func TestReflection_ListServicesFilteredByRegisteredEndpoints(t *testing.T) {
 	resp, err := stream.Recv()
 	require.NoError(t, err)
 	require.NotNil(t, resp.GetListServicesResponse())
-	require.Equal(t, []*reflectionv1alpha.ServiceResponse{
+	require.Equal(t, []*reflectionv1.ServiceResponse{
 		{Name: "grpc.testing.TestService"},
 	}, resp.GetListServicesResponse().GetService())
 }
@@ -235,10 +235,10 @@ func TestReflection_FileContainingRegisteredSymbolProxiedToBackend(t *testing.T)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
-	stream, err := reflectionv1alpha.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
+	stream, err := reflectionv1.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
 	require.NoError(t, err)
-	require.NoError(t, stream.Send(&reflectionv1alpha.ServerReflectionRequest{
-		MessageRequest: &reflectionv1alpha.ServerReflectionRequest_FileContainingSymbol{
+	require.NoError(t, stream.Send(&reflectionv1.ServerReflectionRequest{
+		MessageRequest: &reflectionv1.ServerReflectionRequest_FileContainingSymbol{
 			FileContainingSymbol: "grpc.testing.TestService",
 		},
 	}))
@@ -270,10 +270,10 @@ func TestReflection_FileContainingUnregisteredSymbolRejected(t *testing.T) {
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
-	stream, err := reflectionv1alpha.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
+	stream, err := reflectionv1.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
 	require.NoError(t, err)
-	require.NoError(t, stream.Send(&reflectionv1alpha.ServerReflectionRequest{
-		MessageRequest: &reflectionv1alpha.ServerReflectionRequest_FileContainingSymbol{
+	require.NoError(t, stream.Send(&reflectionv1.ServerReflectionRequest{
+		MessageRequest: &reflectionv1.ServerReflectionRequest_FileContainingSymbol{
 			FileContainingSymbol: "grpc.testing.UnregisteredService",
 		},
 	}))

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	gogrpc "google.golang.org/grpc"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
+	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 )
 
 type Service struct {
@@ -24,7 +24,7 @@ func New(port int) *Service {
 	server := gogrpc.NewServer(
 		gogrpc.UnknownServiceHandler(handlerWr.Handle),
 	)
-	reflectionv1alpha.RegisterServerReflectionServer(server, handlerWr)
+	reflectionv1.RegisterServerReflectionServer(server, handlerWr)
 
 	return &Service{
 		addr:           ":" + strconv.Itoa(port),

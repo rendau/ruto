@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
+	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
@@ -35,7 +35,7 @@ func LoadEndpoints(ctx context.Context, address string) ([]Endpoint, error) {
 	}
 	defer func() { _ = conn.Close() }()
 
-	client := reflectionv1alpha.NewServerReflectionClient(conn)
+	client := reflectionv1.NewServerReflectionClient(conn)
 	services, err := listServices(ctx, client)
 	if err != nil {
 		return nil, err
@@ -86,8 +86,8 @@ func LoadEndpoints(ctx context.Context, address string) ([]Endpoint, error) {
 func SendSingleRequest(
 	ctx context.Context,
 	address string,
-	req *reflectionv1alpha.ServerReflectionRequest,
-) (*reflectionv1alpha.ServerReflectionResponse, error) {
+	req *reflectionv1.ServerReflectionRequest,
+) (*reflectionv1.ServerReflectionResponse, error) {
 	address = strings.TrimSpace(address)
 	if address == "" {
 		return nil, fmt.Errorf("address: empty")
@@ -105,7 +105,7 @@ func SendSingleRequest(
 	}
 	defer func() { _ = conn.Close() }()
 
-	stream, err := reflectionv1alpha.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
+	stream, err := reflectionv1.NewServerReflectionClient(conn).ServerReflectionInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("ServerReflectionInfo: %w", err)
 	}
@@ -123,9 +123,9 @@ func SendSingleRequest(
 	return resp, nil
 }
 
-func listServices(ctx context.Context, client reflectionv1alpha.ServerReflectionClient) ([]string, error) {
-	resp, err := sendClientRequest(ctx, client, &reflectionv1alpha.ServerReflectionRequest{
-		MessageRequest: &reflectionv1alpha.ServerReflectionRequest_ListServices{
+func listServices(ctx context.Context, client reflectionv1.ServerReflectionClient) ([]string, error) {
+	resp, err := sendClientRequest(ctx, client, &reflectionv1.ServerReflectionRequest{
+		MessageRequest: &reflectionv1.ServerReflectionRequest_ListServices{
 			ListServices: "",
 		},
 	})
@@ -150,11 +150,11 @@ func listServices(ctx context.Context, client reflectionv1alpha.ServerReflection
 
 func fileDescriptorsContainingSymbol(
 	ctx context.Context,
-	client reflectionv1alpha.ServerReflectionClient,
+	client reflectionv1.ServerReflectionClient,
 	symbol string,
 ) ([]*descriptorpb.FileDescriptorProto, error) {
-	resp, err := sendClientRequest(ctx, client, &reflectionv1alpha.ServerReflectionRequest{
-		MessageRequest: &reflectionv1alpha.ServerReflectionRequest_FileContainingSymbol{
+	resp, err := sendClientRequest(ctx, client, &reflectionv1.ServerReflectionRequest{
+		MessageRequest: &reflectionv1.ServerReflectionRequest_FileContainingSymbol{
 			FileContainingSymbol: symbol,
 		},
 	})
@@ -179,9 +179,9 @@ func fileDescriptorsContainingSymbol(
 
 func sendClientRequest(
 	ctx context.Context,
-	client reflectionv1alpha.ServerReflectionClient,
-	req *reflectionv1alpha.ServerReflectionRequest,
-) (*reflectionv1alpha.ServerReflectionResponse, error) {
+	client reflectionv1.ServerReflectionClient,
+	req *reflectionv1.ServerReflectionRequest,
+) (*reflectionv1.ServerReflectionResponse, error) {
 	stream, err := client.ServerReflectionInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("ServerReflectionInfo: %w", err)
