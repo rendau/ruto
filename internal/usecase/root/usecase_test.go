@@ -21,7 +21,6 @@ func (s *testSessionService) FromContext(_ context.Context) *sessionModel.Sessio
 }
 
 func TestUsecase_GetJwtKidsByURLs_FilterRSAlgorithms(t *testing.T) {
-	t.Parallel()
 
 	jwkServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -53,7 +52,6 @@ func TestUsecase_GetJwtKidsByURLs_FilterRSAlgorithms(t *testing.T) {
 }
 
 func TestUsecase_GetJwtKidsByURLs_NotAuthorized(t *testing.T) {
-	t.Parallel()
 
 	uc := New(nil, &testSessionService{
 		session: &sessionModel.Session{Id: 0},

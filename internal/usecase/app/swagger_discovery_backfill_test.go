@@ -38,7 +38,6 @@ func (s *testBackfillAppService) Delete(_ context.Context, _ string) error {
 }
 
 func TestUsecase_BackfillSwaggerURLs(t *testing.T) {
-	t.Parallel()
 
 	var updates []*appModel.App
 	svc := &testBackfillAppService{

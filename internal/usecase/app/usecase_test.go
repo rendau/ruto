@@ -88,7 +88,6 @@ func (s *testSwaggerService) LoadEndpoints(ctx context.Context, swaggerURL strin
 }
 
 func TestUsecase_GetSwaggerEndpointsDiff_NotAuthorized(t *testing.T) {
-	t.Parallel()
 
 	uc := New(nil, nil, nil, &testSessionService{session: &sessionModel.Session{Id: 0}})
 	_, err := uc.GetSwaggerEndpointsDiff(context.Background(), "app-id")
@@ -96,7 +95,6 @@ func TestUsecase_GetSwaggerEndpointsDiff_NotAuthorized(t *testing.T) {
 }
 
 func TestUsecase_GetSwaggerEndpointsDiff(t *testing.T) {
-	t.Parallel()
 
 	uc := New(
 		&testAppService{
@@ -147,7 +145,6 @@ func TestUsecase_GetSwaggerEndpointsDiff(t *testing.T) {
 }
 
 func TestUsecase_GetSwaggerEndpointsDiff_PathVariableNamesIgnored(t *testing.T) {
-	t.Parallel()
 
 	uc := New(
 		&testAppService{
@@ -190,7 +187,6 @@ func TestUsecase_GetSwaggerEndpointsDiff_PathVariableNamesIgnored(t *testing.T) 
 }
 
 func TestUsecase_Create_DuplicateAppName(t *testing.T) {
-	t.Parallel()
 
 	createCalled := false
 	uc := New(
@@ -231,7 +227,6 @@ func TestUsecase_Create_DuplicateAppName(t *testing.T) {
 }
 
 func TestUsecase_Update_SameAppNameForSelfAllowed(t *testing.T) {
-	t.Parallel()
 
 	updateCalled := false
 	uc := New(

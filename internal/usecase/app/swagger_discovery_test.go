@@ -13,7 +13,6 @@ import (
 )
 
 func TestUsecase_GetSwaggerURLByBackendURL_NotAuthorized(t *testing.T) {
-	t.Parallel()
 
 	uc := New(nil, nil, nil, &testSessionService{session: &sessionModel.Session{Id: 0}})
 
@@ -22,7 +21,6 @@ func TestUsecase_GetSwaggerURLByBackendURL_NotAuthorized(t *testing.T) {
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_InvalidBackendURL(t *testing.T) {
-	t.Parallel()
 
 	uc := New(nil, nil, nil, &testSessionService{session: &sessionModel.Session{Id: 1}})
 
@@ -31,7 +29,6 @@ func TestUsecase_GetSwaggerURLByBackendURL_InvalidBackendURL(t *testing.T) {
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsSwaggerJSON(t *testing.T) {
-	t.Parallel()
 
 	var attempted []string
 	uc := New(
@@ -58,7 +55,6 @@ func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsSwaggerJSON(t *testing.T) 
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_SkipsEmptyEndpoints(t *testing.T) {
-	t.Parallel()
 
 	uc := New(
 		nil,
@@ -86,7 +82,6 @@ func TestUsecase_GetSwaggerURLByBackendURL_SkipsEmptyEndpoints(t *testing.T) {
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerJSON(t *testing.T) {
-	t.Parallel()
 
 	var attempted []string
 	uc := New(
@@ -113,7 +108,6 @@ func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerJSON(t *testing.
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerYAML(t *testing.T) {
-	t.Parallel()
 
 	var attempted []string
 	uc := New(
@@ -140,7 +134,6 @@ func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerYAML(t *testing.
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_NotFound(t *testing.T) {
-	t.Parallel()
 
 	uc := New(
 		nil,

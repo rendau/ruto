@@ -27,7 +27,6 @@ import (
 )
 
 func TestProxy_UnaryCall(t *testing.T) {
-	t.Parallel()
 
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
@@ -60,7 +59,6 @@ func TestProxy_UnaryCall(t *testing.T) {
 }
 
 func TestProxy_BidiStreamingCall(t *testing.T) {
-	t.Parallel()
 
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
@@ -108,7 +106,6 @@ func TestProxy_BidiStreamingCall(t *testing.T) {
 }
 
 func TestProxy_MissingAppMetadata(t *testing.T) {
-	t.Parallel()
 
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
@@ -140,7 +137,6 @@ func TestProxy_MissingAppMetadata(t *testing.T) {
 }
 
 func TestProxy_DuplicateMethodResolvedByAppName(t *testing.T) {
-	t.Parallel()
 
 	backendAddr1, backendStop1 := runBackendTestServiceWithPrefix(t, "backend-1:")
 	defer backendStop1()
@@ -185,7 +181,6 @@ func TestProxy_DuplicateMethodResolvedByAppName(t *testing.T) {
 }
 
 func TestReflection_ListServicesFilteredByRegisteredEndpoints(t *testing.T) {
-	t.Parallel()
 
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
@@ -222,7 +217,6 @@ func TestReflection_ListServicesFilteredByRegisteredEndpoints(t *testing.T) {
 }
 
 func TestReflection_FileContainingRegisteredSymbolProxiedToBackend(t *testing.T) {
-	t.Parallel()
 
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
@@ -258,7 +252,6 @@ func TestReflection_FileContainingRegisteredSymbolProxiedToBackend(t *testing.T)
 }
 
 func TestReflection_FileContainingUnregisteredSymbolRejected(t *testing.T) {
-	t.Parallel()
 
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
@@ -361,15 +354,26 @@ func runBackendTestServiceWithPrefix(t *testing.T, prefix string) (string, func(
 func runGatewayProxyServer(t *testing.T, svc *Service) (string, func()) {
 	t.Helper()
 
-	port := getFreeTCPPort(t)
+	const maxAttempts = 10
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		port := getFreeTCPPort(t)
+		addr := "127.0.0.1:" + strconv.Itoa(port)
 
-	server := gwGrpcServer.New(port)
-	server.SetHandler(svc)
-	server.Start()
+		server := gwGrpcServer.New(port)
+		server.SetHandler(svc)
+		server.Start()
 
-	return "127.0.0.1:" + strconv.Itoa(port), func() {
+		if waitTCPReady(addr) {
+			return addr, func() {
+				_ = server.Stop(3 * time.Second)
+			}
+		}
+
 		_ = server.Stop(3 * time.Second)
 	}
+
+	require.FailNow(t, "failed to start gateway grpc server", "exhausted retry attempts")
+	return "", func() {}
 }
 
 func getFreeTCPPort(t *testing.T) int {
@@ -382,6 +386,19 @@ func getFreeTCPPort(t *testing.T) int {
 	addr, ok := lis.Addr().(*net.TCPAddr)
 	require.True(t, ok)
 	return addr.Port
+}
+
+func waitTCPReady(addr string) bool {
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", addr, 50*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			return true
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	return false
 }
 
 func buildSnapshotForBackend(t *testing.T, backendAddr string) *rootModel.Root {

@@ -11,7 +11,6 @@ import (
 )
 
 func TestService_LoadEndpoints(t *testing.T) {
-	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -48,7 +47,6 @@ func TestService_LoadEndpoints(t *testing.T) {
 }
 
 func TestService_LoadEndpoints_YAML(t *testing.T) {
-	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/yaml")
