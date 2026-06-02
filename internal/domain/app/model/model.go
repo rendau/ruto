@@ -74,7 +74,7 @@ func (m *App) ActiveEndpoints() []*endpointModel.Endpoint {
 }
 
 func (m *App) GrpcAddress() string {
-	if m == nil || m.Backend.ParsedUrl == nil || m.GrpcPort <= 0 {
+	if m.Backend.ParsedUrl == nil || m.GrpcPort <= 0 {
 		return ""
 	}
 

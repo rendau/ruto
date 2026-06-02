@@ -17,44 +17,25 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 
-	appModel "github.com/rendau/ruto/internal/domain/app/model"
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
-	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	domRootModel "github.com/rendau/ruto/internal/domain/root/model"
 	serviceAuth "github.com/rendau/ruto/internal/service/gw/service/auth"
-	authModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
+	serviceAuthModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"
 )
 
 type Service struct {
-	snapshot          *rootModel.Root
 	conns             sync.Map
 	routes            map[string]*route
 	transparentHandle gogrpc.StreamHandler
 }
 
-type route struct {
-	app      *appModel.App
-	endpoint *endpointModel.Endpoint
-	auth     *serviceAuth.Service
-	log      *serviceLog.Service
-	metrics  *serviceMetrics.Service
-}
-
-type routeCtxKey struct{}
-
-const (
-	metadataHeaderAppName = "x-ruto-app-name"
-	routeKeySep           = "\x1f"
-)
-
-func New(snapshot *rootModel.Root, accessLog bool) (*Service, error) {
-	service := &Service{
-		snapshot: snapshot,
-	}
+func New(snapshot *domRootModel.Root, accessLog bool) (*Service, error) {
+	service := &Service{}
 	service.transparentHandle = proxy.TransparentHandler(service.director)
 
-	routes, err := service.buildRoutes(accessLog)
+	routes, err := service.buildRoutes(snapshot, accessLog)
 	if err != nil {
 		return nil, fmt.Errorf("build routes: %w", err)
 	}
@@ -63,16 +44,16 @@ func New(snapshot *rootModel.Root, accessLog bool) (*Service, error) {
 	return service, nil
 }
 
-func (s *Service) buildRoutes(accessLog bool) (map[string]*route, error) {
+func (s *Service) buildRoutes(snapshot *domRootModel.Root, accessLog bool) (map[string]*route, error) {
 	routes := make(map[string]*route)
 
-	for _, app := range s.snapshot.ActiveApps() {
+	for _, app := range snapshot.ActiveApps() {
 		if app.GrpcPort <= 0 {
 			continue
 		}
 
 		for _, ep := range app.ActiveEndpoints() {
-			if ep.Type != endpointModel.TypeGRPC {
+			if ep.Type != domEndpointModel.TypeGRPC {
 				continue
 			}
 
@@ -92,7 +73,7 @@ func (s *Service) buildRoutes(accessLog bool) (map[string]*route, error) {
 			routes[routeKey] = &route{
 				app:      app,
 				endpoint: ep,
-				auth:     serviceAuth.New(s.snapshot, app, ep),
+				auth:     serviceAuth.New(snapshot, app, ep),
 				log:      serviceLog.New(app, ep, "GRPC "+routeName, accessLog),
 				metrics:  serviceMetrics.New(app, ep, "GRPC "+routeName),
 			}
@@ -114,7 +95,7 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 	}
 
 	if rt.auth != nil {
-		authReq := authModel.NewAuthRequest()
+		authReq := serviceAuthModel.NewAuthRequest()
 		authReq.SetHttpHeader(headersFromMetadata(stream.Context()))
 		authReq.SetRemoteAddr(remoteAddrFromContext(stream.Context()))
 		if !rt.auth.Check(authReq) {
@@ -171,13 +152,10 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 	return status.Errorf(codes.Internal, "gateway forward failed: %v", serveErr)
 }
 
-func (s *Service) director(ctx context.Context, fullMethod string) (context.Context, gogrpc.ClientConnInterface, error) {
+func (s *Service) director(ctx context.Context, _ string) (context.Context, gogrpc.ClientConnInterface, error) {
 	rt, ok := ctx.Value(routeCtxKey{}).(*route)
 	if !ok || rt == nil {
-		rt = s.resolveRoute(ctx, fullMethod)
-		if rt == nil {
-			return nil, nil, status.Error(codes.NotFound, "route not found")
-		}
+		return nil, nil, status.Error(codes.NotFound, "route not found")
 	}
 
 	target := rt.app.GrpcAddress()
@@ -190,16 +168,7 @@ func (s *Service) director(ctx context.Context, fullMethod string) (context.Cont
 		return nil, nil, status.Errorf(codes.Unavailable, "dial backend: %v", err)
 	}
 
-	inMd, _ := metadata.FromIncomingContext(ctx)
-	outMd := metadata.MD{}
-	for k, values := range inMd {
-		if strings.HasPrefix(k, ":") {
-			continue
-		}
-		outMd[k] = append([]string(nil), values...)
-	}
-
-	return metadata.NewOutgoingContext(ctx, outMd), conn, nil
+	return ctx, conn, nil
 }
 
 func (s *Service) resolveRoute(ctx context.Context, fullMethod string) *route {
@@ -216,6 +185,25 @@ func (s *Service) resolveRoute(ctx context.Context, fullMethod string) *route {
 	return rt
 }
 
+func (s *Service) getConn(target string) (*gogrpc.ClientConn, error) {
+	if conn, ok := s.conns.Load(target); ok {
+		return conn.(*gogrpc.ClientConn), nil
+	}
+
+	newConn, err := gogrpc.NewClient(target, gogrpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("gogrpc.NewClient: %w", err)
+	}
+
+	actual, loaded := s.conns.LoadOrStore(target, newConn)
+	if loaded {
+		_ = newConn.Close()
+		return actual.(*gogrpc.ClientConn), nil
+	}
+
+	return newConn, nil
+}
+
 func runForwardWithStatus(f func() error) (error, string) {
 	err := f()
 	if err == nil {
@@ -230,39 +218,12 @@ func runForwardWithStatus(f func() error) (error, string) {
 	return err, codes.Internal.String()
 }
 
-func (s *Service) getConn(target string) (*gogrpc.ClientConn, error) {
-	if conn, ok := s.conns.Load(target); ok {
-		if existing, ok := conn.(*gogrpc.ClientConn); ok {
-			return existing, nil
-		}
-	}
-
-	newConn, err := gogrpc.NewClient(target, gogrpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, err
-	}
-
-	actual, loaded := s.conns.LoadOrStore(target, newConn)
-	if loaded {
-		_ = newConn.Close()
-		return actual.(*gogrpc.ClientConn), nil
-	}
-
-	return newConn, nil
-}
-
 func headersFromMetadata(ctx context.Context) http.Header {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return make(http.Header)
 	}
-	result := make(http.Header, len(md))
-	for key, values := range md {
-		for _, value := range values {
-			result.Add(key, value)
-		}
-	}
-	return result
+	return http.Header(md)
 }
 
 func metadataValue(ctx context.Context, key string) string {
