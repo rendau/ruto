@@ -243,9 +243,9 @@ async function submit() {
       await router.push({ name: "endpoint-details", params: { id: payload.id } });
       return;
     }
-    const created = await createEndpoint(payload);
+    await createEndpoint(payload);
     notifySuccess("Endpoint created");
-    await router.push({ name: "endpoint-details", params: { id: created.id } });
+    router.back();
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to save endpoint";
     notifyError(errorMessage.value);
