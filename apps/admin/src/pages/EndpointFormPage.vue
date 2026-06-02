@@ -240,7 +240,7 @@ async function submit() {
     if (isEdit.value) {
       await updateEndpoint(payload);
       notifySuccess("Endpoint updated");
-      await router.push({ name: "endpoint-details", params: { id: payload.id } });
+      router.back();
       return;
     }
     await createEndpoint(payload);
