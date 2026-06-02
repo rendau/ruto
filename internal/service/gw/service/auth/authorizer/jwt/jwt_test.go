@@ -27,7 +27,7 @@ func (s *testJWKGetterT) GetPublicKey(kid string) (*rsa.PublicKey, string) {
 }
 
 func TestAuthorize(t *testing.T) {
-	t.Skip("temporarily disabled")
+	// t.Skip("temporarily disabled")
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)

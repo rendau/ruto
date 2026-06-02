@@ -5,7 +5,7 @@ import (
 
 	gogrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/grpc/status"
 )
 

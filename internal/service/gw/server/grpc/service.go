@@ -9,7 +9,7 @@ import (
 	"time"
 
 	gogrpc "google.golang.org/grpc"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
 )
 
 type Service struct {

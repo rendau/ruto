@@ -16,7 +16,7 @@ import (
 	grpcTesting "google.golang.org/grpc/interop/grpc_testing"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
-	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	reflectionv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/grpc/status"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
