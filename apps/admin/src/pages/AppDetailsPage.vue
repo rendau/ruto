@@ -314,6 +314,7 @@ type SavedEndpointFilters = {
   auth_visibility_filter?: "all" | "public" | "protected";
   active_filter?: "all" | "active" | "inactive";
   http_method_filter?: string;
+  endpoint_type?: EndpointType;
 };
 
 type SavedSwaggerPanelState = {
@@ -344,11 +345,13 @@ function restoreEndpointFilters() {
     activeFilter.value =
       parsed.active_filter === "active" || parsed.active_filter === "inactive" ? parsed.active_filter : "all";
     httpMethodFilter.value = typeof parsed.http_method_filter === "string" ? parsed.http_method_filter : "all";
+    activeEndpointType.value = parsed.endpoint_type === "grpc" ? "grpc" : "http";
   } catch {
     endpointSearch.value = "";
     authVisibilityFilter.value = "all";
     activeFilter.value = "all";
     httpMethodFilter.value = "all";
+    activeEndpointType.value = "http";
   }
 }
 
@@ -372,7 +375,8 @@ function persistEndpointFilters() {
     endpoint_search: endpointSearch.value,
     auth_visibility_filter: authVisibilityFilter.value,
     active_filter: activeFilter.value,
-    http_method_filter: httpMethodFilter.value
+    http_method_filter: httpMethodFilter.value,
+    endpoint_type: activeEndpointType.value
   };
   window.sessionStorage.setItem(endpointFiltersStorageKey(), JSON.stringify(payload));
 }
@@ -710,7 +714,7 @@ onMounted(() => {
   void load();
 });
 
-watch([id, endpointSearch, authVisibilityFilter, activeFilter, httpMethodFilter], () => {
+watch([id, endpointSearch, authVisibilityFilter, activeFilter, httpMethodFilter, activeEndpointType], () => {
   persistEndpointFilters();
 });
 
