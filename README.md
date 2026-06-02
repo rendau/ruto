@@ -25,6 +25,10 @@ Env templates:
 - `config/core.env.example`
 - `config/gateway.env.example`
 
+Gateway gRPC clients:
+
+- `docs/gateway-grpc.md`
+
 ### DB dump:
 
 ```
