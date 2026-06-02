@@ -50,7 +50,7 @@ func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, fin
 		appProxyHandler := http.StripPrefix(app.PathPrefix, proxy.NewProxy(app, "", sharedTransport))
 
 		for _, ep := range endpoints {
-			if ep.Type == "" || ep.Type == endpointModel.TypeHTTP {
+			if ep.Type != "" && ep.Type != endpointModel.TypeHTTP {
 				continue
 			}
 
