@@ -105,3 +105,19 @@ func TestAppNormalize_AllowValidSwaggerURL(t *testing.T) {
 		t.Fatalf("unexpected normalized swagger_url: %q", item.Backend.SwaggerUrl)
 	}
 }
+
+func TestAppGrpcAddress_ParsesBackendURLWhenLoadedFromStorage(t *testing.T) {
+	item := &App{
+		Backend: AppBackend{
+			Url: "http://zeon-lb-tcp",
+		},
+		GrpcPort: 9200,
+	}
+
+	if item.Backend.ParsedUrl != nil {
+		t.Fatalf("test setup expected ParsedUrl to be nil")
+	}
+	if got := item.GrpcAddress(); got != "zeon-lb-tcp:9200" {
+		t.Fatalf("unexpected grpc address: %q", got)
+	}
+}

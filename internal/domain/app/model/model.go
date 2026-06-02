@@ -74,11 +74,20 @@ func (m *App) ActiveEndpoints() []*endpointModel.Endpoint {
 }
 
 func (m *App) GrpcAddress() string {
-	if m.Backend.ParsedUrl == nil || m.GrpcPort <= 0 {
+	if m.GrpcPort <= 0 {
 		return ""
 	}
 
-	host := m.Backend.ParsedUrl.Hostname()
+	parsedURL := m.Backend.ParsedUrl
+	if parsedURL == nil {
+		backend := m.Backend
+		if err := backend.Normalize(); err != nil {
+			return ""
+		}
+		parsedURL = backend.ParsedUrl
+	}
+
+	host := parsedURL.Hostname()
 	if host == "" {
 		return ""
 	}
