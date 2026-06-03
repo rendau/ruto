@@ -1344,6 +1344,13 @@ h3 {
   padding: 4px;
 }
 
+.protocol-tabs-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .form-protocol-tabs {
   width: fit-content;
 }
@@ -1416,6 +1423,53 @@ h3 {
 .grpc-reflection-toggle-button:hover,
 .grpc-reflection-toggle-button:focus-visible {
   background: #4d72da;
+}
+
+.grpc-connect-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid #5f553a;
+  border-radius: 999px;
+  background: #292617;
+  color: #b9a96f;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--button-transition);
+}
+
+.grpc-connect-badge:hover,
+.grpc-connect-badge:focus-visible {
+  border-color: #736744;
+  background: #302c1c;
+  color: #d0bd7a;
+  outline: none;
+  transform: translateY(var(--button-hover-translate-y));
+}
+
+.grpc-connect-badge:disabled {
+  opacity: 0.65;
+  cursor: default;
+  transform: none;
+}
+
+.grpc-connect-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(185, 169, 111, 0.48);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .swagger-toggle-icon {
@@ -2252,9 +2306,14 @@ h3 {
     flex-direction: column;
   }
 
+  .protocol-tabs-wrap,
   .protocol-tabs,
   .protocol-actions {
     width: 100%;
+  }
+
+  .protocol-tabs-wrap {
+    justify-content: space-between;
   }
 
   .protocol-tab {

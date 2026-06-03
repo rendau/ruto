@@ -8,12 +8,14 @@ import {
   getApp,
   getAppGrpcReflectionEndpoints,
   getAppSwaggerEndpointsDiff,
+  getRoot,
   listEndpoints,
   updateApp
 } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
-import type { AppGrpcReflectionEndpoint, AppMain, AppSwaggerEndpoint, EndpointMain, EndpointType } from "../types/api";
+import type { AppGrpcReflectionEndpoint, AppMain, AppSwaggerEndpoint, EndpointMain, EndpointType, RootMain } from "../types/api";
 import { useAppsStore } from "../stores/apps";
+import GrpcInstructionPanel from "../components/GrpcInstructionPanel.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -52,6 +54,8 @@ const grpcDiffLoaded = ref(false);
 const grpcRegisteredInvalidOpen = ref(false);
 const grpcBulkAdding = ref(false);
 const grpcSelectedKeys = ref<Record<string, boolean>>({});
+const grpcInstructionOpen = ref(false);
+const root = ref<RootMain | null>(null);
 
 type EndpointAuthIcon = {
   key: "ip_validation" | "jwt" | "basic" | "api_key";
@@ -863,6 +867,7 @@ async function load() {
   grpcDiffLoaded.value = false;
   try {
     app.value = await getApp(id.value);
+    root.value = await getRoot().catch(() => null);
     const endpointList = await listEndpoints({
       app_id: id.value
     });
@@ -958,6 +963,14 @@ function toggleGrpcPanel() {
 
 function closeGrpcPanel() {
   grpcPanelOpen.value = false;
+}
+
+function toggleGrpcInstruction() {
+  grpcInstructionOpen.value = !grpcInstructionOpen.value;
+  if (grpcInstructionOpen.value) {
+    grpcPanelOpen.value = false;
+    swaggerPanelOpen.value = false;
+  }
 }
 
 function toggleSwaggerRegisteredInvalid() {
@@ -1229,18 +1242,32 @@ onBeforeRouteLeave((to) => {
     </section>
 
     <div class="app-protocol-card">
-      <div class="protocol-tabs" role="tablist" aria-label="Endpoint Protocol">
+      <div class="protocol-tabs-wrap">
+        <div class="protocol-tabs" role="tablist" aria-label="Endpoint Protocol">
+          <button
+            v-for="option in protocolOptions"
+            :key="option.value"
+            class="protocol-tab"
+            :class="{ active: activeEndpointType === option.value }"
+            type="button"
+            :aria-selected="activeEndpointType === option.value"
+            @click="activeEndpointType = option.value"
+          >
+            <span>{{ option.label }}</span>
+            <span class="protocol-tab-count">{{ option.value === "grpc" ? grpcEndpoints.length : httpEndpoints.length }}</span>
+          </button>
+        </div>
         <button
-          v-for="option in protocolOptions"
-          :key="option.value"
-          class="protocol-tab"
-          :class="{ active: activeEndpointType === option.value }"
+          v-if="activeEndpointType === 'grpc'"
+          class="grpc-connect-badge"
           type="button"
-          :aria-selected="activeEndpointType === option.value"
-          @click="activeEndpointType = option.value"
+          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
+          title="Open gRPC connection guide"
+          aria-label="Open gRPC connection guide"
+          @click="toggleGrpcInstruction"
         >
-          <span>{{ option.label }}</span>
-          <span class="protocol-tab-count">{{ option.value === "grpc" ? grpcEndpoints.length : httpEndpoints.length }}</span>
+          <span class="grpc-connect-icon" aria-hidden="true">?</span>
+          <span>connect</span>
         </button>
       </div>
       <div class="actions protocol-actions">
@@ -1283,6 +1310,14 @@ onBeforeRouteLeave((to) => {
         </button>
       </div>
     </div>
+
+    <GrpcInstructionPanel
+      v-if="activeEndpointType === 'grpc' && app"
+      :app="app"
+      :root="root"
+      :open="grpcInstructionOpen"
+      @close="grpcInstructionOpen = false"
+    />
 
     <Transition name="swagger-panel">
       <section v-if="activeEndpointType === 'http' && app.backend.swagger_url && swaggerPanelOpen" class="panel swagger-diff-panel">

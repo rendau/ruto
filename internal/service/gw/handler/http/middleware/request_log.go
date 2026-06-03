@@ -33,6 +33,8 @@ func NewRequestLog(
 					// "headers", r.Header,
 					"host", r.Host,
 					"remote_addr", r.RemoteAddr,
+					"path", r.URL.Path,
+					"query_params", r.URL.RawQuery,
 				}, rw.GetStatusCodeStr(), rw.GetStatusCodeErr()
 			})
 		})
