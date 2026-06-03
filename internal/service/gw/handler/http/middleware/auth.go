@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 
 	domAppModel "github.com/rendau/ruto/internal/domain/app/model"
@@ -14,10 +15,13 @@ func NewAuth(
 	root *domRootModel.Root,
 	app *domAppModel.App,
 	ep *domEndpointModel.Endpoint,
-) Middleware {
-	service := auth.New(root, app, ep)
+) (Middleware, error) {
+	service, err := auth.New(root, app, ep)
+	if err != nil {
+		return nil, fmt.Errorf("auth.New: %w", err)
+	}
 	if service == nil {
-		return func(next http.Handler) http.Handler { return next }
+		return func(next http.Handler) http.Handler { return next }, nil
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -32,5 +36,5 @@ func NewAuth(
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			}
 		})
-	}
+	}, nil
 }

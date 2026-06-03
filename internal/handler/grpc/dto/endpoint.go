@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"github.com/samber/lo"
+
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
 	"github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -8,29 +10,31 @@ import (
 
 func EncodeEndpointMain(v *model.Endpoint, _ int) *ruto_v1.EndpointMain {
 	return &ruto_v1.EndpointMain{
-		Id:      v.Id,
-		AppId:   v.AppId,
-		Active:  v.Active,
-		Method:  v.Method,
-		Path:    v.Path,
-		Backend: EncodeEndpointBackend(v.Backend),
-		Auth:    EncodeEndpointAuth(v.Auth),
-		Type:    string(v.Type),
-		Grpc:    EncodeEndpointGrpc(v.Grpc),
+		Id:        v.Id,
+		AppId:     v.AppId,
+		Active:    v.Active,
+		Method:    v.Method,
+		Path:      v.Path,
+		Backend:   EncodeEndpointBackend(v.Backend),
+		Auth:      EncodeEndpointAuth(v.Auth),
+		Type:      string(v.Type),
+		Grpc:      EncodeEndpointGrpc(v.Grpc),
+		Variables: lo.Map(v.Variables, EncodeVariable),
 	}
 }
 
 func DecodeEndpointMain(v *ruto_v1.EndpointMain) *model.Endpoint {
 	return &model.Endpoint{
-		Id:      v.Id,
-		AppId:   v.AppId,
-		Active:  v.Active,
-		Method:  v.Method,
-		Path:    v.Path,
-		Backend: DecodeEndpointBackend(v.Backend),
-		Auth:    DecodeEndpointAuth(v.Auth),
-		Type:    model.Type(v.Type),
-		Grpc:    DecodeEndpointGrpc(v.Grpc),
+		Id:        v.Id,
+		AppId:     v.AppId,
+		Active:    v.Active,
+		Method:    v.Method,
+		Path:      v.Path,
+		Backend:   DecodeEndpointBackend(v.Backend),
+		Auth:      DecodeEndpointAuth(v.Auth),
+		Type:      model.Type(v.Type),
+		Grpc:      DecodeEndpointGrpc(v.Grpc),
+		Variables: lo.FilterMap(v.Variables, DecodeVariable),
 	}
 }
 

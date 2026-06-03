@@ -13,6 +13,7 @@ import (
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 )
 
 var (
@@ -26,6 +27,7 @@ type App struct {
 	Name       string                    `json:"name"`
 	Backend    AppBackend                `json:"backend"`
 	Auth       authModel.Auth            `json:"auth"`
+	Variables  []variableModel.Variable  `json:"variables"`
 	Endpoints  []*endpointModel.Endpoint `json:"endpoints"`
 }
 
@@ -63,6 +65,11 @@ func (m *App) Normalize() error {
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
+	var err error
+	m.Variables, err = variableModel.NormalizeList(m.Variables)
+	if err != nil {
+		return fmt.Errorf("variables: %w", err)
+	}
 	for i := range m.Endpoints {
 		if err := m.Endpoints[i].Normalize(); err != nil {
 			return fmt.Errorf("endpoints[%d]: %w", i, err)
@@ -82,6 +89,25 @@ func (m *App) BackendRequestParams(endpoint *endpointModel.Endpoint) BackendRequ
 		Headers:     mergeStringMaps(m.Backend.Headers, endpoint.Backend.Headers),
 		QueryParams: mergeStringMaps(m.Backend.QueryParams, endpoint.Backend.QueryParams),
 	}
+}
+
+func (m *App) BackendRequestParamsWithVariables(endpoint *endpointModel.Endpoint, variables []variableModel.Variable) (BackendRequestParams, error) {
+	scope, err := variableModel.Resolve(variables)
+	if err != nil {
+		return BackendRequestParams{}, err
+	}
+
+	params := m.BackendRequestParams(endpoint)
+	params.Headers, err = variableModel.InterpolateMap(params.Headers, scope)
+	if err != nil {
+		return BackendRequestParams{}, fmt.Errorf("headers: %w", err)
+	}
+	params.QueryParams, err = variableModel.InterpolateMap(params.QueryParams, scope)
+	if err != nil {
+		return BackendRequestParams{}, fmt.Errorf("query_params: %w", err)
+	}
+
+	return params, nil
 }
 
 func (m *App) GrpcAddress() string {

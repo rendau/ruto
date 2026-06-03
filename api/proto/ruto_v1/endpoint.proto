@@ -25,6 +25,9 @@ service Endpoint {
   rpc Delete(EndpointGetReq) returns (google.protobuf.Empty) {
     option (google.api.http) = { delete: "/endpoint/{id}" };
   };
+  rpc GetVariablesEffective(EndpointVariablesEffectiveReq) returns (VariablesEffectiveRep) {
+    option (google.api.http) = { post: "/endpoint/variables/effective" body: "*" };
+  };
 }
 
 message EndpointMain {
@@ -37,6 +40,7 @@ message EndpointMain {
   Auth auth = 7;
   string type = 8; // http | grpc
   EndpointGrpc grpc = 9;
+  repeated Variable variables = 10;
 }
 
 message EndpointGetReq {
@@ -68,4 +72,10 @@ message EndpointGrpc {
   string service = 1;
   string method = 2;
   string path = 3;
+}
+
+message EndpointVariablesEffectiveReq {
+  string id = 1;
+  string app_id = 2;
+  repeated Variable variables = 3;
 }

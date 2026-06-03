@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createApp, getApp, getAppSwaggerUrlByBackendUrl, getRoot, getRootJwtKidsByUrls, updateApp } from "../lib/api";
+import { createApp, getApp, getAppSwaggerUrlByBackendUrl, getAppVariablesEffective, getRoot, getRootJwtKidsByUrls, updateApp } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
-import { keyValueLinesToRecord, normalizeAuth, recordToKeyValueLines } from "../lib/forms";
+import VariableEditor from "../components/VariableEditor.vue";
+import VariableInput from "../components/VariableInput.vue";
+import { hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, recordToKeyValueLines } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
-import type { AppMain } from "../types/api";
+import type { AppMain, Variable } from "../types/api";
 import { useAppsStore } from "../stores/apps";
 
 const route = useRoute();
@@ -23,8 +25,10 @@ const discoveringSwagger = ref(false);
 const autoDetectedSwaggerUrl = ref("");
 const headersText = ref("");
 const queryParamsText = ref("");
+const effectiveVariables = ref<Variable[]>([]);
 let discoverTimer: ReturnType<typeof setTimeout> | null = null;
 let discoverRequestSeq = 0;
+let variablesRequestSeq = 0;
 
 const form = ref<AppMain>({
   id: "",
@@ -42,7 +46,8 @@ const form = ref<AppMain>({
     enabled: true,
     mode: "extend",
     methods: []
-  }
+  },
+  variables: []
 });
 
 async function load() {
@@ -62,10 +67,12 @@ async function load() {
         headers: item.backend.headers || {},
         query_params: item.backend.query_params || {}
       },
-      auth: normalizeAuth(item.auth)
+      auth: normalizeAuth(item.auth),
+      variables: item.variables || []
     };
     headersText.value = recordToKeyValueLines(form.value.backend.headers);
     queryParamsText.value = recordToKeyValueLines(form.value.backend.query_params);
+    await refreshEffectiveVariables();
     if (!form.value.backend.swagger_url.trim()) {
       void discoverSwaggerUrl(form.value.backend.url);
     }
@@ -91,6 +98,12 @@ async function loadJwtKidOptions() {
 async function submit() {
   saving.value = true;
   errorMessage.value = "";
+  if (hasDuplicateVariableKeys(form.value.variables)) {
+    errorMessage.value = "Variable keys must be unique";
+    notifyError(errorMessage.value);
+    saving.value = false;
+    return;
+  }
   const payload: AppMain = {
     ...form.value,
     backend: {
@@ -187,8 +200,33 @@ function triggerSwaggerDiscoveryNow() {
   void discoverSwaggerUrl(form.value.backend.url);
 }
 
+async function refreshEffectiveVariables() {
+  const requestId = ++variablesRequestSeq;
+  try {
+    const rep = await getAppVariablesEffective({
+      id: isEdit.value ? entityId.value : "",
+      variables: form.value.variables || []
+    });
+    if (requestId === variablesRequestSeq) {
+      effectiveVariables.value = rep.variables || [];
+    }
+  } catch {
+    if (requestId === variablesRequestSeq) {
+      effectiveVariables.value = [];
+    }
+  }
+}
+
+watch(
+  () => form.value.variables,
+  () => {
+    void refreshEffectiveVariables();
+  },
+  { deep: true }
+);
+
 onMounted(() => {
-  void Promise.all([load(), loadJwtKidOptions()]);
+  void Promise.all([load(), loadJwtKidOptions(), refreshEffectiveVariables()]);
 });
 
 onBeforeUnmount(() => {
@@ -244,15 +282,19 @@ onBeforeUnmount(() => {
     </label>
     <label class="field">
       <span>Backend Headers</span>
-      <n-input v-model:value="headersText" type="textarea" :autosize="{ minRows: 4 }" placeholder="X-Service-Token: secret" />
+      <VariableInput v-model="headersText" :variables="effectiveVariables" type="textarea" :autosize="{ minRows: 4 }" placeholder="X-Service-Token: {{token}}" />
     </label>
     <label class="field">
       <span>Backend Query Params</span>
-      <n-input v-model:value="queryParamsText" type="textarea" :autosize="{ minRows: 4 }" placeholder="tenant=acme" />
+      <VariableInput v-model="queryParamsText" :variables="effectiveVariables" type="textarea" :autosize="{ minRows: 4 }" placeholder="tenant={{tenant}}" />
     </label>
     <div class="field">
+      <span>Variables</span>
+      <VariableEditor v-model="form.variables" :available-variables="effectiveVariables" />
+    </div>
+    <div class="field">
       <span>Auth</span>
-      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" />
+      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
     </div>
 
     <div class="actions">

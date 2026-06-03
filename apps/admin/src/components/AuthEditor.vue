@@ -2,11 +2,13 @@
 import { computed, ref, watch } from "vue";
 import { TrashOutline } from "@vicons/ionicons5";
 import { arrayToLines, cloneAuthMethod, createEmptyAuthMethod, linesToArray, normalizeAuth } from "../lib/forms";
-import type { Auth, AuthMethod } from "../types/api";
+import type { Auth, AuthMethod, Variable } from "../types/api";
+import VariableInput from "./VariableInput.vue";
 
 const props = defineProps<{
   modelValue: Auth;
   jwtKidOptions?: string[];
+  variableOptions?: Variable[];
 }>();
 
 const emit = defineEmits<{
@@ -283,12 +285,18 @@ function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "all
           <n-button size="small" secondary @click="addBasicUser(methodIndex)">+ User</n-button>
         </div>
         <div v-for="(user, userIndex) in method.basic.users" :key="userIndex" class="auth-basic-user-row">
-          <n-input :value="user.username" placeholder="username" @update:value="(value: string) => setBasicUsername(methodIndex, userIndex, value)" />
-          <n-input
-            :value="user.password"
+          <VariableInput
+            :model-value="user.username"
+            :variables="variableOptions"
+            placeholder="username"
+            @update:model-value="(value: string) => setBasicUsername(methodIndex, userIndex, value)"
+          />
+          <VariableInput
+            :model-value="user.password"
+            :variables="variableOptions"
             placeholder="password"
             type="password"
-            @update:value="(value: string) => setBasicPassword(methodIndex, userIndex, value)"
+            @update:model-value="(value: string) => setBasicPassword(methodIndex, userIndex, value)"
           />
           <n-button
             class="danger-icon-button"
@@ -307,15 +315,21 @@ function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "all
       <div v-if="method.api_key" class="auth-type-block">
         <label class="field">
           <span>Header</span>
-          <n-input :value="method.api_key.header" placeholder="X-Api-Key" @update:value="(value: string) => setApiHeader(methodIndex, value)" />
+          <VariableInput
+            :model-value="method.api_key.header"
+            :variables="variableOptions"
+            placeholder="X-Api-Key"
+            @update:model-value="(value: string) => setApiHeader(methodIndex, value)"
+          />
         </label>
         <label class="field">
           <span>Keys (one per line)</span>
-          <n-input
-            :value="methodText[methodIndex]?.apiKeys || ''"
+          <VariableInput
+            :model-value="methodText[methodIndex]?.apiKeys || ''"
+            :variables="variableOptions"
             type="textarea"
-            rows="3"
-            @update:value="(value: string) => setMethodText(methodIndex, 'apiKeys', value)"
+            :rows="3"
+            @update:model-value="(value: string) => setMethodText(methodIndex, 'apiKeys', value)"
           />
         </label>
       </div>
@@ -355,11 +369,12 @@ function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "all
       <div v-if="method.ip_validation" class="auth-type-block">
         <label class="field">
           <span>Allowed IPs (one per line)</span>
-          <n-input
-            :value="methodText[methodIndex]?.allowedIps || ''"
+          <VariableInput
+            :model-value="methodText[methodIndex]?.allowedIps || ''"
+            :variables="variableOptions"
             type="textarea"
-            rows="3"
-            @update:value="(value: string) => setMethodText(methodIndex, 'allowedIps', value)"
+            :rows="3"
+            @update:model-value="(value: string) => setMethodText(methodIndex, 'allowedIps', value)"
           />
         </label>
       </div>

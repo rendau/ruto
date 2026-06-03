@@ -8,14 +8,17 @@ import (
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
+	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 )
 
 type Root struct {
-	BaseUrl string          `json:"base_url"`
-	Cors    RootCors        `json:"cors"`
-	Jwt     []RootJwt       `json:"jwt"`
-	Auth    authModel.Auth  `json:"auth"`
-	Apps    []*appModel.App `json:"apps"`
+	BaseUrl   string                   `json:"base_url"`
+	Cors      RootCors                 `json:"cors"`
+	Jwt       []RootJwt                `json:"jwt"`
+	Auth      authModel.Auth           `json:"auth"`
+	Variables []variableModel.Variable `json:"variables"`
+	Apps      []*appModel.App          `json:"apps"`
 }
 
 type RootCors struct {
@@ -48,6 +51,11 @@ func (m *Root) Normalize() error {
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
+	var err error
+	m.Variables, err = variableModel.NormalizeList(m.Variables)
+	if err != nil {
+		return fmt.Errorf("variables: %w", err)
+	}
 	for i := range m.Apps {
 		if err := m.Apps[i].Normalize(); err != nil {
 			return fmt.Errorf("apps[%d]: %w", i, err)
@@ -60,6 +68,21 @@ func (m *Root) ActiveApps() []*appModel.App {
 	return lo.FilterMap(m.Apps, func(v *appModel.App, _ int) (*appModel.App, bool) {
 		return v, v.Active
 	})
+}
+
+func (m *Root) EffectiveVariables(app *appModel.App, endpoint *endpointModel.Endpoint) ([]variableModel.Variable, error) {
+	result := m.Variables
+	if app != nil {
+		result = variableModel.Merge(result, app.Variables)
+	}
+	if endpoint != nil {
+		result = variableModel.Merge(result, endpoint.Variables)
+	}
+
+	if _, err := variableModel.Resolve(result); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (m *RootCors) Normalize() error {

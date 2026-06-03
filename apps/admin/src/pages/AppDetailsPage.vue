@@ -398,7 +398,8 @@ function buildDefaultEndpointPayload(item: AppSwaggerEndpoint): EndpointMain {
       service: "",
       method: "",
       path: ""
-    }
+    },
+    variables: []
   };
 }
 
@@ -602,7 +603,8 @@ function buildDefaultGrpcEndpointPayload(item: AppGrpcReflectionEndpoint): Endpo
       service: normalized.service,
       method: normalized.method,
       path: normalized.path
-    }
+    },
+    variables: []
   };
 }
 

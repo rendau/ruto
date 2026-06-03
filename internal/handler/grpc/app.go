@@ -97,3 +97,11 @@ func (h *App) GetSwaggerUrlByBackendUrl(
 		SwaggerUrl: swaggerURL,
 	}, nil
 }
+
+func (h *App) GetVariablesEffective(ctx context.Context, req *ruto_v1.AppVariablesEffectiveReq) (*ruto_v1.VariablesEffectiveRep, error) {
+	items, err := h.usecase.GetVariablesEffective(ctx, req.GetId(), lo.FilterMap(req.GetVariables(), dto.DecodeVariable))
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeVariablesEffectiveRep(items), nil
+}

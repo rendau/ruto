@@ -20,9 +20,13 @@ import type {
   RootMain,
   RootJwtKidsReq,
   RootJwtKidsRep,
+  RootVariablesEffectiveReq,
   UsrLoginRep,
   UsrMain,
-  UsrBootstrapStatusRep
+  UsrBootstrapStatusRep,
+  VariablesEffectiveRep,
+  AppVariablesEffectiveReq,
+  EndpointVariablesEffectiveReq
 } from "../types/api";
 import { API_BASE_URL } from "./config";
 import { clearSession, getToken, renewTokenOnce, setCredentials, setToken } from "./auth-session";
@@ -235,6 +239,13 @@ export function getAppSwaggerUrlByBackendUrl(req: AppGetSwaggerUrlByBackendUrlRe
   );
 }
 
+export function getAppVariablesEffective(req: AppVariablesEffectiveReq): Promise<VariablesEffectiveRep> {
+  return apiFetch<VariablesEffectiveRep>("/app/variables/effective", {
+    method: "POST",
+    body: JSON.stringify(req)
+  });
+}
+
 export function listEndpoints(req?: { app_id?: string; active?: boolean }): Promise<EndpointListRep> {
   return apiFetch<EndpointListRep>(
     withQuery("/endpoint", {
@@ -268,6 +279,13 @@ export function deleteEndpoint(id: string): Promise<void> {
   });
 }
 
+export function getEndpointVariablesEffective(req: EndpointVariablesEffectiveReq): Promise<VariablesEffectiveRep> {
+  return apiFetch<VariablesEffectiveRep>("/endpoint/variables/effective", {
+    method: "POST",
+    body: JSON.stringify(req)
+  });
+}
+
 export function getRoot(): Promise<RootMain> {
   return apiFetch<RootMain>("/root");
 }
@@ -285,6 +303,13 @@ export function getRootJwtKidsByUrls(req: RootJwtKidsReq): Promise<RootJwtKidsRe
       urls: req.urls || []
     })
   );
+}
+
+export function getRootVariablesEffective(req: RootVariablesEffectiveReq): Promise<VariablesEffectiveRep> {
+  return apiFetch<VariablesEffectiveRep>("/root/variables/effective", {
+    method: "POST",
+    body: JSON.stringify(req)
+  });
 }
 
 export function getStats(): Promise<StatsResponse> {

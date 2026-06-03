@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import AuthEditor from "../components/AuthEditor.vue";
-import { getRoot, getRootJwtKidsByUrls, setRoot } from "../lib/api";
-import { arrayToLines, emptyAuth, linesToArray, normalizeAuth } from "../lib/forms";
+import VariableEditor from "../components/VariableEditor.vue";
+import { getRoot, getRootJwtKidsByUrls, getRootVariablesEffective, setRoot } from "../lib/api";
+import { arrayToLines, emptyAuth, hasDuplicateVariableKeys, linesToArray, normalizeAuth } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
-import type { RootMain } from "../types/api";
+import type { RootMain, Variable } from "../types/api";
 
 const loading = ref(false);
 const saving = ref(false);
@@ -21,7 +22,8 @@ const form = ref<RootMain>({
     allow_headers: ["*"]
   },
   jwt: [],
-  auth: { ...emptyAuth }
+  auth: { ...emptyAuth },
+  variables: []
 });
 
 const allowOriginsText = ref("*");
@@ -29,6 +31,8 @@ const allowMethodsText = ref("*");
 const allowHeadersText = ref("*");
 const jwkUrlsText = ref("");
 const jwtKidOptions = ref<string[]>([]);
+const effectiveVariables = ref<Variable[]>([]);
+let variablesRequestSeq = 0;
 
 async function load() {
   loading.value = true;
@@ -40,13 +44,15 @@ async function load() {
     }).catch(() => ({ kids: [] }));
     form.value = {
       ...root,
-      auth: normalizeAuth(root.auth)
+      auth: normalizeAuth(root.auth),
+      variables: root.variables || []
     };
     jwtKidOptions.value = kidsRep.kids || [];
     allowOriginsText.value = arrayToLines(root.cors?.allow_origins);
     allowMethodsText.value = arrayToLines(root.cors?.allow_methods);
     allowHeadersText.value = arrayToLines(root.cors?.allow_headers);
     jwkUrlsText.value = arrayToLines((root.jwt || []).map((x) => x.jwk_url));
+    await refreshEffectiveVariables();
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load root settings";
   } finally {
@@ -58,6 +64,9 @@ async function submit() {
   saving.value = true;
   errorMessage.value = "";
   try {
+    if (hasDuplicateVariableKeys(form.value.variables)) {
+      throw new Error("Variable keys must be unique");
+    }
     form.value.cors.allow_origins = linesToArray(allowOriginsText.value);
     form.value.cors.allow_methods = linesToArray(allowMethodsText.value);
     form.value.cors.allow_headers = linesToArray(allowHeadersText.value);
@@ -72,6 +81,28 @@ async function submit() {
     saving.value = false;
   }
 }
+
+async function refreshEffectiveVariables() {
+  const requestId = ++variablesRequestSeq;
+  try {
+    const rep = await getRootVariablesEffective({ variables: form.value.variables || [] });
+    if (requestId === variablesRequestSeq) {
+      effectiveVariables.value = rep.variables || [];
+    }
+  } catch {
+    if (requestId === variablesRequestSeq) {
+      effectiveVariables.value = [];
+    }
+  }
+}
+
+watch(
+  () => form.value.variables,
+  () => {
+    void refreshEffectiveVariables();
+  },
+  { deep: true }
+);
 
 onMounted(() => {
   void load();
@@ -122,7 +153,13 @@ onMounted(() => {
     <h3 class="section-title">Auth</h3>
     <div class="field">
       <span>Auth</span>
-      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" />
+      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
+    </div>
+
+    <h3 class="section-title">Variables</h3>
+    <div class="field">
+      <span>Variables</span>
+      <VariableEditor v-model="form.variables" :available-variables="effectiveVariables" />
     </div>
 
     <div class="actions">

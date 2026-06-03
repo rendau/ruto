@@ -5,6 +5,7 @@ package ruto_v1;
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "ruto_v1/auth.proto";
+import "ruto_v1/common.proto";
 
 option go_package = "/ruto_v1";
 
@@ -18,6 +19,9 @@ service Root {
   rpc GetJwtKidsByUrls(RootJwtKidsReq) returns (RootJwtKidsRep) {
     option (google.api.http) = { get: "/root/jwt/kids/by-urls" };
   };
+  rpc GetVariablesEffective(RootVariablesEffectiveReq) returns (VariablesEffectiveRep) {
+    option (google.api.http) = { post: "/root/variables/effective" body: "*" };
+  };
 }
 
 message RootMain {
@@ -25,6 +29,7 @@ message RootMain {
   RootCors cors = 2;
   repeated RootJwt jwt = 3;
   Auth auth = 4;
+  repeated Variable variables = 5;
 }
 
 // children
@@ -48,4 +53,8 @@ message RootJwtKidsRep {
 
 message RootJwtKidsReq {
   repeated string urls = 1;
+}
+
+message RootVariablesEffectiveReq {
+  repeated Variable variables = 1;
 }

@@ -20,9 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Root_Get_FullMethodName              = "/ruto_v1.Root/Get"
-	Root_Set_FullMethodName              = "/ruto_v1.Root/Set"
-	Root_GetJwtKidsByUrls_FullMethodName = "/ruto_v1.Root/GetJwtKidsByUrls"
+	Root_Get_FullMethodName                   = "/ruto_v1.Root/Get"
+	Root_Set_FullMethodName                   = "/ruto_v1.Root/Set"
+	Root_GetJwtKidsByUrls_FullMethodName      = "/ruto_v1.Root/GetJwtKidsByUrls"
+	Root_GetVariablesEffective_FullMethodName = "/ruto_v1.Root/GetVariablesEffective"
 )
 
 // RootClient is the client API for Root service.
@@ -32,6 +33,7 @@ type RootClient interface {
 	Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RootMain, error)
 	Set(ctx context.Context, in *RootMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetJwtKidsByUrls(ctx context.Context, in *RootJwtKidsReq, opts ...grpc.CallOption) (*RootJwtKidsRep, error)
+	GetVariablesEffective(ctx context.Context, in *RootVariablesEffectiveReq, opts ...grpc.CallOption) (*VariablesEffectiveRep, error)
 }
 
 type rootClient struct {
@@ -72,6 +74,16 @@ func (c *rootClient) GetJwtKidsByUrls(ctx context.Context, in *RootJwtKidsReq, o
 	return out, nil
 }
 
+func (c *rootClient) GetVariablesEffective(ctx context.Context, in *RootVariablesEffectiveReq, opts ...grpc.CallOption) (*VariablesEffectiveRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VariablesEffectiveRep)
+	err := c.cc.Invoke(ctx, Root_GetVariablesEffective_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RootServer is the server API for Root service.
 // All implementations must embed UnimplementedRootServer
 // for forward compatibility.
@@ -79,6 +91,7 @@ type RootServer interface {
 	Get(context.Context, *emptypb.Empty) (*RootMain, error)
 	Set(context.Context, *RootMain) (*emptypb.Empty, error)
 	GetJwtKidsByUrls(context.Context, *RootJwtKidsReq) (*RootJwtKidsRep, error)
+	GetVariablesEffective(context.Context, *RootVariablesEffectiveReq) (*VariablesEffectiveRep, error)
 	mustEmbedUnimplementedRootServer()
 }
 
@@ -97,6 +110,9 @@ func (UnimplementedRootServer) Set(context.Context, *RootMain) (*emptypb.Empty, 
 }
 func (UnimplementedRootServer) GetJwtKidsByUrls(context.Context, *RootJwtKidsReq) (*RootJwtKidsRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJwtKidsByUrls not implemented")
+}
+func (UnimplementedRootServer) GetVariablesEffective(context.Context, *RootVariablesEffectiveReq) (*VariablesEffectiveRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVariablesEffective not implemented")
 }
 func (UnimplementedRootServer) mustEmbedUnimplementedRootServer() {}
 func (UnimplementedRootServer) testEmbeddedByValue()              {}
@@ -173,6 +189,24 @@ func _Root_GetJwtKidsByUrls_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Root_GetVariablesEffective_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RootVariablesEffectiveReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RootServer).GetVariablesEffective(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Root_GetVariablesEffective_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RootServer).GetVariablesEffective(ctx, req.(*RootVariablesEffectiveReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Root_ServiceDesc is the grpc.ServiceDesc for Root service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -191,6 +225,10 @@ var Root_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetJwtKidsByUrls",
 			Handler:    _Root_GetJwtKidsByUrls_Handler,
+		},
+		{
+			MethodName: "GetVariablesEffective",
+			Handler:    _Root_GetVariablesEffective_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

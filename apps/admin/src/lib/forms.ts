@@ -5,7 +5,8 @@ import type {
   AuthMethodBasic,
   AuthMethodBasicUser,
   AuthMethodIpValidation,
-  AuthMethodJwt
+  AuthMethodJwt,
+  Variable
 } from "../types/api";
 
 export const emptyAuth: Auth = {
@@ -152,4 +153,51 @@ export function keyValueLinesToRecord(value: string): Record<string, string> {
     result[key] = trimmed.slice(separatorIndex + 1).trim();
   }
   return result;
+}
+
+export function variablesToKeyValueLines(value?: Variable[] | null): string {
+  return (value || []).map((item) => `${item.key}: ${item.value}`).join("\n");
+}
+
+export function keyValueLinesToVariables(value: string): Variable[] {
+  const result: Variable[] = [];
+  for (const line of value.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const colonIndex = trimmed.indexOf(":");
+    const equalsIndex = trimmed.indexOf("=");
+    let separatorIndex = -1;
+    if (colonIndex >= 0 && equalsIndex >= 0) {
+      separatorIndex = Math.min(colonIndex, equalsIndex);
+    } else {
+      separatorIndex = Math.max(colonIndex, equalsIndex);
+    }
+    if (separatorIndex < 0) {
+      result.push({ key: trimmed, value: "" });
+      continue;
+    }
+    const key = trimmed.slice(0, separatorIndex).trim();
+    if (!key) {
+      continue;
+    }
+    result.push({ key, value: trimmed.slice(separatorIndex + 1).trim() });
+  }
+  return result;
+}
+
+export function hasDuplicateVariableKeys(value?: Variable[] | null): boolean {
+  const seen = new Set<string>();
+  for (const item of value || []) {
+    const key = (item.key || "").trim();
+    if (!key) {
+      continue;
+    }
+    if (seen.has(key)) {
+      return true;
+    }
+    seen.add(key);
+  }
+  return false;
 }

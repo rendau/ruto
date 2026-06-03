@@ -64,11 +64,25 @@ func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, fin
 				)
 			}
 
+			authMiddleware, err := middleware.NewAuth(snapshot, app, ep)
+			if err != nil {
+				return nil, fmt.Errorf("auth middleware for %s %s: %w", ep.Method, routePath, err)
+			}
+
+			variables, err := snapshot.EffectiveVariables(app, ep)
+			if err != nil {
+				return nil, fmt.Errorf("variables for %s %s: %w", ep.Method, routePath, err)
+			}
+			backendParams, err := app.BackendRequestParamsWithVariables(ep, variables)
+			if err != nil {
+				return nil, fmt.Errorf("backend request params for %s %s: %w", ep.Method, routePath, err)
+			}
+
 			handler := middleware.Chain(proxyHandler,
 				middleware.NewMetrics(app, ep, routePath),
 				middleware.NewRequestLog(app, ep, routePath, accessLog),
-				middleware.NewAuth(snapshot, app, ep),
-				middleware.NewBackendRequestParams(app.BackendRequestParams(ep)),
+				authMiddleware,
+				middleware.NewBackendRequestParams(backendParams),
 			)
 
 			if ep.Method == "*" {

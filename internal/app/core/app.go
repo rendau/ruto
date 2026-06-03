@@ -104,7 +104,7 @@ func (a *App) Init() error {
 	domainAppService := domainAppServiceP.New(domainAppRepoDb)
 	domainEndpointRepoDb := domainEndpointRepoDbP.New(a.pgpool)
 	domainEndpointService := domainEndpointServiceP.New(domainEndpointRepoDb)
-	usecaseApp := usecaseAppP.New(domainAppService, domainEndpointService, swaggerService, sessionService)
+	usecaseApp := usecaseAppP.New(domainAppService, domainEndpointService, swaggerService, sessionService, domainRootService)
 	handlerGrpcApp := handlerGrpcP.NewApp(usecaseApp)
 
 	if configCore.Conf.AppSwaggerDiscoveryOnStart {
@@ -117,7 +117,7 @@ func (a *App) Init() error {
 	}
 
 	// endpoint
-	usecaseEndpoint := usecaseEndpointP.New(domainEndpointService, sessionService)
+	usecaseEndpoint := usecaseEndpointP.New(domainEndpointService, sessionService, domainRootService, domainAppService)
 	handlerGrpcEndpoint := handlerGrpcP.NewEndpoint(usecaseEndpoint)
 
 	// usr

@@ -34,6 +34,7 @@ type EndpointMain struct {
 	Auth          *Auth                  `protobuf:"bytes,7,opt,name=auth,proto3" json:"auth,omitempty"`
 	Type          string                 `protobuf:"bytes,8,opt,name=type,proto3" json:"type,omitempty"` // http | grpc
 	Grpc          *EndpointGrpc          `protobuf:"bytes,9,opt,name=grpc,proto3" json:"grpc,omitempty"`
+	Variables     []*Variable            `protobuf:"bytes,10,rep,name=variables,proto3" json:"variables,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -127,6 +128,13 @@ func (x *EndpointMain) GetType() string {
 func (x *EndpointMain) GetGrpc() *EndpointGrpc {
 	if x != nil {
 		return x.Grpc
+	}
+	return nil
+}
+
+func (x *EndpointMain) GetVariables() []*Variable {
+	if x != nil {
+		return x.Variables
 	}
 	return nil
 }
@@ -451,11 +459,71 @@ func (x *EndpointGrpc) GetPath() string {
 	return ""
 }
 
+type EndpointVariablesEffectiveReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AppId         string                 `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	Variables     []*Variable            `protobuf:"bytes,3,rep,name=variables,proto3" json:"variables,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointVariablesEffectiveReq) Reset() {
+	*x = EndpointVariablesEffectiveReq{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointVariablesEffectiveReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointVariablesEffectiveReq) ProtoMessage() {}
+
+func (x *EndpointVariablesEffectiveReq) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointVariablesEffectiveReq.ProtoReflect.Descriptor instead.
+func (*EndpointVariablesEffectiveReq) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *EndpointVariablesEffectiveReq) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EndpointVariablesEffectiveReq) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+func (x *EndpointVariablesEffectiveReq) GetVariables() []*Variable {
+	if x != nil {
+		return x.Variables
+	}
+	return nil
+}
+
 var File_ruto_v1_endpoint_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_endpoint_proto_rawDesc = "" +
 	"\n" +
-	"\x16ruto_v1/endpoint.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12ruto_v1/auth.proto\x1a\x14ruto_v1/common.proto\"\x8f\x02\n" +
+	"\x16ruto_v1/endpoint.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12ruto_v1/auth.proto\x1a\x14ruto_v1/common.proto\"\xc0\x02\n" +
 	"\fEndpointMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06app_id\x18\x02 \x01(\tR\x05appId\x12\x16\n" +
@@ -465,7 +533,9 @@ const file_ruto_v1_endpoint_proto_rawDesc = "" +
 	"\abackend\x18\x06 \x01(\v2\x18.ruto_v1.EndpointBackendR\abackend\x12!\n" +
 	"\x04auth\x18\a \x01(\v2\r.ruto_v1.AuthR\x04auth\x12\x12\n" +
 	"\x04type\x18\b \x01(\tR\x04type\x12)\n" +
-	"\x04grpc\x18\t \x01(\v2\x15.ruto_v1.EndpointGrpcR\x04grpc\" \n" +
+	"\x04grpc\x18\t \x01(\v2\x15.ruto_v1.EndpointGrpcR\x04grpc\x12/\n" +
+	"\tvariables\x18\n" +
+	" \x03(\v2\x11.ruto_v1.VariableR\tvariables\" \n" +
 	"\x0eEndpointGetReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x98\x01\n" +
 	"\x0fEndpointListReq\x126\n" +
@@ -494,13 +564,18 @@ const file_ruto_v1_endpoint_proto_rawDesc = "" +
 	"\fEndpointGrpc\x12\x18\n" +
 	"\aservice\x18\x01 \x01(\tR\aservice\x12\x16\n" +
 	"\x06method\x18\x02 \x01(\tR\x06method\x12\x12\n" +
-	"\x04path\x18\x03 \x01(\tR\x04path2\xa2\x03\n" +
+	"\x04path\x18\x03 \x01(\tR\x04path\"w\n" +
+	"\x1dEndpointVariablesEffectiveReq\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
+	"\x06app_id\x18\x02 \x01(\tR\x05appId\x12/\n" +
+	"\tvariables\x18\x03 \x03(\v2\x11.ruto_v1.VariableR\tvariables2\xae\x04\n" +
 	"\bEndpoint\x12M\n" +
 	"\x04List\x12\x18.ruto_v1.EndpointListReq\x1a\x18.ruto_v1.EndpointListRep\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/endpoint\x12M\n" +
 	"\x03Get\x12\x17.ruto_v1.EndpointGetReq\x1a\x15.ruto_v1.EndpointMain\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/endpoint/{id}\x12Q\n" +
 	"\x06Create\x12\x15.ruto_v1.EndpointMain\x1a\x1a.ruto_v1.EndpointCreateRep\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\"\t/endpoint\x12R\n" +
 	"\x06Update\x12\x15.ruto_v1.EndpointMain\x1a\x16.google.protobuf.Empty\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\x1a\x0e/endpoint/{id}\x12Q\n" +
-	"\x06Delete\x12\x17.ruto_v1.EndpointGetReq\x1a\x16.google.protobuf.Empty\"\x16\x82\xd3\xe4\x93\x02\x10*\x0e/endpoint/{id}B\n" +
+	"\x06Delete\x12\x17.ruto_v1.EndpointGetReq\x1a\x16.google.protobuf.Empty\"\x16\x82\xd3\xe4\x93\x02\x10*\x0e/endpoint/{id}\x12\x89\x01\n" +
+	"\x15GetVariablesEffective\x12&.ruto_v1.EndpointVariablesEffectiveReq\x1a\x1e.ruto_v1.VariablesEffectiveRep\"(\x82\xd3\xe4\x93\x02\":\x01*\"\x1d/endpoint/variables/effectiveB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
 var (
@@ -515,46 +590,53 @@ func file_ruto_v1_endpoint_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_endpoint_proto_rawDescData
 }
 
-var file_ruto_v1_endpoint_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_ruto_v1_endpoint_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_ruto_v1_endpoint_proto_goTypes = []any{
-	(*EndpointMain)(nil),      // 0: ruto_v1.EndpointMain
-	(*EndpointGetReq)(nil),    // 1: ruto_v1.EndpointGetReq
-	(*EndpointListReq)(nil),   // 2: ruto_v1.EndpointListReq
-	(*EndpointListRep)(nil),   // 3: ruto_v1.EndpointListRep
-	(*EndpointCreateRep)(nil), // 4: ruto_v1.EndpointCreateRep
-	(*EndpointBackend)(nil),   // 5: ruto_v1.EndpointBackend
-	(*EndpointGrpc)(nil),      // 6: ruto_v1.EndpointGrpc
-	nil,                       // 7: ruto_v1.EndpointBackend.HeadersEntry
-	nil,                       // 8: ruto_v1.EndpointBackend.QueryParamsEntry
-	(*Auth)(nil),              // 9: ruto_v1.Auth
-	(*ListParamsSt)(nil),      // 10: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),  // 11: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),     // 12: google.protobuf.Empty
+	(*EndpointMain)(nil),                  // 0: ruto_v1.EndpointMain
+	(*EndpointGetReq)(nil),                // 1: ruto_v1.EndpointGetReq
+	(*EndpointListReq)(nil),               // 2: ruto_v1.EndpointListReq
+	(*EndpointListRep)(nil),               // 3: ruto_v1.EndpointListRep
+	(*EndpointCreateRep)(nil),             // 4: ruto_v1.EndpointCreateRep
+	(*EndpointBackend)(nil),               // 5: ruto_v1.EndpointBackend
+	(*EndpointGrpc)(nil),                  // 6: ruto_v1.EndpointGrpc
+	(*EndpointVariablesEffectiveReq)(nil), // 7: ruto_v1.EndpointVariablesEffectiveReq
+	nil,                                   // 8: ruto_v1.EndpointBackend.HeadersEntry
+	nil,                                   // 9: ruto_v1.EndpointBackend.QueryParamsEntry
+	(*Auth)(nil),                          // 10: ruto_v1.Auth
+	(*Variable)(nil),                      // 11: ruto_v1.Variable
+	(*ListParamsSt)(nil),                  // 12: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),              // 13: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),                 // 14: google.protobuf.Empty
+	(*VariablesEffectiveRep)(nil),         // 15: ruto_v1.VariablesEffectiveRep
 }
 var file_ruto_v1_endpoint_proto_depIdxs = []int32{
 	5,  // 0: ruto_v1.EndpointMain.backend:type_name -> ruto_v1.EndpointBackend
-	9,  // 1: ruto_v1.EndpointMain.auth:type_name -> ruto_v1.Auth
+	10, // 1: ruto_v1.EndpointMain.auth:type_name -> ruto_v1.Auth
 	6,  // 2: ruto_v1.EndpointMain.grpc:type_name -> ruto_v1.EndpointGrpc
-	10, // 3: ruto_v1.EndpointListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	11, // 4: ruto_v1.EndpointListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
-	0,  // 5: ruto_v1.EndpointListRep.results:type_name -> ruto_v1.EndpointMain
-	7,  // 6: ruto_v1.EndpointBackend.headers:type_name -> ruto_v1.EndpointBackend.HeadersEntry
-	8,  // 7: ruto_v1.EndpointBackend.query_params:type_name -> ruto_v1.EndpointBackend.QueryParamsEntry
-	2,  // 8: ruto_v1.Endpoint.List:input_type -> ruto_v1.EndpointListReq
-	1,  // 9: ruto_v1.Endpoint.Get:input_type -> ruto_v1.EndpointGetReq
-	0,  // 10: ruto_v1.Endpoint.Create:input_type -> ruto_v1.EndpointMain
-	0,  // 11: ruto_v1.Endpoint.Update:input_type -> ruto_v1.EndpointMain
-	1,  // 12: ruto_v1.Endpoint.Delete:input_type -> ruto_v1.EndpointGetReq
-	3,  // 13: ruto_v1.Endpoint.List:output_type -> ruto_v1.EndpointListRep
-	0,  // 14: ruto_v1.Endpoint.Get:output_type -> ruto_v1.EndpointMain
-	4,  // 15: ruto_v1.Endpoint.Create:output_type -> ruto_v1.EndpointCreateRep
-	12, // 16: ruto_v1.Endpoint.Update:output_type -> google.protobuf.Empty
-	12, // 17: ruto_v1.Endpoint.Delete:output_type -> google.protobuf.Empty
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	11, // 3: ruto_v1.EndpointMain.variables:type_name -> ruto_v1.Variable
+	12, // 4: ruto_v1.EndpointListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	13, // 5: ruto_v1.EndpointListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	0,  // 6: ruto_v1.EndpointListRep.results:type_name -> ruto_v1.EndpointMain
+	8,  // 7: ruto_v1.EndpointBackend.headers:type_name -> ruto_v1.EndpointBackend.HeadersEntry
+	9,  // 8: ruto_v1.EndpointBackend.query_params:type_name -> ruto_v1.EndpointBackend.QueryParamsEntry
+	11, // 9: ruto_v1.EndpointVariablesEffectiveReq.variables:type_name -> ruto_v1.Variable
+	2,  // 10: ruto_v1.Endpoint.List:input_type -> ruto_v1.EndpointListReq
+	1,  // 11: ruto_v1.Endpoint.Get:input_type -> ruto_v1.EndpointGetReq
+	0,  // 12: ruto_v1.Endpoint.Create:input_type -> ruto_v1.EndpointMain
+	0,  // 13: ruto_v1.Endpoint.Update:input_type -> ruto_v1.EndpointMain
+	1,  // 14: ruto_v1.Endpoint.Delete:input_type -> ruto_v1.EndpointGetReq
+	7,  // 15: ruto_v1.Endpoint.GetVariablesEffective:input_type -> ruto_v1.EndpointVariablesEffectiveReq
+	3,  // 16: ruto_v1.Endpoint.List:output_type -> ruto_v1.EndpointListRep
+	0,  // 17: ruto_v1.Endpoint.Get:output_type -> ruto_v1.EndpointMain
+	4,  // 18: ruto_v1.Endpoint.Create:output_type -> ruto_v1.EndpointCreateRep
+	14, // 19: ruto_v1.Endpoint.Update:output_type -> google.protobuf.Empty
+	14, // 20: ruto_v1.Endpoint.Delete:output_type -> google.protobuf.Empty
+	15, // 21: ruto_v1.Endpoint.GetVariablesEffective:output_type -> ruto_v1.VariablesEffectiveRep
+	16, // [16:22] is the sub-list for method output_type
+	10, // [10:16] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_endpoint_proto_init() }
@@ -571,7 +653,7 @@ func file_ruto_v1_endpoint_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_endpoint_proto_rawDesc), len(file_ruto_v1_endpoint_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

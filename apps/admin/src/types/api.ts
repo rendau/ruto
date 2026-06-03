@@ -55,6 +55,30 @@ export interface AuthMethodIpValidation {
   allowed_ips: string[];
 }
 
+export interface Variable {
+  key: string;
+  value: string;
+}
+
+export interface VariablesEffectiveRep {
+  variables: Variable[];
+}
+
+export interface RootVariablesEffectiveReq {
+  variables: Variable[];
+}
+
+export interface AppVariablesEffectiveReq {
+  id?: string;
+  variables: Variable[];
+}
+
+export interface EndpointVariablesEffectiveReq {
+  id?: string;
+  app_id?: string;
+  variables: Variable[];
+}
+
 export interface RootCors {
   enabled: boolean;
   allow_credentials: boolean;
@@ -73,6 +97,7 @@ export interface RootMain {
   cors: RootCors;
   jwt: RootJwt[];
   auth: Auth;
+  variables: Variable[];
 }
 
 export interface RootJwtKidsRep {
@@ -98,6 +123,7 @@ export interface AppMain {
   name: string;
   backend: AppBackend;
   auth: Auth;
+  variables: Variable[];
 }
 
 export interface AppListRep {
@@ -161,6 +187,7 @@ export interface EndpointMain {
   auth: Auth;
   type: EndpointType;
   grpc: EndpointGrpc;
+  variables: Variable[];
 }
 
 export interface EndpointListRep {

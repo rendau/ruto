@@ -14,6 +14,7 @@ import (
 
 	"github.com/rendau/ruto/internal/constant"
 	"github.com/rendau/ruto/internal/domain/root/model"
+	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 	"github.com/rendau/ruto/internal/errs"
 )
 
@@ -54,6 +55,23 @@ func (u *Usecase) Set(ctx context.Context, obj *model.Root) error {
 		return fmt.Errorf("svc.Set: %w", err)
 	}
 	return nil
+}
+
+func (u *Usecase) GetVariablesEffective(ctx context.Context, variables []variableModel.Variable) ([]variableModel.Variable, error) {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return nil, errs.NotAuthorized
+	}
+
+	variables, err := variableModel.NormalizeList(variables)
+	if err != nil {
+		return nil, fmt.Errorf("variables: %w", err)
+	}
+	result, err := variableModel.ResolveList(variables)
+	if err != nil {
+		return nil, fmt.Errorf("variables: %w", err)
+	}
+	return result, nil
 }
 
 func (u *Usecase) GetJwtKidsByURLs(ctx context.Context, urls []string) ([]string, error) {

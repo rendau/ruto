@@ -17,6 +17,7 @@ func EncodeAppMain(v *model.App, _ int) *ruto_v1.AppMain {
 		Name:       v.Name,
 		Backend:    EncodeAppBackend(v.Backend),
 		Auth:       EncodeEndpointAuth(v.Auth),
+		Variables:  lo.Map(v.Variables, EncodeVariable),
 	}
 }
 
@@ -35,6 +36,7 @@ func DecodeAppMain(v *ruto_v1.AppMain) *model.App {
 		Name:       v.Name,
 		Backend:    DecodeAppBackend(v.Backend),
 		Auth:       DecodeEndpointAuth(v.Auth),
+		Variables:  lo.FilterMap(v.Variables, DecodeVariable),
 	}
 }
 

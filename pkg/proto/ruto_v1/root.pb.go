@@ -29,6 +29,7 @@ type RootMain struct {
 	Cors          *RootCors              `protobuf:"bytes,2,opt,name=cors,proto3" json:"cors,omitempty"`
 	Jwt           []*RootJwt             `protobuf:"bytes,3,rep,name=jwt,proto3" json:"jwt,omitempty"`
 	Auth          *Auth                  `protobuf:"bytes,4,opt,name=auth,proto3" json:"auth,omitempty"`
+	Variables     []*Variable            `protobuf:"bytes,5,rep,name=variables,proto3" json:"variables,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -87,6 +88,13 @@ func (x *RootMain) GetJwt() []*RootJwt {
 func (x *RootMain) GetAuth() *Auth {
 	if x != nil {
 		return x.Auth
+	}
+	return nil
+}
+
+func (x *RootMain) GetVariables() []*Variable {
+	if x != nil {
+		return x.Variables
 	}
 	return nil
 }
@@ -307,16 +315,61 @@ func (x *RootJwtKidsReq) GetUrls() []string {
 	return nil
 }
 
+type RootVariablesEffectiveReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Variables     []*Variable            `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RootVariablesEffectiveReq) Reset() {
+	*x = RootVariablesEffectiveReq{}
+	mi := &file_ruto_v1_root_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RootVariablesEffectiveReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RootVariablesEffectiveReq) ProtoMessage() {}
+
+func (x *RootVariablesEffectiveReq) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_root_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RootVariablesEffectiveReq.ProtoReflect.Descriptor instead.
+func (*RootVariablesEffectiveReq) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RootVariablesEffectiveReq) GetVariables() []*Variable {
+	if x != nil {
+		return x.Variables
+	}
+	return nil
+}
+
 var File_ruto_v1_root_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_root_proto_rawDesc = "" +
 	"\n" +
-	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12ruto_v1/auth.proto\"\x93\x01\n" +
+	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12ruto_v1/auth.proto\x1a\x14ruto_v1/common.proto\"\xc4\x01\n" +
 	"\bRootMain\x12\x19\n" +
 	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12%\n" +
 	"\x04cors\x18\x02 \x01(\v2\x11.ruto_v1.RootCorsR\x04cors\x12\"\n" +
 	"\x03jwt\x18\x03 \x03(\v2\x10.ruto_v1.RootJwtR\x03jwt\x12!\n" +
-	"\x04auth\x18\x04 \x01(\v2\r.ruto_v1.AuthR\x04auth\"\xd9\x01\n" +
+	"\x04auth\x18\x04 \x01(\v2\r.ruto_v1.AuthR\x04auth\x12/\n" +
+	"\tvariables\x18\x05 \x03(\v2\x11.ruto_v1.VariableR\tvariables\"\xd9\x01\n" +
 	"\bRootCors\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12+\n" +
 	"\x11allow_credentials\x18\x02 \x01(\bR\x10allowCredentials\x12\x17\n" +
@@ -329,12 +382,15 @@ const file_ruto_v1_root_proto_rawDesc = "" +
 	"\x0eRootJwtKidsRep\x12\x12\n" +
 	"\x04kids\x18\x01 \x03(\tR\x04kids\"$\n" +
 	"\x0eRootJwtKidsReq\x12\x12\n" +
-	"\x04urls\x18\x01 \x03(\tR\x04urls2\xf1\x01\n" +
+	"\x04urls\x18\x01 \x03(\tR\x04urls\"L\n" +
+	"\x19RootVariablesEffectiveReq\x12/\n" +
+	"\tvariables\x18\x01 \x03(\v2\x11.ruto_v1.VariableR\tvariables2\xf5\x02\n" +
 	"\x04Root\x12?\n" +
 	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x11.ruto_v1.RootMain\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/root\x12B\n" +
 	"\x03Set\x12\x11.ruto_v1.RootMain\x1a\x16.google.protobuf.Empty\"\x10\x82\xd3\xe4\x93\x02\n" +
 	":\x01*\"\x05/root\x12d\n" +
-	"\x10GetJwtKidsByUrls\x12\x17.ruto_v1.RootJwtKidsReq\x1a\x17.ruto_v1.RootJwtKidsRep\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/root/jwt/kids/by-urlsB\n" +
+	"\x10GetJwtKidsByUrls\x12\x17.ruto_v1.RootJwtKidsReq\x1a\x17.ruto_v1.RootJwtKidsRep\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/root/jwt/kids/by-urls\x12\x81\x01\n" +
+	"\x15GetVariablesEffective\x12\".ruto_v1.RootVariablesEffectiveReq\x1a\x1e.ruto_v1.VariablesEffectiveRep\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/root/variables/effectiveB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
 var (
@@ -349,31 +405,38 @@ func file_ruto_v1_root_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_root_proto_rawDescData
 }
 
-var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_ruto_v1_root_proto_goTypes = []any{
-	(*RootMain)(nil),       // 0: ruto_v1.RootMain
-	(*RootCors)(nil),       // 1: ruto_v1.RootCors
-	(*RootJwt)(nil),        // 2: ruto_v1.RootJwt
-	(*RootJwtKidsRep)(nil), // 3: ruto_v1.RootJwtKidsRep
-	(*RootJwtKidsReq)(nil), // 4: ruto_v1.RootJwtKidsReq
-	(*Auth)(nil),           // 5: ruto_v1.Auth
-	(*emptypb.Empty)(nil),  // 6: google.protobuf.Empty
+	(*RootMain)(nil),                  // 0: ruto_v1.RootMain
+	(*RootCors)(nil),                  // 1: ruto_v1.RootCors
+	(*RootJwt)(nil),                   // 2: ruto_v1.RootJwt
+	(*RootJwtKidsRep)(nil),            // 3: ruto_v1.RootJwtKidsRep
+	(*RootJwtKidsReq)(nil),            // 4: ruto_v1.RootJwtKidsReq
+	(*RootVariablesEffectiveReq)(nil), // 5: ruto_v1.RootVariablesEffectiveReq
+	(*Auth)(nil),                      // 6: ruto_v1.Auth
+	(*Variable)(nil),                  // 7: ruto_v1.Variable
+	(*emptypb.Empty)(nil),             // 8: google.protobuf.Empty
+	(*VariablesEffectiveRep)(nil),     // 9: ruto_v1.VariablesEffectiveRep
 }
 var file_ruto_v1_root_proto_depIdxs = []int32{
 	1, // 0: ruto_v1.RootMain.cors:type_name -> ruto_v1.RootCors
 	2, // 1: ruto_v1.RootMain.jwt:type_name -> ruto_v1.RootJwt
-	5, // 2: ruto_v1.RootMain.auth:type_name -> ruto_v1.Auth
-	6, // 3: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
-	0, // 4: ruto_v1.Root.Set:input_type -> ruto_v1.RootMain
-	4, // 5: ruto_v1.Root.GetJwtKidsByUrls:input_type -> ruto_v1.RootJwtKidsReq
-	0, // 6: ruto_v1.Root.Get:output_type -> ruto_v1.RootMain
-	6, // 7: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
-	3, // 8: ruto_v1.Root.GetJwtKidsByUrls:output_type -> ruto_v1.RootJwtKidsRep
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6, // 2: ruto_v1.RootMain.auth:type_name -> ruto_v1.Auth
+	7, // 3: ruto_v1.RootMain.variables:type_name -> ruto_v1.Variable
+	7, // 4: ruto_v1.RootVariablesEffectiveReq.variables:type_name -> ruto_v1.Variable
+	8, // 5: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
+	0, // 6: ruto_v1.Root.Set:input_type -> ruto_v1.RootMain
+	4, // 7: ruto_v1.Root.GetJwtKidsByUrls:input_type -> ruto_v1.RootJwtKidsReq
+	5, // 8: ruto_v1.Root.GetVariablesEffective:input_type -> ruto_v1.RootVariablesEffectiveReq
+	0, // 9: ruto_v1.Root.Get:output_type -> ruto_v1.RootMain
+	8, // 10: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
+	3, // 11: ruto_v1.Root.GetJwtKidsByUrls:output_type -> ruto_v1.RootJwtKidsRep
+	9, // 12: ruto_v1.Root.GetVariablesEffective:output_type -> ruto_v1.VariablesEffectiveRep
+	9, // [9:13] is the sub-list for method output_type
+	5, // [5:9] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_root_proto_init() }
@@ -382,13 +445,14 @@ func file_ruto_v1_root_proto_init() {
 		return
 	}
 	file_ruto_v1_auth_proto_init()
+	file_ruto_v1_common_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_root_proto_rawDesc), len(file_ruto_v1_root_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

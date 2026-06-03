@@ -10,19 +10,21 @@ import (
 
 func EncodeRootMain(v *model.Root, _ int) *ruto_v1.RootMain {
 	return &ruto_v1.RootMain{
-		BaseUrl: v.BaseUrl,
-		Cors:    EncodeRootCors(v.Cors),
-		Jwt:     lo.Map(v.Jwt, EncodeRootJwt),
-		Auth:    EncodeEndpointAuth(v.Auth),
+		BaseUrl:   v.BaseUrl,
+		Cors:      EncodeRootCors(v.Cors),
+		Jwt:       lo.Map(v.Jwt, EncodeRootJwt),
+		Auth:      EncodeEndpointAuth(v.Auth),
+		Variables: lo.Map(v.Variables, EncodeVariable),
 	}
 }
 
 func DecodeRootMain(v *ruto_v1.RootMain) *model.Root {
 	return &model.Root{
-		BaseUrl: v.BaseUrl,
-		Cors:    DecodeRootCors(v.Cors),
-		Jwt:     lo.FilterMap(v.Jwt, DecodeRootJwt),
-		Auth:    DecodeEndpointAuth(v.Auth),
+		BaseUrl:   v.BaseUrl,
+		Cors:      DecodeRootCors(v.Cors),
+		Jwt:       lo.FilterMap(v.Jwt, DecodeRootJwt),
+		Auth:      DecodeEndpointAuth(v.Auth),
+		Variables: lo.FilterMap(v.Variables, DecodeVariable),
 	}
 }
 

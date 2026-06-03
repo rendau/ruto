@@ -70,14 +70,26 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root, accessLog bool) (map[
 
 			routeName := fmt.Sprintf("(%s)%s", app.Name, ep.Grpc.Path)
 
+			variables, err := snapshot.EffectiveVariables(app, ep)
+			if err != nil {
+				return nil, fmt.Errorf("variables for %s: %w", routeName, err)
+			}
+			backendParams, err := app.BackendRequestParamsWithVariables(ep, variables)
+			if err != nil {
+				return nil, fmt.Errorf("backend request params for %s: %w", routeName, err)
+			}
+
 			rt := &route{
 				app:               app,
 				endpoint:          ep,
 				targetGrpcAddress: targetGrpcAddress,
-				backendHeaders:    app.BackendRequestParams(ep).Headers,
+				backendHeaders:    backendParams.Headers,
 			}
 
-			authService := serviceAuth.New(snapshot, app, ep)
+			authService, err := serviceAuth.New(snapshot, app, ep)
+			if err != nil {
+				return nil, fmt.Errorf("auth for %s: %w", routeName, err)
+			}
 			logService := serviceLog.New(app, ep, "GRPC "+routeName, accessLog)
 			metricsService := serviceMetrics.New(app, ep, "GRPC "+routeName)
 

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createEndpoint, getApp, getEndpoint, getRoot, getRootJwtKidsByUrls, updateEndpoint } from "../lib/api";
+import { createEndpoint, getApp, getEndpoint, getEndpointVariablesEffective, getRoot, getRootJwtKidsByUrls, updateEndpoint } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
-import { keyValueLinesToRecord, normalizeAuth, recordToKeyValueLines } from "../lib/forms";
+import VariableEditor from "../components/VariableEditor.vue";
+import VariableInput from "../components/VariableInput.vue";
+import { hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, recordToKeyValueLines } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
-import type { EndpointMain, EndpointType } from "../types/api";
+import type { EndpointMain, EndpointType, Variable } from "../types/api";
 
 const route = useRoute();
 const router = useRouter();
@@ -37,6 +39,8 @@ const lastAutoGrpcPath = ref("");
 const appGrpcEnabled = ref(false);
 const headersText = ref("");
 const queryParamsText = ref("");
+const effectiveVariables = ref<Variable[]>([]);
+let variablesRequestSeq = 0;
 
 const form = ref<EndpointMain>({
   id: "",
@@ -59,7 +63,8 @@ const form = ref<EndpointMain>({
     service: "",
     method: "",
     path: ""
-  }
+  },
+  variables: []
 });
 const appDisplayName = computed(() => appName.value || form.value.app_id || "-");
 const endpointMethodOptions = ["*", "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE"];
@@ -85,7 +90,8 @@ function normalizeLoadedEndpoint(item: EndpointMain): EndpointMain {
       service: item.grpc?.service || "",
       method: item.grpc?.method || "",
       path: item.grpc?.path || ""
-    }
+    },
+    variables: item.variables || []
   };
 }
 
@@ -132,6 +138,7 @@ async function load() {
   if (!isEdit.value) {
     applyPrefillFromQuery();
     await loadAppName();
+    await refreshEffectiveVariables();
     return;
   }
   loading.value = true;
@@ -141,6 +148,7 @@ async function load() {
     headersText.value = recordToKeyValueLines(form.value.backend.headers);
     queryParamsText.value = recordToKeyValueLines(form.value.backend.query_params);
     await loadAppName();
+    await refreshEffectiveVariables();
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load endpoint";
   } finally {
@@ -229,6 +237,12 @@ async function submit() {
   }
   saving.value = true;
   errorMessage.value = "";
+  if (hasDuplicateVariableKeys(form.value.variables)) {
+    errorMessage.value = "Variable keys must be unique";
+    notifyError(errorMessage.value);
+    saving.value = false;
+    return;
+  }
   const payload = buildPayload();
   try {
     if (isEdit.value) {
@@ -247,6 +261,36 @@ async function submit() {
     saving.value = false;
   }
 }
+
+async function refreshEffectiveVariables() {
+  if (!form.value.app_id) {
+    effectiveVariables.value = [];
+    return;
+  }
+  const requestId = ++variablesRequestSeq;
+  try {
+    const rep = await getEndpointVariablesEffective({
+      id: isEdit.value ? endpointId.value : "",
+      app_id: form.value.app_id,
+      variables: form.value.variables || []
+    });
+    if (requestId === variablesRequestSeq) {
+      effectiveVariables.value = rep.variables || [];
+    }
+  } catch {
+    if (requestId === variablesRequestSeq) {
+      effectiveVariables.value = [];
+    }
+  }
+}
+
+watch(
+  () => form.value.variables,
+  () => {
+    void refreshEffectiveVariables();
+  },
+  { deep: true }
+);
 
 watch(
   () => [form.value.grpc.service, form.value.grpc.method],
@@ -304,11 +348,11 @@ onMounted(() => {
       </label>
       <label class="field">
         <span>Backend Headers</span>
-        <n-input v-model:value="headersText" type="textarea" :autosize="{ minRows: 4 }" placeholder="X-Service-Token: secret" />
+        <VariableInput v-model="headersText" :variables="effectiveVariables" type="textarea" :autosize="{ minRows: 4 }" placeholder="X-Service-Token: {{token}}" />
       </label>
       <label class="field">
         <span>Backend Query Params</span>
-        <n-input v-model:value="queryParamsText" type="textarea" :autosize="{ minRows: 4 }" placeholder="tenant=acme" />
+        <VariableInput v-model="queryParamsText" :variables="effectiveVariables" type="textarea" :autosize="{ minRows: 4 }" placeholder="tenant={{tenant}}" />
       </label>
     </template>
 
@@ -327,13 +371,18 @@ onMounted(() => {
       </label>
       <label class="field">
         <span>Backend Headers</span>
-        <n-input v-model:value="headersText" type="textarea" :autosize="{ minRows: 4 }" placeholder="X-Service-Token: secret" />
+        <VariableInput v-model="headersText" :variables="effectiveVariables" type="textarea" :autosize="{ minRows: 4 }" placeholder="X-Service-Token: {{token}}" />
       </label>
     </template>
 
     <div class="field">
+      <span>Variables</span>
+      <VariableEditor v-model="form.variables" :available-variables="effectiveVariables" />
+    </div>
+
+    <div class="field">
       <span>Auth</span>
-      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" />
+      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
     </div>
 
     <div class="actions">

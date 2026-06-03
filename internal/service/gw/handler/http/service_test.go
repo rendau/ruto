@@ -12,6 +12,7 @@ import (
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 )
 
 func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
@@ -124,8 +125,8 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		backendHit = true
 		require.Equal(t, "/profile", r.URL.Path)
-		require.Equal(t, "app_only=1&ep_only=2&inbound=ok&shared=endpoint", r.URL.RawQuery)
-		require.Equal(t, "app-token", r.Header.Get("X-App-Token"))
+		require.Equal(t, "app_only=1&ep_only=2&inbound=ok&shared=app-tenant", r.URL.RawQuery)
+		require.Equal(t, "endpoint-token:app", r.Header.Get("X-App-Token"))
 		require.Equal(t, "endpoint-token", r.Header.Get("X-Endpoint-Token"))
 		require.Equal(t, "endpoint", r.Header.Get("X-Shared"))
 		require.Equal(t, "client", r.Header.Get("X-Client"))
@@ -134,15 +135,23 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 	defer backend.Close()
 
 	snapshot := rootModel.NewEmpty()
+	snapshot.Variables = []variableModel.Variable{
+		{Key: "token", Value: "root-token"},
+		{Key: "tenant", Value: "root-tenant"},
+	}
 	snapshot.Apps = []*appModel.App{
 		{
 			Active:     true,
 			PathPrefix: "/account",
 			Name:       "account",
+			Variables: []variableModel.Variable{
+				{Key: "tenant", Value: "app-tenant"},
+				{Key: "app_token", Value: "{{token}}:app"},
+			},
 			Backend: appModel.AppBackend{
 				Url: backend.URL,
 				Headers: map[string]string{
-					"X-App-Token": "app-token",
+					"X-App-Token": "{{app_token}}",
 					"X-Shared":    "app",
 				},
 				QueryParams: map[string]string{
@@ -156,14 +165,17 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 					Type:   endpointModel.TypeHTTP,
 					Method: http.MethodGet,
 					Path:   "profile",
+					Variables: []variableModel.Variable{
+						{Key: "token", Value: "endpoint-token"},
+					},
 					Backend: endpointModel.Backend{
 						Headers: map[string]string{
-							"X-Endpoint-Token": "endpoint-token",
+							"X-Endpoint-Token": "{{token}}",
 							"X-Shared":         "endpoint",
 						},
 						QueryParams: map[string]string{
 							"ep_only": "2",
-							"shared":  "endpoint",
+							"shared":  "{{tenant}}",
 						},
 					},
 				},

@@ -8,18 +8,20 @@ import (
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
+	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 )
 
 type Endpoint struct {
-	Id      string         `json:"id"`
-	AppId   string         `json:"app_id"`
-	Active  bool           `json:"active"`
-	Method  string         `json:"method"`
-	Path    string         `json:"path"`
-	Backend Backend        `json:"backend"`
-	Auth    authModel.Auth `json:"auth"`
-	Type    Type           `json:"type"`
-	Grpc    Grpc           `json:"grpc"`
+	Id        string                   `json:"id"`
+	AppId     string                   `json:"app_id"`
+	Active    bool                     `json:"active"`
+	Method    string                   `json:"method"`
+	Path      string                   `json:"path"`
+	Backend   Backend                  `json:"backend"`
+	Auth      authModel.Auth           `json:"auth"`
+	Type      Type                     `json:"type"`
+	Grpc      Grpc                     `json:"grpc"`
+	Variables []variableModel.Variable `json:"variables"`
 }
 
 type Backend struct {
@@ -76,6 +78,11 @@ func (m *Endpoint) Normalize() error {
 	}
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
+	}
+	var err error
+	m.Variables, err = variableModel.NormalizeList(m.Variables)
+	if err != nil {
+		return fmt.Errorf("variables: %w", err)
 	}
 
 	return nil

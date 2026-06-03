@@ -34,6 +34,9 @@ service App {
   rpc GetSwaggerUrlByBackendUrl(AppGetSwaggerUrlByBackendUrlReq) returns (AppGetSwaggerUrlByBackendUrlRep) {
     option (google.api.http) = { get: "/app/swagger/url/by-backend-url" };
   };
+  rpc GetVariablesEffective(AppVariablesEffectiveReq) returns (VariablesEffectiveRep) {
+    option (google.api.http) = { post: "/app/variables/effective" body: "*" };
+  };
 }
 
 message AppMain {
@@ -43,6 +46,7 @@ message AppMain {
   string name = 4;
   AppBackend backend = 5;
   Auth auth = 6;
+  repeated Variable variables = 7;
 }
 
 message AppGetReq {
@@ -97,4 +101,9 @@ message AppGetSwaggerUrlByBackendUrlReq {
 
 message AppGetSwaggerUrlByBackendUrlRep {
   string swagger_url = 1;
+}
+
+message AppVariablesEffectiveReq {
+  string id = 1;
+  repeated Variable variables = 2;
 }

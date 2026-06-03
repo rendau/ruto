@@ -3,7 +3,9 @@ package endpoint
 import (
 	"context"
 
+	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	"github.com/rendau/ruto/internal/domain/endpoint/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 )
 
@@ -17,4 +19,12 @@ type ServiceI interface {
 
 type SessionServiceI interface {
 	FromContext(ctx context.Context) *sessionModel.Session
+}
+
+type RootServiceI interface {
+	Get(ctx context.Context) (*rootModel.Root, error)
+}
+
+type AppServiceI interface {
+	Get(ctx context.Context, id string, errNE bool) (*appModel.App, bool, error)
 }
