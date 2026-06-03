@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createEndpoint, getApp, getAppGrpcReflectionEndpoints, getEndpoint, getRoot, getRootJwtKidsByUrls, updateEndpoint } from "../lib/api";
+import { createEndpoint, getApp, getEndpoint, getRoot, getRootJwtKidsByUrls, updateEndpoint } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
 import { keyValueLinesToRecord, normalizeAuth, recordToKeyValueLines } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
-import type { AppGrpcReflectionEndpoint, EndpointMain, EndpointType } from "../types/api";
+import type { EndpointMain, EndpointType } from "../types/api";
 
 const route = useRoute();
 const router = useRouter();
@@ -35,10 +35,6 @@ const appName = ref("");
 const jwtKidOptions = ref<string[]>([]);
 const lastAutoGrpcPath = ref("");
 const appGrpcEnabled = ref(false);
-const grpcReflectionLoading = ref(false);
-const grpcReflectionError = ref("");
-const grpcReflectionOptions = ref<AppGrpcReflectionEndpoint[]>([]);
-const selectedGrpcReflectionPath = ref("");
 const headersText = ref("");
 const queryParamsText = ref("");
 
@@ -74,14 +70,6 @@ const protocolOptions = computed(() => {
   }
   return options;
 });
-const grpcReflectionAvailable = computed(() => grpcReflectionOptions.value.length > 0);
-const grpcReflectionDisabledReason = computed(() => {
-  if (appGrpcEnabled.value) {
-    return "";
-  }
-  return "gRPC reflection is available only when app gRPC Port is enabled (> 0).";
-});
-
 function normalizeLoadedEndpoint(item: EndpointMain): EndpointMain {
   const endpointType: EndpointType = item.type === "grpc" ? "grpc" : "http";
   return {
@@ -128,48 +116,15 @@ async function loadAppName() {
   if (!form.value.app_id) {
     appName.value = "";
     appGrpcEnabled.value = false;
-    grpcReflectionOptions.value = [];
-    grpcReflectionError.value = "";
     return;
   }
   try {
     const app = await getApp(form.value.app_id);
     appName.value = app.name;
     appGrpcEnabled.value = Number(app.backend.grpc_port || 0) > 0;
-    if (appGrpcEnabled.value) {
-      await loadGrpcReflectionOptions();
-    } else {
-      grpcReflectionOptions.value = [];
-      grpcReflectionError.value = "";
-    }
   } catch {
     appName.value = "";
     appGrpcEnabled.value = false;
-    grpcReflectionOptions.value = [];
-    grpcReflectionError.value = "";
-  }
-}
-
-async function loadGrpcReflectionOptions() {
-  if (!form.value.app_id || !appGrpcEnabled.value) {
-    grpcReflectionOptions.value = [];
-    grpcReflectionLoading.value = false;
-    if (!appGrpcEnabled.value) {
-      grpcReflectionError.value = "";
-    }
-    return;
-  }
-  grpcReflectionLoading.value = true;
-  grpcReflectionError.value = "";
-  try {
-    const rep = await getAppGrpcReflectionEndpoints(form.value.app_id);
-    grpcReflectionOptions.value = rep.results || [];
-    syncSelectedGrpcReflectionPath();
-  } catch (error) {
-    grpcReflectionOptions.value = [];
-    grpcReflectionError.value = error instanceof Error ? error.message : "gRPC reflection unavailable";
-  } finally {
-    grpcReflectionLoading.value = false;
   }
 }
 
@@ -217,28 +172,6 @@ function normalizeGrpcPath(service: string, method: string, path: string): strin
     return "";
   }
   return `/${cleanService}/${cleanMethod}`;
-}
-
-function grpcReflectionOptionLabel(option: AppGrpcReflectionEndpoint): string {
-  return `${option.service}/${option.method}`;
-}
-
-function syncSelectedGrpcReflectionPath() {
-  const currentPath = normalizeGrpcPath(form.value.grpc.service, form.value.grpc.method, form.value.grpc.path);
-  const matched = grpcReflectionOptions.value.find((option) => option.path === currentPath);
-  selectedGrpcReflectionPath.value = matched?.path || "";
-}
-
-function applyGrpcReflectionOption(path: string) {
-  const selected = grpcReflectionOptions.value.find((option) => option.path === path);
-  if (!selected) {
-    return;
-  }
-  form.value.grpc.service = selected.service;
-  form.value.grpc.method = selected.method;
-  form.value.grpc.path = selected.path;
-  lastAutoGrpcPath.value = selected.path;
-  selectedGrpcReflectionPath.value = selected.path;
 }
 
 function buildPayload(): EndpointMain {
@@ -328,16 +261,6 @@ watch(
     const nextPath = normalizeGrpcPath(form.value.grpc.service, form.value.grpc.method, "");
     form.value.grpc.path = nextPath;
     lastAutoGrpcPath.value = nextPath;
-    syncSelectedGrpcReflectionPath();
-  }
-);
-
-watch(
-  () => form.value.grpc.path,
-  () => {
-    if (form.value.type === "grpc") {
-      syncSelectedGrpcReflectionPath();
-    }
   }
 );
 
@@ -390,32 +313,6 @@ onMounted(() => {
     </template>
 
     <template v-else>
-      <div class="field">
-        <span>Discovered gRPC Method</span>
-        <div class="grpc-reflection-row">
-          <n-select
-            v-model:value="selectedGrpcReflectionPath"
-            :disabled="!appGrpcEnabled || grpcReflectionLoading || !grpcReflectionAvailable"
-            :placeholder="
-                !appGrpcEnabled
-                  ? 'gRPC Port disabled for app'
-                  : grpcReflectionLoading
-                    ? 'Loading reflection...'
-                    : grpcReflectionAvailable
-                      ? 'Select method'
-                      : 'No reflection methods'
-              "
-            :options="grpcReflectionOptions.map((option) => ({ label: grpcReflectionOptionLabel(option), value: option.path }))"
-            clearable
-            @update:value="(value: string | null) => applyGrpcReflectionOption(value || '')"
-          />
-          <n-button secondary :disabled="!appGrpcEnabled || grpcReflectionLoading" :loading="grpcReflectionLoading" @click="loadGrpcReflectionOptions">
-            {{ grpcReflectionLoading ? "Loading..." : "Refresh" }}
-          </n-button>
-        </div>
-        <span v-if="grpcReflectionDisabledReason" class="muted">{{ grpcReflectionDisabledReason }}</span>
-        <span v-if="grpcReflectionError" class="muted">{{ grpcReflectionError }}</span>
-      </div>
       <label class="field">
         <span>gRPC Service</span>
         <n-input v-model:value="form.grpc.service" placeholder="package.Service" required />
