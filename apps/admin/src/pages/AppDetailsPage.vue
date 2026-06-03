@@ -1438,7 +1438,7 @@ onBeforeRouteLeave((to) => {
                       >
                         <span class="http-method-badge method-grpc">GRPC</span>
                         <div class="grpc-endpoint-meta">
-                          <span class="swagger-endpoint-path">/{{ item.service }}/{{ item.method }}</span>
+                          <span class="swagger-endpoint-path" :title="`${item.service}/${item.method}`">/{{ item.method }}</span>
                           <span class="swagger-endpoint-reason">Missing in reflection</span>
                         </div>
                       </li>
@@ -1485,7 +1485,7 @@ onBeforeRouteLeave((to) => {
                           />
                         </label>
                         <span class="http-method-badge method-grpc">GRPC</span>
-                        <span class="swagger-endpoint-path">/{{ item.service }}/{{ item.method }}</span>
+                        <span class="swagger-endpoint-path" :title="`${item.service}/${item.method}`">/{{ item.method }}</span>
                         <RouterLink
                           class="primary-button swagger-add-button"
                           :to="{
