@@ -989,6 +989,7 @@ async function addSelectedSwaggerEndpoints() {
       notifySuccess(`Added ${successCount} endpoint(s)`);
       clearSwaggerSelection();
       swaggerDiffLoaded.value = false;
+      closeSwaggerPanel();
       await load();
     }
 
@@ -1035,6 +1036,7 @@ async function addSelectedGrpcEndpoints() {
       notifySuccess(`Added ${successCount} gRPC endpoint(s)`);
       clearGrpcSelection();
       grpcDiffLoaded.value = false;
+      closeGrpcPanel();
       await load();
     }
 
