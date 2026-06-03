@@ -1,5 +1,5 @@
 ---
-apply: manual
+apply: manually
 ---
 
 # Runbook
