@@ -20,6 +20,7 @@ import (
 	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
@@ -415,6 +416,97 @@ func TestReflection_FileContainingUnregisteredSymbolRejected(t *testing.T) {
 	require.Equal(t, int32(codes.NotFound), resp.GetErrorResponse().GetErrorCode())
 }
 
+func TestReflection_FilterPreservesDependencyTypesFromUnregisteredServiceFiles(t *testing.T) {
+	depFile := &descriptorpb.FileDescriptorProto{
+		Name:    proto.String("nsi_v1/product_group.proto"),
+		Package: proto.String("nsi_v1"),
+		Syntax:  proto.String("proto3"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			{
+				Name: proto.String("ProductGroupMain"),
+			},
+		},
+		Service: []*descriptorpb.ServiceDescriptorProto{
+			{
+				Name: proto.String("ProductGroup"),
+				Method: []*descriptorpb.MethodDescriptorProto{
+					{
+						Name:       proto.String("List"),
+						InputType:  proto.String(".nsi_v1.ProductGroupMain"),
+						OutputType: proto.String(".nsi_v1.ProductGroupMain"),
+					},
+				},
+			},
+		},
+	}
+	mainFile := &descriptorpb.FileDescriptorProto{
+		Name:       proto.String("nsi_v1/product.proto"),
+		Package:    proto.String("nsi_v1"),
+		Syntax:     proto.String("proto3"),
+		Dependency: []string{depFile.GetName()},
+		MessageType: []*descriptorpb.DescriptorProto{
+			{
+				Name: proto.String("ProductMain"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					{
+						Name:     proto.String("group"),
+						Number:   proto.Int32(1),
+						Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+						Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+						TypeName: proto.String(".nsi_v1.ProductGroupMain"),
+					},
+				},
+			},
+		},
+		Service: []*descriptorpb.ServiceDescriptorProto{
+			{
+				Name: proto.String("Product"),
+				Method: []*descriptorpb.MethodDescriptorProto{
+					{
+						Name:       proto.String("Get"),
+						InputType:  proto.String(".nsi_v1.ProductMain"),
+						OutputType: proto.String(".nsi_v1.ProductMain"),
+					},
+				},
+			},
+		},
+	}
+
+	mainRaw, err := proto.Marshal(mainFile)
+	require.NoError(t, err)
+	depRaw, err := proto.Marshal(depFile)
+	require.NoError(t, err)
+
+	fileResp := &reflectionv1.FileDescriptorResponse{
+		FileDescriptorProto: [][]byte{mainRaw, depRaw},
+	}
+	rt := &reflectionRoute{
+		methods: map[string]map[string]struct{}{
+			"nsi_v1.Product": {
+				"Get": {},
+			},
+		},
+	}
+
+	require.NoError(t, rt.filterFileDescriptorResponse(fileResp))
+	require.Len(t, fileResp.GetFileDescriptorProto(), 2)
+
+	filteredSet := &descriptorpb.FileDescriptorSet{}
+	for _, raw := range fileResp.GetFileDescriptorProto() {
+		file := &descriptorpb.FileDescriptorProto{}
+		require.NoError(t, proto.Unmarshal(raw, file))
+		filteredSet.File = append(filteredSet.File, file)
+
+		if file.GetName() == depFile.GetName() {
+			require.Equal(t, []string{"ProductGroupMain"}, descriptorMessageNames(file))
+			require.Empty(t, file.GetService())
+		}
+	}
+
+	_, err = protodesc.NewFiles(filteredSet)
+	require.NoError(t, err)
+}
+
 func reflectionResponseServiceMethods(
 	t *testing.T,
 	resp *reflectionv1.ServerReflectionResponse,
@@ -441,6 +533,15 @@ func reflectionResponseServiceMethods(
 	}
 	slices.Sort(methods)
 	return methods
+}
+
+func descriptorMessageNames(file *descriptorpb.FileDescriptorProto) []string {
+	names := make([]string, 0, len(file.GetMessageType()))
+	for _, msg := range file.GetMessageType() {
+		names = append(names, msg.GetName())
+	}
+	slices.Sort(names)
+	return names
 }
 
 type testBackendServer struct {

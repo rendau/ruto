@@ -102,9 +102,6 @@ func (r *reflectionRoute) filterFileDescriptorResponse(fileResp *reflectionv1.Fi
 				svc.Method = filteredMethods
 				filteredServices = append(filteredServices, svc)
 			}
-			if len(filteredServices) == 0 {
-				continue
-			}
 			file.Service = filteredServices
 		}
 
