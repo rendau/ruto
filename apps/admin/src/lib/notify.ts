@@ -1,4 +1,4 @@
-import { reactive } from "vue";
+import type { MessageApi } from "naive-ui";
 
 export type NoticeKind = "success" | "error";
 
@@ -8,25 +8,15 @@ export interface Notice {
   message: string;
 }
 
-const state = reactive({
-  items: [] as Notice[]
-});
-
-let seq = 0;
-
-function removeById(id: number): void {
-  const idx = state.items.findIndex((x) => x.id === id);
-  if (idx >= 0) {
-    state.items.splice(idx, 1);
-  }
-}
+let messageApi: MessageApi | null = null;
 
 function push(kind: NoticeKind, message: string): void {
-  const id = ++seq;
-  state.items.push({ id, kind, message });
-  window.setTimeout(() => {
-    removeById(id);
-  }, 4200);
+  if (messageApi) {
+    messageApi[kind](message);
+    return;
+  }
+  // Fallback for code that can run before the Naive provider is mounted.
+  console[kind === "error" ? "error" : "info"](message);
 }
 
 export function notifySuccess(message: string): void {
@@ -37,10 +27,6 @@ export function notifyError(message: string): void {
   push("error", message);
 }
 
-export function useNotices() {
-  return state;
-}
-
-export function dismissNotice(id: number): void {
-  removeById(id);
+export function setMessageApi(api: MessageApi): void {
+  messageApi = api;
 }

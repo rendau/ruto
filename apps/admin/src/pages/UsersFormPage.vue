@@ -149,35 +149,34 @@ onMounted(() => {
 </script>
 
 <template>
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
   <p v-if="loading" class="muted">Loading...</p>
 
   <form v-else class="stack" @submit.prevent="submitForm">
-    <label class="check">
-      <input v-model="form.active" type="checkbox" />
-      <span>Active</span>
-    </label>
-    <label class="check">
-      <input v-model="form.is_admin" type="checkbox" />
-      <span>Admin</span>
-    </label>
+    <n-space>
+      <n-switch v-model:value="form.active">
+        <template #checked>Active</template>
+        <template #unchecked>Inactive</template>
+      </n-switch>
+      <n-checkbox v-model:checked="form.is_admin">Admin</n-checkbox>
+    </n-space>
     <label class="field">
       <span>Name</span>
-      <input v-model="form.name" required />
+      <n-input v-model:value="form.name" required />
     </label>
     <label class="field">
       <span>Username</span>
-      <input v-model="form.username" required />
+      <n-input v-model:value="form.username" required />
     </label>
     <label v-if="!isEdit" class="field">
       <span>Password</span>
-      <input v-model="form.password" type="password" required />
+      <n-input v-model:value="form.password" type="password" show-password-on="click" required />
     </label>
 
     <div class="actions">
-      <button class="primary-button" type="submit" :disabled="saving">{{ saving ? "Saving..." : "Save" }}</button>
-      <button v-if="isEdit" class="secondary-button" type="button" :disabled="saving" @click="changePassword">Change Password</button>
-      <button class="secondary-button" type="button" :disabled="saving" @click="router.push({ name: 'users' })">Cancel</button>
+      <n-button type="primary" attr-type="submit" :loading="saving">{{ saving ? "Saving..." : "Save" }}</n-button>
+      <n-button v-if="isEdit" secondary :disabled="saving" @click="changePassword">Change Password</n-button>
+      <n-button secondary :disabled="saving" @click="router.push({ name: 'users' })">Cancel</n-button>
     </div>
   </form>
 </template>

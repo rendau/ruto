@@ -347,7 +347,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
   <p v-if="loading" class="muted">Loading...</p>
 
   <form v-else class="stack" @submit.prevent="submit">
@@ -355,51 +355,37 @@ onMounted(() => {
       <span>Application</span>
       <div class="field-readonly">{{ appDisplayName }}</div>
     </div>
-    <label class="check">
-      <input v-model="form.active" type="checkbox" />
-      <span>Active</span>
-    </label>
-    <div class="field">
+    <n-switch v-model:value="form.active">
+      <template #checked>Active</template>
+      <template #unchecked>Inactive</template>
+    </n-switch>
+    <div v-if="protocolOptions.length > 1" class="field">
       <span>Protocol</span>
-      <div class="protocol-tabs form-protocol-tabs" role="tablist" aria-label="Endpoint Protocol">
-        <button
-          v-for="option in protocolOptions"
-          :key="option.value"
-          class="protocol-tab"
-          :class="{ active: form.type === option.value }"
-          type="button"
-          :aria-selected="form.type === option.value"
-          @click="form.type = option.value"
-        >
-          {{ option.label }}
-        </button>
-      </div>
+      <n-tabs v-model:value="form.type" class="form-protocol-tabs" type="line" size="small" animated>
+        <n-tab-pane v-for="option in protocolOptions" :key="option.value" :name="option.value" :tab="option.label" display-directive="show" />
+      </n-tabs>
     </div>
 
     <template v-if="form.type === 'http'">
       <label class="field">
         <span>Method</span>
-        <select v-model="form.method" required>
-          <option v-for="method in endpointMethodOptions" :key="method" :value="method">
-            {{ method }}
-          </option>
-        </select>
+        <n-select v-model:value="form.method" :options="endpointMethodOptions.map((method) => ({ label: method, value: method }))" />
       </label>
       <label class="field">
         <span>Path</span>
-        <input v-model="form.path" placeholder="/path or empty for app root" />
+        <n-input v-model:value="form.path" placeholder="/path or empty for app root" />
       </label>
       <label class="field">
         <span>Custom Backend Path</span>
-        <input v-model="form.backend.custom_path" placeholder="/custom_path or empty for app backend path" />
+        <n-input v-model:value="form.backend.custom_path" placeholder="/custom_path or empty for app backend path" />
       </label>
       <label class="field">
         <span>Backend Headers</span>
-        <textarea v-model="headersText" rows="4" placeholder="X-Service-Token: secret"></textarea>
+        <n-input v-model:value="headersText" type="textarea" :autosize="{ minRows: 4 }" placeholder="X-Service-Token: secret" />
       </label>
       <label class="field">
         <span>Backend Query Params</span>
-        <textarea v-model="queryParamsText" rows="4" placeholder="tenant=acme"></textarea>
+        <n-input v-model:value="queryParamsText" type="textarea" :autosize="{ minRows: 4 }" placeholder="tenant=acme" />
       </label>
     </template>
 
@@ -407,48 +393,44 @@ onMounted(() => {
       <div class="field">
         <span>Discovered gRPC Method</span>
         <div class="grpc-reflection-row">
-          <select
-            v-model="selectedGrpcReflectionPath"
+          <n-select
+            v-model:value="selectedGrpcReflectionPath"
             :disabled="!appGrpcEnabled || grpcReflectionLoading || !grpcReflectionAvailable"
-            @change="applyGrpcReflectionOption(selectedGrpcReflectionPath)"
-          >
-            <option value="">
-              {{
+            :placeholder="
                 !appGrpcEnabled
-                  ? "gRPC Port disabled for app"
+                  ? 'gRPC Port disabled for app'
                   : grpcReflectionLoading
-                    ? "Loading reflection..."
+                    ? 'Loading reflection...'
                     : grpcReflectionAvailable
-                      ? "Select method"
-                      : "No reflection methods"
-              }}
-            </option>
-            <option v-for="option in grpcReflectionOptions" :key="option.path" :value="option.path">
-              {{ grpcReflectionOptionLabel(option) }}
-            </option>
-          </select>
-          <button class="secondary-button" type="button" :disabled="!appGrpcEnabled || grpcReflectionLoading" @click="loadGrpcReflectionOptions">
+                      ? 'Select method'
+                      : 'No reflection methods'
+              "
+            :options="grpcReflectionOptions.map((option) => ({ label: grpcReflectionOptionLabel(option), value: option.path }))"
+            clearable
+            @update:value="(value: string | null) => applyGrpcReflectionOption(value || '')"
+          />
+          <n-button secondary :disabled="!appGrpcEnabled || grpcReflectionLoading" :loading="grpcReflectionLoading" @click="loadGrpcReflectionOptions">
             {{ grpcReflectionLoading ? "Loading..." : "Refresh" }}
-          </button>
+          </n-button>
         </div>
         <span v-if="grpcReflectionDisabledReason" class="muted">{{ grpcReflectionDisabledReason }}</span>
         <span v-if="grpcReflectionError" class="muted">{{ grpcReflectionError }}</span>
       </div>
       <label class="field">
         <span>gRPC Service</span>
-        <input v-model="form.grpc.service" placeholder="package.Service" required />
+        <n-input v-model:value="form.grpc.service" placeholder="package.Service" required />
       </label>
       <label class="field">
         <span>gRPC Method</span>
-        <input v-model="form.grpc.method" placeholder="Method" required />
+        <n-input v-model:value="form.grpc.method" placeholder="Method" required />
       </label>
       <label class="field">
         <span>gRPC Path</span>
-        <input v-model="form.grpc.path" placeholder="/package.Service/Method" required />
+        <n-input v-model:value="form.grpc.path" placeholder="/package.Service/Method" required />
       </label>
       <label class="field">
         <span>Backend Headers</span>
-        <textarea v-model="headersText" rows="4" placeholder="X-Service-Token: secret"></textarea>
+        <n-input v-model:value="headersText" type="textarea" :autosize="{ minRows: 4 }" placeholder="X-Service-Token: secret" />
       </label>
     </template>
 
@@ -458,10 +440,10 @@ onMounted(() => {
     </div>
 
     <div class="actions">
-      <button class="primary-button" type="submit" :disabled="saving">
+      <n-button type="primary" attr-type="submit" :loading="saving">
         {{ saving ? "Saving..." : "Save" }}
-      </button>
-      <button class="secondary-button" type="button" :disabled="saving" @click="router.back()">Cancel</button>
+      </n-button>
+      <n-button secondary :disabled="saving" @click="router.back()">Cancel</n-button>
     </div>
   </form>
 </template>

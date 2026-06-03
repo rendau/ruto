@@ -1,6 +1,19 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, h, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
+import { NIcon, useDialog, type DropdownOption } from "naive-ui";
+import {
+  AddOutline,
+  LogOutOutline,
+  MenuOutline,
+  PeopleOutline,
+  PersonOutline,
+  RocketOutline,
+  SearchOutline,
+  ServerOutline,
+  SettingsOutline,
+  SyncOutline
+} from "@vicons/ionicons5";
 import { useAuthStore } from "../stores/auth";
 import { useAppsStore } from "../stores/apps";
 import { ApiError, deploySnapshot } from "../lib/api";
@@ -10,9 +23,8 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const appsStore = useAppsStore();
+const dialog = useDialog();
 const layoutRef = ref<HTMLElement | null>(null);
-const userMenuOpen = ref(false);
-const userMenuRef = ref<HTMLElement | null>(null);
 const mobileSidebarOpen = ref(false);
 const deploying = ref(false);
 const sidebarWidth = ref(290);
@@ -25,6 +37,11 @@ const profileInitial = computed(() => profileName.value.trim().charAt(0).toUpper
 const profileRole = computed(() => (authStore.profile?.is_admin ? "admin" : "user"));
 const canManageUsers = computed(() => Boolean(authStore.profile?.is_admin));
 const appSearch = ref("");
+const userMenuOptions = computed<DropdownOption[]>(() => [
+  { label: "Profile", key: "profile", icon: () => h(NIcon, null, { default: () => h(PersonOutline) }) },
+  { label: "Logout", key: "logout", icon: () => h(NIcon, null, { default: () => h(LogOutOutline) }) }
+]);
+const userMenuProps = () => ({ class: "user-dropdown-menu" });
 const pageTitle = computed(() => {
   switch (route.name) {
     case "dashboard":
@@ -80,37 +97,24 @@ async function reloadMenuApps() {
 }
 
 function logout() {
-  const approved = window.confirm("Log out from current session?");
-  if (!approved) {
-    return;
-  }
-  userMenuOpen.value = false;
-  authStore.logout();
-  router.push({ name: "login" });
+  dialog.warning({
+    title: "Log out",
+    content: "Log out from current session?",
+    positiveText: "Log out",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      authStore.logout();
+      void router.push({ name: "login" });
+    }
+  });
 }
 
 function goToProfile() {
-  userMenuOpen.value = false;
   router.push({ name: "profile" });
-}
-
-function toggleUserMenu() {
-  userMenuOpen.value = !userMenuOpen.value;
-}
-
-function onDocumentClick(event: MouseEvent) {
-  if (!userMenuRef.value) {
-    return;
-  }
-  const target = event.target as Node | null;
-  if (target && !userMenuRef.value.contains(target)) {
-    userMenuOpen.value = false;
-  }
 }
 
 function onEscKey(event: KeyboardEvent) {
   if (event.key === "Escape") {
-    userMenuOpen.value = false;
     mobileSidebarOpen.value = false;
   }
 }
@@ -155,10 +159,18 @@ async function deploy() {
   if (deploying.value) {
     return;
   }
-  const approved = window.confirm("Start deploy snapshot to gateways?");
-  if (!approved) {
-    return;
-  }
+  dialog.info({
+    title: "Deploy snapshot",
+    content: "Start deploy snapshot to gateways?",
+    positiveText: "Deploy",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runDeploy();
+    }
+  });
+}
+
+async function runDeploy() {
   deploying.value = true;
   try {
     await deploySnapshot();
@@ -171,6 +183,15 @@ async function deploy() {
     }
   } finally {
     deploying.value = false;
+  }
+}
+
+function handleUserMenuSelect(key: string | number) {
+  if (key === "profile") {
+    goToProfile();
+  }
+  if (key === "logout") {
+    logout();
   }
 }
 
@@ -187,7 +208,6 @@ onMounted(() => {
     sidebarWidth.value = stored;
   }
   void reloadMenuApps();
-  document.addEventListener("click", onDocumentClick);
   document.addEventListener("keydown", onEscKey);
 });
 
@@ -200,7 +220,6 @@ watch(
 
 onBeforeUnmount(() => {
   stopResize();
-  document.removeEventListener("click", onDocumentClick);
   document.removeEventListener("keydown", onEscKey);
 });
 </script>
@@ -216,30 +235,32 @@ onBeforeUnmount(() => {
         <div class="nav-row">
           <RouterLink class="nav-link with-icon" to="/root/edit">
             <span class="nav-link-content">
-              <span class="icon" aria-hidden="true">⚙</span>
+              <n-icon class="icon" :component="SettingsOutline" aria-hidden="true" />
               <span>Root Settings</span>
             </span>
           </RouterLink>
-          <button
+          <n-button
             class="nav-icon-button"
-            type="button"
+            attr-type="button"
+            size="small"
+            secondary
             :disabled="deploying"
             title="Deploy"
             aria-label="Deploy"
             @click="deploy"
           >
-            <span aria-hidden="true">{{ deploying ? "⏳" : "🚀" }}</span>
-          </button>
+            <n-icon :component="deploying ? SyncOutline : RocketOutline" aria-hidden="true" />
+          </n-button>
         </div>
         <RouterLink v-if="canManageUsers" class="nav-link with-icon" to="/users">
           <span class="nav-link-content">
-            <span class="icon users-icon" aria-hidden="true">👥</span>
+            <n-icon class="icon users-icon" :component="PeopleOutline" aria-hidden="true" />
             <span>Users</span>
           </span>
         </RouterLink>
         <RouterLink class="nav-link with-icon" to="/gateways">
           <span class="nav-link-content">
-            <span class="icon" aria-hidden="true">◉</span>
+            <n-icon class="icon" :component="ServerOutline" aria-hidden="true" />
             <span>Gateways</span>
           </span>
         </RouterLink>
@@ -248,11 +269,15 @@ onBeforeUnmount(() => {
       <div class="menu-block-head">
         <div class="menu-block-title">Apps</div>
         <RouterLink class="apps-create-icon" to="/apps/new" title="Create App" aria-label="Create App">
-          <span aria-hidden="true">＋</span>
+          <n-icon :component="AddOutline" aria-hidden="true" />
         </RouterLink>
       </div>
       <div class="apps-search-wrap">
-        <input v-model="appSearch" class="apps-search" type="search" placeholder="Search apps" aria-label="Search apps" />
+        <n-input v-model:value="appSearch" class="apps-search" type="text" size="small" placeholder="Search apps" aria-label="Search apps" clearable>
+          <template #prefix>
+            <n-icon :component="SearchOutline" />
+          </template>
+        </n-input>
       </div>
       <div class="apps-list">
         <RouterLink
@@ -286,27 +311,19 @@ onBeforeUnmount(() => {
     <main class="content">
       <header class="topbar">
         <div class="topbar-left">
-          <button class="mobile-menu-button" type="button" @click="openMobileSidebar" aria-label="Open menu">☰</button>
+          <n-button class="mobile-menu-button" attr-type="button" size="small" secondary @click="openMobileSidebar" aria-label="Open menu">
+            <n-icon :component="MenuOutline" />
+          </n-button>
           <div class="topbar-title">{{ pageTitle }}</div>
         </div>
-        <div class="topbar-user" ref="userMenuRef">
-          <button class="user-trigger" type="button" @click="toggleUserMenu">
+        <n-dropdown trigger="click" :options="userMenuOptions" :menu-props="userMenuProps" @select="handleUserMenuSelect">
+          <button class="user-trigger" type="button">
             <span class="avatar-badge" aria-hidden="true">{{ profileInitial }}</span>
             <span class="user-name">{{ profileName }}</span>
-            <span class="admin-badge user-role" :class="{ yes: authStore.profile?.is_admin }">{{ profileRole }}</span>
+            <n-tag size="small" :type="authStore.profile?.is_admin ? 'success' : 'default'">{{ profileRole }}</n-tag>
             <span class="icon caret" aria-hidden="true">▾</span>
           </button>
-          <div v-if="userMenuOpen" class="user-menu">
-            <button class="menu-item" type="button" @click="goToProfile">
-              <span class="icon" aria-hidden="true">👤</span>
-              <span>Profile</span>
-            </button>
-            <button class="menu-item danger" type="button" @click="logout">
-              <span class="icon" aria-hidden="true">⎋</span>
-              <span>Logout</span>
-            </button>
-          </div>
-        </div>
+        </n-dropdown>
       </header>
       <section class="page">
         <RouterView v-slot="{ Component, route: currentRoute }">

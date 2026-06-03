@@ -200,37 +200,37 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
   <p v-if="loading" class="muted">Loading...</p>
 
   <form v-else class="stack" @submit.prevent="submit">
-    <label class="check">
-      <input v-model="form.active" type="checkbox" />
-      <span>Active</span>
-    </label>
+    <n-switch v-model:value="form.active">
+      <template #checked>Active</template>
+      <template #unchecked>Inactive</template>
+    </n-switch>
     <label class="field">
       <span>Name</span>
-      <input v-model="form.name" required />
+      <n-input v-model:value="form.name" required />
     </label>
     <label class="field">
       <span>Path Prefix</span>
-      <input v-model="form.path_prefix" placeholder="/example" required />
+      <n-input v-model:value="form.path_prefix" placeholder="/example" required />
     </label>
     <label class="field">
       <span>Backend URL</span>
-      <input
-        v-model="form.backend.url"
-        placeholder="https://example.com"
-        required
-        @input="queueSwaggerDiscovery"
-        @blur="triggerSwaggerDiscoveryNow"
+        <n-input
+          v-model:value="form.backend.url"
+          placeholder="https://example.com"
+          required
+          @input="queueSwaggerDiscovery"
+          @blur="triggerSwaggerDiscoveryNow"
       />
     </label>
     <label class="field">
       <span>Swagger URL</span>
       <div class="input-with-indicator">
-        <input
-          v-model="form.backend.swagger_url"
+        <n-input
+          v-model:value="form.backend.swagger_url"
           class="swagger-input"
           placeholder="https://example.com/swagger.json"
           @input="onSwaggerUrlInput"
@@ -240,15 +240,15 @@ onBeforeUnmount(() => {
     </label>
     <label class="field compact">
       <span>gRPC Port</span>
-      <input v-model.number="form.backend.grpc_port" type="number" min="0" max="65535" placeholder="0" />
+      <n-input-number v-model:value="form.backend.grpc_port" :min="0" :max="65535" placeholder="0" />
     </label>
     <label class="field">
       <span>Backend Headers</span>
-      <textarea v-model="headersText" rows="4" placeholder="X-Service-Token: secret"></textarea>
+      <n-input v-model:value="headersText" type="textarea" :autosize="{ minRows: 4 }" placeholder="X-Service-Token: secret" />
     </label>
     <label class="field">
       <span>Backend Query Params</span>
-      <textarea v-model="queryParamsText" rows="4" placeholder="tenant=acme"></textarea>
+      <n-input v-model:value="queryParamsText" type="textarea" :autosize="{ minRows: 4 }" placeholder="tenant=acme" />
     </label>
     <div class="field">
       <span>Auth</span>
@@ -256,10 +256,10 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="actions">
-      <button class="primary-button" type="submit" :disabled="saving">
+      <n-button type="primary" attr-type="submit" :loading="saving">
         {{ saving ? "Saving..." : "Save" }}
-      </button>
-      <button class="secondary-button" type="button" :disabled="saving" @click="router.back()">Cancel</button>
+      </n-button>
+      <n-button secondary :disabled="saving" @click="router.back()">Cancel</n-button>
     </div>
   </form>
 </template>

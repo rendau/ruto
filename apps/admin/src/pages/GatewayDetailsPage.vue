@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { ArrowBackOutline, RefreshOutline } from "@vicons/ionicons5";
 import { getSnapshotVersion, listGateways } from "../lib/api";
 import { formatUnixAge, formatUnixDateTime } from "../lib/datetime";
 import { notifyError, notifySuccess } from "../lib/notify";
@@ -94,24 +95,21 @@ onMounted(() => {
 
 <template>
   <div class="actions page-top-actions gateway-details-actions">
-    <button class="icon-action-button secondary" type="button" title="Back" aria-label="Back" @click="goBack">
-      <svg class="icon-action-svg" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M15 18l-6-6 6-6" />
-      </svg>
-    </button>
-    <button
-      class="icon-action-button secondary"
-      type="button"
-      :disabled="loading"
+    <n-button secondary title="Back" aria-label="Back" @click="goBack">
+      <n-icon :component="ArrowBackOutline" />
+    </n-button>
+    <n-button
+      secondary
+      :loading="loading"
       title="Refresh Gateway"
       aria-label="Refresh Gateway"
       @click="loadGateway"
     >
-      <span class="icon-action-glyph">{{ loading ? "…" : "↻" }}</span>
-    </button>
+      <n-icon v-if="!loading" :component="RefreshOutline" />
+    </n-button>
   </div>
 
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
   <p v-if="loading && !gateway" class="muted">Loading gateway details...</p>
 
   <template v-if="gateway">
@@ -122,15 +120,15 @@ onMounted(() => {
       </div>
       <div>
         <span class="label">Status</span>
-        <span class="status-chip" :class="{ inactive: gateway.status !== 'online' }">
+        <n-tag size="small" :type="gateway.status === 'online' ? 'success' : 'warning'">
           {{ gateway.status }}
-        </span>
+        </n-tag>
       </div>
       <div>
         <span class="label">Current Applied</span>
-        <span class="status-chip" :class="{ inactive: !isCurrentVersionApplied }">
+        <n-tag size="small" :type="isCurrentVersionApplied ? 'success' : 'warning'">
           {{ isCurrentVersionApplied ? "yes" : "no" }}
-        </span>
+        </n-tag>
       </div>
       <div>
         <span class="label">Runtime</span>

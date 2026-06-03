@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useDialog } from "naive-ui";
+import { CreateOutline, PauseCircleOutline, PersonAddOutline, PlayCircleOutline, RefreshOutline, SearchOutline, TrashOutline } from "@vicons/ionicons5";
 import { ApiError, deleteUser, listUsers, updateUser } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
 import { useAuthStore } from "../stores/auth";
@@ -8,6 +10,7 @@ import type { UsrMain } from "../types/api";
 
 const router = useRouter();
 const authStore = useAuthStore();
+const dialog = useDialog();
 
 const users = ref<UsrMain[]>([]);
 const loading = ref(false);
@@ -70,11 +73,18 @@ async function removeUser(user: UsrMain) {
     return;
   }
 
-  const approved = window.confirm(`Delete user "${user.username}"?`);
-  if (!approved) {
-    return;
-  }
+  dialog.error({
+    title: "Delete user",
+    content: `Delete user "${user.username}"?`,
+    positiveText: "Delete",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runRemoveUser(user, userId);
+    }
+  });
+}
 
+async function runRemoveUser(user: UsrMain, userId: number) {
   removingId.value = userId;
   errorMessage.value = "";
   try {
@@ -98,11 +108,18 @@ async function toggleActive(user: UsrMain, nextActive: boolean) {
     notifyError("Admin permissions are required");
     return;
   }
-  const approved = window.confirm(`${nextActive ? "Activate" : "Deactivate"} user "${user.username}"?`);
-  if (!approved) {
-    return;
-  }
+  dialog.warning({
+    title: nextActive ? "Activate user" : "Deactivate user",
+    content: `${nextActive ? "Activate" : "Deactivate"} user "${user.username}"?`,
+    positiveText: nextActive ? "Activate" : "Deactivate",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runToggleActive(user, nextActive);
+    }
+  });
+}
 
+async function runToggleActive(user: UsrMain, nextActive: boolean) {
   saving.value = true;
   errorMessage.value = "";
   try {
@@ -127,37 +144,40 @@ onMounted(() => {
 
 <template>
   <div class="actions page-top-actions users-top-actions">
-    <input
-      v-model="searchFilter"
+    <n-input
+      v-model:value="searchFilter"
       class="users-filter"
-      type="search"
       placeholder="Search users"
       aria-label="Search users"
+      clearable
       @keydown.enter.prevent="loadUsers"
-    />
-    <button
-      class="icon-action-button secondary"
-      type="button"
-      :disabled="loading || saving"
+    >
+      <template #prefix>
+        <n-icon :component="SearchOutline" />
+      </template>
+    </n-input>
+    <n-button
+      secondary
+      :loading="loading"
+      :disabled="saving"
       title="Refresh Users"
       aria-label="Refresh Users"
       @click="loadUsers"
     >
-      <span class="icon-action-glyph">{{ loading ? "…" : "↻" }}</span>
-    </button>
-    <button
-      class="icon-action-button primary"
-      type="button"
+      <n-icon :component="RefreshOutline" />
+    </n-button>
+    <n-button
+      type="primary"
       :disabled="saving || !canManage"
       title="Add User"
       aria-label="Add User"
       @click="goToCreate"
     >
-      <span class="icon-action-glyph">＋</span>
-    </button>
+      <n-icon :component="PersonAddOutline" />
+    </n-button>
   </div>
 
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
 
   <section class="panel">
     <h3>Users</h3>
@@ -179,43 +199,46 @@ onMounted(() => {
             <td>{{ user.username }}</td>
             <td>{{ user.name }}</td>
             <td>
-              <span class="admin-badge" :class="{ yes: user.is_admin }">{{ user.is_admin ? "admin" : "user" }}</span>
+              <n-tag size="small" :type="user.is_admin ? 'success' : 'default'">{{ user.is_admin ? "admin" : "user" }}</n-tag>
             </td>
             <td>
-              <span class="status-chip" :class="{ inactive: !user.active }">{{ user.active ? "active" : "inactive" }}</span>
+              <n-tag size="small" :type="user.active ? 'success' : 'warning'">{{ user.active ? "active" : "inactive" }}</n-tag>
             </td>
             <td>
               <div class="actions">
-                <button
-                  class="icon-action-button secondary"
-                  type="button"
+                <n-button
+                  secondary
+                  size="small"
                   :disabled="saving || !canManage"
                   title="Edit User"
                   aria-label="Edit User"
                   @click="goToEdit(user)"
                 >
-                  <span class="icon-action-glyph">✎</span>
-                </button>
-                <button
-                  class="icon-action-button secondary"
-                  type="button"
+                  <n-icon :component="CreateOutline" />
+                </n-button>
+                <n-button
+                  secondary
+                  size="small"
                   :disabled="saving || !canManage"
                   :title="user.active ? 'Deactivate User' : 'Activate User'"
                   :aria-label="user.active ? 'Deactivate User' : 'Activate User'"
                   @click="toggleActive(user, !user.active)"
                 >
-                  <span class="icon-action-glyph">{{ user.active ? "⏸" : "▶" }}</span>
-                </button>
-                <button
-                  class="icon-action-button danger"
-                  type="button"
+                  <n-icon :component="user.active ? PauseCircleOutline : PlayCircleOutline" />
+                </n-button>
+                <n-button
+                  class="danger-icon-button"
+                  type="error"
+                  secondary
+                  size="small"
+                  circle
                   :disabled="removingId === toUserId(user.id) || saving || !canManage"
                   title="Delete User"
                   aria-label="Delete User"
                   @click="removeUser(user)"
                 >
-                  <span class="icon-action-glyph">{{ removingId === toUserId(user.id) ? "…" : "🗑" }}</span>
-                </button>
+                  <n-icon v-if="removingId !== toUserId(user.id)" :component="TrashOutline" />
+                </n-button>
               </div>
             </td>
           </tr>
@@ -235,7 +258,7 @@ onMounted(() => {
       <article v-for="user in users" :key="`mobile-${toUserId(user.id)}`" class="users-mobile-card">
         <div class="users-mobile-head">
           <strong class="users-mobile-username">{{ user.username }}</strong>
-          <span class="status-chip" :class="{ inactive: !user.active }">{{ user.active ? "active" : "inactive" }}</span>
+          <n-tag size="small" :type="user.active ? 'success' : 'warning'">{{ user.active ? "active" : "inactive" }}</n-tag>
         </div>
         <div class="users-mobile-grid">
           <div class="users-mobile-row">
@@ -248,40 +271,43 @@ onMounted(() => {
           </div>
           <div class="users-mobile-row">
             <span class="label">Role</span>
-            <span class="admin-badge" :class="{ yes: user.is_admin }">{{ user.is_admin ? "admin" : "user" }}</span>
+            <n-tag size="small" :type="user.is_admin ? 'success' : 'default'">{{ user.is_admin ? "admin" : "user" }}</n-tag>
           </div>
         </div>
         <div class="users-mobile-actions">
-          <button
-            class="icon-action-button secondary"
-            type="button"
+          <n-button
+            secondary
+            size="small"
             :disabled="saving || !canManage"
             title="Edit User"
             aria-label="Edit User"
             @click="goToEdit(user)"
           >
-            <span class="icon-action-glyph">✎</span>
-          </button>
-          <button
-            class="icon-action-button secondary"
-            type="button"
+            <n-icon :component="CreateOutline" />
+          </n-button>
+          <n-button
+            secondary
+            size="small"
             :disabled="saving || !canManage"
             :title="user.active ? 'Deactivate User' : 'Activate User'"
             :aria-label="user.active ? 'Deactivate User' : 'Activate User'"
             @click="toggleActive(user, !user.active)"
           >
-            <span class="icon-action-glyph">{{ user.active ? "⏸" : "▶" }}</span>
-          </button>
-          <button
-            class="icon-action-button danger"
-            type="button"
+            <n-icon :component="user.active ? PauseCircleOutline : PlayCircleOutline" />
+          </n-button>
+          <n-button
+            class="danger-icon-button"
+            type="error"
+            secondary
+            size="small"
+            circle
             :disabled="removingId === toUserId(user.id) || saving || !canManage"
             title="Delete User"
             aria-label="Delete User"
             @click="removeUser(user)"
           >
-            <span class="icon-action-glyph">{{ removingId === toUserId(user.id) ? "…" : "🗑" }}</span>
-          </button>
+            <n-icon v-if="removingId !== toUserId(user.id)" :component="TrashOutline" />
+          </n-button>
         </div>
       </article>
     </div>

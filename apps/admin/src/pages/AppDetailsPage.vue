@@ -1,6 +1,21 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from "vue";
 import { onBeforeRouteLeave, RouterLink, useRoute, useRouter, type RouteLocationNormalizedLoaded } from "vue-router";
+import { useDialog } from "naive-ui";
+import {
+  AddOutline,
+  CreateOutline,
+  DocumentTextOutline,
+  GitCompareOutline,
+  GlobeOutline,
+  KeyOutline,
+  LockClosedOutline,
+  PersonOutline,
+  RefreshOutline,
+  SearchOutline,
+  TerminalOutline,
+  TrashOutline
+} from "@vicons/ionicons5";
 import {
   createEndpoint,
   deleteApp,
@@ -20,6 +35,7 @@ import GrpcInstructionPanel from "../components/GrpcInstructionPanel.vue";
 const route = useRoute();
 const router = useRouter();
 const appsStore = useAppsStore();
+const dialog = useDialog();
 
 const id = computed(() => (typeof route.params.id === "string" ? route.params.id : ""));
 const loading = ref(false);
@@ -44,6 +60,7 @@ const swaggerDiffLoaded = ref(false);
 const swaggerRegisteredInvalidOpen = ref(false);
 const swaggerBulkAdding = ref(false);
 const swaggerSelectedKeys = ref<Record<string, boolean>>({});
+const swaggerDiffSearch = ref("");
 const grpcReflectionEndpoints = ref<AppGrpcReflectionEndpoint[]>([]);
 const grpcUnregistered = ref<AppGrpcReflectionEndpoint[]>([]);
 const grpcRegisteredInvalid = ref<AppGrpcReflectionEndpoint[]>([]);
@@ -54,12 +71,13 @@ const grpcDiffLoaded = ref(false);
 const grpcRegisteredInvalidOpen = ref(false);
 const grpcBulkAdding = ref(false);
 const grpcSelectedKeys = ref<Record<string, boolean>>({});
+const grpcDiffSearch = ref("");
 const grpcInstructionOpen = ref(false);
 const root = ref<RootMain | null>(null);
 
 type EndpointAuthIcon = {
   key: "ip_validation" | "jwt" | "basic" | "api_key";
-  glyph: string;
+  component: Component;
   label: string;
 };
 
@@ -102,6 +120,20 @@ const httpMethodOptions = computed(() => {
     return a.localeCompare(b);
   });
 });
+const authVisibilityOptions = [
+  { label: "All Visibility", value: "all" },
+  { label: "Public", value: "public" },
+  { label: "Protected", value: "protected" }
+];
+const activeFilterOptions = [
+  { label: "All Status", value: "all" },
+  { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" }
+];
+const httpMethodFilterOptions = computed(() => [
+  { label: "All Methods", value: "all" },
+  ...httpMethodOptions.value.map((method) => ({ label: method, value: method }))
+]);
 
 const filteredEndpoints = computed(() => {
   const query = endpointSearch.value.trim().toLowerCase();
@@ -221,6 +253,20 @@ function groupSwaggerEndpoints(items: AppSwaggerEndpoint[]): SwaggerEndpointGrou
 
 const swaggerUnregisteredGroups = computed(() => groupSwaggerEndpoints(swaggerUnregistered.value));
 const swaggerRegisteredInvalidGroups = computed(() => groupSwaggerEndpoints(swaggerRegisteredInvalid.value));
+function filterSwaggerGroups(groups: SwaggerEndpointGroup[], query: string): SwaggerEndpointGroup[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return groups;
+  }
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => `${item.method} ${item.path}`.toLowerCase().includes(normalizedQuery))
+    }))
+    .filter((group) => group.items.length > 0);
+}
+const visibleSwaggerUnregisteredGroups = computed(() => filterSwaggerGroups(swaggerUnregisteredGroups.value, swaggerDiffSearch.value));
+const visibleSwaggerRegisteredInvalidGroups = computed(() => filterSwaggerGroups(swaggerRegisteredInvalidGroups.value, swaggerDiffSearch.value));
 const swaggerSelectedCount = computed(() => {
   const values = Object.values(swaggerSelectedKeys.value);
   let selected = 0;
@@ -233,6 +279,20 @@ const swaggerSelectedCount = computed(() => {
 });
 const grpcUnregisteredGroups = computed(() => groupGrpcEndpoints(grpcUnregistered.value));
 const grpcRegisteredInvalidGroups = computed(() => groupGrpcEndpoints(grpcRegisteredInvalid.value));
+function filterGrpcGroups(groups: GrpcEndpointGroup[], query: string): GrpcEndpointGroup[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return groups;
+  }
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => `${item.service} ${item.method} ${item.path}`.toLowerCase().includes(normalizedQuery))
+    }))
+    .filter((group) => group.items.length > 0);
+}
+const visibleGrpcUnregisteredGroups = computed(() => filterGrpcGroups(grpcUnregisteredGroups.value, grpcDiffSearch.value));
+const visibleGrpcRegisteredInvalidGroups = computed(() => filterGrpcGroups(grpcRegisteredInvalidGroups.value, grpcDiffSearch.value));
 const grpcSelectedCount = computed(() => {
   const values = Object.values(grpcSelectedKeys.value);
   let selected = 0;
@@ -312,12 +372,8 @@ function pruneSwaggerSelection() {
   swaggerSelectedKeys.value = next;
 }
 
-function onSwaggerItemSelectChange(item: AppSwaggerEndpoint, event: Event) {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement)) {
-    return;
-  }
-  toggleSwaggerSelection(item, target.checked);
+function onSwaggerItemSelectChange(item: AppSwaggerEndpoint, checked: boolean) {
+  toggleSwaggerSelection(item, checked);
 }
 
 function buildDefaultEndpointPayload(item: AppSwaggerEndpoint): EndpointMain {
@@ -519,12 +575,8 @@ function pruneGrpcSelection() {
   grpcSelectedKeys.value = next;
 }
 
-function onGrpcItemSelectChange(item: AppGrpcReflectionEndpoint, event: Event) {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement)) {
-    return;
-  }
-  toggleGrpcSelection(item, target.checked);
+function onGrpcItemSelectChange(item: AppGrpcReflectionEndpoint, checked: boolean) {
+  toggleGrpcSelection(item, checked);
 }
 
 function buildDefaultGrpcEndpointPayload(item: AppGrpcReflectionEndpoint): EndpointMain {
@@ -734,16 +786,16 @@ function endpointAuthIcons(endpoint: EndpointMain): EndpointAuthIcon[] {
 
   const icons: EndpointAuthIcon[] = [];
   if (hasIpValidation) {
-    icons.push({ key: "ip_validation", glyph: "IP", label: "IP Validation" });
+    icons.push({ key: "ip_validation", component: GlobeOutline, label: "IP Validation" });
   }
   if (hasJwt) {
-    icons.push({ key: "jwt", glyph: "JWT", label: "JWT" });
+    icons.push({ key: "jwt", component: KeyOutline, label: "JWT" });
   }
   if (hasBasic) {
-    icons.push({ key: "basic", glyph: "B", label: "Basic Auth" });
+    icons.push({ key: "basic", component: PersonOutline, label: "Basic Auth" });
   }
   if (hasApiKey) {
-    icons.push({ key: "api_key", glyph: "K", label: "API Key" });
+    icons.push({ key: "api_key", component: KeyOutline, label: "API Key" });
   }
   return icons;
 }
@@ -1009,11 +1061,18 @@ async function addSelectedSwaggerEndpoints() {
     return;
   }
 
-  const approved = window.confirm(`Add ${selectedItems.length} endpoint(s) with default settings?`);
-  if (!approved) {
-    return;
-  }
+  dialog.info({
+    title: "Add endpoints",
+    content: `Add ${selectedItems.length} endpoint(s) with default settings?`,
+    positiveText: "Add",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runAddSelectedSwaggerEndpoints(selectedItems);
+    }
+  });
+}
 
+async function runAddSelectedSwaggerEndpoints(selectedItems: AppSwaggerEndpoint[]) {
   swaggerBulkAdding.value = true;
   errorMessage.value = "";
 
@@ -1056,11 +1115,18 @@ async function addSelectedGrpcEndpoints() {
     return;
   }
 
-  const approved = window.confirm(`Add ${selectedItems.length} gRPC method(s) with default settings?`);
-  if (!approved) {
-    return;
-  }
+  dialog.info({
+    title: "Add gRPC endpoints",
+    content: `Add ${selectedItems.length} gRPC method(s) with default settings?`,
+    positiveText: "Add",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runAddSelectedGrpcEndpoints(selectedItems);
+    }
+  });
+}
 
+async function runAddSelectedGrpcEndpoints(selectedItems: AppGrpcReflectionEndpoint[]) {
   grpcBulkAdding.value = true;
   errorMessage.value = "";
 
@@ -1097,10 +1163,18 @@ async function removeEndpoint(endpoint: EndpointMain) {
   if (deletingEndpointId.value) {
     return;
   }
-  const approved = window.confirm(`Delete endpoint ${endpointRouteTitle(endpoint)}?`);
-  if (!approved) {
-    return;
-  }
+  dialog.error({
+    title: "Delete endpoint",
+    content: `Delete endpoint ${endpointRouteTitle(endpoint)}?`,
+    positiveText: "Delete",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runRemoveEndpoint(endpoint);
+    }
+  });
+}
+
+async function runRemoveEndpoint(endpoint: EndpointMain) {
   deletingEndpointId.value = endpoint.id;
   try {
     await deleteEndpoint(endpoint.id);
@@ -1118,8 +1192,22 @@ async function removeApp() {
   if (deletingApp.value || togglingApp.value) {
     return;
   }
-  const approved = window.confirm(`Delete application "${app.value?.name || app.value?.id}"?`);
-  if (!approved || !app.value) {
+  if (!app.value) {
+    return;
+  }
+  dialog.error({
+    title: "Delete application",
+    content: `Delete application "${app.value.name || app.value.id}"?`,
+    positiveText: "Delete",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runRemoveApp();
+    }
+  });
+}
+
+async function runRemoveApp() {
+  if (!app.value) {
     return;
   }
   deletingApp.value = true;
@@ -1143,11 +1231,21 @@ async function toggleAppActive() {
 
   const nextActive = !app.value.active;
   const action = nextActive ? "Activate" : "Deactivate";
-  const approved = window.confirm(`${action} application "${app.value.name || app.value.id}"?`);
-  if (!approved) {
+  dialog.warning({
+    title: `${action} application`,
+    content: `${action} application "${app.value.name || app.value.id}"?`,
+    positiveText: action,
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runToggleAppActive(nextActive);
+    }
+  });
+}
+
+async function runToggleAppActive(nextActive: boolean) {
+  if (!app.value) {
     return;
   }
-
   togglingApp.value = true;
   errorMessage.value = "";
   try {
@@ -1209,39 +1307,44 @@ onBeforeRouteLeave((to) => {
   <div class="actions page-top-actions app-details-top-actions">
     <div v-if="app" class="app-details-header-meta">
       <div class="app-details-page-title">{{ app.name }}</div>
-      <span class="status-chip app-details-status-badge" :class="{ inactive: !app.active }">
+      <n-tag class="app-details-status-badge" size="small" :type="app.active ? 'success' : 'warning'">
         {{ app.active ? "active" : "inactive" }}
-      </span>
+      </n-tag>
     </div>
-    <button
+    <n-button
       v-if="app"
-      :class="app.active ? 'danger-button' : 'primary-button'"
+      :type="app.active ? 'error' : 'primary'"
       :disabled="deletingApp || deletingEndpointId !== '' || togglingApp"
+      :loading="togglingApp"
       :title="app.active ? 'Deactivate App' : 'Activate App'"
       @click="toggleAppActive"
     >
       {{ togglingApp ? "Saving..." : app.active ? "Deactivate App" : "Activate App" }}
-    </button>
+    </n-button>
     <RouterLink
       class="icon-action-button secondary"
       :to="{ name: 'app-edit', params: { id } }"
       title="Edit App"
       aria-label="Edit App"
     >
-      <span class="icon-action-glyph">✎</span>
+      <n-icon :component="CreateOutline" />
     </RouterLink>
-    <button
-      class="icon-action-button danger"
+    <n-button
+      class="danger-icon-button"
+      type="error"
+      secondary
+      circle
       :disabled="deletingApp || deletingEndpointId !== '' || togglingApp"
+      :loading="deletingApp"
       title="Delete App"
       aria-label="Delete App"
       @click="removeApp"
     >
-      <span class="icon-action-glyph">🗑</span>
-    </button>
+      <n-icon :component="TrashOutline" />
+    </n-button>
   </div>
 
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
   <p v-if="loading" class="muted">Loading...</p>
 
   <template v-else-if="app">
@@ -1264,73 +1367,21 @@ onBeforeRouteLeave((to) => {
       </div>
     </section>
 
-    <div class="app-protocol-card">
+    <div v-if="protocolOptions.length > 1" class="app-protocol-card">
       <div class="protocol-tabs-wrap">
-        <div class="protocol-tabs" role="tablist" aria-label="Endpoint Protocol">
-          <button
+        <n-tabs v-model:value="activeEndpointType" class="protocol-tabs" type="line" size="small" animated>
+          <n-tab-pane
             v-for="option in protocolOptions"
             :key="option.value"
-            class="protocol-tab"
-            :class="{ active: activeEndpointType === option.value }"
-            type="button"
-            :aria-selected="activeEndpointType === option.value"
-            @click="activeEndpointType = option.value"
+            :name="option.value"
+            display-directive="show"
           >
-            <span>{{ option.label }}</span>
-            <span class="protocol-tab-count">{{ option.value === "grpc" ? grpcEndpoints.length : httpEndpoints.length }}</span>
-          </button>
-        </div>
-        <button
-          v-if="activeEndpointType === 'grpc'"
-          class="grpc-connect-badge"
-          type="button"
-          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
-          title="Open gRPC connection guide"
-          aria-label="Open gRPC connection guide"
-          @click="toggleGrpcInstruction"
-        >
-          <span class="grpc-connect-icon" aria-hidden="true">?</span>
-          <span>connect</span>
-        </button>
-      </div>
-      <div class="actions protocol-actions">
-        <RouterLink
-          v-if="activeEndpointType === 'http' || Number(app?.backend.grpc_port || 0) > 0"
-          class="primary-button"
-          :to="{ name: 'endpoint-create', params: { appId: id }, query: { type: activeEndpointType } }"
-        >
-          Create Endpoint
-        </RouterLink>
-        <button
-          v-if="activeEndpointType === 'http' && app?.backend.swagger_url"
-          class="secondary-button swagger-toggle-button"
-          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
-          @click="toggleSwaggerPanel"
-        >
-          <svg class="icon-action-svg swagger-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
-            <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
-            <path d="M10 8h4" />
-            <path d="M10 12h4" />
-            <path d="M10 16h4" />
-          </svg>
-          <span>Swagger</span>
-        </button>
-        <button
-          v-if="activeEndpointType === 'grpc' && Number(app?.backend.grpc_port || 0) > 0"
-          class="secondary-button grpc-reflection-toggle-button"
-          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
-          @click="toggleGrpcPanel"
-        >
-          <svg class="icon-action-svg swagger-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
-            <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
-            <path d="M10 8h4" />
-            <path d="M10 12h4" />
-            <path d="M10 16h4" />
-          </svg>
-          <span>gRPC Reflection</span>
-        </button>
+            <template #tab>
+              <span>{{ option.label }}</span>
+              <span class="protocol-tab-count">{{ option.value === "grpc" ? grpcEndpoints.length : httpEndpoints.length }}</span>
+            </template>
+          </n-tab-pane>
+        </n-tabs>
       </div>
     </div>
 
@@ -1342,49 +1393,55 @@ onBeforeRouteLeave((to) => {
       @close="grpcInstructionOpen = false"
     />
 
-    <Teleport to="body">
-      <Transition name="diff-modal">
-        <div
-          v-if="activeEndpointType === 'http' && app.backend.swagger_url && swaggerPanelOpen"
-          class="diff-modal-overlay"
-          role="presentation"
-          @click.self="closeSwaggerPanel"
-        >
-          <section class="panel swagger-diff-panel diff-modal" role="dialog" aria-modal="true" aria-labelledby="swagger-diff-title">
-            <header class="page-header endpoints-head swagger-panel-head diff-modal-head">
-              <h3 id="swagger-diff-title">Swagger Diff</h3>
-              <button
-                class="icon-action-button secondary swagger-close-icon"
-                type="button"
-                title="Close Swagger Diff"
-                aria-label="Close Swagger Diff"
-                @click="closeSwaggerPanel"
-              >
-                <span class="icon-action-glyph">✕</span>
-              </button>
-            </header>
+    <n-modal
+      :show="Boolean(activeEndpointType === 'http' && app.backend.swagger_url && swaggerPanelOpen)"
+      preset="card"
+      title="Swagger Diff"
+      class="diff-modal-card"
+      :bordered="false"
+      :mask-closable="true"
+      content-style="display: flex; min-height: 0; height: 100%; overflow: hidden;"
+      @close="closeSwaggerPanel"
+      @update:show="(value: boolean) => { if (!value) closeSwaggerPanel(); }"
+    >
+          <div class="swagger-diff-panel diff-modal">
             <p v-if="swaggerDiffLoading" class="muted">Loading swagger endpoints...</p>
-            <p v-else-if="swaggerDiffError" class="error">{{ swaggerDiffError }}</p>
+            <n-alert v-else-if="swaggerDiffError" class="form-alert" type="error" :show-icon="false">{{ swaggerDiffError }}</n-alert>
             <template v-else>
-              <div v-if="swaggerRegisteredInvalid.length > 0" class="swagger-invalid-toggle-wrap">
-                <button class="secondary-button swagger-invalid-toggle-button" type="button" @click="toggleSwaggerRegisteredInvalid">
+              <div class="diff-toolbar">
+                <n-input v-model:value="swaggerDiffSearch" class="diff-search-input" placeholder="Search diff" clearable>
+                  <template #prefix>
+                    <n-icon :component="SearchOutline" />
+                  </template>
+                </n-input>
+                <n-button v-if="swaggerRegisteredInvalid.length > 0" class="swagger-invalid-toggle-button" secondary @click="toggleSwaggerRegisteredInvalid">
                   {{
                     swaggerRegisteredInvalidOpen
                       ? `Hide Registered Invalid (${swaggerRegisteredInvalid.length})`
                       : `Show Registered Invalid (${swaggerRegisteredInvalid.length})`
                   }}
-                </button>
+                </n-button>
+                <n-button
+                  v-if="swaggerUnregistered.length > 0"
+                  class="swagger-bulk-add-button"
+                  type="primary"
+                  :disabled="swaggerBulkAdding || swaggerSelectedCount === 0"
+                  :loading="swaggerBulkAdding"
+                  @click="addSelectedSwaggerEndpoints"
+                >
+                  {{ swaggerBulkAdding ? "Adding..." : `Add selected (${swaggerSelectedCount})` }}
+                </n-button>
               </div>
-              <div class="swagger-diff-grid">
+              <div class="swagger-diff-grid diff-scroll-area">
                 <div v-if="swaggerRegisteredInvalidOpen" class="swagger-diff-column">
                   <div class="swagger-diff-title-row">
                     <div class="label">Registered Invalid</div>
                     <span class="swagger-diff-count">{{ swaggerRegisteredInvalid.length }}</span>
                   </div>
                   <div class="swagger-section-box">
-                    <div v-if="swaggerRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
+                    <div v-if="visibleSwaggerRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
                       <section
-                        v-for="group in swaggerRegisteredInvalidGroups"
+                        v-for="group in visibleSwaggerRegisteredInvalidGroups"
                         :key="`invalid-group-${group.segment}`"
                         class="swagger-endpoint-group"
                       >
@@ -1414,19 +1471,9 @@ onBeforeRouteLeave((to) => {
                     <span class="swagger-diff-count">{{ swaggerUnregistered.length }}</span>
                   </div>
                   <div class="swagger-section-box">
-                    <div v-if="swaggerUnregistered.length > 0" class="swagger-bulk-actions">
-                      <button
-                        class="primary-button swagger-bulk-add-button"
-                        type="button"
-                        :disabled="swaggerBulkAdding || swaggerSelectedCount === 0"
-                        @click="addSelectedSwaggerEndpoints"
-                      >
-                        {{ swaggerBulkAdding ? "Adding..." : `Add selected (${swaggerSelectedCount})` }}
-                      </button>
-                    </div>
-                    <div v-if="swaggerUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
+                    <div v-if="visibleSwaggerUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
                       <section
-                        v-for="group in swaggerUnregisteredGroups"
+                        v-for="group in visibleSwaggerUnregisteredGroups"
                         :key="`missing-group-${group.segment}`"
                         class="swagger-endpoint-group"
                       >
@@ -1440,14 +1487,12 @@ onBeforeRouteLeave((to) => {
                             :key="`missing-${group.segment}-${item.method}-${item.path}`"
                             class="swagger-endpoint-item"
                           >
-                            <label class="swagger-item-select">
-                              <input
-                                type="checkbox"
-                                :checked="isSwaggerSelected(item)"
-                                :disabled="swaggerBulkAdding"
-                                @change="onSwaggerItemSelectChange(item, $event)"
-                              />
-                            </label>
+                            <n-checkbox
+                              class="swagger-item-select"
+                              :checked="isSwaggerSelected(item)"
+                              :disabled="swaggerBulkAdding"
+                              @update:checked="(checked: boolean) => onSwaggerItemSelectChange(item, checked)"
+                            />
                             <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
                             <span class="swagger-endpoint-path">{{ item.path }}</span>
                             <RouterLink
@@ -1459,7 +1504,7 @@ onBeforeRouteLeave((to) => {
                               }"
                               :aria-label="`Add endpoint ${item.method} ${item.path}`"
                             >
-                              <span class="swagger-add-plus">+</span>
+                              <n-icon class="swagger-add-plus" :component="AddOutline" />
                               <span>Add</span>
                             </RouterLink>
                           </li>
@@ -1471,53 +1516,57 @@ onBeforeRouteLeave((to) => {
                 </div>
               </div>
             </template>
-          </section>
-        </div>
-      </Transition>
-    </Teleport>
-    <Teleport to="body">
-      <Transition name="diff-modal">
-        <div
-          v-if="activeEndpointType === 'grpc' && Number(app.backend.grpc_port || 0) > 0 && grpcPanelOpen"
-          class="diff-modal-overlay"
-          role="presentation"
-          @click.self="closeGrpcPanel"
-        >
-          <section class="panel swagger-diff-panel grpc-diff-panel diff-modal" role="dialog" aria-modal="true" aria-labelledby="grpc-diff-title">
-            <header class="page-header endpoints-head swagger-panel-head diff-modal-head">
-              <h3 id="grpc-diff-title">gRPC Reflection Diff</h3>
-              <button
-                class="icon-action-button secondary swagger-close-icon"
-                type="button"
-                title="Close gRPC Reflection Diff"
-                aria-label="Close gRPC Reflection Diff"
-                @click="closeGrpcPanel"
-              >
-                <span class="icon-action-glyph">✕</span>
-              </button>
-            </header>
+          </div>
+    </n-modal>
+    <n-modal
+      :show="Boolean(activeEndpointType === 'grpc' && Number(app.backend.grpc_port || 0) > 0 && grpcPanelOpen)"
+      preset="card"
+      title="gRPC Reflection Diff"
+      class="diff-modal-card"
+      :bordered="false"
+      :mask-closable="true"
+      content-style="display: flex; min-height: 0; height: 100%; overflow: hidden;"
+      @close="closeGrpcPanel"
+      @update:show="(value: boolean) => { if (!value) closeGrpcPanel(); }"
+    >
+          <div class="swagger-diff-panel grpc-diff-panel diff-modal">
             <p v-if="grpcDiffLoading" class="muted">Loading gRPC reflection methods...</p>
-            <p v-else-if="grpcDiffError" class="error">{{ grpcDiffError }}</p>
+            <n-alert v-else-if="grpcDiffError" class="form-alert" type="error" :show-icon="false">{{ grpcDiffError }}</n-alert>
             <template v-else>
-              <div v-if="grpcRegisteredInvalid.length > 0" class="swagger-invalid-toggle-wrap">
-                <button class="secondary-button swagger-invalid-toggle-button" type="button" @click="toggleGrpcRegisteredInvalid">
+              <div class="diff-toolbar">
+                <n-input v-model:value="grpcDiffSearch" class="diff-search-input" placeholder="Search diff" clearable>
+                  <template #prefix>
+                    <n-icon :component="SearchOutline" />
+                  </template>
+                </n-input>
+                <n-button v-if="grpcRegisteredInvalid.length > 0" class="swagger-invalid-toggle-button" secondary @click="toggleGrpcRegisteredInvalid">
                   {{
                     grpcRegisteredInvalidOpen
                       ? `Hide Registered Invalid (${grpcRegisteredInvalid.length})`
                       : `Show Registered Invalid (${grpcRegisteredInvalid.length})`
                   }}
-                </button>
+                </n-button>
+                <n-button
+                  v-if="grpcUnregistered.length > 0"
+                  class="swagger-bulk-add-button"
+                  type="primary"
+                  :disabled="grpcBulkAdding || grpcSelectedCount === 0"
+                  :loading="grpcBulkAdding"
+                  @click="addSelectedGrpcEndpoints"
+                >
+                  {{ grpcBulkAdding ? "Adding..." : `Add selected (${grpcSelectedCount})` }}
+                </n-button>
               </div>
-              <div class="swagger-diff-grid">
+              <div class="swagger-diff-grid diff-scroll-area">
                 <div v-if="grpcRegisteredInvalidOpen" class="swagger-diff-column">
                   <div class="swagger-diff-title-row">
                     <div class="label">Registered Invalid</div>
                     <span class="swagger-diff-count">{{ grpcRegisteredInvalid.length }}</span>
                   </div>
                   <div class="swagger-section-box">
-                    <div v-if="grpcRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
+                    <div v-if="visibleGrpcRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
                       <section
-                        v-for="group in grpcRegisteredInvalidGroups"
+                        v-for="group in visibleGrpcRegisteredInvalidGroups"
                         :key="`grpc-invalid-group-${group.segment}`"
                         class="swagger-endpoint-group"
                       >
@@ -1549,19 +1598,9 @@ onBeforeRouteLeave((to) => {
                     <span class="swagger-diff-count">{{ grpcUnregistered.length }}</span>
                   </div>
                   <div class="swagger-section-box">
-                    <div v-if="grpcUnregistered.length > 0" class="swagger-bulk-actions">
-                      <button
-                        class="primary-button swagger-bulk-add-button"
-                        type="button"
-                        :disabled="grpcBulkAdding || grpcSelectedCount === 0"
-                        @click="addSelectedGrpcEndpoints"
-                      >
-                        {{ grpcBulkAdding ? "Adding..." : `Add selected (${grpcSelectedCount})` }}
-                      </button>
-                    </div>
-                    <div v-if="grpcUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
+                    <div v-if="visibleGrpcUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
                       <section
-                        v-for="group in grpcUnregisteredGroups"
+                        v-for="group in visibleGrpcUnregisteredGroups"
                         :key="`grpc-missing-group-${group.segment}`"
                         class="swagger-endpoint-group"
                       >
@@ -1575,14 +1614,12 @@ onBeforeRouteLeave((to) => {
                             :key="`grpc-missing-${group.segment}-${item.service}-${item.method}`"
                             class="swagger-endpoint-item"
                           >
-                            <label class="swagger-item-select">
-                              <input
-                                type="checkbox"
-                                :checked="isGrpcSelected(item)"
-                                :disabled="grpcBulkAdding"
-                                @change="onGrpcItemSelectChange(item, $event)"
-                              />
-                            </label>
+                            <n-checkbox
+                              class="swagger-item-select"
+                              :checked="isGrpcSelected(item)"
+                              :disabled="grpcBulkAdding"
+                              @update:checked="(checked: boolean) => onGrpcItemSelectChange(item, checked)"
+                            />
                             <span class="http-method-badge method-grpc">GRPC</span>
                             <span class="swagger-endpoint-path" :title="`${item.service}/${item.method}`">/{{ item.method }}</span>
                             <RouterLink
@@ -1594,7 +1631,7 @@ onBeforeRouteLeave((to) => {
                               }"
                               :aria-label="`Add endpoint ${item.service}/${item.method}`"
                             >
-                              <span class="swagger-add-plus">+</span>
+                              <n-icon class="swagger-add-plus" :component="AddOutline" />
                               <span>Add</span>
                             </RouterLink>
                           </li>
@@ -1606,47 +1643,97 @@ onBeforeRouteLeave((to) => {
                 </div>
               </div>
             </template>
-          </section>
-        </div>
-      </Transition>
-    </Teleport>
+          </div>
+    </n-modal>
 
     <div class="page-header compact endpoints-head">
-      <h3>{{ activeEndpointType === "grpc" ? "gRPC Endpoints" : "HTTP Endpoints" }}</h3>
-      <span class="muted endpoints-head-count">{{ filteredEndpoints.length }} / {{ activeProtocolTotal }}</span>
+      <div class="endpoints-title">
+        <h3>{{ activeEndpointType === "grpc" ? "gRPC Endpoints" : "HTTP Endpoints" }}</h3>
+        <span class="muted endpoints-head-count">{{ filteredEndpoints.length }} / {{ activeProtocolTotal }}</span>
+      </div>
+      <div class="actions endpoints-head-actions">
+        <n-button
+          v-if="activeEndpointType === 'grpc'"
+          class="grpc-connect-button"
+          type="info"
+          secondary
+          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
+          title="Open gRPC connection guide"
+          aria-label="Open gRPC connection guide"
+          @click="toggleGrpcInstruction"
+        >
+          <template #icon>
+            <n-icon :component="TerminalOutline" />
+          </template>
+          Connect
+        </n-button>
+        <n-button
+          v-if="activeEndpointType === 'http' || Number(app?.backend.grpc_port || 0) > 0"
+          type="primary"
+          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
+          @click="router.push({ name: 'endpoint-create', params: { appId: id }, query: { type: activeEndpointType } })"
+        >
+          <template #icon>
+            <n-icon :component="AddOutline" />
+          </template>
+          Endpoint
+        </n-button>
+        <n-button
+          v-if="activeEndpointType === 'http' && app?.backend.swagger_url"
+          class="swagger-toggle-button"
+          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
+          secondary
+          @click="toggleSwaggerPanel"
+        >
+          <template #icon>
+            <n-icon :component="DocumentTextOutline" />
+          </template>
+          Swagger
+        </n-button>
+        <n-button
+          v-if="activeEndpointType === 'grpc' && Number(app?.backend.grpc_port || 0) > 0"
+          class="grpc-reflection-toggle-button"
+          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
+          secondary
+          @click="toggleGrpcPanel"
+        >
+          <template #icon>
+            <n-icon :component="GitCompareOutline" />
+          </template>
+          gRPC Reflection
+        </n-button>
+      </div>
     </div>
     <div class="endpoints-filters">
-      <input
-        v-model="endpointSearch"
+      <n-input
+        v-model:value="endpointSearch"
         class="endpoints-filter-input"
-        type="search"
         placeholder="Search endpoints"
         aria-label="Search endpoints"
+        clearable
+      >
+        <template #prefix>
+          <n-icon :component="SearchOutline" />
+        </template>
+      </n-input>
+      <n-select v-model:value="authVisibilityFilter" class="endpoints-filter-select" :options="authVisibilityOptions" aria-label="Filter by visibility" />
+      <n-select v-model:value="activeFilter" class="endpoints-filter-select" :options="activeFilterOptions" aria-label="Filter by status" />
+      <n-select
+        v-if="activeEndpointType === 'http'"
+        v-model:value="httpMethodFilter"
+        class="endpoints-filter-select"
+        :options="httpMethodFilterOptions"
+        aria-label="Filter by HTTP method"
       />
-      <select v-model="authVisibilityFilter" class="endpoints-filter-select" aria-label="Filter by visibility">
-        <option value="all">All Visibility</option>
-        <option value="public">Public</option>
-        <option value="protected">Protected</option>
-      </select>
-      <select v-model="activeFilter" class="endpoints-filter-select" aria-label="Filter by status">
-        <option value="all">All Status</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-      <select v-if="activeEndpointType === 'http'" v-model="httpMethodFilter" class="endpoints-filter-select" aria-label="Filter by HTTP method">
-        <option value="all">All Methods</option>
-        <option v-for="method in httpMethodOptions" :key="method" :value="method">{{ method }}</option>
-      </select>
-      <button
-        class="icon-action-button secondary"
-        type="button"
+      <n-button
+        secondary
         :disabled="!hasEndpointFilters"
         title="Reset Filters"
         aria-label="Reset Filters"
         @click="resetEndpointFilters"
       >
-        <span class="icon-action-glyph">✖</span>
-      </button>
+        <n-icon :component="RefreshOutline" />
+      </n-button>
     </div>
     <table class="data-table endpoints-table">
       <tbody v-if="endpointGroups.length === 0">
@@ -1688,7 +1775,7 @@ onBeforeRouteLeave((to) => {
                 title="Auth required"
                 aria-label="Auth required"
               >
-                🔒
+                <n-icon :component="LockClosedOutline" />
               </span>
               <div v-if="endpointAuthIcons(endpoint).length > 0" class="endpoint-auth-icons">
                 <span
@@ -1698,15 +1785,15 @@ onBeforeRouteLeave((to) => {
                   :title="authIcon.label"
                   :aria-label="authIcon.label"
                 >
-                  {{ authIcon.glyph }}
+                  <n-icon :component="authIcon.component" />
                 </span>
               </div>
             </div>
           </td>
           <td>
-            <span class="status-chip" :class="{ inactive: !endpoint.active }">
+            <n-tag size="small" :type="endpoint.active ? 'success' : 'warning'">
               {{ endpoint.active ? "active" : "inactive" }}
-            </span>
+            </n-tag>
           </td>
           <td class="actions">
             <RouterLink
@@ -1715,17 +1802,21 @@ onBeforeRouteLeave((to) => {
               title="Edit Endpoint"
               aria-label="Edit Endpoint"
             >
-              <span class="icon-action-glyph">✎</span>
+              <n-icon :component="CreateOutline" />
             </RouterLink>
-            <button
-              class="icon-action-button danger"
+            <n-button
+              class="danger-icon-button"
+              type="error"
+              secondary
+              size="small"
+              circle
               :disabled="deletingApp || deletingEndpointId !== '' || togglingApp"
               title="Delete Endpoint"
               aria-label="Delete Endpoint"
               @click="removeEndpoint(endpoint)"
             >
-              <span class="icon-action-glyph">{{ deletingEndpointId === endpoint.id ? "…" : "🗑" }}</span>
-            </button>
+              <n-icon v-if="deletingEndpointId !== endpoint.id" :component="TrashOutline" />
+            </n-button>
           </td>
         </tr>
       </tbody>
@@ -1744,9 +1835,9 @@ onBeforeRouteLeave((to) => {
           <article v-for="endpoint in group.items" :key="`mobile-${endpoint.id}`" class="endpoint-mobile-card">
             <div class="endpoint-mobile-top">
               <span class="http-method-badge" :class="endpointMethodBadgeClass(endpointRouteMethod(endpoint))">{{ endpointRouteMethod(endpoint) }}</span>
-              <span class="status-chip" :class="{ inactive: !endpoint.active }">
+              <n-tag size="small" :type="endpoint.active ? 'success' : 'warning'">
                 {{ endpoint.active ? "active" : "inactive" }}
-              </span>
+              </n-tag>
             </div>
             <RouterLink
               class="endpoint-path-link endpoint-mobile-path"
@@ -1761,9 +1852,9 @@ onBeforeRouteLeave((to) => {
                 class="endpoint-lock-chip"
                 title="Auth required"
                 aria-label="Auth required"
-              >
-                🔒
-              </span>
+                >
+                  <n-icon :component="LockClosedOutline" />
+                </span>
               <div v-if="endpointAuthIcons(endpoint).length > 0" class="endpoint-auth-icons">
                 <span
                   v-for="authIcon in endpointAuthIcons(endpoint)"
@@ -1772,7 +1863,7 @@ onBeforeRouteLeave((to) => {
                   :title="authIcon.label"
                   :aria-label="authIcon.label"
                 >
-                  {{ authIcon.glyph }}
+                  <n-icon :component="authIcon.component" />
                 </span>
               </div>
             </div>
@@ -1783,17 +1874,21 @@ onBeforeRouteLeave((to) => {
                 title="Edit Endpoint"
                 aria-label="Edit Endpoint"
               >
-                <span class="icon-action-glyph">✎</span>
+                <n-icon :component="CreateOutline" />
               </RouterLink>
-              <button
-                class="icon-action-button danger"
+              <n-button
+                class="danger-icon-button"
+                type="error"
+                secondary
+                size="small"
+                circle
                 :disabled="deletingApp || deletingEndpointId !== '' || togglingApp"
                 title="Delete Endpoint"
                 aria-label="Delete Endpoint"
                 @click="removeEndpoint(endpoint)"
               >
-                <span class="icon-action-glyph">{{ deletingEndpointId === endpoint.id ? "…" : "🗑" }}</span>
-              </button>
+                <n-icon v-if="deletingEndpointId !== endpoint.id" :component="TrashOutline" />
+              </n-button>
             </div>
           </article>
         </div>

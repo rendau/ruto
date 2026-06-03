@@ -91,17 +91,17 @@ onMounted(async () => {
       </div>
       <label class="field">
         <span>Username</span>
-        <input v-model="username" autocomplete="username" required />
+        <n-input v-model:value="username" autocomplete="username" required />
       </label>
       <label class="field">
         <span>Password</span>
-        <input v-model="password" type="password" autocomplete="current-password" required />
+        <n-input v-model:value="password" type="password" show-password-on="click" autocomplete="current-password" required />
       </label>
-      <button :disabled="authStore.loading" class="primary-button" type="submit">
+      <n-button :loading="authStore.loading" type="primary" attr-type="submit" block>
         {{ authStore.loading ? "Signing in..." : "Sign in" }}
-      </button>
-      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="success">{{ successMessage }}</p>
+      </n-button>
+      <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
+      <n-alert v-if="successMessage" class="form-alert" type="success" :show-icon="false">{{ successMessage }}</n-alert>
       <p class="hint">Token renewal on expiry uses saved credentials (one attempt).</p>
     </form>
 
@@ -112,21 +112,21 @@ onMounted(async () => {
       </div>
       <label class="field">
         <span>Name</span>
-        <input v-model="name" autocomplete="name" required />
+        <n-input v-model:value="name" autocomplete="name" required />
       </label>
       <label class="field">
         <span>Username</span>
-        <input v-model="username" autocomplete="username" required />
+        <n-input v-model:value="username" autocomplete="username" required />
       </label>
       <label class="field">
         <span>Password</span>
-        <input v-model="password" type="password" autocomplete="new-password" required />
+        <n-input v-model:value="password" type="password" show-password-on="click" autocomplete="new-password" required />
       </label>
-      <button :disabled="bootstrapLoading" class="primary-button" type="submit">
+      <n-button :loading="bootstrapLoading" type="primary" attr-type="submit" block>
         {{ bootstrapLoading ? "Creating..." : "Create admin" }}
-      </button>
-      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-      <p v-if="successMessage" class="success">{{ successMessage }}</p>
+      </n-button>
+      <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
+      <n-alert v-if="successMessage" class="form-alert" type="success" :show-icon="false">{{ successMessage }}</n-alert>
       <p class="hint">Доступно только при первой установке, пока в системе нет пользователей.</p>
     </form>
   </main>

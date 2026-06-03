@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, type Component } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
+import { useDialog } from "naive-ui";
+import { ArrowBackOutline, BanOutline, CopyOutline, CreateOutline, GlobeOutline, KeyOutline, LockClosedOutline, PersonOutline, TrashOutline } from "@vicons/ionicons5";
 import { deleteEndpoint, getApp, getEndpoint, getRoot, updateEndpoint } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain, EndpointMain } from "../types/api";
 
 type EndpointAuthIcon = {
   key: "ip_validation" | "jwt" | "basic" | "api_key";
-  glyph: string;
+  component: Component;
   label: string;
 };
 
 const route = useRoute();
 const router = useRouter();
+const dialog = useDialog();
 
 const id = computed(() => (typeof route.params.id === "string" ? route.params.id : ""));
 const loading = ref(false);
@@ -128,16 +131,16 @@ function endpointAuthIcons(item: EndpointMain): EndpointAuthIcon[] {
 
   const icons: EndpointAuthIcon[] = [];
   if (hasIpValidation) {
-    icons.push({ key: "ip_validation", glyph: "IP", label: "IP Validation" });
+    icons.push({ key: "ip_validation", component: GlobeOutline, label: "IP Validation" });
   }
   if (hasJwt) {
-    icons.push({ key: "jwt", glyph: "JWT", label: "JWT" });
+    icons.push({ key: "jwt", component: KeyOutline, label: "JWT" });
   }
   if (hasBasic) {
-    icons.push({ key: "basic", glyph: "B", label: "Basic Auth" });
+    icons.push({ key: "basic", component: PersonOutline, label: "Basic Auth" });
   }
   if (hasApiKey) {
-    icons.push({ key: "api_key", glyph: "K", label: "API Key" });
+    icons.push({ key: "api_key", component: KeyOutline, label: "API Key" });
   }
   return icons;
 }
@@ -185,8 +188,19 @@ async function deactivateEndpoint() {
   if (deactivating.value || deleting.value || !endpoint.value || !endpoint.value.active) {
     return;
   }
-  const approved = window.confirm(`Deactivate endpoint ${endpointMethod.value} ${endpointPath.value}?`);
-  if (!approved) {
+  dialog.warning({
+    title: "Deactivate endpoint",
+    content: `Deactivate endpoint ${endpointMethod.value} ${endpointPath.value}?`,
+    positiveText: "Deactivate",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runDeactivateEndpoint();
+    }
+  });
+}
+
+async function runDeactivateEndpoint() {
+  if (!endpoint.value) {
     return;
   }
   deactivating.value = true;
@@ -210,8 +224,19 @@ async function removeEndpoint() {
   if (deleting.value || deactivating.value || !endpoint.value) {
     return;
   }
-  const approved = window.confirm(`Delete endpoint ${endpointMethod.value} ${endpointPath.value}?`);
-  if (!approved) {
+  dialog.error({
+    title: "Delete endpoint",
+    content: `Delete endpoint ${endpointMethod.value} ${endpointPath.value}?`,
+    positiveText: "Delete",
+    negativeText: "Cancel",
+    onPositiveClick: () => {
+      void runRemoveEndpoint();
+    }
+  });
+}
+
+async function runRemoveEndpoint() {
+  if (!endpoint.value) {
     return;
   }
   deleting.value = true;
@@ -255,9 +280,7 @@ onMounted(() => {
       title="Back to Application"
       aria-label="Back to Application"
     >
-      <svg class="icon-action-svg" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M15 18l-6-6 6-6" />
-      </svg>
+      <n-icon :component="ArrowBackOutline" />
     </RouterLink>
     <RouterLink
       v-if="endpoint"
@@ -266,42 +289,37 @@ onMounted(() => {
       title="Edit Endpoint"
       aria-label="Edit Endpoint"
     >
-      <svg class="icon-action-svg" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 20h4l10-10a2 2 0 0 0-4-4L4 16v4z" />
-      </svg>
+      <n-icon :component="CreateOutline" />
     </RouterLink>
-    <button
+    <n-button
       v-if="endpoint"
-      class="icon-action-button primary"
+      type="primary"
+      secondary
       :disabled="deactivating || deleting || !endpoint.active"
+      :loading="deactivating"
       :title="endpoint.active ? 'Deactivate Endpoint' : 'Endpoint already inactive'"
       aria-label="Deactivate Endpoint"
       @click="deactivateEndpoint"
     >
-      <svg class="icon-action-svg" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="8" />
-        <path d="M7 17L17 7" />
-      </svg>
-    </button>
-    <button
+      <n-icon :component="BanOutline" />
+    </n-button>
+    <n-button
       v-if="endpoint"
-      class="icon-action-button danger"
+      class="danger-icon-button"
+      type="error"
+      secondary
+      circle
       :disabled="deleting || deactivating"
+      :loading="deleting"
       title="Delete Endpoint"
       aria-label="Delete Endpoint"
       @click="removeEndpoint"
     >
-      <svg v-if="!deleting" class="icon-action-svg" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4 7h16" />
-        <path d="M9 7V5h6v2" />
-        <path d="M7 7l1 12h8l1-12" />
-        <path d="M10 11v5M14 11v5" />
-      </svg>
-      <span v-else class="icon-action-glyph">…</span>
-    </button>
+      <n-icon v-if="!deleting" :component="TrashOutline" />
+    </n-button>
   </div>
 
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
   <p v-if="loading" class="muted">Loading...</p>
   <p v-else-if="!endpoint" class="muted">Endpoint not found.</p>
 
@@ -311,9 +329,9 @@ onMounted(() => {
         <span class="http-method-badge" :class="endpointMethodBadgeClass(endpointMethod)">{{ endpointMethod }}</span>
         <h2 class="endpoint-details-path">{{ endpointPath }}</h2>
       </div>
-      <span class="status-chip" :class="{ inactive: !endpoint.active }">
+      <n-tag size="small" :type="endpoint.active ? 'success' : 'warning'">
         {{ endpoint.active ? "active" : "inactive" }}
-      </span>
+      </n-tag>
     </section>
 
     <section class="summary-grid endpoint-summary-grid">
@@ -356,10 +374,7 @@ onMounted(() => {
           @click="copyUrl(endpointType === 'grpc' ? 'gRPC Path' : 'Public URL', publicRoute)"
         >
           <span class="endpoint-copy-value" :class="{ muted: !publicRoute }">{{ publicRoute || "unavailable" }}</span>
-          <svg class="endpoint-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="9" y="9" width="10" height="10" rx="2" />
-            <rect x="5" y="5" width="10" height="10" rx="2" />
-          </svg>
+          <n-icon class="endpoint-copy-icon" :component="CopyOutline" aria-hidden="true" />
         </button>
       </div>
       <div>
@@ -373,10 +388,7 @@ onMounted(() => {
           @click="copyUrl(endpointType === 'grpc' ? 'Backend gRPC Address' : 'Backend URL', backendUrl)"
         >
           <span class="endpoint-copy-value" :class="{ muted: !backendUrl }">{{ backendUrl || "unavailable" }}</span>
-          <svg class="endpoint-copy-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="9" y="9" width="10" height="10" rx="2" />
-            <rect x="5" y="5" width="10" height="10" rx="2" />
-          </svg>
+          <n-icon class="endpoint-copy-icon" :component="CopyOutline" aria-hidden="true" />
         </button>
       </div>
     </section>
@@ -384,7 +396,9 @@ onMounted(() => {
     <section class="panel endpoint-auth-panel">
       <div class="endpoint-auth-head">
         <h3>Auth</h3>
-        <span v-if="endpoint.auth?.enabled" class="endpoint-lock-chip" title="Auth required" aria-label="Auth required">🔒</span>
+        <span v-if="endpoint.auth?.enabled" class="endpoint-lock-chip" title="Auth required" aria-label="Auth required">
+          <n-icon :component="LockClosedOutline" />
+        </span>
       </div>
       <p class="muted endpoint-auth-summary">{{ authSummary(endpoint) }}</p>
       <div v-if="endpointAuthIcons(endpoint).length > 0" class="endpoint-auth-icons">
@@ -395,7 +409,7 @@ onMounted(() => {
           :title="authIcon.label"
           :aria-label="authIcon.label"
         >
-          {{ authIcon.glyph }}
+          <n-icon :component="authIcon.component" />
         </span>
       </div>
       <p v-else class="muted">No auth methods configured.</p>

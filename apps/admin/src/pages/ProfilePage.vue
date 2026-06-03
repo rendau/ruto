@@ -53,22 +53,22 @@ async function submit() {
     </div>
   </section>
 
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
 
   <form class="stack" @submit.prevent="submit">
     <label class="field">
       <span>Name</span>
-      <input v-model="name" />
+      <n-input v-model:value="name" />
     </label>
     <label class="field">
       <span>New Password</span>
-      <input v-model="password" type="password" />
+      <n-input v-model:value="password" type="password" show-password-on="click" />
     </label>
 
     <div class="actions">
-      <button class="primary-button" type="submit" :disabled="saving">
+      <n-button type="primary" attr-type="submit" :loading="saving">
         {{ saving ? "Saving..." : "Update Profile" }}
-      </button>
+      </n-button>
     </div>
   </form>
 </template>

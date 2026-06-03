@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { RefreshOutline } from "@vicons/ionicons5";
 import { getSnapshotVersion, getStats, listGateways } from "../lib/api";
 import { formatUnixAge, formatUnixDateTime } from "../lib/datetime";
 import { notifyError } from "../lib/notify";
@@ -117,18 +118,18 @@ onMounted(() => {
 
 <template>
   <div class="actions page-top-actions">
-    <button
-      class="icon-action-button secondary"
-      :disabled="loading"
+    <n-button
+      secondary
+      :loading="loading"
       title="Refresh Dashboard"
       aria-label="Refresh Dashboard"
       @click="loadStats"
     >
-      <span class="icon-action-glyph">{{ loading ? "…" : "↻" }}</span>
-    </button>
+      <n-icon :component="RefreshOutline" />
+    </n-button>
   </div>
 
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
   <p v-if="loading && !stats" class="muted">Loading dashboard...</p>
 
   <template v-if="stats">
@@ -161,15 +162,15 @@ onMounted(() => {
         <div class="flag-list">
           <div class="flag-row">
             <span>Root Auth</span>
-            <span class="status-chip" :class="{ inactive: !stats.root_auth_enabled }">
+            <n-tag size="small" :type="stats.root_auth_enabled ? 'success' : 'warning'">
               {{ stats.root_auth_enabled ? "enabled" : "disabled" }}
-            </span>
+            </n-tag>
           </div>
           <div class="flag-row">
             <span>Root CORS</span>
-            <span class="status-chip" :class="{ inactive: !stats.root_cors_enabled }">
+            <n-tag size="small" :type="stats.root_cors_enabled ? 'success' : 'warning'">
               {{ stats.root_cors_enabled ? "enabled" : "disabled" }}
-            </span>
+            </n-tag>
           </div>
           <div class="flag-row">
             <span>Admin Users Ratio</span>
@@ -223,14 +224,14 @@ onMounted(() => {
                 <div class="gateway-secondary">{{ gateway.host_name || "n/a" }}</div>
               </td>
               <td>
-                <span class="status-chip" :class="{ inactive: gateway.status !== 'online' }">
+                <n-tag size="small" :type="gateway.status === 'online' ? 'success' : 'warning'">
                   {{ gateway.status }}
-                </span>
+                </n-tag>
               </td>
               <td :title="`current: ${shortVersion(currentSnapshotVersion)} / gateway: ${shortVersion(gateway.snapshot_version)}`">
-                <span class="status-chip" :class="{ inactive: !isCurrentVersionApplied(gateway) }">
+                <n-tag size="small" :type="isCurrentVersionApplied(gateway) ? 'success' : 'warning'">
                   {{ isCurrentVersionApplied(gateway) ? "yes" : "no" }}
-                </span>
+                </n-tag>
               </td>
               <td :title="formatUnixTime(gateway.last_apply_at_unix)">{{ formatApplyAge(gateway.last_apply_at_unix) }}</td>
               <td class="gateway-resources-cell">

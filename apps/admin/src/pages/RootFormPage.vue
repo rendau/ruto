@@ -79,45 +79,44 @@ onMounted(() => {
 </script>
 
 <template>
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
   <p v-if="loading" class="muted">Loading...</p>
 
   <form v-else class="stack" @submit.prevent="submit">
     <label class="field">
       <span>Base URL</span>
-      <input v-model="form.base_url" placeholder="https://public.example.com" required />
+      <n-input v-model:value="form.base_url" placeholder="https://public.example.com" required />
     </label>
 
     <h3 class="section-title">CORS</h3>
-    <label class="check">
-      <input v-model="form.cors.enabled" type="checkbox" />
-      <span>Enabled</span>
-    </label>
-    <label class="check">
-      <input v-model="form.cors.allow_credentials" type="checkbox" />
-      <span>Allow Credentials</span>
-    </label>
+    <n-space>
+      <n-switch v-model:value="form.cors.enabled">
+        <template #checked>Enabled</template>
+        <template #unchecked>Disabled</template>
+      </n-switch>
+      <n-checkbox v-model:checked="form.cors.allow_credentials">Allow Credentials</n-checkbox>
+    </n-space>
     <label class="field">
       <span>Max Age</span>
-      <input v-model="form.cors.max_age" />
+      <n-input v-model:value="form.cors.max_age" />
     </label>
     <label class="field">
       <span>Allow Origins (one per line)</span>
-      <textarea v-model="allowOriginsText" rows="4"></textarea>
+      <n-input v-model:value="allowOriginsText" type="textarea" :autosize="{ minRows: 4 }" />
     </label>
     <label class="field">
       <span>Allow Methods (one per line)</span>
-      <textarea v-model="allowMethodsText" rows="4"></textarea>
+      <n-input v-model:value="allowMethodsText" type="textarea" :autosize="{ minRows: 4 }" />
     </label>
     <label class="field">
       <span>Allow Headers (one per line)</span>
-      <textarea v-model="allowHeadersText" rows="4"></textarea>
+      <n-input v-model:value="allowHeadersText" type="textarea" :autosize="{ minRows: 4 }" />
     </label>
 
     <h3 class="section-title">JWT Providers</h3>
     <label class="field">
       <span>JWK URLs (one per line)</span>
-      <textarea v-model="jwkUrlsText" rows="5" placeholder="https://example.com/.well-known/jwks.json"></textarea>
+      <n-input v-model:value="jwkUrlsText" type="textarea" :autosize="{ minRows: 5 }" placeholder="https://example.com/.well-known/jwks.json" />
     </label>
 
     <h3 class="section-title">Auth</h3>
@@ -127,9 +126,9 @@ onMounted(() => {
     </div>
 
     <div class="actions">
-      <button class="primary-button" type="submit" :disabled="saving">
+      <n-button type="primary" attr-type="submit" :loading="saving">
         {{ saving ? "Saving..." : "Save Root" }}
-      </button>
+      </n-button>
     </div>
   </form>
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { RefreshOutline } from "@vicons/ionicons5";
 import { getSnapshotVersion, listGateways } from "../lib/api";
 import { formatUnixAge, formatUnixDateTime } from "../lib/datetime";
 import { notifyError } from "../lib/notify";
@@ -69,19 +70,18 @@ onMounted(() => {
 
 <template>
   <div class="actions page-top-actions gateways-top-actions">
-    <button
-      class="icon-action-button secondary"
-      type="button"
-      :disabled="loading"
+    <n-button
+      secondary
+      :loading="loading"
       title="Refresh Gateways"
       aria-label="Refresh Gateways"
       @click="loadGateways"
     >
-      <span class="icon-action-glyph">{{ loading ? "…" : "↻" }}</span>
-    </button>
+      <n-icon :component="RefreshOutline" />
+    </n-button>
   </div>
 
-  <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+  <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
 
   <section class="summary-grid gateways-summary-grid">
     <div>
@@ -131,14 +131,14 @@ onMounted(() => {
               <div class="gateway-secondary">{{ gateway.host_name || "n/a" }}</div>
             </td>
             <td>
-              <span class="status-chip" :class="{ inactive: gateway.status !== 'online' }">
+              <n-tag size="small" :type="gateway.status === 'online' ? 'success' : 'warning'">
                 {{ gateway.status }}
-              </span>
+              </n-tag>
             </td>
             <td>
-              <span class="status-chip" :class="{ inactive: !isCurrentVersionApplied(gateway) }">
+              <n-tag size="small" :type="isCurrentVersionApplied(gateway) ? 'success' : 'warning'">
                 {{ isCurrentVersionApplied(gateway) ? "yes" : "no" }}
-              </span>
+              </n-tag>
             </td>
             <td :title="formatUnixTime(gateway.last_seen_at_unix)">{{ formatUnixAgeValue(gateway.last_seen_at_unix) }}</td>
             <td :title="formatUnixTime(gateway.last_apply_at_unix)">{{ formatUnixAgeValue(gateway.last_apply_at_unix) }}</td>

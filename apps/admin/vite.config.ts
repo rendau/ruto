@@ -16,6 +16,16 @@ export default defineConfig(({ mode }) => {
     preview: {
       host,
       port: Number.isFinite(port) && port > 0 ? port : 5173
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vue: ["vue", "vue-router", "pinia"],
+            "naive-ui": ["naive-ui", "@vicons/ionicons5"]
+          }
+        }
+      }
     }
   };
 });

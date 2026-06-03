@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { TrashOutline } from "@vicons/ionicons5";
 import { arrayToLines, cloneAuthMethod, createEmptyAuthMethod, linesToArray, normalizeAuth } from "../lib/forms";
 import type { Auth, AuthMethod } from "../types/api";
 
@@ -229,122 +230,140 @@ function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "all
 <template>
   <div class="auth-editor">
     <div class="auth-head">
-      <label class="check auth-control">
-        <input :checked="localAuth.enabled" type="checkbox" @change="setEnabled(($event.target as HTMLInputElement).checked)" />
-        <span>Enabled</span>
-      </label>
-      <label class="auth-control auth-mode-control">
-        <span class="auth-control-label">Mode</span>
-        <select :value="localAuth.mode" @change="setMode(($event.target as HTMLSelectElement).value === 'replace' ? 'replace' : 'extend')">
-          <option value="extend">extend</option>
-          <option value="replace">replace</option>
-        </select>
-      </label>
+      <n-switch :value="localAuth.enabled" @update:value="setEnabled">
+        <template #checked>Enabled</template>
+        <template #unchecked>Disabled</template>
+      </n-switch>
+      <n-select
+        class="auth-mode-select"
+        :value="localAuth.mode"
+        :options="[
+          { label: 'extend', value: 'extend' },
+          { label: 'replace', value: 'replace' }
+        ]"
+        @update:value="(value: string) => setMode(value === 'replace' ? 'replace' : 'extend')"
+      />
     </div>
 
-    <div class="auth-method-add">
-      <button class="secondary-button" type="button" @click="addMethod('basic')">+ Basic</button>
-      <button class="secondary-button" type="button" @click="addMethod('api_key')">+ API Key</button>
-      <button class="secondary-button" type="button" @click="addMethod('jwt')">+ JWT</button>
-      <button class="secondary-button" type="button" @click="addMethod('ip_validation')">+ IP Validation</button>
-    </div>
+    <n-space class="auth-method-add">
+      <n-button size="small" secondary @click="addMethod('basic')">+ Basic</n-button>
+      <n-button size="small" secondary @click="addMethod('api_key')">+ API Key</n-button>
+      <n-button size="small" secondary @click="addMethod('jwt')">+ JWT</n-button>
+      <n-button size="small" secondary @click="addMethod('ip_validation')">+ IP Validation</n-button>
+    </n-space>
 
     <p v-if="localAuth.methods.length === 0" class="auth-empty muted">No auth methods configured.</p>
 
     <TransitionGroup name="auth-method" tag="div" class="auth-method-list">
-      <div v-for="(method, methodIndex) in localAuth.methods" :key="methodKeys[methodIndex] || methodIndex" class="auth-method-card">
+      <n-card v-for="(method, methodIndex) in localAuth.methods" :key="methodKeys[methodIndex] || methodIndex" class="auth-method-card" size="small">
         <div class="auth-method-card-head">
           <div class="auth-type-toggle">
-            <label class="check">
-              <input :checked="!!method.basic" type="checkbox" @change="toggleType(methodIndex, 'basic', ($event.target as HTMLInputElement).checked)" />
-              <span>Basic</span>
-            </label>
-            <label class="check">
-              <input :checked="!!method.api_key" type="checkbox" @change="toggleType(methodIndex, 'api_key', ($event.target as HTMLInputElement).checked)" />
-              <span>API Key</span>
-            </label>
-            <label class="check">
-              <input :checked="!!method.jwt" type="checkbox" @change="toggleType(methodIndex, 'jwt', ($event.target as HTMLInputElement).checked)" />
-              <span>JWT</span>
-            </label>
-            <label class="check">
-              <input :checked="!!method.ip_validation" type="checkbox" @change="toggleType(methodIndex, 'ip_validation', ($event.target as HTMLInputElement).checked)" />
-              <span>IP Validation</span>
-            </label>
+            <n-checkbox :checked="!!method.basic" @update:checked="(value: boolean) => toggleType(methodIndex, 'basic', value)">Basic</n-checkbox>
+            <n-checkbox :checked="!!method.api_key" @update:checked="(value: boolean) => toggleType(methodIndex, 'api_key', value)">API Key</n-checkbox>
+            <n-checkbox :checked="!!method.jwt" @update:checked="(value: boolean) => toggleType(methodIndex, 'jwt', value)">JWT</n-checkbox>
+            <n-checkbox :checked="!!method.ip_validation" @update:checked="(value: boolean) => toggleType(methodIndex, 'ip_validation', value)">IP Validation</n-checkbox>
           </div>
-          <button class="icon-action-button danger" type="button" aria-label="Remove method" title="Remove method" @click="removeMethod(methodIndex)">
-            <span class="icon-action-glyph">🗑</span>
-          </button>
+          <n-button
+            class="danger-icon-button auth-method-remove"
+            type="error"
+            size="small"
+            secondary
+            circle
+            aria-label="Remove method"
+            title="Remove method"
+            @click="removeMethod(methodIndex)"
+          >
+            <n-icon :component="TrashOutline" />
+          </n-button>
         </div>
 
       <div v-if="method.basic" class="auth-type-block">
         <div class="field-inline">
           <strong>Basic Users</strong>
-          <button class="secondary-button" type="button" @click="addBasicUser(methodIndex)">+ User</button>
+          <n-button size="small" secondary @click="addBasicUser(methodIndex)">+ User</n-button>
         </div>
         <div v-for="(user, userIndex) in method.basic.users" :key="userIndex" class="auth-basic-user-row">
-          <input :value="user.username" placeholder="username" @input="setBasicUsername(methodIndex, userIndex, ($event.target as HTMLInputElement).value)" />
-          <input
+          <n-input :value="user.username" placeholder="username" @update:value="(value: string) => setBasicUsername(methodIndex, userIndex, value)" />
+          <n-input
             :value="user.password"
             placeholder="password"
             type="password"
-            @input="setBasicPassword(methodIndex, userIndex, ($event.target as HTMLInputElement).value)"
+            @update:value="(value: string) => setBasicPassword(methodIndex, userIndex, value)"
           />
-          <button class="danger-text-button" type="button" @click="removeBasicUser(methodIndex, userIndex)">×</button>
+          <n-button
+            class="danger-icon-button"
+            type="error"
+            secondary
+            circle
+            aria-label="Remove basic user"
+            title="Remove basic user"
+            @click="removeBasicUser(methodIndex, userIndex)"
+          >
+            <n-icon :component="TrashOutline" />
+          </n-button>
         </div>
       </div>
 
       <div v-if="method.api_key" class="auth-type-block">
         <label class="field">
           <span>Header</span>
-          <input :value="method.api_key.header" placeholder="X-Api-Key" @input="setApiHeader(methodIndex, ($event.target as HTMLInputElement).value)" />
+          <n-input :value="method.api_key.header" placeholder="X-Api-Key" @update:value="(value: string) => setApiHeader(methodIndex, value)" />
         </label>
         <label class="field">
           <span>Keys (one per line)</span>
-          <textarea
+          <n-input
             :value="methodText[methodIndex]?.apiKeys || ''"
+            type="textarea"
             rows="3"
-            @input="setMethodText(methodIndex, 'apiKeys', ($event.target as HTMLTextAreaElement).value)"
-          ></textarea>
+            @update:value="(value: string) => setMethodText(methodIndex, 'apiKeys', value)"
+          />
         </label>
       </div>
 
       <div v-if="method.jwt" class="auth-type-block">
         <label class="field">
           <span>KID</span>
-          <select v-if="jwtKidOptions.length > 0" :value="method.jwt.kid" @change="setJwtKid(methodIndex, ($event.target as HTMLSelectElement).value)">
-            <option value="" disabled>Select KID</option>
-            <option v-for="kid in jwtKidOptions" :key="kid" :value="kid">{{ kid }}</option>
-            <option v-if="method.jwt.kid && !jwtKidOptions.includes(method.jwt.kid)" :value="method.jwt.kid">{{ method.jwt.kid }} (current)</option>
-          </select>
-          <input
+          <n-select
+            v-if="jwtKidOptions.length > 0"
+            :value="method.jwt.kid"
+            clearable
+            placeholder="Select KID"
+            :options="[
+              ...jwtKidOptions.map((kid) => ({ label: kid, value: kid })),
+              ...(method.jwt.kid && !jwtKidOptions.includes(method.jwt.kid) ? [{ label: `${method.jwt.kid} (current)`, value: method.jwt.kid }] : [])
+            ]"
+            @update:value="(value: string | null) => setJwtKid(methodIndex, value || '')"
+          />
+          <n-input
             v-else
             :value="method.jwt.kid"
             placeholder="provider-main-key"
-            @input="setJwtKid(methodIndex, ($event.target as HTMLInputElement).value)"
+            @update:value="(value: string) => setJwtKid(methodIndex, value)"
           />
         </label>
         <label class="field">
           <span>Roles (one per line)</span>
-          <textarea
+          <n-input
             :value="methodText[methodIndex]?.jwtRoles || ''"
+            type="textarea"
             rows="3"
-            @input="setMethodText(methodIndex, 'jwtRoles', ($event.target as HTMLTextAreaElement).value)"
-          ></textarea>
+            @update:value="(value: string) => setMethodText(methodIndex, 'jwtRoles', value)"
+          />
         </label>
       </div>
 
       <div v-if="method.ip_validation" class="auth-type-block">
         <label class="field">
           <span>Allowed IPs (one per line)</span>
-          <textarea
+          <n-input
             :value="methodText[methodIndex]?.allowedIps || ''"
+            type="textarea"
             rows="3"
-            @input="setMethodText(methodIndex, 'allowedIps', ($event.target as HTMLTextAreaElement).value)"
-          ></textarea>
+            @update:value="(value: string) => setMethodText(methodIndex, 'allowedIps', value)"
+          />
         </label>
       </div>
-      </div>
+      </n-card>
     </TransitionGroup>
   </div>
 </template>

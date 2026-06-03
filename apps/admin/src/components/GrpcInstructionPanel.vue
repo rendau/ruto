@@ -125,130 +125,102 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="grpc-modal">
-      <div v-if="open" class="grpc-modal-overlay" role="presentation" @click.self="close">
-        <section
-          class="grpc-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="grpc-modal-title"
-          aria-describedby="grpc-modal-description"
-        >
-          <header class="grpc-modal-head">
-            <div>
-              <p class="grpc-modal-kicker">gRPC connection</p>
-              <h3 id="grpc-modal-title">Connect to {{ app.name }}</h3>
-              <p id="grpc-modal-description" class="grpc-modal-subtitle">
-                Copy the gateway address, required metadata, and ready-to-run examples.
-              </p>
-            </div>
-            <button
-              class="icon-action-button secondary grpc-modal-close"
-              type="button"
-              title="Close"
-              aria-label="Close gRPC connection guide"
-              @click="close"
-            >
-              <span class="icon-action-glyph">✕</span>
-            </button>
-          </header>
-
-          <div v-if="connectionInfo" class="grpc-modal-body">
-            <div class="grpc-copy-grid" aria-label="Connection values">
-              <button
-                v-for="item in copyItems"
-                :key="item.key"
-                class="grpc-copy-tile"
-                type="button"
-                :title="`Copy ${item.label}`"
-                :aria-label="`Copy ${item.label}`"
-                @click="copyText(item.key, item.label, item.value)"
-              >
-                <span class="grpc-copy-label">{{ item.label }}</span>
-                <span class="grpc-copy-value-row">
-                  <code class="grpc-copy-value">{{ item.value }}</code>
-                  <span v-if="item.badge" class="grpc-copy-badge">{{ item.badge }}</span>
-                </span>
-                <span class="grpc-copy-hint">{{ item.hint }}</span>
-                <span class="grpc-copy-state">{{ copiedKey === item.key ? "Copied" : "Click to copy" }}</span>
-              </button>
-            </div>
-
-            <div class="grpc-note">
-              <strong>Route lookup:</strong>
-              gateway matches calls by <code>x-ruto-app-name</code> and full method path like
-              <code>/package.Service/Method</code>.
-            </div>
-
-            <section class="grpc-code-section" aria-labelledby="grpc-call-title">
-              <div class="grpc-code-head">
-                <div>
-                  <h4 id="grpc-call-title">Call example</h4>
-                  <p>Replace package, service, method, and payload with your endpoint contract.</p>
-                </div>
-                <button class="secondary-button" type="button" @click="copyText('grpcurl-call', 'grpcurl call example', grpcurlCallExample)">
-                  {{ copiedKey === "grpcurl-call" ? "Copied" : "Copy" }}
-                </button>
-              </div>
-              <button class="grpc-code-copy" type="button" @click="copyText('grpcurl-call', 'grpcurl call example', grpcurlCallExample)">
-                <pre><code>{{ grpcurlCallExample }}</code></pre>
-              </button>
-            </section>
-          </div>
-
-          <div v-else class="grpc-modal-empty">
-            <div class="error">Base URL is not configured in Root Settings.</div>
-            <p class="muted">Configure Root Base URL first, then reopen this connection guide.</p>
-          </div>
-        </section>
+  <n-modal
+    :show="open"
+    preset="card"
+    class="grpc-modal-card"
+    :bordered="false"
+    :mask-closable="true"
+    content-style="display: flex; min-height: 0; height: 100%; overflow: hidden;"
+    @update:show="(value: boolean) => { if (!value) close(); }"
+  >
+    <template #header>
+      <div class="grpc-modal-head">
+        <div>
+          <p class="grpc-modal-kicker">gRPC connection</p>
+          <h3 id="grpc-modal-title">Connect to {{ app.name }}</h3>
+          <p id="grpc-modal-description" class="grpc-modal-subtitle">
+            Copy the gateway address, required metadata, and ready-to-run examples.
+          </p>
+        </div>
       </div>
-    </Transition>
-  </Teleport>
+    </template>
+
+    <div v-if="connectionInfo" class="grpc-modal-body">
+      <div class="grpc-copy-grid" aria-label="Connection values">
+        <button
+          v-for="item in copyItems"
+          :key="item.key"
+          class="grpc-copy-tile"
+          type="button"
+          :title="`Copy ${item.label}`"
+          :aria-label="`Copy ${item.label}`"
+          @click="copyText(item.key, item.label, item.value)"
+        >
+          <span class="grpc-copy-label">{{ item.label }}</span>
+          <span class="grpc-copy-value-row">
+            <code class="grpc-copy-value">{{ item.value }}</code>
+            <span v-if="item.badge" class="grpc-copy-badge">{{ item.badge }}</span>
+          </span>
+          <span class="grpc-copy-hint">{{ item.hint }}</span>
+          <span class="grpc-copy-state">{{ copiedKey === item.key ? "Copied" : "Click to copy" }}</span>
+        </button>
+      </div>
+
+      <div class="grpc-note">
+        <strong>Route lookup:</strong>
+        gateway matches calls by <code>x-ruto-app-name</code> and full method path like
+        <code>/package.Service/Method</code>.
+      </div>
+
+      <section class="grpc-code-section" aria-labelledby="grpc-call-title">
+        <div class="grpc-code-head">
+          <div>
+            <h4 id="grpc-call-title">Call example</h4>
+            <p>Replace package, service, method, and payload with your endpoint contract.</p>
+          </div>
+          <n-button secondary @click="copyText('grpcurl-call', 'grpcurl call example', grpcurlCallExample)">
+            {{ copiedKey === "grpcurl-call" ? "Copied" : "Copy" }}
+          </n-button>
+        </div>
+        <button class="grpc-code-copy" type="button" @click="copyText('grpcurl-call', 'grpcurl call example', grpcurlCallExample)">
+          <pre><code>{{ grpcurlCallExample }}</code></pre>
+        </button>
+      </section>
+    </div>
+
+    <div v-else class="grpc-modal-empty">
+      <n-alert class="form-alert" type="error" :show-icon="false">Base URL is not configured in Root Settings.</n-alert>
+      <p class="muted">Configure Root Base URL first, then reopen this connection guide.</p>
+    </div>
+  </n-modal>
 </template>
 
 <style scoped>
-.grpc-modal-enter-active,
-.grpc-modal-leave-active {
-  transition: opacity 0.16s ease;
-}
-
-.grpc-modal-enter-active .grpc-modal,
-.grpc-modal-leave-active .grpc-modal {
-  transition: transform 0.16s ease, opacity 0.16s ease;
-}
-
-.grpc-modal-enter-from,
-.grpc-modal-leave-to {
-  opacity: 0;
-}
-
-.grpc-modal-enter-from .grpc-modal,
-.grpc-modal-leave-to .grpc-modal {
-  opacity: 0;
-  transform: translateY(10px) scale(0.98);
-}
-
-.grpc-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
+:global(.grpc-modal-card) {
+  width: min(960px, calc(100vw - 48px));
+  height: min(840px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(5, 10, 20, 0.72);
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.grpc-modal {
-  width: min(960px, 100%);
-  max-height: min(840px, calc(100dvh - 48px));
-  overflow-y: auto;
-  border: 1px solid #4c668c;
-  border-radius: 8px;
-  background: #172338;
-  color: #dce7f8;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+:global(.grpc-modal-card > .n-card-header) {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 0;
+}
+
+:global(.grpc-modal-card .n-card__content) {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+  max-height: none;
+  padding: 0 14px 14px !important;
 }
 
 .grpc-modal-head {
@@ -293,8 +265,15 @@ onBeforeUnmount(() => {
 
 .grpc-modal-body,
 .grpc-modal-empty {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
   display: grid;
   gap: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 18px 22px 22px;
 }
 
@@ -454,17 +433,20 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 720px) {
-  .grpc-modal-overlay {
-    align-items: stretch;
-    padding: 12px;
-  }
-
-  .grpc-modal {
-    max-height: calc(100dvh - 24px);
+  :global(.grpc-modal-card) {
+    width: calc(100vw - 4px);
+    height: calc(100dvh - 4px);
+    max-height: calc(100dvh - 4px);
+    margin: 2px auto;
   }
 
   .grpc-modal-head {
-    padding: 16px;
+    padding: 8px;
+  }
+
+  .grpc-modal-body,
+  .grpc-modal-empty {
+    max-height: none;
   }
 
   .grpc-modal-head h3 {
@@ -473,7 +455,12 @@ onBeforeUnmount(() => {
 
   .grpc-modal-body,
   .grpc-modal-empty {
-    padding: 14px 16px 18px;
+    padding: 0 4px 8px;
+  }
+
+  :global(.grpc-modal-card .n-card-content),
+  :global(.grpc-modal-card .n-card__content) {
+    padding: 0 4px 4px !important;
   }
 
   .grpc-copy-grid {
