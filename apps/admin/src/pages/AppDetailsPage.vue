@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { onBeforeRouteLeave, RouterLink, useRoute, useRouter, type RouteLocationNormalizedLoaded } from "vue-router";
 import {
   createEndpoint,
@@ -919,6 +919,8 @@ function toggleSwaggerPanel() {
   }
   swaggerPanelOpen.value = !swaggerPanelOpen.value;
   if (swaggerPanelOpen.value) {
+    grpcPanelOpen.value = false;
+    grpcInstructionOpen.value = false;
     void loadSwaggerDiff();
   }
 }
@@ -957,6 +959,8 @@ function toggleGrpcPanel() {
   }
   grpcPanelOpen.value = !grpcPanelOpen.value;
   if (grpcPanelOpen.value) {
+    swaggerPanelOpen.value = false;
+    grpcInstructionOpen.value = false;
     void loadGrpcDiff();
   }
 }
@@ -970,6 +974,20 @@ function toggleGrpcInstruction() {
   if (grpcInstructionOpen.value) {
     grpcPanelOpen.value = false;
     swaggerPanelOpen.value = false;
+  }
+}
+
+function closeDiffPanels() {
+  swaggerPanelOpen.value = false;
+  grpcPanelOpen.value = false;
+}
+
+function onDiffModalKeydown(event: KeyboardEvent) {
+  if (event.key !== "Escape") {
+    return;
+  }
+  if (swaggerPanelOpen.value || grpcPanelOpen.value) {
+    closeDiffPanels();
   }
 }
 
@@ -1152,7 +1170,12 @@ onMounted(() => {
   restoreEndpointFilters();
   restoreSwaggerPanelState();
   restoreGrpcPanelState();
+  window.addEventListener("keydown", onDiffModalKeydown);
   void load();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onDiffModalKeydown);
 });
 
 watch([id, endpointSearch, authVisibilityFilter, activeFilter, httpMethodFilter, activeEndpointType], () => {
@@ -1319,248 +1342,274 @@ onBeforeRouteLeave((to) => {
       @close="grpcInstructionOpen = false"
     />
 
-    <Transition name="swagger-panel">
-      <section v-if="activeEndpointType === 'http' && app.backend.swagger_url && swaggerPanelOpen" class="panel swagger-diff-panel">
-        <button
-          class="icon-action-button secondary swagger-close-icon"
-          type="button"
-          title="Close Swagger Diff"
-          aria-label="Close Swagger Diff"
-          @click="closeSwaggerPanel"
+    <Teleport to="body">
+      <Transition name="diff-modal">
+        <div
+          v-if="activeEndpointType === 'http' && app.backend.swagger_url && swaggerPanelOpen"
+          class="diff-modal-overlay"
+          role="presentation"
+          @click.self="closeSwaggerPanel"
         >
-          <span class="icon-action-glyph">✕</span>
-        </button>
-        <div class="page-header endpoints-head swagger-panel-head">
-          <h3>Swagger Diff</h3>
-        </div>
-        <p v-if="swaggerDiffLoading" class="muted">Loading swagger endpoints...</p>
-        <p v-else-if="swaggerDiffError" class="error">{{ swaggerDiffError }}</p>
-        <template v-else>
-          <div v-if="swaggerRegisteredInvalid.length > 0" class="swagger-invalid-toggle-wrap">
-            <button class="secondary-button swagger-invalid-toggle-button" type="button" @click="toggleSwaggerRegisteredInvalid">
-              {{
-                swaggerRegisteredInvalidOpen
-                  ? `Hide Registered Invalid (${swaggerRegisteredInvalid.length})`
-                  : `Show Registered Invalid (${swaggerRegisteredInvalid.length})`
-              }}
-            </button>
-          </div>
-          <div class="swagger-diff-grid">
-            <div v-if="swaggerRegisteredInvalidOpen" class="swagger-diff-column">
-              <div class="swagger-diff-title-row">
-                <div class="label">Registered Invalid</div>
-                <span class="swagger-diff-count">{{ swaggerRegisteredInvalid.length }}</span>
+          <section class="panel swagger-diff-panel diff-modal" role="dialog" aria-modal="true" aria-labelledby="swagger-diff-title">
+            <header class="page-header endpoints-head swagger-panel-head diff-modal-head">
+              <h3 id="swagger-diff-title">Swagger Diff</h3>
+              <button
+                class="icon-action-button secondary swagger-close-icon"
+                type="button"
+                title="Close Swagger Diff"
+                aria-label="Close Swagger Diff"
+                @click="closeSwaggerPanel"
+              >
+                <span class="icon-action-glyph">✕</span>
+              </button>
+            </header>
+            <p v-if="swaggerDiffLoading" class="muted">Loading swagger endpoints...</p>
+            <p v-else-if="swaggerDiffError" class="error">{{ swaggerDiffError }}</p>
+            <template v-else>
+              <div v-if="swaggerRegisteredInvalid.length > 0" class="swagger-invalid-toggle-wrap">
+                <button class="secondary-button swagger-invalid-toggle-button" type="button" @click="toggleSwaggerRegisteredInvalid">
+                  {{
+                    swaggerRegisteredInvalidOpen
+                      ? `Hide Registered Invalid (${swaggerRegisteredInvalid.length})`
+                      : `Show Registered Invalid (${swaggerRegisteredInvalid.length})`
+                  }}
+                </button>
               </div>
-              <div class="swagger-section-box">
-                <div v-if="swaggerRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
-                  <section
-                    v-for="group in swaggerRegisteredInvalidGroups"
-                    :key="`invalid-group-${group.segment}`"
-                    class="swagger-endpoint-group"
-                  >
-                    <div class="endpoint-group-head">
-                      <span class="endpoint-group-segment">{{ group.segment }}</span>
-                      <span class="endpoint-group-count">{{ group.items.length }}</span>
-                    </div>
-                    <ul class="swagger-endpoint-list">
-                      <li
-                        v-for="item in group.items"
-                        :key="`invalid-${group.segment}-${item.method}-${item.path}`"
-                        class="swagger-endpoint-item swagger-endpoint-item-invalid"
+              <div class="swagger-diff-grid">
+                <div v-if="swaggerRegisteredInvalidOpen" class="swagger-diff-column">
+                  <div class="swagger-diff-title-row">
+                    <div class="label">Registered Invalid</div>
+                    <span class="swagger-diff-count">{{ swaggerRegisteredInvalid.length }}</span>
+                  </div>
+                  <div class="swagger-section-box">
+                    <div v-if="swaggerRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
+                      <section
+                        v-for="group in swaggerRegisteredInvalidGroups"
+                        :key="`invalid-group-${group.segment}`"
+                        class="swagger-endpoint-group"
                       >
-                        <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
-                        <span class="swagger-endpoint-path">{{ item.path }}</span>
-                        <span class="swagger-endpoint-reason">{{ registeredInvalidReason(item) }}</span>
-                      </li>
-                    </ul>
-                  </section>
-                </div>
-                <p v-else class="muted">No invalid registrations.</p>
-              </div>
-            </div>
-            <div class="swagger-diff-column">
-              <div class="swagger-diff-title-row">
-                <div class="label">Not Registered</div>
-                <span class="swagger-diff-count">{{ swaggerUnregistered.length }}</span>
-              </div>
-              <div class="swagger-section-box">
-                <div v-if="swaggerUnregistered.length > 0" class="swagger-bulk-actions">
-                  <button
-                    class="primary-button swagger-bulk-add-button"
-                    type="button"
-                    :disabled="swaggerBulkAdding || swaggerSelectedCount === 0"
-                    @click="addSelectedSwaggerEndpoints"
-                  >
-                    {{ swaggerBulkAdding ? "Adding..." : `Add selected (${swaggerSelectedCount})` }}
-                  </button>
-                </div>
-                <div v-if="swaggerUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
-                  <section v-for="group in swaggerUnregisteredGroups" :key="`missing-group-${group.segment}`" class="swagger-endpoint-group">
-                    <div class="endpoint-group-head">
-                      <span class="endpoint-group-segment">{{ group.segment }}</span>
-                      <span class="endpoint-group-count">{{ group.items.length }}</span>
-                    </div>
-                    <ul class="swagger-endpoint-list">
-                      <li
-                        v-for="item in group.items"
-                        :key="`missing-${group.segment}-${item.method}-${item.path}`"
-                        class="swagger-endpoint-item"
-                      >
-                        <label class="swagger-item-select">
-                          <input
-                            type="checkbox"
-                            :checked="isSwaggerSelected(item)"
-                            :disabled="swaggerBulkAdding"
-                            @change="onSwaggerItemSelectChange(item, $event)"
-                          />
-                        </label>
-                        <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
-                        <span class="swagger-endpoint-path">{{ item.path }}</span>
-                        <RouterLink
-                          class="primary-button swagger-add-button"
-                          :to="{
-                            name: 'endpoint-create',
-                            params: { appId: id },
-                            query: { type: 'http', method: item.method, path: item.path }
-                          }"
-                          :aria-label="`Add endpoint ${item.method} ${item.path}`"
-                        >
-                          <span class="swagger-add-plus">+</span>
-                          <span>Add</span>
-                        </RouterLink>
-                      </li>
-                    </ul>
-                  </section>
-                </div>
-                <p v-else class="muted">No missing endpoints.</p>
-              </div>
-            </div>
-          </div>
-        </template>
-      </section>
-    </Transition>
-    <Transition name="swagger-panel">
-      <section v-if="activeEndpointType === 'grpc' && Number(app.backend.grpc_port || 0) > 0 && grpcPanelOpen" class="panel swagger-diff-panel grpc-diff-panel">
-        <button
-          class="icon-action-button secondary swagger-close-icon"
-          type="button"
-          title="Close gRPC Reflection Diff"
-          aria-label="Close gRPC Reflection Diff"
-          @click="closeGrpcPanel"
-        >
-          <span class="icon-action-glyph">✕</span>
-        </button>
-        <div class="page-header endpoints-head swagger-panel-head">
-          <h3>gRPC Reflection Diff</h3>
-        </div>
-        <p v-if="grpcDiffLoading" class="muted">Loading gRPC reflection methods...</p>
-        <p v-else-if="grpcDiffError" class="error">{{ grpcDiffError }}</p>
-        <template v-else>
-          <div v-if="grpcRegisteredInvalid.length > 0" class="swagger-invalid-toggle-wrap">
-            <button class="secondary-button swagger-invalid-toggle-button" type="button" @click="toggleGrpcRegisteredInvalid">
-              {{
-                grpcRegisteredInvalidOpen
-                  ? `Hide Registered Invalid (${grpcRegisteredInvalid.length})`
-                  : `Show Registered Invalid (${grpcRegisteredInvalid.length})`
-              }}
-            </button>
-          </div>
-          <div class="swagger-diff-grid">
-            <div v-if="grpcRegisteredInvalidOpen" class="swagger-diff-column">
-              <div class="swagger-diff-title-row">
-                <div class="label">Registered Invalid</div>
-                <span class="swagger-diff-count">{{ grpcRegisteredInvalid.length }}</span>
-              </div>
-              <div class="swagger-section-box">
-                <div v-if="grpcRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
-                  <section
-                    v-for="group in grpcRegisteredInvalidGroups"
-                    :key="`grpc-invalid-group-${group.segment}`"
-                    class="swagger-endpoint-group"
-                  >
-                    <div class="endpoint-group-head">
-                      <span class="endpoint-group-segment">{{ group.segment }}</span>
-                      <span class="endpoint-group-count">{{ group.items.length }}</span>
-                    </div>
-                    <ul class="swagger-endpoint-list">
-                      <li
-                        v-for="item in group.items"
-                        :key="`grpc-invalid-${group.segment}-${item.service}-${item.method}`"
-                        class="swagger-endpoint-item swagger-endpoint-item-invalid"
-                      >
-                        <span class="http-method-badge method-grpc">GRPC</span>
-                        <div class="grpc-endpoint-meta">
-                          <span class="swagger-endpoint-path" :title="`${item.service}/${item.method}`">/{{ item.method }}</span>
-                          <span class="swagger-endpoint-reason">Missing in reflection</span>
+                        <div class="endpoint-group-head">
+                          <span class="endpoint-group-segment">{{ group.segment }}</span>
+                          <span class="endpoint-group-count">{{ group.items.length }}</span>
                         </div>
-                      </li>
-                    </ul>
-                  </section>
-                </div>
-                <p v-else class="muted">No invalid registrations.</p>
-              </div>
-            </div>
-            <div class="swagger-diff-column">
-              <div class="swagger-diff-title-row">
-                <div class="label">Not Registered</div>
-                <span class="swagger-diff-count">{{ grpcUnregistered.length }}</span>
-              </div>
-              <div class="swagger-section-box">
-                <div v-if="grpcUnregistered.length > 0" class="swagger-bulk-actions">
-                  <button
-                    class="primary-button swagger-bulk-add-button"
-                    type="button"
-                    :disabled="grpcBulkAdding || grpcSelectedCount === 0"
-                    @click="addSelectedGrpcEndpoints"
-                  >
-                    {{ grpcBulkAdding ? "Adding..." : `Add selected (${grpcSelectedCount})` }}
-                  </button>
-                </div>
-                <div v-if="grpcUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
-                  <section v-for="group in grpcUnregisteredGroups" :key="`grpc-missing-group-${group.segment}`" class="swagger-endpoint-group">
-                    <div class="endpoint-group-head">
-                      <span class="endpoint-group-segment">{{ group.segment }}</span>
-                      <span class="endpoint-group-count">{{ group.items.length }}</span>
+                        <ul class="swagger-endpoint-list">
+                          <li
+                            v-for="item in group.items"
+                            :key="`invalid-${group.segment}-${item.method}-${item.path}`"
+                            class="swagger-endpoint-item swagger-endpoint-item-invalid"
+                          >
+                            <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
+                            <span class="swagger-endpoint-path">{{ item.path }}</span>
+                            <span class="swagger-endpoint-reason">{{ registeredInvalidReason(item) }}</span>
+                          </li>
+                        </ul>
+                      </section>
                     </div>
-                    <ul class="swagger-endpoint-list">
-                      <li
-                        v-for="item in group.items"
-                        :key="`grpc-missing-${group.segment}-${item.service}-${item.method}`"
-                        class="swagger-endpoint-item"
-                      >
-                        <label class="swagger-item-select">
-                          <input
-                            type="checkbox"
-                            :checked="isGrpcSelected(item)"
-                            :disabled="grpcBulkAdding"
-                            @change="onGrpcItemSelectChange(item, $event)"
-                          />
-                        </label>
-                        <span class="http-method-badge method-grpc">GRPC</span>
-                        <span class="swagger-endpoint-path" :title="`${item.service}/${item.method}`">/{{ item.method }}</span>
-                        <RouterLink
-                          class="primary-button swagger-add-button"
-                          :to="{
-                            name: 'endpoint-create',
-                            params: { appId: id },
-                            query: { type: 'grpc', grpc_service: item.service, grpc_method: item.method, grpc_path: item.path }
-                          }"
-                          :aria-label="`Add endpoint ${item.service}/${item.method}`"
-                        >
-                          <span class="swagger-add-plus">+</span>
-                          <span>Add</span>
-                        </RouterLink>
-                      </li>
-                    </ul>
-                  </section>
+                    <p v-else class="muted">No invalid registrations.</p>
+                  </div>
                 </div>
-                <p v-else class="muted">No missing methods.</p>
+                <div class="swagger-diff-column">
+                  <div class="swagger-diff-title-row">
+                    <div class="label">Not Registered</div>
+                    <span class="swagger-diff-count">{{ swaggerUnregistered.length }}</span>
+                  </div>
+                  <div class="swagger-section-box">
+                    <div v-if="swaggerUnregistered.length > 0" class="swagger-bulk-actions">
+                      <button
+                        class="primary-button swagger-bulk-add-button"
+                        type="button"
+                        :disabled="swaggerBulkAdding || swaggerSelectedCount === 0"
+                        @click="addSelectedSwaggerEndpoints"
+                      >
+                        {{ swaggerBulkAdding ? "Adding..." : `Add selected (${swaggerSelectedCount})` }}
+                      </button>
+                    </div>
+                    <div v-if="swaggerUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
+                      <section
+                        v-for="group in swaggerUnregisteredGroups"
+                        :key="`missing-group-${group.segment}`"
+                        class="swagger-endpoint-group"
+                      >
+                        <div class="endpoint-group-head">
+                          <span class="endpoint-group-segment">{{ group.segment }}</span>
+                          <span class="endpoint-group-count">{{ group.items.length }}</span>
+                        </div>
+                        <ul class="swagger-endpoint-list">
+                          <li
+                            v-for="item in group.items"
+                            :key="`missing-${group.segment}-${item.method}-${item.path}`"
+                            class="swagger-endpoint-item"
+                          >
+                            <label class="swagger-item-select">
+                              <input
+                                type="checkbox"
+                                :checked="isSwaggerSelected(item)"
+                                :disabled="swaggerBulkAdding"
+                                @change="onSwaggerItemSelectChange(item, $event)"
+                              />
+                            </label>
+                            <span class="http-method-badge" :class="endpointMethodBadgeClass(item.method)">{{ item.method }}</span>
+                            <span class="swagger-endpoint-path">{{ item.path }}</span>
+                            <RouterLink
+                              class="primary-button swagger-add-button"
+                              :to="{
+                                name: 'endpoint-create',
+                                params: { appId: id },
+                                query: { type: 'http', method: item.method, path: item.path }
+                              }"
+                              :aria-label="`Add endpoint ${item.method} ${item.path}`"
+                            >
+                              <span class="swagger-add-plus">+</span>
+                              <span>Add</span>
+                            </RouterLink>
+                          </li>
+                        </ul>
+                      </section>
+                    </div>
+                    <p v-else class="muted">No missing endpoints.</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </template>
-      </section>
-    </Transition>
+            </template>
+          </section>
+        </div>
+      </Transition>
+    </Teleport>
+    <Teleport to="body">
+      <Transition name="diff-modal">
+        <div
+          v-if="activeEndpointType === 'grpc' && Number(app.backend.grpc_port || 0) > 0 && grpcPanelOpen"
+          class="diff-modal-overlay"
+          role="presentation"
+          @click.self="closeGrpcPanel"
+        >
+          <section class="panel swagger-diff-panel grpc-diff-panel diff-modal" role="dialog" aria-modal="true" aria-labelledby="grpc-diff-title">
+            <header class="page-header endpoints-head swagger-panel-head diff-modal-head">
+              <h3 id="grpc-diff-title">gRPC Reflection Diff</h3>
+              <button
+                class="icon-action-button secondary swagger-close-icon"
+                type="button"
+                title="Close gRPC Reflection Diff"
+                aria-label="Close gRPC Reflection Diff"
+                @click="closeGrpcPanel"
+              >
+                <span class="icon-action-glyph">✕</span>
+              </button>
+            </header>
+            <p v-if="grpcDiffLoading" class="muted">Loading gRPC reflection methods...</p>
+            <p v-else-if="grpcDiffError" class="error">{{ grpcDiffError }}</p>
+            <template v-else>
+              <div v-if="grpcRegisteredInvalid.length > 0" class="swagger-invalid-toggle-wrap">
+                <button class="secondary-button swagger-invalid-toggle-button" type="button" @click="toggleGrpcRegisteredInvalid">
+                  {{
+                    grpcRegisteredInvalidOpen
+                      ? `Hide Registered Invalid (${grpcRegisteredInvalid.length})`
+                      : `Show Registered Invalid (${grpcRegisteredInvalid.length})`
+                  }}
+                </button>
+              </div>
+              <div class="swagger-diff-grid">
+                <div v-if="grpcRegisteredInvalidOpen" class="swagger-diff-column">
+                  <div class="swagger-diff-title-row">
+                    <div class="label">Registered Invalid</div>
+                    <span class="swagger-diff-count">{{ grpcRegisteredInvalid.length }}</span>
+                  </div>
+                  <div class="swagger-section-box">
+                    <div v-if="grpcRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
+                      <section
+                        v-for="group in grpcRegisteredInvalidGroups"
+                        :key="`grpc-invalid-group-${group.segment}`"
+                        class="swagger-endpoint-group"
+                      >
+                        <div class="endpoint-group-head">
+                          <span class="endpoint-group-segment">{{ group.segment }}</span>
+                          <span class="endpoint-group-count">{{ group.items.length }}</span>
+                        </div>
+                        <ul class="swagger-endpoint-list">
+                          <li
+                            v-for="item in group.items"
+                            :key="`grpc-invalid-${group.segment}-${item.service}-${item.method}`"
+                            class="swagger-endpoint-item swagger-endpoint-item-invalid"
+                          >
+                            <span class="http-method-badge method-grpc">GRPC</span>
+                            <div class="grpc-endpoint-meta">
+                              <span class="swagger-endpoint-path" :title="`${item.service}/${item.method}`">/{{ item.method }}</span>
+                              <span class="swagger-endpoint-reason">Missing in reflection</span>
+                            </div>
+                          </li>
+                        </ul>
+                      </section>
+                    </div>
+                    <p v-else class="muted">No invalid registrations.</p>
+                  </div>
+                </div>
+                <div class="swagger-diff-column">
+                  <div class="swagger-diff-title-row">
+                    <div class="label">Not Registered</div>
+                    <span class="swagger-diff-count">{{ grpcUnregistered.length }}</span>
+                  </div>
+                  <div class="swagger-section-box">
+                    <div v-if="grpcUnregistered.length > 0" class="swagger-bulk-actions">
+                      <button
+                        class="primary-button swagger-bulk-add-button"
+                        type="button"
+                        :disabled="grpcBulkAdding || grpcSelectedCount === 0"
+                        @click="addSelectedGrpcEndpoints"
+                      >
+                        {{ grpcBulkAdding ? "Adding..." : `Add selected (${grpcSelectedCount})` }}
+                      </button>
+                    </div>
+                    <div v-if="grpcUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
+                      <section
+                        v-for="group in grpcUnregisteredGroups"
+                        :key="`grpc-missing-group-${group.segment}`"
+                        class="swagger-endpoint-group"
+                      >
+                        <div class="endpoint-group-head">
+                          <span class="endpoint-group-segment">{{ group.segment }}</span>
+                          <span class="endpoint-group-count">{{ group.items.length }}</span>
+                        </div>
+                        <ul class="swagger-endpoint-list">
+                          <li
+                            v-for="item in group.items"
+                            :key="`grpc-missing-${group.segment}-${item.service}-${item.method}`"
+                            class="swagger-endpoint-item"
+                          >
+                            <label class="swagger-item-select">
+                              <input
+                                type="checkbox"
+                                :checked="isGrpcSelected(item)"
+                                :disabled="grpcBulkAdding"
+                                @change="onGrpcItemSelectChange(item, $event)"
+                              />
+                            </label>
+                            <span class="http-method-badge method-grpc">GRPC</span>
+                            <span class="swagger-endpoint-path" :title="`${item.service}/${item.method}`">/{{ item.method }}</span>
+                            <RouterLink
+                              class="primary-button swagger-add-button"
+                              :to="{
+                                name: 'endpoint-create',
+                                params: { appId: id },
+                                query: { type: 'grpc', grpc_service: item.service, grpc_method: item.method, grpc_path: item.path }
+                              }"
+                              :aria-label="`Add endpoint ${item.service}/${item.method}`"
+                            >
+                              <span class="swagger-add-plus">+</span>
+                              <span>Add</span>
+                            </RouterLink>
+                          </li>
+                        </ul>
+                      </section>
+                    </div>
+                    <p v-else class="muted">No missing methods.</p>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </section>
+        </div>
+      </Transition>
+    </Teleport>
 
     <div class="page-header compact endpoints-head">
       <h3>{{ activeEndpointType === "grpc" ? "gRPC Endpoints" : "HTTP Endpoints" }}</h3>

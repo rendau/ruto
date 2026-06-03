@@ -1322,6 +1322,25 @@ h3 {
   margin-bottom: 14px;
 }
 
+.diff-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 10, 20, 0.72);
+}
+
+.panel.diff-modal {
+  width: min(1120px, 100%);
+  max-height: min(860px, calc(100dvh - 48px));
+  overflow-y: auto;
+  padding: 0 14px 14px;
+  margin-bottom: 0;
+}
+
 .app-protocol-card {
   display: flex;
   align-items: center;
@@ -1488,18 +1507,30 @@ h3 {
 .swagger-panel-head {
   margin-top: 0;
   margin-bottom: 12px;
-  padding-right: 42px;
+  padding-right: 0;
+}
+
+.diff-modal-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  padding: 12px 14px 10px;
+  margin: 0 -14px 12px;
+  background: #1e2d44;
+  border-bottom: 1px solid #3d5679;
 }
 
 .swagger-close-icon {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+  position: static;
   width: 30px;
   height: 30px;
-  z-index: 1;
+  margin-left: auto;
   background: #c73c3c;
   color: #fff;
+  flex: 0 0 auto;
 }
 
 .swagger-close-icon:hover,
@@ -1659,14 +1690,23 @@ h3 {
   line-height: 1;
 }
 
-.swagger-panel-enter-active,
-.swagger-panel-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  transform-origin: top center;
+.diff-modal-enter-active,
+.diff-modal-leave-active {
+  transition: opacity 0.16s ease;
 }
 
-.swagger-panel-enter-from,
-.swagger-panel-leave-to {
+.diff-modal-enter-active .diff-modal,
+.diff-modal-leave-active .diff-modal {
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.diff-modal-enter-from,
+.diff-modal-leave-to {
+  opacity: 0;
+}
+
+.diff-modal-enter-from .diff-modal,
+.diff-modal-leave-to .diff-modal {
   opacity: 0;
   transform: translateY(-6px);
 }
@@ -2319,6 +2359,14 @@ h3 {
   .protocol-tab {
     flex: 1 1 0;
   }
+
+  .diff-modal-overlay {
+    padding: 16px;
+  }
+
+  .panel.diff-modal {
+    max-height: calc(100dvh - 32px);
+  }
 }
 
 @media (max-width: 768px) {
@@ -2384,6 +2432,22 @@ h3 {
   .grpc-reflection-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .diff-modal-overlay {
+    align-items: flex-end;
+    padding: 10px;
+  }
+
+  .panel.diff-modal {
+    padding: 0 12px 12px;
+    width: 100%;
+    max-height: min(90dvh, calc(100dvh - 20px));
+  }
+
+  .diff-modal-head {
+    padding: 10px 12px 8px;
+    margin: 0 -12px 10px;
   }
 
   .auth-method-card-head,
