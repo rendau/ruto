@@ -1405,6 +1405,19 @@ h3 {
   background: #1b7390;
 }
 
+.grpc-reflection-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #3b5fc3;
+  color: #edf1ff;
+}
+
+.grpc-reflection-toggle-button:hover,
+.grpc-reflection-toggle-button:focus-visible {
+  background: #4d72da;
+}
+
 .swagger-toggle-icon {
   width: 16px;
   height: 16px;
@@ -1505,6 +1518,12 @@ h3 {
   overflow-wrap: anywhere;
   color: #dce7f8;
   line-height: 1.35;
+}
+
+.grpc-endpoint-meta {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
 }
 
 .swagger-endpoint-reason {

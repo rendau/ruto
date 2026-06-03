@@ -26,7 +26,6 @@ type App struct {
 	Name       string                    `json:"name"`
 	Backend    AppBackend                `json:"backend"`
 	Auth       authModel.Auth            `json:"auth"`
-	GrpcPort   int                       `json:"grpc_port"`
 	Endpoints  []*endpointModel.Endpoint `json:"endpoints"`
 }
 
@@ -35,6 +34,7 @@ type AppBackend struct {
 	ParsedUrl        *url.URL `json:"-"`
 	SwaggerUrl       string   `json:"swagger_url"`
 	ParsedSwaggerUrl *url.URL `json:"-"`
+	GrpcPort         int      `json:"grpc_port"`
 }
 
 func (m *App) String() string {
@@ -52,9 +52,6 @@ func (m *App) Normalize() error {
 	m.PathPrefix = "/" + m.PathPrefix
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
-	}
-	if m.GrpcPort < 0 || m.GrpcPort > 65535 {
-		return fmt.Errorf("grpc_port: invalid")
 	}
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
@@ -74,25 +71,7 @@ func (m *App) ActiveEndpoints() []*endpointModel.Endpoint {
 }
 
 func (m *App) GrpcAddress() string {
-	if m.GrpcPort <= 0 {
-		return ""
-	}
-
-	parsedURL := m.Backend.ParsedUrl
-	if parsedURL == nil {
-		backend := m.Backend
-		if err := backend.Normalize(); err != nil {
-			return ""
-		}
-		parsedURL = backend.ParsedUrl
-	}
-
-	host := parsedURL.Hostname()
-	if host == "" {
-		return ""
-	}
-
-	return net.JoinHostPort(host, strconv.Itoa(m.GrpcPort))
+	return m.Backend.GrpcAddress()
 }
 
 func (m *AppBackend) Normalize() error {
@@ -127,7 +106,33 @@ func (m *AppBackend) Normalize() error {
 		}
 	}
 
+	if m.GrpcPort < 0 || m.GrpcPort > 65535 {
+		return fmt.Errorf("grpc_port: invalid")
+	}
+
 	return nil
+}
+
+func (m *AppBackend) GrpcAddress() string {
+	if m.GrpcPort <= 0 {
+		return ""
+	}
+
+	parsedURL := m.ParsedUrl
+	if parsedURL == nil {
+		backend := *m
+		if err := backend.Normalize(); err != nil {
+			return ""
+		}
+		parsedURL = backend.ParsedUrl
+	}
+
+	host := parsedURL.Hostname()
+	if host == "" {
+		return ""
+	}
+
+	return net.JoinHostPort(host, strconv.Itoa(m.GrpcPort))
 }
 
 func (m *App) GetFullPathForEndpoint(endpointPath string) string {

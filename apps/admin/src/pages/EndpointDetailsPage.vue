@@ -83,7 +83,7 @@ function joinUrl(baseUrl: string, path: string): string {
 }
 
 function grpcBackendAddress(item: AppMain): string {
-  const port = Number(item.grpc_port || 0);
+  const port = Number(item.backend.grpc_port || 0);
   if (port <= 0) {
     return "";
   }

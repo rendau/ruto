@@ -18,6 +18,15 @@ const prefillMethodFromQuery = computed(() =>
   typeof route.query.method === "string" ? route.query.method.trim().toUpperCase() : ""
 );
 const prefillPathFromQuery = computed(() => (typeof route.query.path === "string" ? route.query.path.trim() : ""));
+const prefillGrpcServiceFromQuery = computed(() =>
+  typeof route.query.grpc_service === "string" ? route.query.grpc_service.trim() : ""
+);
+const prefillGrpcMethodFromQuery = computed(() =>
+  typeof route.query.grpc_method === "string" ? route.query.grpc_method.trim() : ""
+);
+const prefillGrpcPathFromQuery = computed(() =>
+  typeof route.query.grpc_path === "string" ? route.query.grpc_path.trim() : ""
+);
 
 const loading = ref(false);
 const saving = ref(false);
@@ -25,6 +34,7 @@ const errorMessage = ref("");
 const appName = ref("");
 const jwtKidOptions = ref<string[]>([]);
 const lastAutoGrpcPath = ref("");
+const appGrpcEnabled = ref(false);
 const grpcReflectionLoading = ref(false);
 const grpcReflectionError = ref("");
 const grpcReflectionOptions = ref<AppGrpcReflectionEndpoint[]>([]);
@@ -58,6 +68,12 @@ const protocolOptions: Array<{ value: EndpointType; label: string }> = [
   { value: "grpc", label: "gRPC" }
 ];
 const grpcReflectionAvailable = computed(() => grpcReflectionOptions.value.length > 0);
+const grpcReflectionDisabledReason = computed(() => {
+  if (appGrpcEnabled.value) {
+    return "";
+  }
+  return "gRPC reflection is available only when app gRPC Port is enabled (> 0).";
+});
 
 function normalizeLoadedEndpoint(item: EndpointMain): EndpointMain {
   const endpointType: EndpointType = item.type === "grpc" ? "grpc" : "http";
@@ -78,7 +94,18 @@ function normalizeLoadedEndpoint(item: EndpointMain): EndpointMain {
 
 function applyPrefillFromQuery() {
   form.value.type = prefillTypeFromQuery.value;
-  if (form.value.type === "http") {
+  if (form.value.type === "grpc") {
+    form.value.grpc.service = prefillGrpcServiceFromQuery.value;
+    form.value.grpc.method = prefillGrpcMethodFromQuery.value;
+    form.value.grpc.path = normalizeGrpcPath(
+      prefillGrpcServiceFromQuery.value,
+      prefillGrpcMethodFromQuery.value,
+      prefillGrpcPathFromQuery.value
+    );
+    if (form.value.grpc.path) {
+      lastAutoGrpcPath.value = form.value.grpc.path;
+    }
+  } else {
     if (prefillMethodFromQuery.value && endpointMethodOptions.includes(prefillMethodFromQuery.value)) {
       form.value.method = prefillMethodFromQuery.value;
     }
@@ -91,13 +118,16 @@ function applyPrefillFromQuery() {
 async function loadAppName() {
   if (!form.value.app_id) {
     appName.value = "";
+    appGrpcEnabled.value = false;
     grpcReflectionOptions.value = [];
+    grpcReflectionError.value = "";
     return;
   }
   try {
     const app = await getApp(form.value.app_id);
     appName.value = app.name;
-    if (Number(app.grpc_port || 0) > 0) {
+    appGrpcEnabled.value = Number(app.backend.grpc_port || 0) > 0;
+    if (appGrpcEnabled.value) {
       await loadGrpcReflectionOptions();
     } else {
       grpcReflectionOptions.value = [];
@@ -105,13 +135,19 @@ async function loadAppName() {
     }
   } catch {
     appName.value = "";
+    appGrpcEnabled.value = false;
     grpcReflectionOptions.value = [];
+    grpcReflectionError.value = "";
   }
 }
 
 async function loadGrpcReflectionOptions() {
-  if (!form.value.app_id) {
+  if (!form.value.app_id || !appGrpcEnabled.value) {
     grpcReflectionOptions.value = [];
+    grpcReflectionLoading.value = false;
+    if (!appGrpcEnabled.value) {
+      grpcReflectionError.value = "";
+    }
     return;
   }
   grpcReflectionLoading.value = true;
@@ -340,20 +376,29 @@ onMounted(() => {
         <div class="grpc-reflection-row">
           <select
             v-model="selectedGrpcReflectionPath"
-            :disabled="grpcReflectionLoading || !grpcReflectionAvailable"
+            :disabled="!appGrpcEnabled || grpcReflectionLoading || !grpcReflectionAvailable"
             @change="applyGrpcReflectionOption(selectedGrpcReflectionPath)"
           >
             <option value="">
-              {{ grpcReflectionLoading ? "Loading reflection..." : grpcReflectionAvailable ? "Select method" : "No reflection methods" }}
+              {{
+                !appGrpcEnabled
+                  ? "gRPC Port disabled for app"
+                  : grpcReflectionLoading
+                    ? "Loading reflection..."
+                    : grpcReflectionAvailable
+                      ? "Select method"
+                      : "No reflection methods"
+              }}
             </option>
             <option v-for="option in grpcReflectionOptions" :key="option.path" :value="option.path">
               {{ grpcReflectionOptionLabel(option) }}
             </option>
           </select>
-          <button class="secondary-button" type="button" :disabled="grpcReflectionLoading" @click="loadGrpcReflectionOptions">
+          <button class="secondary-button" type="button" :disabled="!appGrpcEnabled || grpcReflectionLoading" @click="loadGrpcReflectionOptions">
             {{ grpcReflectionLoading ? "Loading..." : "Refresh" }}
           </button>
         </div>
+        <span v-if="grpcReflectionDisabledReason" class="muted">{{ grpcReflectionDisabledReason }}</span>
         <span v-if="grpcReflectionError" class="muted">{{ grpcReflectionError }}</span>
       </div>
       <label class="field">

@@ -86,6 +86,7 @@ export interface RootJwtKidsReq {
 export interface AppBackend {
   url: string;
   swagger_url: string;
+  grpc_port: number;
 }
 
 export interface AppMain {
@@ -95,7 +96,6 @@ export interface AppMain {
   name: string;
   backend: AppBackend;
   auth: Auth;
-  grpc_port: number;
 }
 
 export interface AppListRep {

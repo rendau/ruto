@@ -17,7 +17,6 @@ func EncodeAppMain(v *model.App, _ int) *ruto_v1.AppMain {
 		Name:       v.Name,
 		Backend:    EncodeAppBackend(v.Backend),
 		Auth:       EncodeEndpointAuth(v.Auth),
-		GrpcPort:   uint32(v.GrpcPort),
 	}
 }
 
@@ -36,7 +35,6 @@ func DecodeAppMain(v *ruto_v1.AppMain) *model.App {
 		Name:       v.Name,
 		Backend:    DecodeAppBackend(v.Backend),
 		Auth:       DecodeEndpointAuth(v.Auth),
-		GrpcPort:   int(v.GrpcPort),
 	}
 }
 
@@ -46,6 +44,7 @@ func EncodeAppBackend(x model.AppBackend) *ruto_v1.AppBackend {
 	return &ruto_v1.AppBackend{
 		Url:        x.Url,
 		SwaggerUrl: x.SwaggerUrl,
+		GrpcPort:   uint32(x.GrpcPort),
 	}
 }
 
@@ -56,6 +55,7 @@ func DecodeAppBackend(x *ruto_v1.AppBackend) model.AppBackend {
 	return model.AppBackend{
 		Url:        x.Url,
 		SwaggerUrl: x.SwaggerUrl,
+		GrpcPort:   int(x.GrpcPort),
 	}
 }
 

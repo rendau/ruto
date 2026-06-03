@@ -31,9 +31,9 @@ const form = ref<AppMain>({
   name: "",
   backend: {
     url: "",
-    swagger_url: ""
+    swagger_url: "",
+    grpc_port: 0
   },
-  grpc_port: 0,
   auth: {
     enabled: true,
     mode: "extend",
@@ -52,7 +52,10 @@ async function load() {
     const item = await getApp(entityId.value);
     form.value = {
       ...item,
-      grpc_port: Number(item.grpc_port || 0),
+      backend: {
+        ...item.backend,
+        grpc_port: Number(item.backend.grpc_port || 0)
+      },
       auth: normalizeAuth(item.auth)
     };
     if (!form.value.backend.swagger_url.trim()) {
@@ -82,7 +85,10 @@ async function submit() {
   errorMessage.value = "";
   const payload: AppMain = {
     ...form.value,
-    grpc_port: Number(form.value.grpc_port || 0)
+    backend: {
+      ...form.value.backend,
+      grpc_port: Number(form.value.backend.grpc_port || 0)
+    }
   };
   try {
     if (isEdit.value) {
@@ -224,7 +230,7 @@ onBeforeUnmount(() => {
     </label>
     <label class="field compact">
       <span>gRPC Port</span>
-      <input v-model.number="form.grpc_port" type="number" min="0" max="65535" placeholder="0" />
+      <input v-model.number="form.backend.grpc_port" type="number" min="0" max="65535" placeholder="0" />
     </label>
     <div class="field">
       <span>Auth</span>

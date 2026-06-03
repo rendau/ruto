@@ -1,9 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { onBeforeRouteLeave, RouterLink, useRoute, useRouter, type RouteLocationNormalizedLoaded } from "vue-router";
-import { createEndpoint, deleteApp, deleteEndpoint, getApp, getAppSwaggerEndpointsDiff, listEndpoints, updateApp } from "../lib/api";
+import {
+  createEndpoint,
+  deleteApp,
+  deleteEndpoint,
+  getApp,
+  getAppGrpcReflectionEndpoints,
+  getAppSwaggerEndpointsDiff,
+  listEndpoints,
+  updateApp
+} from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
-import type { AppMain, AppSwaggerEndpoint, EndpointMain, EndpointType } from "../types/api";
+import type { AppGrpcReflectionEndpoint, AppMain, AppSwaggerEndpoint, EndpointMain, EndpointType } from "../types/api";
 import { useAppsStore } from "../stores/apps";
 
 const route = useRoute();
@@ -33,6 +42,16 @@ const swaggerDiffLoaded = ref(false);
 const swaggerRegisteredInvalidOpen = ref(false);
 const swaggerBulkAdding = ref(false);
 const swaggerSelectedKeys = ref<Record<string, boolean>>({});
+const grpcReflectionEndpoints = ref<AppGrpcReflectionEndpoint[]>([]);
+const grpcUnregistered = ref<AppGrpcReflectionEndpoint[]>([]);
+const grpcRegisteredInvalid = ref<AppGrpcReflectionEndpoint[]>([]);
+const grpcDiffLoading = ref(false);
+const grpcDiffError = ref("");
+const grpcPanelOpen = ref(false);
+const grpcDiffLoaded = ref(false);
+const grpcRegisteredInvalidOpen = ref(false);
+const grpcBulkAdding = ref(false);
+const grpcSelectedKeys = ref<Record<string, boolean>>({});
 
 type EndpointAuthIcon = {
   key: "ip_validation" | "jwt" | "basic" | "api_key";
@@ -151,6 +170,10 @@ type SwaggerEndpointGroup = {
   segment: string;
   items: AppSwaggerEndpoint[];
 };
+type GrpcEndpointGroup = {
+  segment: string;
+  items: AppGrpcReflectionEndpoint[];
+};
 
 function sortSwaggerEndpoints(a: AppSwaggerEndpoint, b: AppSwaggerEndpoint): number {
   const pathCompare = normalizedRoutePath(a.path).localeCompare(normalizedRoutePath(b.path));
@@ -192,6 +215,18 @@ const swaggerUnregisteredGroups = computed(() => groupSwaggerEndpoints(swaggerUn
 const swaggerRegisteredInvalidGroups = computed(() => groupSwaggerEndpoints(swaggerRegisteredInvalid.value));
 const swaggerSelectedCount = computed(() => {
   const values = Object.values(swaggerSelectedKeys.value);
+  let selected = 0;
+  for (const value of values) {
+    if (value) {
+      selected++;
+    }
+  }
+  return selected;
+});
+const grpcUnregisteredGroups = computed(() => groupGrpcEndpoints(grpcUnregistered.value));
+const grpcRegisteredInvalidGroups = computed(() => groupGrpcEndpoints(grpcRegisteredInvalid.value));
+const grpcSelectedCount = computed(() => {
+  const values = Object.values(grpcSelectedKeys.value);
   let selected = 0;
   for (const value of values) {
     if (value) {
@@ -301,6 +336,212 @@ function buildDefaultEndpointPayload(item: AppSwaggerEndpoint): EndpointMain {
   };
 }
 
+function normalizeGrpcPath(service: string, method: string, path: string): string {
+  const explicitPath = (path || "").trim();
+  if (explicitPath) {
+    return explicitPath.startsWith("/") ? explicitPath : `/${explicitPath}`;
+  }
+  const cleanService = (service || "").trim();
+  const cleanMethod = (method || "").trim();
+  if (!cleanService || !cleanMethod) {
+    return "";
+  }
+  return `/${cleanService}/${cleanMethod}`;
+}
+
+function normalizeGrpcEndpoint(item: AppGrpcReflectionEndpoint): AppGrpcReflectionEndpoint {
+  const service = (item.service || "").trim();
+  const method = (item.method || "").trim();
+  return {
+    service,
+    method,
+    path: normalizeGrpcPath(service, method, item.path || "")
+  };
+}
+
+function grpcEndpointFromRegistered(item: EndpointMain): AppGrpcReflectionEndpoint | null {
+  if (endpointType(item) !== "grpc") {
+    return null;
+  }
+  let service = (item.grpc?.service || "").trim();
+  let method = (item.grpc?.method || "").trim();
+  if (!service || !method) {
+    const parts = normalizedRoutePath(item.path).split("/").filter(Boolean);
+    if (parts.length === 2) {
+      service = service || parts[0];
+      method = method || parts[1];
+    }
+  }
+  if (!service || !method) {
+    return null;
+  }
+  const path = normalizeGrpcPath(service, method, item.grpc?.path || item.path || "");
+  return {
+    service,
+    method,
+    path
+  };
+}
+
+function sortGrpcEndpoints(a: AppGrpcReflectionEndpoint, b: AppGrpcReflectionEndpoint): number {
+  const serviceCompare = (a.service || "").localeCompare(b.service || "");
+  if (serviceCompare !== 0) {
+    return serviceCompare;
+  }
+  const methodCompare = (a.method || "").localeCompare(b.method || "");
+  if (methodCompare !== 0) {
+    return methodCompare;
+  }
+  return normalizeGrpcPath(a.service, a.method, a.path).localeCompare(normalizeGrpcPath(b.service, b.method, b.path));
+}
+
+function grpcDiffKey(item: AppGrpcReflectionEndpoint): string {
+  return `${(item.service || "").trim()}/${(item.method || "").trim()}`;
+}
+
+function buildGrpcDiff() {
+  const reflectionMap = new Map<string, AppGrpcReflectionEndpoint>();
+  for (const raw of grpcReflectionEndpoints.value) {
+    const item = normalizeGrpcEndpoint(raw);
+    const key = grpcDiffKey(item);
+    if (!item.service || !item.method || reflectionMap.has(key)) {
+      continue;
+    }
+    reflectionMap.set(key, item);
+  }
+
+  const registeredMap = new Map<string, AppGrpcReflectionEndpoint>();
+  for (const endpoint of grpcEndpoints.value) {
+    const converted = grpcEndpointFromRegistered(endpoint);
+    if (!converted) {
+      continue;
+    }
+    const item = normalizeGrpcEndpoint(converted);
+    const key = grpcDiffKey(item);
+    if (!item.service || !item.method || registeredMap.has(key)) {
+      continue;
+    }
+    registeredMap.set(key, item);
+  }
+
+  const unregistered: AppGrpcReflectionEndpoint[] = [];
+  for (const [key, item] of reflectionMap.entries()) {
+    if (!registeredMap.has(key)) {
+      unregistered.push(item);
+    }
+  }
+
+  const registeredInvalid: AppGrpcReflectionEndpoint[] = [];
+  for (const [key, item] of registeredMap.entries()) {
+    if (!reflectionMap.has(key)) {
+      registeredInvalid.push(item);
+    }
+  }
+
+  grpcUnregistered.value = unregistered.sort((a, b) => sortGrpcEndpoints(a, b));
+  grpcRegisteredInvalid.value = registeredInvalid.sort((a, b) => sortGrpcEndpoints(a, b));
+}
+
+function grpcServiceSegment(service: string): string {
+  const normalized = (service || "").trim();
+  if (!normalized) {
+    return "/";
+  }
+  const idx = normalized.lastIndexOf(".");
+  if (idx < 0) {
+    return normalized;
+  }
+  return normalized.slice(idx + 1);
+}
+
+function groupGrpcEndpoints(items: AppGrpcReflectionEndpoint[]): GrpcEndpointGroup[] {
+  const groups = new Map<string, AppGrpcReflectionEndpoint[]>();
+  for (const item of items) {
+    const key = (item.service || "").trim() || "/";
+    const current = groups.get(key);
+    if (current) {
+      current.push(item);
+    } else {
+      groups.set(key, [item]);
+    }
+  }
+
+  return Array.from(groups.entries())
+    .map(([service, groupItems]) => ({
+      segment: grpcServiceSegment(service),
+      items: [...groupItems].sort((a, b) => sortGrpcEndpoints(a, b))
+    }))
+    .sort((a, b) => a.segment.localeCompare(b.segment));
+}
+
+function grpcEndpointSelectionKey(item: AppGrpcReflectionEndpoint): string {
+  return `${grpcDiffKey(item)} ${normalizeGrpcPath(item.service, item.method, item.path)}`;
+}
+
+function isGrpcSelected(item: AppGrpcReflectionEndpoint): boolean {
+  return Boolean(grpcSelectedKeys.value[grpcEndpointSelectionKey(item)]);
+}
+
+function toggleGrpcSelection(item: AppGrpcReflectionEndpoint, nextValue: boolean) {
+  const key = grpcEndpointSelectionKey(item);
+  grpcSelectedKeys.value = {
+    ...grpcSelectedKeys.value,
+    [key]: nextValue
+  };
+}
+
+function clearGrpcSelection() {
+  grpcSelectedKeys.value = {};
+}
+
+function pruneGrpcSelection() {
+  if (grpcUnregistered.value.length === 0) {
+    clearGrpcSelection();
+    return;
+  }
+  const allowed = new Set(grpcUnregistered.value.map((item) => grpcEndpointSelectionKey(item)));
+  const next: Record<string, boolean> = {};
+  for (const [key, selected] of Object.entries(grpcSelectedKeys.value)) {
+    if (selected && allowed.has(key)) {
+      next[key] = true;
+    }
+  }
+  grpcSelectedKeys.value = next;
+}
+
+function onGrpcItemSelectChange(item: AppGrpcReflectionEndpoint, event: Event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) {
+    return;
+  }
+  toggleGrpcSelection(item, target.checked);
+}
+
+function buildDefaultGrpcEndpointPayload(item: AppGrpcReflectionEndpoint): EndpointMain {
+  const normalized = normalizeGrpcEndpoint(item);
+  return {
+    id: "",
+    app_id: id.value,
+    active: true,
+    method: "GRPC",
+    path: normalized.path,
+    backend: {
+      custom_path: ""
+    },
+    auth: {
+      enabled: true,
+      mode: "extend",
+      methods: []
+    },
+    type: "grpc",
+    grpc: {
+      service: normalized.service,
+      method: normalized.method,
+      path: normalized.path
+    }
+  };
+}
+
 const hasEndpointFilters = computed(() => {
   return (
     endpointSearch.value.trim() !== "" ||
@@ -328,6 +569,10 @@ function endpointFiltersStorageKey(): string {
 
 function swaggerPanelStorageKey(): string {
   return `app-details:swagger-panel:${id.value || "_"}`;
+}
+
+function grpcPanelStorageKey(): string {
+  return `app-details:grpc-panel:${id.value || "_"}`;
 }
 
 function restoreEndpointFilters() {
@@ -371,6 +616,21 @@ function restoreSwaggerPanelState() {
   }
 }
 
+function restoreGrpcPanelState() {
+  const raw = window.sessionStorage.getItem(grpcPanelStorageKey());
+  if (!raw) {
+    grpcPanelOpen.value = false;
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as SavedSwaggerPanelState;
+    grpcPanelOpen.value = Boolean(parsed.open);
+  } catch {
+    grpcPanelOpen.value = false;
+  }
+}
+
 function persistEndpointFilters() {
   const payload: SavedEndpointFilters = {
     endpoint_search: endpointSearch.value,
@@ -389,12 +649,23 @@ function persistSwaggerPanelState() {
   window.sessionStorage.setItem(swaggerPanelStorageKey(), JSON.stringify(payload));
 }
 
+function persistGrpcPanelState() {
+  const payload: SavedSwaggerPanelState = {
+    open: grpcPanelOpen.value
+  };
+  window.sessionStorage.setItem(grpcPanelStorageKey(), JSON.stringify(payload));
+}
+
 function clearPersistedEndpointFilters() {
   window.sessionStorage.removeItem(endpointFiltersStorageKey());
 }
 
 function clearPersistedSwaggerPanelState() {
   window.sessionStorage.removeItem(swaggerPanelStorageKey());
+}
+
+function clearPersistedGrpcPanelState() {
+  window.sessionStorage.removeItem(grpcPanelStorageKey());
 }
 
 function isWithinCurrentAppContext(to: RouteLocationNormalizedLoaded): boolean {
@@ -572,6 +843,10 @@ async function load() {
   swaggerUnregistered.value = [];
   swaggerRegisteredInvalid.value = [];
   swaggerDiffLoaded.value = false;
+  grpcReflectionEndpoints.value = [];
+  grpcUnregistered.value = [];
+  grpcRegisteredInvalid.value = [];
+  grpcDiffLoaded.value = false;
   try {
     app.value = await getApp(id.value);
     const endpointList = await listEndpoints({
@@ -581,14 +856,21 @@ async function load() {
     if (!app.value.backend.swagger_url) {
       swaggerPanelOpen.value = false;
     }
+    if (Number(app.value.backend.grpc_port || 0) <= 0) {
+      grpcPanelOpen.value = false;
+    }
     if (swaggerPanelOpen.value) {
       void loadSwaggerDiff();
+    }
+    if (grpcPanelOpen.value) {
+      void loadGrpcDiff();
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load application";
   } finally {
     loading.value = false;
     swaggerDiffLoading.value = false;
+    grpcDiffLoading.value = false;
   }
 }
 
@@ -626,8 +908,50 @@ function closeSwaggerPanel() {
   swaggerPanelOpen.value = false;
 }
 
+async function loadGrpcDiff() {
+  if (!app.value || Number(app.value.backend.grpc_port || 0) <= 0 || grpcDiffLoading.value || grpcDiffLoaded.value) {
+    return;
+  }
+
+  grpcDiffLoading.value = true;
+  grpcDiffError.value = "";
+  try {
+    const diffRep = await getAppGrpcReflectionEndpoints(id.value);
+    grpcReflectionEndpoints.value = diffRep.results || [];
+    buildGrpcDiff();
+    pruneGrpcSelection();
+    grpcDiffLoaded.value = true;
+  } catch (error) {
+    grpcDiffError.value = error instanceof Error ? error.message : "Unable to load gRPC reflection endpoints";
+    grpcReflectionEndpoints.value = [];
+    grpcUnregistered.value = [];
+    grpcRegisteredInvalid.value = [];
+    clearGrpcSelection();
+  } finally {
+    grpcDiffLoading.value = false;
+  }
+}
+
+function toggleGrpcPanel() {
+  if (!app.value || Number(app.value.backend.grpc_port || 0) <= 0) {
+    return;
+  }
+  grpcPanelOpen.value = !grpcPanelOpen.value;
+  if (grpcPanelOpen.value) {
+    void loadGrpcDiff();
+  }
+}
+
+function closeGrpcPanel() {
+  grpcPanelOpen.value = false;
+}
+
 function toggleSwaggerRegisteredInvalid() {
   swaggerRegisteredInvalidOpen.value = !swaggerRegisteredInvalidOpen.value;
+}
+
+function toggleGrpcRegisteredInvalid() {
+  grpcRegisteredInvalidOpen.value = !grpcRegisteredInvalidOpen.value;
 }
 
 async function addSelectedSwaggerEndpoints() {
@@ -673,6 +997,52 @@ async function addSelectedSwaggerEndpoints() {
     }
   } finally {
     swaggerBulkAdding.value = false;
+  }
+}
+
+async function addSelectedGrpcEndpoints() {
+  if (grpcBulkAdding.value || grpcSelectedCount.value === 0) {
+    return;
+  }
+
+  const selectedItems = grpcUnregistered.value.filter((item) => isGrpcSelected(item));
+  if (selectedItems.length === 0) {
+    return;
+  }
+
+  const approved = window.confirm(`Add ${selectedItems.length} gRPC method(s) with default settings?`);
+  if (!approved) {
+    return;
+  }
+
+  grpcBulkAdding.value = true;
+  errorMessage.value = "";
+
+  let successCount = 0;
+  let failureCount = 0;
+
+  try {
+    for (const item of selectedItems) {
+      try {
+        await createEndpoint(buildDefaultGrpcEndpointPayload(item));
+        successCount++;
+      } catch {
+        failureCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      notifySuccess(`Added ${successCount} gRPC endpoint(s)`);
+      clearGrpcSelection();
+      grpcDiffLoaded.value = false;
+      await load();
+    }
+
+    if (failureCount > 0) {
+      notifyError(`Failed to add ${failureCount} gRPC endpoint(s). Check duplicates or validation.`);
+    }
+  } finally {
+    grpcBulkAdding.value = false;
   }
 }
 
@@ -752,6 +1122,7 @@ async function toggleAppActive() {
 onMounted(() => {
   restoreEndpointFilters();
   restoreSwaggerPanelState();
+  restoreGrpcPanelState();
   void load();
 });
 
@@ -762,15 +1133,22 @@ watch([id, endpointSearch, authVisibilityFilter, activeFilter, httpMethodFilter,
 watch([id, swaggerPanelOpen], () => {
   persistSwaggerPanelState();
 });
+watch([id, grpcPanelOpen], () => {
+  persistGrpcPanelState();
+});
 
 watch(swaggerUnregistered, () => {
   pruneSwaggerSelection();
+});
+watch(grpcUnregistered, () => {
+  pruneGrpcSelection();
 });
 
 onBeforeRouteLeave((to) => {
   if (!isWithinCurrentAppContext(to)) {
     clearPersistedEndpointFilters();
     clearPersistedSwaggerPanelState();
+    clearPersistedGrpcPanelState();
   }
 });
 </script>
@@ -826,7 +1204,7 @@ onBeforeRouteLeave((to) => {
       </div>
       <div>
         <span class="label">gRPC Port</span>
-        <strong>{{ app.grpc_port || "disabled" }}</strong>
+        <strong>{{ app.backend.grpc_port || "disabled" }}</strong>
       </div>
       <div>
         <span class="label">Status</span>
@@ -870,6 +1248,21 @@ onBeforeRouteLeave((to) => {
             <path d="M10 16h4" />
           </svg>
           <span>Swagger</span>
+        </button>
+        <button
+          v-if="activeEndpointType === 'grpc' && Number(app?.backend.grpc_port || 0) > 0"
+          class="secondary-button grpc-reflection-toggle-button"
+          :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
+          @click="toggleGrpcPanel"
+        >
+          <svg class="icon-action-svg swagger-toggle-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
+            <path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4" />
+            <path d="M10 8h4" />
+            <path d="M10 12h4" />
+            <path d="M10 16h4" />
+          </svg>
+          <span>gRPC Reflection</span>
         </button>
       </div>
     </div>
@@ -988,6 +1381,128 @@ onBeforeRouteLeave((to) => {
                   </section>
                 </div>
                 <p v-else class="muted">No missing endpoints.</p>
+              </div>
+            </div>
+          </div>
+        </template>
+      </section>
+    </Transition>
+    <Transition name="swagger-panel">
+      <section v-if="activeEndpointType === 'grpc' && Number(app.backend.grpc_port || 0) > 0 && grpcPanelOpen" class="panel swagger-diff-panel grpc-diff-panel">
+        <button
+          class="icon-action-button secondary swagger-close-icon"
+          type="button"
+          title="Close gRPC Reflection Diff"
+          aria-label="Close gRPC Reflection Diff"
+          @click="closeGrpcPanel"
+        >
+          <span class="icon-action-glyph">✕</span>
+        </button>
+        <div class="page-header endpoints-head swagger-panel-head">
+          <h3>gRPC Reflection Diff</h3>
+        </div>
+        <p v-if="grpcDiffLoading" class="muted">Loading gRPC reflection methods...</p>
+        <p v-else-if="grpcDiffError" class="error">{{ grpcDiffError }}</p>
+        <template v-else>
+          <div v-if="grpcRegisteredInvalid.length > 0" class="swagger-invalid-toggle-wrap">
+            <button class="secondary-button swagger-invalid-toggle-button" type="button" @click="toggleGrpcRegisteredInvalid">
+              {{
+                grpcRegisteredInvalidOpen
+                  ? `Hide Registered Invalid (${grpcRegisteredInvalid.length})`
+                  : `Show Registered Invalid (${grpcRegisteredInvalid.length})`
+              }}
+            </button>
+          </div>
+          <div class="swagger-diff-grid">
+            <div v-if="grpcRegisteredInvalidOpen" class="swagger-diff-column">
+              <div class="swagger-diff-title-row">
+                <div class="label">Registered Invalid</div>
+                <span class="swagger-diff-count">{{ grpcRegisteredInvalid.length }}</span>
+              </div>
+              <div class="swagger-section-box">
+                <div v-if="grpcRegisteredInvalidGroups.length > 0" class="swagger-endpoint-groups">
+                  <section
+                    v-for="group in grpcRegisteredInvalidGroups"
+                    :key="`grpc-invalid-group-${group.segment}`"
+                    class="swagger-endpoint-group"
+                  >
+                    <div class="endpoint-group-head">
+                      <span class="endpoint-group-segment">{{ group.segment }}</span>
+                      <span class="endpoint-group-count">{{ group.items.length }}</span>
+                    </div>
+                    <ul class="swagger-endpoint-list">
+                      <li
+                        v-for="item in group.items"
+                        :key="`grpc-invalid-${group.segment}-${item.service}-${item.method}`"
+                        class="swagger-endpoint-item swagger-endpoint-item-invalid"
+                      >
+                        <span class="http-method-badge method-grpc">GRPC</span>
+                        <div class="grpc-endpoint-meta">
+                          <span class="swagger-endpoint-path">/{{ item.service }}/{{ item.method }}</span>
+                          <span class="swagger-endpoint-reason">Missing in reflection</span>
+                        </div>
+                      </li>
+                    </ul>
+                  </section>
+                </div>
+                <p v-else class="muted">No invalid registrations.</p>
+              </div>
+            </div>
+            <div class="swagger-diff-column">
+              <div class="swagger-diff-title-row">
+                <div class="label">Not Registered</div>
+                <span class="swagger-diff-count">{{ grpcUnregistered.length }}</span>
+              </div>
+              <div class="swagger-section-box">
+                <div v-if="grpcUnregistered.length > 0" class="swagger-bulk-actions">
+                  <button
+                    class="primary-button swagger-bulk-add-button"
+                    type="button"
+                    :disabled="grpcBulkAdding || grpcSelectedCount === 0"
+                    @click="addSelectedGrpcEndpoints"
+                  >
+                    {{ grpcBulkAdding ? "Adding..." : `Add selected (${grpcSelectedCount})` }}
+                  </button>
+                </div>
+                <div v-if="grpcUnregisteredGroups.length > 0" class="swagger-endpoint-groups">
+                  <section v-for="group in grpcUnregisteredGroups" :key="`grpc-missing-group-${group.segment}`" class="swagger-endpoint-group">
+                    <div class="endpoint-group-head">
+                      <span class="endpoint-group-segment">{{ group.segment }}</span>
+                      <span class="endpoint-group-count">{{ group.items.length }}</span>
+                    </div>
+                    <ul class="swagger-endpoint-list">
+                      <li
+                        v-for="item in group.items"
+                        :key="`grpc-missing-${group.segment}-${item.service}-${item.method}`"
+                        class="swagger-endpoint-item"
+                      >
+                        <label class="swagger-item-select">
+                          <input
+                            type="checkbox"
+                            :checked="isGrpcSelected(item)"
+                            :disabled="grpcBulkAdding"
+                            @change="onGrpcItemSelectChange(item, $event)"
+                          />
+                        </label>
+                        <span class="http-method-badge method-grpc">GRPC</span>
+                        <span class="swagger-endpoint-path">/{{ item.service }}/{{ item.method }}</span>
+                        <RouterLink
+                          class="primary-button swagger-add-button"
+                          :to="{
+                            name: 'endpoint-create',
+                            params: { appId: id },
+                            query: { type: 'grpc', grpc_service: item.service, grpc_method: item.method, grpc_path: item.path }
+                          }"
+                          :aria-label="`Add endpoint ${item.service}/${item.method}`"
+                        >
+                          <span class="swagger-add-plus">+</span>
+                          <span>Add</span>
+                        </RouterLink>
+                      </li>
+                    </ul>
+                  </section>
+                </div>
+                <p v-else class="muted">No missing methods.</p>
               </div>
             </div>
           </div>

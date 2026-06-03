@@ -109,9 +109,9 @@ func TestAppNormalize_AllowValidSwaggerURL(t *testing.T) {
 func TestAppGrpcAddress_ParsesBackendURLWhenLoadedFromStorage(t *testing.T) {
 	item := &App{
 		Backend: AppBackend{
-			Url: "http://zeon-lb-tcp",
+			Url:      "http://zeon-lb-tcp",
+			GrpcPort: 9200,
 		},
-		GrpcPort: 9200,
 	}
 
 	if item.Backend.ParsedUrl != nil {
