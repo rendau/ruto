@@ -1067,46 +1067,38 @@ h3 {
   transition: transform 0.16s ease;
 }
 
-.dashboard-kpis {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 12px;
+.dashboard-stack {
+  width: 100%;
 }
 
-.kpi-card {
-  background: #1e2d44;
-  border: 1px solid #425c7f;
-  border-radius: 8px;
-  padding: 14px;
+.dashboard-kpi-card {
+  height: 100%;
 }
 
-.kpi-title {
-  font-size: 12px;
-  color: #9cb1cd;
-  margin-bottom: 4px;
+.dashboard-kpi-card > .n-card__content {
+  min-height: 116px;
+  display: flex;
+  flex-direction: column;
 }
 
-.kpi-value {
-  font-size: 26px;
-  line-height: 1.2;
-  font-weight: 700;
-}
-
-.kpi-sub {
-  margin-top: 4px;
+.dashboard-kpi-meta {
+  margin-top: 6px;
   color: #9cb1cd;
   font-size: 12px;
 }
 
-.dashboard-grid {
+.dashboard-kpi-progress {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.dashboard-methods {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   gap: 12px;
 }
 
 .gateway-panel {
-  margin-top: 12px;
+  overflow: hidden;
 }
 
 .table-wrap {
@@ -2025,26 +2017,9 @@ h3 {
   text-decoration: none;
 }
 
-.flag-list {
-  display: grid;
-  gap: 8px;
-}
-
-.flag-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.method-bars {
-  display: grid;
-  gap: 10px;
-}
-
 .method-row {
   display: grid;
-  gap: 5px;
+  gap: 6px;
 }
 
 .method-head {
@@ -2052,19 +2027,6 @@ h3 {
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-}
-
-.bar-track {
-  width: 100%;
-  height: 8px;
-  background: #314967;
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #2f66d8, #25a57c);
 }
 
 .page-fade-slide-enter-active,
@@ -2144,14 +2106,6 @@ h3 {
     grid-template-columns: 1fr;
   }
 
-  .dashboard-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
   .endpoints-filter-input {
     width: 100%;
   }
@@ -2226,11 +2180,6 @@ h3 {
     padding: 12px;
   }
 
-  .dashboard-kpis {
-    grid-template-columns: 1fr;
-  }
-
-  .kpi-card,
   .panel {
     padding: 12px;
   }
@@ -2374,7 +2323,6 @@ h3 {
   .login-form,
   .auth-editor,
   .summary-grid,
-  .kpi-card,
   .panel,
   .users-mobile-card,
   .endpoint-mobile-card,

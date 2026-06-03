@@ -1,7 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, h, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { RefreshOutline } from "@vicons/ionicons5";
+import {
+  NCard,
+  NDataTable,
+  NDescriptions,
+  NDescriptionsItem,
+  NEmpty,
+  NGi,
+  NGrid,
+  NProgress,
+  NSkeleton,
+  NSpace,
+  NStatistic,
+  NTag,
+  type DataTableColumns
+} from "naive-ui";
 import { getSnapshotVersion, getStats, listGateways } from "../lib/api";
 import { formatUnixAge, formatUnixDateTime } from "../lib/datetime";
 import { notifyError } from "../lib/notify";
@@ -45,6 +60,103 @@ const userAdminPercent = computed(() => {
 
 const topMethods = computed(() => (stats.value?.methods || []).slice(0, 6));
 const topMethodTotal = computed(() => Math.max(...topMethods.value.map((x) => x.total), 1));
+const kpiCards = computed(() => {
+  if (!stats.value) {
+    return [];
+  }
+  return [
+    {
+      title: "Applications",
+      value: stats.value.apps_total,
+      caption: `active ${stats.value.apps_active} / inactive ${stats.value.apps_inactive}`,
+      progress: percent(stats.value.apps_active, stats.value.apps_total)
+    },
+    {
+      title: "Endpoints",
+      value: stats.value.endpoints_total,
+      caption: `${endpointActivePercent.value}% active`,
+      progress: endpointActivePercent.value
+    },
+    {
+      title: "Users",
+      value: stats.value.users_total,
+      caption: `active ${stats.value.users_active}, admins ${stats.value.users_admin}`,
+      progress: percent(stats.value.users_active, stats.value.users_total)
+    },
+    {
+      title: "Security Surface",
+      value: stats.value.root_jwt_providers,
+      caption: "JWK providers",
+      progress: null
+    }
+  ];
+});
+
+const gatewayColumns = computed<DataTableColumns<GatewayStateItem>>(() => [
+  {
+    title: "Gateway",
+    key: "gateway_id",
+    minWidth: 220,
+    render(gateway) {
+      return h("div", { class: "gateway-cell", title: gateway.host_name || "" }, [
+        h("div", { class: "gateway-primary" }, gateway.gateway_id),
+        h("div", { class: "gateway-secondary" }, gateway.host_name || "n/a")
+      ]);
+    }
+  },
+  {
+    title: "Status",
+    key: "status",
+    width: 110,
+    render(gateway) {
+      return h(NTag, { size: "small", type: gateway.status === "online" ? "success" : "warning" }, { default: () => gateway.status });
+    }
+  },
+  {
+    title: "Current Applied",
+    key: "snapshot_version",
+    width: 150,
+    render(gateway) {
+      const applied = isCurrentVersionApplied(gateway);
+      return h(
+        NTag,
+        {
+          size: "small",
+          type: applied ? "success" : "warning",
+          title: `current: ${shortVersion(currentSnapshotVersion.value)} / gateway: ${shortVersion(gateway.snapshot_version)}`
+        },
+        { default: () => (applied ? "yes" : "no") }
+      );
+    }
+  },
+  {
+    title: "Apply Age",
+    key: "last_apply_at_unix",
+    width: 130,
+    render(gateway) {
+      return h("span", { title: formatUnixTime(gateway.last_apply_at_unix) }, formatApplyAge(gateway.last_apply_at_unix));
+    }
+  },
+  {
+    title: "Resources",
+    key: "resources",
+    width: 140,
+    render(gateway) {
+      return h("div", { class: "gateway-resources-cell" }, [
+        h("div", { class: "gateway-resources-main" }, formatMemoryBytes(gateway.memory_alloc_bytes)),
+        h("div", { class: "gateway-resources-sub" }, `${gateway.goroutines_count} go`)
+      ]);
+    }
+  }
+]);
+
+function percent(part: unknown, total: unknown): number {
+  const totalNum = safeNum(total);
+  if (totalNum <= 0) {
+    return 0;
+  }
+  return Math.round((safeNum(part) / totalNum) * 100);
+}
 
 async function loadStats() {
   loading.value = true;
@@ -111,6 +223,28 @@ function openGatewayDetails(gatewayId: string): void {
   void router.push({ name: "gateway-details", params: { id: gatewayId } });
 }
 
+function gatewayRowKey(gateway: GatewayStateItem): string {
+  return gateway.gateway_id;
+}
+
+function gatewayRowProps(gateway: GatewayStateItem) {
+  return {
+    class: "gateway-row-link",
+    tabindex: 0,
+    onClick: () => openGatewayDetails(gateway.gateway_id),
+    onKeydown: (event: KeyboardEvent) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openGatewayDetails(gateway.gateway_id);
+      }
+    }
+  };
+}
+
+function methodProgress(total: number): number {
+  return Math.round((total / topMethodTotal.value) * 100);
+}
+
 onMounted(() => {
   void loadStats();
 });
@@ -130,121 +264,101 @@ onMounted(() => {
   </div>
 
   <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
-  <p v-if="loading && !stats" class="muted">Loading dashboard...</p>
+  <n-space vertical size="large" class="dashboard-stack">
+    <n-grid v-if="loading && !stats" cols="1 s:2 l:4" responsive="screen" :x-gap="12" :y-gap="12">
+      <n-gi v-for="index in 4" :key="index">
+        <n-card size="small">
+          <n-skeleton text style="width: 45%" />
+          <n-skeleton text style="width: 30%; margin-top: 16px" />
+          <n-skeleton text style="width: 70%; margin-top: 12px" />
+        </n-card>
+      </n-gi>
+    </n-grid>
 
-  <template v-if="stats">
-    <section class="dashboard-kpis">
-      <article class="kpi-card">
-        <div class="kpi-title">Applications</div>
-        <div class="kpi-value">{{ stats.apps_total }}</div>
-        <div class="kpi-sub">active {{ stats.apps_active }} / inactive {{ stats.apps_inactive }}</div>
-      </article>
-      <article class="kpi-card">
-        <div class="kpi-title">Endpoints</div>
-        <div class="kpi-value">{{ stats.endpoints_total }}</div>
-        <div class="kpi-sub">{{ endpointActivePercent }}% active</div>
-      </article>
-      <article class="kpi-card">
-        <div class="kpi-title">Users</div>
-        <div class="kpi-value">{{ stats.users_total }}</div>
-        <div class="kpi-sub">active {{ stats.users_active }}, admins {{ stats.users_admin }}</div>
-      </article>
-      <article class="kpi-card">
-        <div class="kpi-title">Security Surface</div>
-        <div class="kpi-value">{{ stats.root_jwt_providers }}</div>
-        <div class="kpi-sub">JWK providers</div>
-      </article>
-    </section>
+    <template v-if="stats">
+      <n-grid cols="1 s:2 l:4" responsive="screen" :x-gap="12" :y-gap="12">
+        <n-gi v-for="card in kpiCards" :key="card.title">
+          <n-card class="dashboard-kpi-card" size="small" :bordered="true">
+            <n-statistic :label="card.title" :value="card.value" />
+            <div class="dashboard-kpi-meta">{{ card.caption }}</div>
+            <n-progress
+              v-if="card.progress !== null"
+              class="dashboard-kpi-progress"
+              type="line"
+              :percentage="card.progress"
+              :height="8"
+              :show-indicator="false"
+              status="success"
+            />
+          </n-card>
+        </n-gi>
+      </n-grid>
 
-    <section class="dashboard-grid">
-      <article class="panel">
-        <h3>Service Flags</h3>
-        <div class="flag-list">
-          <div class="flag-row">
-            <span>Root Auth</span>
-            <n-tag size="small" :type="stats.root_auth_enabled ? 'success' : 'warning'">
-              {{ stats.root_auth_enabled ? "enabled" : "disabled" }}
-            </n-tag>
-          </div>
-          <div class="flag-row">
-            <span>Root CORS</span>
-            <n-tag size="small" :type="stats.root_cors_enabled ? 'success' : 'warning'">
-              {{ stats.root_cors_enabled ? "enabled" : "disabled" }}
-            </n-tag>
-          </div>
-          <div class="flag-row">
-            <span>Admin Users Ratio</span>
-            <span>{{ userAdminPercent }}%</span>
-          </div>
-        </div>
-      </article>
-
-      <article class="panel">
-        <h3>Endpoint Methods</h3>
-        <div class="method-bars">
-          <div v-for="method in topMethods" :key="method.method" class="method-row">
-            <div class="method-head">
-              <strong>{{ method.method }}</strong>
-              <span>{{ method.active }}/{{ method.total }}</span>
-            </div>
-            <div class="bar-track">
-              <div class="bar-fill" :style="{ width: `${Math.round((method.total / topMethodTotal) * 100)}%` }"></div>
-            </div>
-          </div>
-          <p v-if="topMethods.length === 0" class="muted">No endpoint methods yet.</p>
-        </div>
-      </article>
-    </section>
-
-    <section class="panel gateway-panel">
-      <h3>Gateways</h3>
-      <div class="table-wrap">
-        <table class="data-table gateway-table">
-          <thead>
-            <tr>
-              <th>Gateway</th>
-              <th>Status</th>
-              <th>Current Applied</th>
-              <th>Apply Age</th>
-              <th>Resources</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="gateway in gateways"
-              :key="gateway.gateway_id"
-              class="gateway-row-link"
-              tabindex="0"
-              @click="openGatewayDetails(gateway.gateway_id)"
-              @keydown.enter.prevent="openGatewayDetails(gateway.gateway_id)"
-              @keydown.space.prevent="openGatewayDetails(gateway.gateway_id)"
-            >
-              <td :title="gateway.host_name || ''">
-                <div class="gateway-primary">{{ gateway.gateway_id }}</div>
-                <div class="gateway-secondary">{{ gateway.host_name || "n/a" }}</div>
-              </td>
-              <td>
-                <n-tag size="small" :type="gateway.status === 'online' ? 'success' : 'warning'">
-                  {{ gateway.status }}
+      <n-grid cols="1 l:3" responsive="screen" :x-gap="12" :y-gap="12">
+        <n-gi>
+          <n-card title="Service Flags" size="small">
+            <n-descriptions label-placement="left" :column="1" bordered size="small">
+              <n-descriptions-item label="Root Auth">
+                <n-tag size="small" :type="stats.root_auth_enabled ? 'success' : 'warning'">
+                  {{ stats.root_auth_enabled ? "enabled" : "disabled" }}
                 </n-tag>
-              </td>
-              <td :title="`current: ${shortVersion(currentSnapshotVersion)} / gateway: ${shortVersion(gateway.snapshot_version)}`">
-                <n-tag size="small" :type="isCurrentVersionApplied(gateway) ? 'success' : 'warning'">
-                  {{ isCurrentVersionApplied(gateway) ? "yes" : "no" }}
+              </n-descriptions-item>
+              <n-descriptions-item label="Root CORS">
+                <n-tag size="small" :type="stats.root_cors_enabled ? 'success' : 'warning'">
+                  {{ stats.root_cors_enabled ? "enabled" : "disabled" }}
                 </n-tag>
-              </td>
-              <td :title="formatUnixTime(gateway.last_apply_at_unix)">{{ formatApplyAge(gateway.last_apply_at_unix) }}</td>
-              <td class="gateway-resources-cell">
-                <div class="gateway-resources-main">{{ formatMemoryBytes(gateway.memory_alloc_bytes) }}</div>
-                <div class="gateway-resources-sub">{{ gateway.goroutines_count }} go</div>
-              </td>
-            </tr>
-            <tr v-if="gateways.length === 0">
-              <td colspan="5" class="muted">No gateways reported yet.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </template>
+              </n-descriptions-item>
+              <n-descriptions-item label="Admin Users Ratio">{{ userAdminPercent }}%</n-descriptions-item>
+            </n-descriptions>
+          </n-card>
+        </n-gi>
+
+        <n-gi span="1 l:2">
+          <n-card title="Endpoint Methods" size="small">
+            <div v-if="topMethods.length > 0" class="dashboard-methods">
+              <div v-for="method in topMethods" :key="method.method" class="method-row">
+                <div class="method-head">
+                  <strong>{{ method.method }}</strong>
+                  <span>{{ method.active }}/{{ method.total }}</span>
+                </div>
+                <n-progress
+                  type="line"
+                  :percentage="methodProgress(method.total)"
+                  :height="8"
+                  :show-indicator="false"
+                  status="success"
+                />
+              </div>
+            </div>
+            <n-empty v-else size="small" description="No endpoint methods yet." />
+          </n-card>
+        </n-gi>
+      </n-grid>
+
+      <n-card class="gateway-panel" size="small">
+        <template #header>Gateways</template>
+        <template #header-extra>
+          <n-tag size="small" :type="currentSnapshotVersion ? 'info' : 'default'">
+            current {{ shortVersion(currentSnapshotVersion) }}
+          </n-tag>
+        </template>
+        <n-data-table
+          class="gateway-table"
+          size="small"
+          :columns="gatewayColumns"
+          :data="gateways"
+          :loading="loading"
+          :row-key="gatewayRowKey"
+          :row-props="gatewayRowProps"
+          :pagination="false"
+          :bordered="false"
+          :single-line="false"
+        >
+          <template #empty>
+            <n-empty size="small" description="No gateways reported yet." />
+          </template>
+        </n-data-table>
+      </n-card>
+    </template>
+  </n-space>
 </template>

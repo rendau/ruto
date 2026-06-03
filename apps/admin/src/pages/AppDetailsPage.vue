@@ -732,6 +732,11 @@ function clearPersistedGrpcPanelState() {
   window.sessionStorage.removeItem(grpcPanelStorageKey());
 }
 
+function clearPersistedDiffPanelState() {
+  clearPersistedSwaggerPanelState();
+  clearPersistedGrpcPanelState();
+}
+
 function isWithinCurrentAppContext(to: RouteLocationNormalizedLoaded): boolean {
   const name = typeof to.name === "string" ? to.name : "";
   const currentAppId = id.value;
@@ -1034,6 +1039,11 @@ function closeDiffPanels() {
   grpcPanelOpen.value = false;
 }
 
+function closeDiffPanelsAndClearState() {
+  closeDiffPanels();
+  clearPersistedDiffPanelState();
+}
+
 function onDiffModalKeydown(event: KeyboardEvent) {
   if (event.key !== "Escape") {
     return;
@@ -1295,10 +1305,10 @@ watch(grpcUnregistered, () => {
 });
 
 onBeforeRouteLeave((to) => {
+  closeDiffPanelsAndClearState();
+
   if (!isWithinCurrentAppContext(to)) {
     clearPersistedEndpointFilters();
-    clearPersistedSwaggerPanelState();
-    clearPersistedGrpcPanelState();
   }
 });
 </script>
@@ -1503,6 +1513,7 @@ onBeforeRouteLeave((to) => {
                                 query: { type: 'http', method: item.method, path: item.path }
                               }"
                               :aria-label="`Add endpoint ${item.method} ${item.path}`"
+                              @click="closeDiffPanelsAndClearState"
                             >
                               <n-icon class="swagger-add-plus" :component="AddOutline" />
                               <span>Add</span>
@@ -1630,6 +1641,7 @@ onBeforeRouteLeave((to) => {
                                 query: { type: 'grpc', grpc_service: item.service, grpc_method: item.method, grpc_path: item.path }
                               }"
                               :aria-label="`Add endpoint ${item.service}/${item.method}`"
+                              @click="closeDiffPanelsAndClearState"
                             >
                               <n-icon class="swagger-add-plus" :component="AddOutline" />
                               <span>Add</span>

@@ -129,23 +129,11 @@ onBeforeUnmount(() => {
     :show="open"
     preset="card"
     class="grpc-modal-card"
+    title="gRPC connection instruction"
     :bordered="false"
     :mask-closable="true"
-    content-style="display: flex; min-height: 0; height: 100%; overflow: hidden;"
     @update:show="(value: boolean) => { if (!value) close(); }"
   >
-    <template #header>
-      <div class="grpc-modal-head">
-        <div>
-          <p class="grpc-modal-kicker">gRPC connection</p>
-          <h3 id="grpc-modal-title">Connect to {{ app.name }}</h3>
-          <p id="grpc-modal-description" class="grpc-modal-subtitle">
-            Copy the gateway address, required metadata, and ready-to-run examples.
-          </p>
-        </div>
-      </div>
-    </template>
-
     <div v-if="connectionInfo" class="grpc-modal-body">
       <div class="grpc-copy-grid" aria-label="Connection values">
         <button
@@ -179,13 +167,15 @@ onBeforeUnmount(() => {
             <h4 id="grpc-call-title">Call example</h4>
             <p>Replace package, service, method, and payload with your endpoint contract.</p>
           </div>
-          <n-button secondary @click="copyText('grpcurl-call', 'grpcurl call example', grpcurlCallExample)">
+        </div>
+        <div class="grpc-code-block">
+          <n-button class="grpc-code-copy-button" size="small" secondary @click="copyText('grpcurl-call', 'grpcurl call example', grpcurlCallExample)">
             {{ copiedKey === "grpcurl-call" ? "Copied" : "Copy" }}
           </n-button>
+          <button class="grpc-code-copy" type="button" @click="copyText('grpcurl-call', 'grpcurl call example', grpcurlCallExample)">
+            <pre><code>{{ grpcurlCallExample }}</code></pre>
+          </button>
         </div>
-        <button class="grpc-code-copy" type="button" @click="copyText('grpcurl-call', 'grpcurl call example', grpcurlCallExample)">
-          <pre><code>{{ grpcurlCallExample }}</code></pre>
-        </button>
       </section>
     </div>
 
@@ -198,8 +188,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 :global(.grpc-modal-card) {
-  width: min(960px, calc(100vw - 48px));
-  height: min(840px, calc(100dvh - 48px));
+  width: min(900px, calc(100vw - 48px));
   max-height: calc(100dvh - 48px);
   margin: auto;
   display: flex;
@@ -207,74 +196,21 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-:global(.grpc-modal-card > .n-card-header) {
-  flex: 0 0 auto;
-  min-height: 0;
-  padding: 0;
-}
-
 :global(.grpc-modal-card .n-card__content) {
   flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
-  display: flex;
-  overflow: hidden;
-  max-height: none;
-  padding: 0 14px 14px !important;
-}
-
-.grpc-modal-head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 20px 22px 16px;
-  border-bottom: 1px solid #344d73;
-  background: #172338;
-}
-
-.grpc-modal-kicker {
-  margin: 0 0 5px;
-  color: #91b4df;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.grpc-modal-head h3 {
-  margin: 0;
-  color: #f3f7ff;
-  font-size: 24px;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-
-.grpc-modal-subtitle {
-  margin: 7px 0 0;
-  color: #9eb2cf;
-  font-size: 14px;
-}
-
-.grpc-modal-close {
-  flex: 0 0 auto;
+  overflow-y: auto;
+  max-height: calc(100dvh - 136px);
+  padding: 0 !important;
 }
 
 .grpc-modal-body,
 .grpc-modal-empty {
-  flex: 1 1 0;
   min-height: 0;
-  height: 100%;
-  max-height: none;
   display: grid;
-  gap: 16px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding: 18px 22px 22px;
+  align-content: start;
+  gap: 14px;
+  padding: 16px 22px 22px;
 }
 
 .grpc-copy-grid {
@@ -286,7 +222,8 @@ onBeforeUnmount(() => {
 .grpc-copy-tile {
   min-width: 0;
   display: grid;
-  gap: 7px;
+  align-content: start;
+  gap: 8px;
   padding: 12px;
   border: 1px solid #3f597c;
   border-radius: 8px;
@@ -350,6 +287,7 @@ onBeforeUnmount(() => {
 
 .grpc-copy-state {
   justify-self: start;
+  margin-top: 2px;
   min-height: 22px;
   display: inline-flex;
   align-items: center;
@@ -363,7 +301,7 @@ onBeforeUnmount(() => {
 }
 
 .grpc-note {
-  padding: 12px;
+  padding: 11px 12px;
   border: 1px solid #3f597c;
   border-radius: 8px;
   background: #20314a;
@@ -378,14 +316,11 @@ onBeforeUnmount(() => {
 
 .grpc-code-section {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .grpc-code-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  display: block;
 }
 
 .grpc-code-head h4 {
@@ -398,6 +333,18 @@ onBeforeUnmount(() => {
   margin: 0;
   color: #9eb2cf;
   font-size: 13px;
+}
+
+.grpc-code-block {
+  position: relative;
+  min-width: 0;
+}
+
+.grpc-code-copy-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
 }
 
 .grpc-code-copy {
@@ -421,7 +368,7 @@ onBeforeUnmount(() => {
 
 .grpc-code-copy pre {
   margin: 0;
-  padding: 14px;
+  padding: 14px 82px 14px 14px;
   overflow-x: auto;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 13px;
@@ -434,33 +381,20 @@ onBeforeUnmount(() => {
 
 @media (max-width: 720px) {
   :global(.grpc-modal-card) {
-    width: calc(100vw - 4px);
-    height: calc(100dvh - 4px);
-    max-height: calc(100dvh - 4px);
-    margin: 2px auto;
-  }
-
-  .grpc-modal-head {
-    padding: 8px;
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    margin: 8px auto;
   }
 
   .grpc-modal-body,
   .grpc-modal-empty {
-    max-height: none;
-  }
-
-  .grpc-modal-head h3 {
-    font-size: 20px;
-  }
-
-  .grpc-modal-body,
-  .grpc-modal-empty {
-    padding: 0 4px 8px;
+    padding: 12px;
   }
 
   :global(.grpc-modal-card .n-card-content),
   :global(.grpc-modal-card .n-card__content) {
-    padding: 0 4px 4px !important;
+    max-height: calc(100dvh - 120px);
+    padding: 0 !important;
   }
 
   .grpc-copy-grid {
@@ -468,8 +402,17 @@ onBeforeUnmount(() => {
   }
 
   .grpc-code-head {
-    align-items: stretch;
-    flex-direction: column;
+    display: block;
+  }
+
+  .grpc-code-copy-button {
+    position: static;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .grpc-code-copy pre {
+    padding: 12px;
   }
 }
 </style>
