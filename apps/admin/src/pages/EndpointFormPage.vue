@@ -63,10 +63,13 @@ const form = ref<EndpointMain>({
 });
 const appDisplayName = computed(() => appName.value || form.value.app_id || "-");
 const endpointMethodOptions = ["*", "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE"];
-const protocolOptions: Array<{ value: EndpointType; label: string }> = [
-  { value: "http", label: "HTTP" },
-  { value: "grpc", label: "gRPC" }
-];
+const protocolOptions = computed(() => {
+  const options: Array<{ value: EndpointType; label: string }> = [{ value: "http", label: "HTTP" }];
+  if (appGrpcEnabled.value || (isEdit.value && form.value.type === "grpc")) {
+    options.push({ value: "grpc", label: "gRPC" });
+  }
+  return options;
+});
 const grpcReflectionAvailable = computed(() => grpcReflectionOptions.value.length > 0);
 const grpcReflectionDisabledReason = computed(() => {
   if (appGrpcEnabled.value) {
@@ -268,7 +271,18 @@ function buildPayload(): EndpointMain {
   return payload;
 }
 
+watch(protocolOptions, (options) => {
+  if (!options.find((o) => o.value === form.value.type)) {
+    form.value.type = "http";
+  }
+});
+
 async function submit() {
+  if (form.value.type === "grpc" && !appGrpcEnabled.value) {
+    errorMessage.value = "Cannot save gRPC endpoint: application gRPC port is not configured.";
+    notifyError(errorMessage.value);
+    return;
+  }
   saving.value = true;
   errorMessage.value = "";
   const payload = buildPayload();

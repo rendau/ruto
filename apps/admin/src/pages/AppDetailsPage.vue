@@ -69,10 +69,14 @@ const methodSortOrder: Record<string, number> = {
   HEAD: 7
 };
 
-const protocolOptions: Array<{ value: EndpointType; label: string }> = [
-  { value: "http", label: "HTTP" },
-  { value: "grpc", label: "gRPC" }
-];
+const protocolOptions = computed(() => {
+  const options: Array<{ value: EndpointType; label: string }> = [{ value: "http", label: "HTTP" }];
+  const hasGrpcPort = Number(app.value?.backend.grpc_port || 0) > 0;
+  if (hasGrpcPort || grpcEndpoints.value.length > 0) {
+    options.push({ value: "grpc", label: "gRPC" });
+  }
+  return options;
+});
 const httpEndpoints = computed(() => endpoints.value.filter((endpoint) => endpointType(endpoint) === "http"));
 const grpcEndpoints = computed(() => endpoints.value.filter((endpoint) => endpointType(endpoint) === "grpc"));
 const activeProtocolTotal = computed(() => (activeEndpointType.value === "grpc" ? grpcEndpoints.value.length : httpEndpoints.value.length));
@@ -836,6 +840,12 @@ function resetEndpointFilters() {
   httpMethodFilter.value = "all";
 }
 
+watch(protocolOptions, (options) => {
+  if (!options.find((o) => o.value === activeEndpointType.value)) {
+    activeEndpointType.value = "http";
+  }
+});
+
 async function load() {
   loading.value = true;
   errorMessage.value = "";
@@ -1231,6 +1241,7 @@ onBeforeRouteLeave((to) => {
       </div>
       <div class="actions protocol-actions">
         <RouterLink
+          v-if="activeEndpointType === 'http' || Number(app?.backend.grpc_port || 0) > 0"
           class="primary-button"
           :to="{ name: 'endpoint-create', params: { appId: id }, query: { type: activeEndpointType } }"
         >
