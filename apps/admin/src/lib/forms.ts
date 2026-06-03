@@ -116,3 +116,40 @@ export function linesToArray(value: string): string[] {
 export function arrayToLines(value?: string[]): string {
   return (value || []).join("\n");
 }
+
+export function recordToKeyValueLines(value?: Record<string, string> | null): string {
+  if (!value) {
+    return "";
+  }
+  return Object.entries(value)
+    .map(([key, itemValue]) => `${key}: ${itemValue}`)
+    .join("\n");
+}
+
+export function keyValueLinesToRecord(value: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const line of value.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+    const colonIndex = trimmed.indexOf(":");
+    const equalsIndex = trimmed.indexOf("=");
+    let separatorIndex = -1;
+    if (colonIndex >= 0 && equalsIndex >= 0) {
+      separatorIndex = Math.min(colonIndex, equalsIndex);
+    } else {
+      separatorIndex = Math.max(colonIndex, equalsIndex);
+    }
+    if (separatorIndex < 0) {
+      result[trimmed] = "";
+      continue;
+    }
+    const key = trimmed.slice(0, separatorIndex).trim();
+    if (!key) {
+      continue;
+    }
+    result[key] = trimmed.slice(separatorIndex + 1).trim();
+  }
+  return result;
+}

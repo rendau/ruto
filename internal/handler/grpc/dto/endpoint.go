@@ -44,7 +44,9 @@ func DecodeEndpointListReq(v *ruto_v1.EndpointListReq) *model.ListReq {
 
 func EncodeEndpointBackend(x model.Backend) *ruto_v1.EndpointBackend {
 	return &ruto_v1.EndpointBackend{
-		CustomPath: x.CustomPath,
+		CustomPath:  x.CustomPath,
+		Headers:     x.Headers,
+		QueryParams: x.QueryParams,
 	}
 }
 
@@ -53,7 +55,9 @@ func DecodeEndpointBackend(x *ruto_v1.EndpointBackend) model.Backend {
 		return model.Backend{}
 	}
 	return model.Backend{
-		CustomPath: x.CustomPath,
+		CustomPath:  x.CustomPath,
+		Headers:     x.Headers,
+		QueryParams: x.QueryParams,
 	}
 }
 

@@ -68,6 +68,7 @@ func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, fin
 				middleware.NewMetrics(app, ep, routePath),
 				middleware.NewRequestLog(app, ep, routePath, accessLog),
 				middleware.NewAuth(snapshot, app, ep),
+				middleware.NewBackendRequestParams(app.BackendRequestParams(ep)),
 			)
 
 			if ep.Method == "*" {

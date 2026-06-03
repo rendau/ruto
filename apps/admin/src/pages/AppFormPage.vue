@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { createApp, getApp, getAppSwaggerUrlByBackendUrl, getRoot, getRootJwtKidsByUrls, updateApp } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
-import { normalizeAuth } from "../lib/forms";
+import { keyValueLinesToRecord, normalizeAuth, recordToKeyValueLines } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain } from "../types/api";
 import { useAppsStore } from "../stores/apps";
@@ -21,6 +21,8 @@ const errorMessage = ref("");
 const jwtKidOptions = ref<string[]>([]);
 const discoveringSwagger = ref(false);
 const autoDetectedSwaggerUrl = ref("");
+const headersText = ref("");
+const queryParamsText = ref("");
 let discoverTimer: ReturnType<typeof setTimeout> | null = null;
 let discoverRequestSeq = 0;
 
@@ -32,7 +34,9 @@ const form = ref<AppMain>({
   backend: {
     url: "",
     swagger_url: "",
-    grpc_port: 0
+    grpc_port: 0,
+    headers: {},
+    query_params: {}
   },
   auth: {
     enabled: true,
@@ -54,10 +58,14 @@ async function load() {
       ...item,
       backend: {
         ...item.backend,
-        grpc_port: Number(item.backend.grpc_port || 0)
+        grpc_port: Number(item.backend.grpc_port || 0),
+        headers: item.backend.headers || {},
+        query_params: item.backend.query_params || {}
       },
       auth: normalizeAuth(item.auth)
     };
+    headersText.value = recordToKeyValueLines(form.value.backend.headers);
+    queryParamsText.value = recordToKeyValueLines(form.value.backend.query_params);
     if (!form.value.backend.swagger_url.trim()) {
       void discoverSwaggerUrl(form.value.backend.url);
     }
@@ -87,7 +95,9 @@ async function submit() {
     ...form.value,
     backend: {
       ...form.value.backend,
-      grpc_port: Number(form.value.backend.grpc_port || 0)
+      grpc_port: Number(form.value.backend.grpc_port || 0),
+      headers: keyValueLinesToRecord(headersText.value),
+      query_params: keyValueLinesToRecord(queryParamsText.value)
     }
   };
   try {
@@ -231,6 +241,14 @@ onBeforeUnmount(() => {
     <label class="field compact">
       <span>gRPC Port</span>
       <input v-model.number="form.backend.grpc_port" type="number" min="0" max="65535" placeholder="0" />
+    </label>
+    <label class="field">
+      <span>Backend Headers</span>
+      <textarea v-model="headersText" rows="4" placeholder="X-Service-Token: secret"></textarea>
+    </label>
+    <label class="field">
+      <span>Backend Query Params</span>
+      <textarea v-model="queryParamsText" rows="4" placeholder="tenant=acme"></textarea>
     </label>
     <div class="field">
       <span>Auth</span>

@@ -30,11 +30,18 @@ type App struct {
 }
 
 type AppBackend struct {
-	Url              string   `json:"url"`
-	ParsedUrl        *url.URL `json:"-"`
-	SwaggerUrl       string   `json:"swagger_url"`
-	ParsedSwaggerUrl *url.URL `json:"-"`
-	GrpcPort         int      `json:"grpc_port"`
+	Url              string            `json:"url"`
+	ParsedUrl        *url.URL          `json:"-"`
+	SwaggerUrl       string            `json:"swagger_url"`
+	ParsedSwaggerUrl *url.URL          `json:"-"`
+	GrpcPort         int               `json:"grpc_port"`
+	Headers          map[string]string `json:"headers"`
+	QueryParams      map[string]string `json:"query_params"`
+}
+
+type BackendRequestParams struct {
+	Headers     map[string]string
+	QueryParams map[string]string
 }
 
 func (m *App) String() string {
@@ -68,6 +75,13 @@ func (m *App) ActiveEndpoints() []*endpointModel.Endpoint {
 	return lo.FilterMap(m.Endpoints, func(v *endpointModel.Endpoint, _ int) (*endpointModel.Endpoint, bool) {
 		return v, v.Active
 	})
+}
+
+func (m *App) BackendRequestParams(endpoint *endpointModel.Endpoint) BackendRequestParams {
+	return BackendRequestParams{
+		Headers:     mergeStringMaps(m.Backend.Headers, endpoint.Backend.Headers),
+		QueryParams: mergeStringMaps(m.Backend.QueryParams, endpoint.Backend.QueryParams),
+	}
 }
 
 func (m *App) GrpcAddress() string {
@@ -109,8 +123,38 @@ func (m *AppBackend) Normalize() error {
 	if m.GrpcPort < 0 || m.GrpcPort > 65535 {
 		return fmt.Errorf("grpc_port: invalid")
 	}
+	m.Headers = normalizeStringMap(m.Headers)
+	m.QueryParams = normalizeStringMap(m.QueryParams)
 
 	return nil
+}
+
+func normalizeStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	result := lo.PickBy(
+		lo.MapEntries(values, func(key, value string) (string, string) {
+			return strings.TrimSpace(key), strings.TrimSpace(value)
+		}),
+		func(key, _ string) bool {
+			return key != ""
+		},
+	)
+	if len(result) == 0 {
+		return nil
+	}
+	return result
+}
+
+func mergeStringMaps(base, override map[string]string) map[string]string {
+	if len(base) == 0 {
+		return override
+	}
+	if len(override) == 0 {
+		return base
+	}
+	return lo.Assign(base, override)
 }
 
 func (m *AppBackend) GrpcAddress() string {

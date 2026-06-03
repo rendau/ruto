@@ -74,6 +74,7 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root, accessLog bool) (map[
 				app:               app,
 				endpoint:          ep,
 				targetGrpcAddress: targetGrpcAddress,
+				backendHeaders:    app.BackendRequestParams(ep).Headers,
 			}
 
 			authService := serviceAuth.New(snapshot, app, ep)
@@ -129,6 +130,16 @@ func (s *Service) director(ctx context.Context, _ string) (context.Context, gogr
 	conn, err := s.getConn(rt.targetGrpcAddress)
 	if err != nil {
 		return nil, nil, status.Errorf(codes.Unavailable, "dial backend: %v", err)
+	}
+	if len(rt.backendHeaders) > 0 {
+		md, _ := metadata.FromIncomingContext(ctx)
+		if md == nil {
+			md = metadata.MD{}
+		}
+		for key, value := range rt.backendHeaders {
+			md.Set(key, value)
+		}
+		ctx = metadata.NewOutgoingContext(ctx, md)
 	}
 
 	return ctx, conn, nil

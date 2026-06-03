@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/samber/lo"
+
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 )
@@ -21,7 +23,9 @@ type Endpoint struct {
 }
 
 type Backend struct {
-	CustomPath string `json:"custom_path"`
+	CustomPath  string            `json:"custom_path"`
+	Headers     map[string]string `json:"headers"`
+	QueryParams map[string]string `json:"query_params"`
 }
 
 type Type string
@@ -79,7 +83,27 @@ func (m *Endpoint) Normalize() error {
 
 func (m *Backend) Normalize() error {
 	m.CustomPath = strings.TrimPrefix(strings.TrimSpace(m.CustomPath), "/")
+	m.Headers = normalizeStringMap(m.Headers)
+	m.QueryParams = normalizeStringMap(m.QueryParams)
 	return nil
+}
+
+func normalizeStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	result := lo.PickBy(
+		lo.MapEntries(values, func(key, value string) (string, string) {
+			return strings.TrimSpace(key), strings.TrimSpace(value)
+		}),
+		func(key, _ string) bool {
+			return key != ""
+		},
+	)
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 func (m *Grpc) Normalize() error {

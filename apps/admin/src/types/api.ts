@@ -87,6 +87,8 @@ export interface AppBackend {
   url: string;
   swagger_url: string;
   grpc_port: number;
+  headers: Record<string, string>;
+  query_params: Record<string, string>;
 }
 
 export interface AppMain {
@@ -137,6 +139,8 @@ export interface AppGetSwaggerUrlByBackendUrlRep {
 
 export interface EndpointBackend {
   custom_path: string;
+  headers: Record<string, string>;
+  query_params: Record<string, string>;
 }
 
 export type EndpointType = "http" | "grpc";

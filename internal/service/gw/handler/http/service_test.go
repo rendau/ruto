@@ -119,6 +119,70 @@ func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
 	}
 }
 
+func TestService_HTTPBackendRequestParams(t *testing.T) {
+	backendHit := false
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		backendHit = true
+		require.Equal(t, "/profile", r.URL.Path)
+		require.Equal(t, "app_only=1&ep_only=2&inbound=ok&shared=endpoint", r.URL.RawQuery)
+		require.Equal(t, "app-token", r.Header.Get("X-App-Token"))
+		require.Equal(t, "endpoint-token", r.Header.Get("X-Endpoint-Token"))
+		require.Equal(t, "endpoint", r.Header.Get("X-Shared"))
+		require.Equal(t, "client", r.Header.Get("X-Client"))
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer backend.Close()
+
+	snapshot := rootModel.NewEmpty()
+	snapshot.Apps = []*appModel.App{
+		{
+			Active:     true,
+			PathPrefix: "/account",
+			Name:       "account",
+			Backend: appModel.AppBackend{
+				Url: backend.URL,
+				Headers: map[string]string{
+					"X-App-Token": "app-token",
+					"X-Shared":    "app",
+				},
+				QueryParams: map[string]string{
+					"app_only": "1",
+					"shared":   "app",
+				},
+			},
+			Endpoints: []*endpointModel.Endpoint{
+				{
+					Active: true,
+					Type:   endpointModel.TypeHTTP,
+					Method: http.MethodGet,
+					Path:   "profile",
+					Backend: endpointModel.Backend{
+						Headers: map[string]string{
+							"X-Endpoint-Token": "endpoint-token",
+							"X-Shared":         "endpoint",
+						},
+						QueryParams: map[string]string{
+							"ep_only": "2",
+							"shared":  "endpoint",
+						},
+					},
+				},
+			},
+		},
+	}
+	require.NoError(t, snapshot.Normalize())
+
+	service, err := New(snapshot, false)
+	require.NoError(t, err)
+
+	rec := performRequest(service, http.MethodGet, "/account/profile?inbound=ok&shared=inbound", http.Header{
+		"X-Client": []string{"client"},
+	})
+
+	require.True(t, backendHit)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
 func TestService_RouteExclusionAndMethodHandling(t *testing.T) {
 	tests := []struct {
 		name           string

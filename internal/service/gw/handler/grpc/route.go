@@ -13,6 +13,7 @@ type route struct {
 	app               *model.App
 	endpoint          *domEndpointModel.Endpoint
 	targetGrpcAddress string
+	backendHeaders    map[string]string
 	handler           gogrpc.StreamHandler
 }
 

@@ -42,9 +42,11 @@ func DecodeAppMain(v *ruto_v1.AppMain) *model.App {
 
 func EncodeAppBackend(x model.AppBackend) *ruto_v1.AppBackend {
 	return &ruto_v1.AppBackend{
-		Url:        x.Url,
-		SwaggerUrl: x.SwaggerUrl,
-		GrpcPort:   uint32(x.GrpcPort),
+		Url:         x.Url,
+		SwaggerUrl:  x.SwaggerUrl,
+		GrpcPort:    uint32(x.GrpcPort),
+		Headers:     x.Headers,
+		QueryParams: x.QueryParams,
 	}
 }
 
@@ -53,9 +55,11 @@ func DecodeAppBackend(x *ruto_v1.AppBackend) model.AppBackend {
 		return model.AppBackend{}
 	}
 	return model.AppBackend{
-		Url:        x.Url,
-		SwaggerUrl: x.SwaggerUrl,
-		GrpcPort:   int(x.GrpcPort),
+		Url:         x.Url,
+		SwaggerUrl:  x.SwaggerUrl,
+		GrpcPort:    int(x.GrpcPort),
+		Headers:     x.Headers,
+		QueryParams: x.QueryParams,
 	}
 }
 

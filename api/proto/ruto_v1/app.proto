@@ -67,6 +67,8 @@ message AppBackend {
   string url = 1;
   string swagger_url = 2;
   uint32 grpc_port = 3;
+  map<string, string> headers = 4;
+  map<string, string> query_params = 5;
 }
 
 message AppSwaggerEndpoint {

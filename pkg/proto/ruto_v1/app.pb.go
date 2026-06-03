@@ -304,6 +304,8 @@ type AppBackend struct {
 	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
 	SwaggerUrl    string                 `protobuf:"bytes,2,opt,name=swagger_url,json=swaggerUrl,proto3" json:"swagger_url,omitempty"`
 	GrpcPort      uint32                 `protobuf:"varint,3,opt,name=grpc_port,json=grpcPort,proto3" json:"grpc_port,omitempty"`
+	Headers       map[string]string      `protobuf:"bytes,4,rep,name=headers,proto3" json:"headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	QueryParams   map[string]string      `protobuf:"bytes,5,rep,name=query_params,json=queryParams,proto3" json:"query_params,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -357,6 +359,20 @@ func (x *AppBackend) GetGrpcPort() uint32 {
 		return x.GrpcPort
 	}
 	return 0
+}
+
+func (x *AppBackend) GetHeaders() map[string]string {
+	if x != nil {
+		return x.Headers
+	}
+	return nil
+}
+
+func (x *AppBackend) GetQueryParams() map[string]string {
+	if x != nil {
+		return x.QueryParams
+	}
+	return nil
 }
 
 type AppSwaggerEndpoint struct {
@@ -681,13 +697,21 @@ const file_ruto_v1_app_proto_rawDesc = "" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x19.ruto_v1.PaginationInfoStR\x0epaginationInfo\x12*\n" +
 	"\aresults\x18\x02 \x03(\v2\x10.ruto_v1.AppMainR\aresults\"\x1e\n" +
 	"\fAppCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\\\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xdd\x02\n" +
 	"\n" +
 	"AppBackend\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x1f\n" +
 	"\vswagger_url\x18\x02 \x01(\tR\n" +
 	"swaggerUrl\x12\x1b\n" +
-	"\tgrpc_port\x18\x03 \x01(\rR\bgrpcPort\"@\n" +
+	"\tgrpc_port\x18\x03 \x01(\rR\bgrpcPort\x12:\n" +
+	"\aheaders\x18\x04 \x03(\v2 .ruto_v1.AppBackend.HeadersEntryR\aheaders\x12G\n" +
+	"\fquery_params\x18\x05 \x03(\v2$.ruto_v1.AppBackend.QueryParamsEntryR\vqueryParams\x1a:\n" +
+	"\fHeadersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
+	"\x10QueryParamsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"@\n" +
 	"\x12AppSwaggerEndpoint\x12\x16\n" +
 	"\x06method\x18\x01 \x01(\tR\x06method\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\"\xa9\x01\n" +
@@ -729,7 +753,7 @@ func file_ruto_v1_app_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_app_proto_rawDescData
 }
 
-var file_ruto_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_ruto_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_ruto_v1_app_proto_goTypes = []any{
 	(*AppMain)(nil),                         // 0: ruto_v1.AppMain
 	(*AppGetReq)(nil),                       // 1: ruto_v1.AppGetReq
@@ -743,41 +767,45 @@ var file_ruto_v1_app_proto_goTypes = []any{
 	(*AppGrpcReflectionEndpointsRep)(nil),   // 9: ruto_v1.AppGrpcReflectionEndpointsRep
 	(*AppGetSwaggerUrlByBackendUrlReq)(nil), // 10: ruto_v1.AppGetSwaggerUrlByBackendUrlReq
 	(*AppGetSwaggerUrlByBackendUrlRep)(nil), // 11: ruto_v1.AppGetSwaggerUrlByBackendUrlRep
-	(*Auth)(nil),                            // 12: ruto_v1.Auth
-	(*ListParamsSt)(nil),                    // 13: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),                // 14: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),                   // 15: google.protobuf.Empty
+	nil,                                     // 12: ruto_v1.AppBackend.HeadersEntry
+	nil,                                     // 13: ruto_v1.AppBackend.QueryParamsEntry
+	(*Auth)(nil),                            // 14: ruto_v1.Auth
+	(*ListParamsSt)(nil),                    // 15: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),                // 16: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),                   // 17: google.protobuf.Empty
 }
 var file_ruto_v1_app_proto_depIdxs = []int32{
 	5,  // 0: ruto_v1.AppMain.backend:type_name -> ruto_v1.AppBackend
-	12, // 1: ruto_v1.AppMain.auth:type_name -> ruto_v1.Auth
-	13, // 2: ruto_v1.AppListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	14, // 3: ruto_v1.AppListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	14, // 1: ruto_v1.AppMain.auth:type_name -> ruto_v1.Auth
+	15, // 2: ruto_v1.AppListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	16, // 3: ruto_v1.AppListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
 	0,  // 4: ruto_v1.AppListRep.results:type_name -> ruto_v1.AppMain
-	6,  // 5: ruto_v1.AppSwaggerEndpointsDiffRep.unregistered:type_name -> ruto_v1.AppSwaggerEndpoint
-	6,  // 6: ruto_v1.AppSwaggerEndpointsDiffRep.registered_invalid:type_name -> ruto_v1.AppSwaggerEndpoint
-	8,  // 7: ruto_v1.AppGrpcReflectionEndpointsRep.results:type_name -> ruto_v1.AppGrpcReflectionEndpoint
-	2,  // 8: ruto_v1.App.List:input_type -> ruto_v1.AppListReq
-	1,  // 9: ruto_v1.App.Get:input_type -> ruto_v1.AppGetReq
-	0,  // 10: ruto_v1.App.Create:input_type -> ruto_v1.AppMain
-	0,  // 11: ruto_v1.App.Update:input_type -> ruto_v1.AppMain
-	1,  // 12: ruto_v1.App.Delete:input_type -> ruto_v1.AppGetReq
-	1,  // 13: ruto_v1.App.GetSwaggerEndpointsDiff:input_type -> ruto_v1.AppGetReq
-	1,  // 14: ruto_v1.App.GetGrpcReflectionEndpoints:input_type -> ruto_v1.AppGetReq
-	10, // 15: ruto_v1.App.GetSwaggerUrlByBackendUrl:input_type -> ruto_v1.AppGetSwaggerUrlByBackendUrlReq
-	3,  // 16: ruto_v1.App.List:output_type -> ruto_v1.AppListRep
-	0,  // 17: ruto_v1.App.Get:output_type -> ruto_v1.AppMain
-	4,  // 18: ruto_v1.App.Create:output_type -> ruto_v1.AppCreateRep
-	15, // 19: ruto_v1.App.Update:output_type -> google.protobuf.Empty
-	15, // 20: ruto_v1.App.Delete:output_type -> google.protobuf.Empty
-	7,  // 21: ruto_v1.App.GetSwaggerEndpointsDiff:output_type -> ruto_v1.AppSwaggerEndpointsDiffRep
-	9,  // 22: ruto_v1.App.GetGrpcReflectionEndpoints:output_type -> ruto_v1.AppGrpcReflectionEndpointsRep
-	11, // 23: ruto_v1.App.GetSwaggerUrlByBackendUrl:output_type -> ruto_v1.AppGetSwaggerUrlByBackendUrlRep
-	16, // [16:24] is the sub-list for method output_type
-	8,  // [8:16] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	12, // 5: ruto_v1.AppBackend.headers:type_name -> ruto_v1.AppBackend.HeadersEntry
+	13, // 6: ruto_v1.AppBackend.query_params:type_name -> ruto_v1.AppBackend.QueryParamsEntry
+	6,  // 7: ruto_v1.AppSwaggerEndpointsDiffRep.unregistered:type_name -> ruto_v1.AppSwaggerEndpoint
+	6,  // 8: ruto_v1.AppSwaggerEndpointsDiffRep.registered_invalid:type_name -> ruto_v1.AppSwaggerEndpoint
+	8,  // 9: ruto_v1.AppGrpcReflectionEndpointsRep.results:type_name -> ruto_v1.AppGrpcReflectionEndpoint
+	2,  // 10: ruto_v1.App.List:input_type -> ruto_v1.AppListReq
+	1,  // 11: ruto_v1.App.Get:input_type -> ruto_v1.AppGetReq
+	0,  // 12: ruto_v1.App.Create:input_type -> ruto_v1.AppMain
+	0,  // 13: ruto_v1.App.Update:input_type -> ruto_v1.AppMain
+	1,  // 14: ruto_v1.App.Delete:input_type -> ruto_v1.AppGetReq
+	1,  // 15: ruto_v1.App.GetSwaggerEndpointsDiff:input_type -> ruto_v1.AppGetReq
+	1,  // 16: ruto_v1.App.GetGrpcReflectionEndpoints:input_type -> ruto_v1.AppGetReq
+	10, // 17: ruto_v1.App.GetSwaggerUrlByBackendUrl:input_type -> ruto_v1.AppGetSwaggerUrlByBackendUrlReq
+	3,  // 18: ruto_v1.App.List:output_type -> ruto_v1.AppListRep
+	0,  // 19: ruto_v1.App.Get:output_type -> ruto_v1.AppMain
+	4,  // 20: ruto_v1.App.Create:output_type -> ruto_v1.AppCreateRep
+	17, // 21: ruto_v1.App.Update:output_type -> google.protobuf.Empty
+	17, // 22: ruto_v1.App.Delete:output_type -> google.protobuf.Empty
+	7,  // 23: ruto_v1.App.GetSwaggerEndpointsDiff:output_type -> ruto_v1.AppSwaggerEndpointsDiffRep
+	9,  // 24: ruto_v1.App.GetGrpcReflectionEndpoints:output_type -> ruto_v1.AppGrpcReflectionEndpointsRep
+	11, // 25: ruto_v1.App.GetSwaggerUrlByBackendUrl:output_type -> ruto_v1.AppGetSwaggerUrlByBackendUrlRep
+	18, // [18:26] is the sub-list for method output_type
+	10, // [10:18] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_app_proto_init() }
@@ -794,7 +822,7 @@ func file_ruto_v1_app_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_app_proto_rawDesc), len(file_ruto_v1_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

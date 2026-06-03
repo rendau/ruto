@@ -106,6 +106,37 @@ func TestAppNormalize_AllowValidSwaggerURL(t *testing.T) {
 	}
 }
 
+func TestAppNormalize_BackendRequestParams(t *testing.T) {
+	item := &App{
+		PathPrefix: "api",
+		Backend: AppBackend{
+			Url: "http://example.local/svc",
+			Headers: map[string]string{
+				" X-App-Token ": " secret ",
+				" ":             "ignored",
+			},
+			QueryParams: map[string]string{
+				" tenant ": " acme ",
+				"":         "ignored",
+			},
+		},
+	}
+
+	err := item.Normalize()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if item.Backend.Headers["X-App-Token"] != "secret" {
+		t.Fatalf("header normalize failed: %#v", item.Backend.Headers)
+	}
+	if _, ok := item.Backend.Headers[""]; ok {
+		t.Fatalf("empty header key was not removed: %#v", item.Backend.Headers)
+	}
+	if item.Backend.QueryParams["tenant"] != "acme" {
+		t.Fatalf("query param normalize failed: %#v", item.Backend.QueryParams)
+	}
+}
+
 func TestAppGrpcAddress_ParsesBackendURLWhenLoadedFromStorage(t *testing.T) {
 	item := &App{
 		Backend: AppBackend{

@@ -324,7 +324,9 @@ function buildDefaultEndpointPayload(item: AppSwaggerEndpoint): EndpointMain {
     method: (item.method || "").trim().toUpperCase() || "GET",
     path: normalizedRoutePath(item.path),
     backend: {
-      custom_path: ""
+      custom_path: "",
+      headers: {},
+      query_params: {}
     },
     auth: {
       enabled: true,
@@ -530,7 +532,9 @@ function buildDefaultGrpcEndpointPayload(item: AppGrpcReflectionEndpoint): Endpo
     method: "GRPC",
     path: normalized.path,
     backend: {
-      custom_path: ""
+      custom_path: "",
+      headers: {},
+      query_params: {}
     },
     auth: {
       enabled: true,

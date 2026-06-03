@@ -61,6 +61,63 @@ func TestProxy_UnaryCall(t *testing.T) {
 	require.Equal(t, []byte("backend:ping-unary"), resp.Payload.Body)
 }
 
+func TestProxy_BackendHeaders(t *testing.T) {
+	backendServer := &testBackendServer{
+		prefix:     "backend:",
+		metadataCh: make(chan metadata.MD, 1),
+	}
+	backendAddr, backendStop := runBackendTestServiceWithServer(t, backendServer)
+	defer backendStop()
+
+	snapshot := buildSnapshotForBackend(t, backendAddr)
+	snapshot.Apps[0].Backend.Headers = map[string]string{
+		"X-App-Token": "app-token",
+		"X-Shared":    "app",
+	}
+	snapshot.Apps[0].Endpoints[0].Backend.Headers = map[string]string{
+		"X-Endpoint-Token": "endpoint-token",
+		"X-Shared":         "endpoint",
+	}
+
+	svc, err := New(snapshot, false)
+	require.NoError(t, err)
+
+	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
+	defer gatewayStop()
+
+	conn, err := gogrpc.NewClient(gatewayAddr, gogrpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	defer func() { _ = conn.Close() }()
+
+	client := grpcTesting.NewTestServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = metadata.AppendToOutgoingContext(
+		ctx,
+		metadataHeaderAppName, "backend-test",
+		"x-client", "client",
+		"x-shared", "client",
+	)
+
+	_, err = client.UnaryCall(ctx, &grpcTesting.SimpleRequest{
+		Payload: &grpcTesting.Payload{
+			Body: []byte("ping-unary"),
+		},
+	})
+	require.NoError(t, err)
+
+	select {
+	case md := <-backendServer.metadataCh:
+		require.Equal(t, []string{"app-token"}, md.Get("x-app-token"))
+		require.Equal(t, []string{"endpoint-token"}, md.Get("x-endpoint-token"))
+		require.Equal(t, []string{"endpoint"}, md.Get("x-shared"))
+		require.Equal(t, []string{"client"}, md.Get("x-client"))
+	case <-time.After(2 * time.Second):
+		require.FailNow(t, "backend metadata was not captured")
+	}
+}
+
 func TestProxy_BidiStreamingCall(t *testing.T) {
 
 	backendAddr, backendStop := runBackendTestService(t)
@@ -388,10 +445,13 @@ func reflectionResponseServiceMethods(
 
 type testBackendServer struct {
 	grpcTesting.UnimplementedTestServiceServer
-	prefix string
+	prefix     string
+	metadataCh chan metadata.MD
 }
 
-func (s *testBackendServer) UnaryCall(_ context.Context, req *grpcTesting.SimpleRequest) (*grpcTesting.SimpleResponse, error) {
+func (s *testBackendServer) UnaryCall(ctx context.Context, req *grpcTesting.SimpleRequest) (*grpcTesting.SimpleResponse, error) {
+	s.captureMetadata(ctx)
+
 	inBody := make([]byte, 0)
 	if req.GetPayload() != nil {
 		inBody = req.GetPayload().GetBody()
@@ -401,6 +461,16 @@ func (s *testBackendServer) UnaryCall(_ context.Context, req *grpcTesting.Simple
 			Body: append([]byte(s.prefix), inBody...),
 		},
 	}, nil
+}
+
+func (s *testBackendServer) captureMetadata(ctx context.Context) {
+	if s.metadataCh == nil {
+		return
+	}
+	select {
+	case s.metadataCh <- metadataFromContext(ctx).Copy():
+	default:
+	}
 }
 
 func (s *testBackendServer) FullDuplexCall(stream gogrpc.BidiStreamingServer[grpcTesting.StreamingOutputCallRequest, grpcTesting.StreamingOutputCallResponse]) error {
@@ -433,13 +503,17 @@ func runBackendTestService(t *testing.T) (string, func()) {
 }
 
 func runBackendTestServiceWithPrefix(t *testing.T, prefix string) (string, func()) {
+	return runBackendTestServiceWithServer(t, &testBackendServer{prefix: prefix})
+}
+
+func runBackendTestServiceWithServer(t *testing.T, backend *testBackendServer) (string, func()) {
 	t.Helper()
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
 	server := gogrpc.NewServer()
-	grpcTesting.RegisterTestServiceServer(server, &testBackendServer{prefix: prefix})
+	grpcTesting.RegisterTestServiceServer(server, backend)
 	reflection.Register(server)
 
 	go func() {

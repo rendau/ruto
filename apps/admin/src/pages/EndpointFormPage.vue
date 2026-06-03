@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { createEndpoint, getApp, getAppGrpcReflectionEndpoints, getEndpoint, getRoot, getRootJwtKidsByUrls, updateEndpoint } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
-import { normalizeAuth } from "../lib/forms";
+import { keyValueLinesToRecord, normalizeAuth, recordToKeyValueLines } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppGrpcReflectionEndpoint, EndpointMain, EndpointType } from "../types/api";
 
@@ -39,6 +39,8 @@ const grpcReflectionLoading = ref(false);
 const grpcReflectionError = ref("");
 const grpcReflectionOptions = ref<AppGrpcReflectionEndpoint[]>([]);
 const selectedGrpcReflectionPath = ref("");
+const headersText = ref("");
+const queryParamsText = ref("");
 
 const form = ref<EndpointMain>({
   id: "",
@@ -47,7 +49,9 @@ const form = ref<EndpointMain>({
   method: "GET",
   path: "",
   backend: {
-    custom_path: ""
+    custom_path: "",
+    headers: {},
+    query_params: {}
   },
   auth: {
     enabled: true,
@@ -84,7 +88,9 @@ function normalizeLoadedEndpoint(item: EndpointMain): EndpointMain {
     ...item,
     type: endpointType,
     backend: {
-      custom_path: item.backend?.custom_path || ""
+      custom_path: item.backend?.custom_path || "",
+      headers: item.backend?.headers || {},
+      query_params: item.backend?.query_params || {}
     },
     auth: normalizeAuth(item.auth),
     grpc: {
@@ -177,6 +183,8 @@ async function load() {
   errorMessage.value = "";
   try {
     form.value = normalizeLoadedEndpoint(await getEndpoint(endpointId.value));
+    headersText.value = recordToKeyValueLines(form.value.backend.headers);
+    queryParamsText.value = recordToKeyValueLines(form.value.backend.query_params);
     await loadAppName();
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load endpoint";
@@ -239,7 +247,9 @@ function buildPayload(): EndpointMain {
     ...form.value,
     type: endpointType,
     backend: {
-      custom_path: form.value.backend?.custom_path || ""
+      custom_path: form.value.backend?.custom_path || "",
+      headers: keyValueLinesToRecord(headersText.value),
+      query_params: keyValueLinesToRecord(queryParamsText.value)
     },
     auth: normalizeAuth(form.value.auth),
     grpc: {
@@ -258,6 +268,7 @@ function buildPayload(): EndpointMain {
     payload.method = "GRPC";
     payload.path = payload.grpc.path;
     payload.backend.custom_path = "";
+    payload.backend.query_params = {};
     return payload;
   }
 
@@ -382,6 +393,14 @@ onMounted(() => {
         <span>Custom Backend Path</span>
         <input v-model="form.backend.custom_path" placeholder="/custom_path or empty for app backend path" />
       </label>
+      <label class="field">
+        <span>Backend Headers</span>
+        <textarea v-model="headersText" rows="4" placeholder="X-Service-Token: secret"></textarea>
+      </label>
+      <label class="field">
+        <span>Backend Query Params</span>
+        <textarea v-model="queryParamsText" rows="4" placeholder="tenant=acme"></textarea>
+      </label>
     </template>
 
     <template v-else>
@@ -426,6 +445,10 @@ onMounted(() => {
       <label class="field">
         <span>gRPC Path</span>
         <input v-model="form.grpc.path" placeholder="/package.Service/Method" required />
+      </label>
+      <label class="field">
+        <span>Backend Headers</span>
+        <textarea v-model="headersText" rows="4" placeholder="X-Service-Token: secret"></textarea>
       </label>
     </template>
 
