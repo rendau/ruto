@@ -1,18 +1,11 @@
 package model
 
-import (
-	"github.com/samber/lo"
-
-	appModel "github.com/rendau/ruto/internal/domain/app/model"
-)
-
 func (m *Root) Interpolate() {
+	if len(m.Variables) > 0 {
+		m.Auth.Interpolate(m.Variables)
+	}
 
-	lo.ForEach(m.Apps, m.inheritToApp)
-}
-
-func (m *Root) interpolateApp(app *appModel.App, _ int) {
-	// app.Auth = authModel.Merge(m.Auth, app.Auth)
-	// app.Variables.FillMissing(m.Variables)
-	// app.InheritDown()
+	for _, app := range m.Apps {
+		app.Interpolate()
+	}
 }
