@@ -125,13 +125,6 @@ func (m *AppBackend) Normalize() error {
 	return nil
 }
 
-// func (m *App) GetFullPathForEndpoint(endpointPath string) string {
-// 	if endpointPath == "" {
-// 		return m.PathPrefix
-// 	}
-// 	return m.PathPrefix + "/" + endpointPath
-// }
-
 func validateGrpcTarget(target string) error {
 	if strings.Contains(target, "://") {
 		u, err := url.Parse(target)
@@ -150,3 +143,10 @@ func validateGrpcTarget(target string) error {
 	_, _, err := net.SplitHostPort(target)
 	return err
 }
+
+// func (m *App) GetFullPathForEndpoint(endpointPath string) string {
+// 	if endpointPath == "" {
+// 		return m.PathPrefix
+// 	}
+// 	return m.PathPrefix + "/" + endpointPath
+// }
