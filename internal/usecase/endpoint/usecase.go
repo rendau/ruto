@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	"github.com/rendau/ruto/internal/domain/endpoint/model"
-	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 	"github.com/rendau/ruto/internal/errs"
 )
 
@@ -78,63 +76,6 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Endpoint, error) {
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
 
-	return result, nil
-}
-
-func (u *Usecase) GetVariablesEffective(ctx context.Context, id string, appID string, variables []variableModel.Variable) ([]variableModel.Variable, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
-		return nil, errs.NotAuthorized
-	}
-
-	if u.rootSvc == nil {
-		return nil, fmt.Errorf("rootSvc: nil")
-	}
-	if u.appSvc == nil {
-		return nil, fmt.Errorf("appSvc: nil")
-	}
-
-	rootObj, err := u.rootSvc.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("rootSvc.Get: %w", err)
-	}
-	variables, err = variableModel.NormalizeList(variables)
-	if err != nil {
-		return nil, fmt.Errorf("variables: %w", err)
-	}
-
-	endpointObj := &model.Endpoint{
-		AppId:     strings.TrimSpace(appID),
-		Variables: variables,
-	}
-	id = strings.TrimSpace(id)
-	if id != "" {
-		endpointObj, _, err = u.svc.Get(ctx, id, true)
-		if err != nil {
-			return nil, fmt.Errorf("svc.Get: %w", err)
-		}
-		endpointObj.Variables = variables
-	}
-	if endpointObj.AppId == "" {
-		return nil, fmt.Errorf("app_id: empty")
-	}
-
-	appObj, _, err := u.appSvc.Get(ctx, endpointObj.AppId, true)
-	if err != nil {
-		return nil, fmt.Errorf("appSvc.Get: %w", err)
-	}
-	if appObj == nil {
-		appObj = &appModel.App{}
-	}
-
-	effective, err := rootObj.EffectiveVariables(appObj, endpointObj)
-	if err != nil {
-		return nil, fmt.Errorf("variables: %w", err)
-	}
-	result, err := variableModel.ResolveList(effective)
-	if err != nil {
-		return nil, fmt.Errorf("variables: %w", err)
-	}
 	return result, nil
 }
 

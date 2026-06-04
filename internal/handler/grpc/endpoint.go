@@ -68,11 +68,3 @@ func (h *Endpoint) Delete(ctx context.Context, req *ruto_v1.EndpointGetReq) (*em
 	}
 	return &emptypb.Empty{}, nil
 }
-
-func (h *Endpoint) GetVariablesEffective(ctx context.Context, req *ruto_v1.EndpointVariablesEffectiveReq) (*ruto_v1.VariablesEffectiveRep, error) {
-	items, err := h.usecase.GetVariablesEffective(ctx, req.GetId(), req.GetAppId(), lo.FilterMap(req.GetVariables(), dto.DecodeVariable))
-	if err != nil {
-		return nil, err
-	}
-	return dto.EncodeVariablesEffectiveRep(items), nil
-}

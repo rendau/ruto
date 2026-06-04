@@ -25,9 +25,6 @@ service Endpoint {
   rpc Delete(EndpointGetReq) returns (google.protobuf.Empty) {
     option (google.api.http) = { delete: "/endpoint/{id}" };
   };
-  rpc GetVariablesEffective(EndpointVariablesEffectiveReq) returns (VariablesEffectiveRep) {
-    option (google.api.http) = { post: "/endpoint/variables/effective" body: "*" };
-  };
 }
 
 message EndpointUpdateReq {
@@ -52,10 +49,4 @@ message EndpointListRep {
 
 message EndpointCreateRep {
   string id = 1;
-}
-
-message EndpointVariablesEffectiveReq {
-  string id = 1;
-  string app_id = 2;
-  repeated google.protobuf.Struct variables = 3;
 }

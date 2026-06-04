@@ -5,7 +5,6 @@ package ruto_v1;
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
-import "ruto_v1/common.proto";
 
 option go_package = "/ruto_v1";
 
@@ -19,9 +18,6 @@ service Root {
   rpc GetJwtKidsByUrls(RootJwtKidsReq) returns (RootJwtKidsRep) {
     option (google.api.http) = { get: "/root/jwt/kids/by-urls" };
   };
-  rpc GetVariablesEffective(RootVariablesEffectiveReq) returns (VariablesEffectiveRep) {
-    option (google.api.http) = { post: "/root/variables/effective" body: "*" };
-  };
 }
 
 message RootJwtKidsRep {
@@ -30,8 +26,4 @@ message RootJwtKidsRep {
 
 message RootJwtKidsReq {
   repeated string urls = 1;
-}
-
-message RootVariablesEffectiveReq {
-  repeated google.protobuf.Struct variables = 1;
 }

@@ -21,12 +21,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Endpoint_List_FullMethodName                  = "/ruto_v1.Endpoint/List"
-	Endpoint_Get_FullMethodName                   = "/ruto_v1.Endpoint/Get"
-	Endpoint_Create_FullMethodName                = "/ruto_v1.Endpoint/Create"
-	Endpoint_Update_FullMethodName                = "/ruto_v1.Endpoint/Update"
-	Endpoint_Delete_FullMethodName                = "/ruto_v1.Endpoint/Delete"
-	Endpoint_GetVariablesEffective_FullMethodName = "/ruto_v1.Endpoint/GetVariablesEffective"
+	Endpoint_List_FullMethodName   = "/ruto_v1.Endpoint/List"
+	Endpoint_Get_FullMethodName    = "/ruto_v1.Endpoint/Get"
+	Endpoint_Create_FullMethodName = "/ruto_v1.Endpoint/Create"
+	Endpoint_Update_FullMethodName = "/ruto_v1.Endpoint/Update"
+	Endpoint_Delete_FullMethodName = "/ruto_v1.Endpoint/Delete"
 )
 
 // EndpointClient is the client API for Endpoint service.
@@ -38,7 +37,6 @@ type EndpointClient interface {
 	Create(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*EndpointCreateRep, error)
 	Update(ctx context.Context, in *EndpointUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetVariablesEffective(ctx context.Context, in *EndpointVariablesEffectiveReq, opts ...grpc.CallOption) (*VariablesEffectiveRep, error)
 }
 
 type endpointClient struct {
@@ -99,16 +97,6 @@ func (c *endpointClient) Delete(ctx context.Context, in *EndpointGetReq, opts ..
 	return out, nil
 }
 
-func (c *endpointClient) GetVariablesEffective(ctx context.Context, in *EndpointVariablesEffectiveReq, opts ...grpc.CallOption) (*VariablesEffectiveRep, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(VariablesEffectiveRep)
-	err := c.cc.Invoke(ctx, Endpoint_GetVariablesEffective_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // EndpointServer is the server API for Endpoint service.
 // All implementations must embed UnimplementedEndpointServer
 // for forward compatibility.
@@ -118,7 +106,6 @@ type EndpointServer interface {
 	Create(context.Context, *structpb.Struct) (*EndpointCreateRep, error)
 	Update(context.Context, *EndpointUpdateReq) (*emptypb.Empty, error)
 	Delete(context.Context, *EndpointGetReq) (*emptypb.Empty, error)
-	GetVariablesEffective(context.Context, *EndpointVariablesEffectiveReq) (*VariablesEffectiveRep, error)
 	mustEmbedUnimplementedEndpointServer()
 }
 
@@ -143,9 +130,6 @@ func (UnimplementedEndpointServer) Update(context.Context, *EndpointUpdateReq) (
 }
 func (UnimplementedEndpointServer) Delete(context.Context, *EndpointGetReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
-}
-func (UnimplementedEndpointServer) GetVariablesEffective(context.Context, *EndpointVariablesEffectiveReq) (*VariablesEffectiveRep, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetVariablesEffective not implemented")
 }
 func (UnimplementedEndpointServer) mustEmbedUnimplementedEndpointServer() {}
 func (UnimplementedEndpointServer) testEmbeddedByValue()                  {}
@@ -258,24 +242,6 @@ func _Endpoint_Delete_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Endpoint_GetVariablesEffective_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EndpointVariablesEffectiveReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EndpointServer).GetVariablesEffective(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Endpoint_GetVariablesEffective_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EndpointServer).GetVariablesEffective(ctx, req.(*EndpointVariablesEffectiveReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // Endpoint_ServiceDesc is the grpc.ServiceDesc for Endpoint service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -302,10 +268,6 @@ var Endpoint_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Delete",
 			Handler:    _Endpoint_Delete_Handler,
-		},
-		{
-			MethodName: "GetVariablesEffective",
-			Handler:    _Endpoint_GetVariablesEffective_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

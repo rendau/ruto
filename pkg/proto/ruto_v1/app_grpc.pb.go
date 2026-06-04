@@ -29,7 +29,6 @@ const (
 	App_GetSwaggerEndpointsDiff_FullMethodName    = "/ruto_v1.App/GetSwaggerEndpointsDiff"
 	App_GetGrpcReflectionEndpoints_FullMethodName = "/ruto_v1.App/GetGrpcReflectionEndpoints"
 	App_GetSwaggerUrlByBackendUrl_FullMethodName  = "/ruto_v1.App/GetSwaggerUrlByBackendUrl"
-	App_GetVariablesEffective_FullMethodName      = "/ruto_v1.App/GetVariablesEffective"
 )
 
 // AppClient is the client API for App service.
@@ -44,7 +43,6 @@ type AppClient interface {
 	GetSwaggerEndpointsDiff(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppSwaggerEndpointsDiffRep, error)
 	GetGrpcReflectionEndpoints(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppGrpcReflectionEndpointsRep, error)
 	GetSwaggerUrlByBackendUrl(ctx context.Context, in *AppGetSwaggerUrlByBackendUrlReq, opts ...grpc.CallOption) (*AppGetSwaggerUrlByBackendUrlRep, error)
-	GetVariablesEffective(ctx context.Context, in *AppVariablesEffectiveReq, opts ...grpc.CallOption) (*VariablesEffectiveRep, error)
 }
 
 type appClient struct {
@@ -135,16 +133,6 @@ func (c *appClient) GetSwaggerUrlByBackendUrl(ctx context.Context, in *AppGetSwa
 	return out, nil
 }
 
-func (c *appClient) GetVariablesEffective(ctx context.Context, in *AppVariablesEffectiveReq, opts ...grpc.CallOption) (*VariablesEffectiveRep, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(VariablesEffectiveRep)
-	err := c.cc.Invoke(ctx, App_GetVariablesEffective_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // AppServer is the server API for App service.
 // All implementations must embed UnimplementedAppServer
 // for forward compatibility.
@@ -157,7 +145,6 @@ type AppServer interface {
 	GetSwaggerEndpointsDiff(context.Context, *AppGetReq) (*AppSwaggerEndpointsDiffRep, error)
 	GetGrpcReflectionEndpoints(context.Context, *AppGetReq) (*AppGrpcReflectionEndpointsRep, error)
 	GetSwaggerUrlByBackendUrl(context.Context, *AppGetSwaggerUrlByBackendUrlReq) (*AppGetSwaggerUrlByBackendUrlRep, error)
-	GetVariablesEffective(context.Context, *AppVariablesEffectiveReq) (*VariablesEffectiveRep, error)
 	mustEmbedUnimplementedAppServer()
 }
 
@@ -191,9 +178,6 @@ func (UnimplementedAppServer) GetGrpcReflectionEndpoints(context.Context, *AppGe
 }
 func (UnimplementedAppServer) GetSwaggerUrlByBackendUrl(context.Context, *AppGetSwaggerUrlByBackendUrlReq) (*AppGetSwaggerUrlByBackendUrlRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSwaggerUrlByBackendUrl not implemented")
-}
-func (UnimplementedAppServer) GetVariablesEffective(context.Context, *AppVariablesEffectiveReq) (*VariablesEffectiveRep, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetVariablesEffective not implemented")
 }
 func (UnimplementedAppServer) mustEmbedUnimplementedAppServer() {}
 func (UnimplementedAppServer) testEmbeddedByValue()             {}
@@ -360,24 +344,6 @@ func _App_GetSwaggerUrlByBackendUrl_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _App_GetVariablesEffective_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AppVariablesEffectiveReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AppServer).GetVariablesEffective(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: App_GetVariablesEffective_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AppServer).GetVariablesEffective(ctx, req.(*AppVariablesEffectiveReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // App_ServiceDesc is the grpc.ServiceDesc for App service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -416,10 +382,6 @@ var App_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSwaggerUrlByBackendUrl",
 			Handler:    _App_GetSwaggerUrlByBackendUrl_Handler,
-		},
-		{
-			MethodName: "GetVariablesEffective",
-			Handler:    _App_GetVariablesEffective_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

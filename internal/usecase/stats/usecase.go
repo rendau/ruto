@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -70,9 +69,9 @@ func (u *Usecase) Get(ctx context.Context) (*Stats, error) {
 			stats.EndpointsActive++
 		}
 
-		method := strings.ToUpper(strings.TrimSpace(endpoint.Method))
+		method := endpoint.Http.Method
 		if method == "" {
-			method = "UNKNOWN"
+			method = "*"
 		}
 
 		methodStats, ok := methodMap[method]

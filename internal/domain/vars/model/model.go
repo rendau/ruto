@@ -67,16 +67,9 @@ func (m *Vars) InterpolateString(s string) string {
 		return s
 	}
 
-	seen := map[string]struct{}{}
-
 	for i := 0; i < maxInterpolationDepth; i++ {
 		next := interpolationPattern.ReplaceAllStringFunc(s, func(match string) string {
 			key := match[2 : len(match)-2] // "{{" and "}}"
-
-			if _, ok := seen[key]; ok {
-				return match
-			}
-			seen[key] = struct{}{}
 
 			if value, ok := (*m)[key]; ok {
 				return value

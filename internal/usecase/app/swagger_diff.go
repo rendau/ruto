@@ -24,8 +24,8 @@ func buildSwaggerEndpointsDiff(swaggerEndpoints []swaggerService.Endpoint, regis
 
 	registeredSet := make(map[string]SwaggerEndpoint, len(registeredEndpoints))
 	for _, item := range registeredEndpoints {
-		method := normalizeComparableMethod(item.Method)
-		path := normalizeComparablePath(item.Path)
+		method := normalizeComparableMethod(item.Http.Method)
+		path := normalizeComparablePath(item.Http.Path)
 		if method == "" || path == "" {
 			continue
 		}

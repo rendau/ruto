@@ -8,7 +8,6 @@ import (
 	"github.com/rendau/ruto/internal/domain/app/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
-	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 	"github.com/rendau/ruto/internal/service/grpcreflect"
 
 	"github.com/rendau/ruto/internal/errs"
@@ -79,45 +78,6 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.App, error) {
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
 
-	return result, nil
-}
-
-func (u *Usecase) GetVariablesEffective(ctx context.Context, id string, variables []variableModel.Variable) ([]variableModel.Variable, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
-		return nil, errs.NotAuthorized
-	}
-
-	if u.rootSvc == nil {
-		return nil, fmt.Errorf("rootSvc: nil")
-	}
-	rootObj, err := u.rootSvc.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("rootSvc.Get: %w", err)
-	}
-	variables, err = variableModel.NormalizeList(variables)
-	if err != nil {
-		return nil, fmt.Errorf("variables: %w", err)
-	}
-
-	appObj := &model.App{Variables: variables}
-	id = strings.TrimSpace(id)
-	if id != "" {
-		appObj, _, err = u.svc.Get(ctx, id, true)
-		if err != nil {
-			return nil, fmt.Errorf("svc.Get: %w", err)
-		}
-		appObj.Variables = variables
-	}
-
-	effective, err := rootObj.EffectiveVariables(appObj, nil)
-	if err != nil {
-		return nil, fmt.Errorf("variables: %w", err)
-	}
-	result, err := variableModel.ResolveList(effective)
-	if err != nil {
-		return nil, fmt.Errorf("variables: %w", err)
-	}
 	return result, nil
 }
 
@@ -217,12 +177,11 @@ func (u *Usecase) GetGrpcReflectionEndpoints(ctx context.Context, id string) ([]
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
 
-	address := appObj.GrpcAddress()
-	if address == "" {
+	if appObj.Backend.GrpcUrl == "" {
 		return []GrpcReflectionEndpoint{}, nil
 	}
 
-	items, err := grpcreflect.LoadEndpoints(ctx, address)
+	items, err := grpcreflect.LoadEndpoints(ctx, appObj.Backend.GrpcUrl)
 	if err != nil {
 		return nil, fmt.Errorf("grpc reflection: %w", err)
 	}

@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package ruto_v1;
 
-import "google/protobuf/struct.proto";
-
 option go_package = "/ruto_v1";
 
 message ListParamsSt {
@@ -25,8 +23,4 @@ message ErrorRep {
   string code = 1;
   string message = 2;
   map<string, string> fields = 3;
-}
-
-message VariablesEffectiveRep {
-  repeated google.protobuf.Struct variables = 1;
 }

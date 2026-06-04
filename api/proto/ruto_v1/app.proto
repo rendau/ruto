@@ -34,9 +34,6 @@ service App {
   rpc GetSwaggerUrlByBackendUrl(AppGetSwaggerUrlByBackendUrlReq) returns (AppGetSwaggerUrlByBackendUrlRep) {
     option (google.api.http) = { get: "/app/swagger/url/by-backend-url" };
   };
-  rpc GetVariablesEffective(AppVariablesEffectiveReq) returns (VariablesEffectiveRep) {
-    option (google.api.http) = { post: "/app/variables/effective" body: "*" };
-  };
 }
 
 message AppUpdateReq {
@@ -88,9 +85,4 @@ message AppGetSwaggerUrlByBackendUrlReq {
 
 message AppGetSwaggerUrlByBackendUrlRep {
   string swagger_url = 1;
-}
-
-message AppVariablesEffectiveReq {
-  string id = 1;
-  repeated google.protobuf.Struct variables = 2;
 }

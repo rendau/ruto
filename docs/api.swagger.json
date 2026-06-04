@@ -166,38 +166,6 @@
         ]
       }
     },
-    "/app/variables/effective": {
-      "post": {
-        "operationId": "App_GetVariablesEffective",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/ruto_v1VariablesEffectiveRep"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ruto_v1AppVariablesEffectiveReq"
-            }
-          }
-        ],
-        "tags": [
-          "App"
-        ]
-      }
-    },
     "/app/{id}": {
       "get": {
         "operationId": "App_Get",
@@ -462,38 +430,6 @@
         ]
       }
     },
-    "/endpoint/variables/effective": {
-      "post": {
-        "operationId": "Endpoint_GetVariablesEffective",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/ruto_v1VariablesEffectiveRep"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ruto_v1EndpointVariablesEffectiveReq"
-            }
-          }
-        ],
-        "tags": [
-          "Endpoint"
-        ]
-      }
-    },
     "/endpoint/{id}": {
       "get": {
         "operationId": "Endpoint_Get",
@@ -692,38 +628,6 @@
               "type": "string"
             },
             "collectionFormat": "multi"
-          }
-        ],
-        "tags": [
-          "Root"
-        ]
-      }
-    },
-    "/root/variables/effective": {
-      "post": {
-        "operationId": "Root_GetVariablesEffective",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/ruto_v1VariablesEffectiveRep"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ruto_v1RootVariablesEffectiveReq"
-            }
           }
         ],
         "tags": [
@@ -1252,20 +1156,6 @@
         }
       }
     },
-    "ruto_v1AppVariablesEffectiveReq": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "variables": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        }
-      }
-    },
     "ruto_v1EndpointCreateRep": {
       "type": "object",
       "properties": {
@@ -1281,23 +1171,6 @@
           "$ref": "#/definitions/ruto_v1PaginationInfoSt"
         },
         "results": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        }
-      }
-    },
-    "ruto_v1EndpointVariablesEffectiveReq": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "app_id": {
-          "type": "string"
-        },
-        "variables": {
           "type": "array",
           "items": {
             "type": "object"
@@ -1409,17 +1282,6 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
-        }
-      }
-    },
-    "ruto_v1RootVariablesEffectiveReq": {
-      "type": "object",
-      "properties": {
-        "variables": {
-          "type": "array",
-          "items": {
-            "type": "object"
           }
         }
       }
@@ -1637,17 +1499,6 @@
         },
         "password": {
           "type": "string"
-        }
-      }
-    },
-    "ruto_v1VariablesEffectiveRep": {
-      "type": "object",
-      "properties": {
-        "variables": {
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
         }
       }
     }

@@ -113,9 +113,9 @@ func TestUsecase_GetSwaggerEndpointsDiff(t *testing.T) {
 				require.NotNil(t, pars.AppId)
 				require.Equal(t, "app-id", *pars.AppId)
 				return []*endpointModel.Endpoint{
-					{Method: "GET", Path: "users"},
-					{Method: "*", Path: "status"},
-					{Method: "DELETE", Path: "ghost"},
+					{Http: endpointModel.Http{Method: "GET", Path: "users"}},
+					{Http: endpointModel.Http{Method: "*", Path: "status"}},
+					{Http: endpointModel.Http{Method: "DELETE", Path: "ghost"}},
 				}, 3, nil
 			},
 		},
@@ -163,8 +163,8 @@ func TestUsecase_GetSwaggerEndpointsDiff_PathVariableNamesIgnored(t *testing.T) 
 				require.NotNil(t, pars.AppId)
 				require.Equal(t, "app-id", *pars.AppId)
 				return []*endpointModel.Endpoint{
-					{Method: "GET", Path: "/users/{id}"},
-					{Method: "POST", Path: "/users/:userId/orders/{order_id}"},
+					{Http: endpointModel.Http{Method: "GET", Path: "/users/{id}"}},
+					{Http: endpointModel.Http{Method: "POST", Path: "/users/:userId/orders/{order_id}"}},
 				}, 2, nil
 			},
 		},

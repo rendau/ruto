@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 
-	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -42,12 +41,4 @@ func (h *Root) GetJwtKidsByUrls(ctx context.Context, req *ruto_v1.RootJwtKidsReq
 		return nil, err
 	}
 	return &ruto_v1.RootJwtKidsRep{Kids: kids}, nil
-}
-
-func (h *Root) GetVariablesEffective(ctx context.Context, req *ruto_v1.RootVariablesEffectiveReq) (*ruto_v1.VariablesEffectiveRep, error) {
-	items, err := h.usecase.GetVariablesEffective(ctx, lo.FilterMap(req.GetVariables(), dto.DecodeVariable))
-	if err != nil {
-		return nil, err
-	}
-	return dto.EncodeVariablesEffectiveRep(items), nil
 }
