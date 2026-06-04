@@ -68,9 +68,19 @@ func (s *Service) Stop(timeout time.Duration) error {
 }
 
 func (s *Service) SetConfig(conf *rootModel.Root) error {
-	err := conf.Normalize()
-	if err != nil {
-		return fmt.Errorf("config normalize: %w", err)
+	// prepare config
+	{
+		// normalize
+		err := conf.Normalize()
+		if err != nil {
+			return fmt.Errorf("config normalize: %w", err)
+		}
+
+		// inherit
+		conf.InheritDown()
+
+		// interpolate
+		conf.Interpolate()
 	}
 
 	// set http handler

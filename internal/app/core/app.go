@@ -32,12 +32,10 @@ import (
 	cacheRepoMemP "github.com/rendau/ruto/internal/service/cache/repo/mem"
 	cacheRepoRedisP "github.com/rendau/ruto/internal/service/cache/repo/redis"
 	cacheServiceP "github.com/rendau/ruto/internal/service/cache/service"
-	serviceMigrateP "github.com/rendau/ruto/internal/service/migrate"
 	serviceSwaggerP "github.com/rendau/ruto/internal/service/swagger"
 	usecaseAppP "github.com/rendau/ruto/internal/usecase/app"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 	usecaseGatewayP "github.com/rendau/ruto/internal/usecase/gateway"
-	usecaseMigrateP "github.com/rendau/ruto/internal/usecase/migrate"
 	usecaseRootP "github.com/rendau/ruto/internal/usecase/root"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
 	usecaseStatsP "github.com/rendau/ruto/internal/usecase/stats"
@@ -136,17 +134,6 @@ func (a *App) Init() error {
 	usecaseStats := usecaseStatsP.New(domainRootService, domainAppService, domainEndpointService, domainUsrService)
 	handlerGrpcStats := handlerGrpcP.NewStats(usecaseStats)
 
-	// service-migrate (from legacy DM)
-	serviceMigrate := serviceMigrateP.New(
-		configCore.Conf.LegacyDMBaseURL,
-		configCore.Conf.LegacyDMRefreshToken,
-		domainRootService,
-		domainAppService,
-		domainEndpointService,
-	)
-	usecaseMigrate := usecaseMigrateP.New(serviceMigrate, sessionService)
-	handlerGrpcMigrate := handlerGrpcP.NewMigrate(usecaseMigrate)
-
 	// gateway
 	usecaseGateway := usecaseGatewayP.New(sessionService, cacheService.NewChildInstance("gateway:"))
 	handlerGrpcGateway := handlerGrpcP.NewGateway(usecaseGateway)
@@ -159,7 +146,6 @@ func (a *App) Init() error {
 		ruto_v1.RegisterSnapshotServer(server, handlerGrpcSnapshot)
 		ruto_v1.RegisterStatsServer(server, handlerGrpcStats)
 		ruto_v1.RegisterUsrServer(server, handlerGrpcUsr)
-		ruto_v1.RegisterMigrateServer(server, handlerGrpcMigrate)
 		ruto_v1.RegisterGatewayServer(server, handlerGrpcGateway)
 	})
 

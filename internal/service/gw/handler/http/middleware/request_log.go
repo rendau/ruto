@@ -15,8 +15,8 @@ func NewRequestLog(
 	routePath string,
 	accessLog bool,
 ) Middleware {
-	if ep.Method != "" {
-		routePath = ep.Method + " " + routePath
+	if ep.Http.Method != "" {
+		routePath = ep.Http.Method + " " + routePath
 	}
 
 	service := log.New(app, ep, routePath, accessLog)

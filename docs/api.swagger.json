@@ -15,9 +15,6 @@
       "name": "Gateway"
     },
     {
-      "name": "Migrate"
-    },
-    {
       "name": "Root"
     },
     {
@@ -612,38 +609,6 @@
         },
         "tags": [
           "Gateway"
-        ]
-      }
-    },
-    "/migrate/run": {
-      "post": {
-        "operationId": "Migrate_Run",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/ruto_v1MigrateRunRep"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/ruto_v1MigrateRunReq"
-            }
-          }
-        ],
-        "tags": [
-          "Migrate"
         ]
       }
     },
@@ -1417,36 +1382,6 @@
           "items": {
             "type": "string"
           }
-        }
-      }
-    },
-    "ruto_v1MigrateRunRep": {
-      "type": "object",
-      "properties": {
-        "realm_name": {
-          "type": "string"
-        },
-        "root_base_url": {
-          "type": "string"
-        },
-        "app_count": {
-          "type": "string",
-          "format": "int64"
-        },
-        "endpoint_count": {
-          "type": "string",
-          "format": "int64"
-        }
-      }
-    },
-    "ruto_v1MigrateRunReq": {
-      "type": "object",
-      "properties": {
-        "realm_name": {
-          "type": "string"
-        },
-        "jwk_url": {
-          "type": "string"
         }
       }
     },

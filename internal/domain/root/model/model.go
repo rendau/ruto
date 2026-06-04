@@ -1,6 +1,8 @@
 package model
 
 import (
+	"github.com/samber/lo"
+
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
@@ -42,4 +44,10 @@ func NewEmpty() *Root {
 		Jwt:  []RootJwt{},
 		Apps: []*appModel.App{},
 	}
+}
+
+func (m *Root) ActiveApps() []*appModel.App {
+	return lo.Filter(m.Apps, func(app *appModel.App, _ int) bool {
+		return app.Active
+	})
 }

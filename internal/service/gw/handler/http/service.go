@@ -54,7 +54,11 @@ func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, fin
 				continue
 			}
 
-			routePath := app.GetFullPathForEndpoint(ep.Path)
+			// route path
+			routePath := app.PathPrefix
+			if ep.Http.Path != "" {
+				routePath += "/" + ep.Http.Path
+			}
 
 			proxyHandler := appProxyHandler
 			if ep.Backend.CustomPath != "" {
@@ -64,31 +68,17 @@ func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, fin
 				)
 			}
 
-			authMiddleware, err := middleware.NewAuth(snapshot, app, ep)
-			if err != nil {
-				return nil, fmt.Errorf("auth middleware for %s %s: %w", ep.Method, routePath, err)
-			}
-
-			variables, err := snapshot.EffectiveVariables(app, ep)
-			if err != nil {
-				return nil, fmt.Errorf("variables for %s %s: %w", ep.Method, routePath, err)
-			}
-			backendParams, err := app.BackendRequestParamsWithVariables(ep, variables)
-			if err != nil {
-				return nil, fmt.Errorf("backend request params for %s %s: %w", ep.Method, routePath, err)
-			}
-
 			handler := middleware.Chain(proxyHandler,
 				middleware.NewMetrics(app, ep, routePath),
 				middleware.NewRequestLog(app, ep, routePath, accessLog),
-				authMiddleware,
-				middleware.NewBackendRequestParams(backendParams),
+				middleware.NewAuth(ep),
+				middleware.NewBackendRequestParams(ep),
 			)
 
-			if ep.Method == "*" {
+			if ep.Http.Method == "*" {
 				router.Handle(routePath, handler)
 			} else {
-				router.Method(ep.Method, routePath, handler)
+				router.Method(ep.Http.Method, routePath, handler)
 			}
 		}
 	}

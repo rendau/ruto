@@ -3,6 +3,8 @@ package model
 import (
 	"net/url"
 
+	"github.com/samber/lo"
+
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -39,9 +41,8 @@ type ListReq struct {
 	ExcludeID *string
 }
 
-// func (m *App) GetFullPathForEndpoint(endpointPath string) string {
-// 	if endpointPath == "" {
-// 		return m.PathPrefix
-// 	}
-// 	return m.PathPrefix + "/" + endpointPath
-// }
+func (m *App) ActiveEndpoints() []*endpointModel.Endpoint {
+	return lo.Filter(m.Endpoints, func(ep *endpointModel.Endpoint, _ int) bool {
+		return ep.Active
+	})
+}

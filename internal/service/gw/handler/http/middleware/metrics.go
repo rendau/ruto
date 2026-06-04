@@ -14,8 +14,8 @@ func NewMetrics(
 	ep *domEndpointModel.Endpoint,
 	routePath string,
 ) Middleware {
-	if ep.Method != "" {
-		routePath = ep.Method + " " + routePath
+	if ep.Http.Method != "" {
+		routePath = ep.Http.Method + " " + routePath
 	}
 
 	service := metrics.New(app, ep, routePath)
