@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const maxInterpolationDepth = 10
+
 var interpolationPattern = regexp.MustCompile(`\{\{([A-Za-z0-9_.-]+)\}\}`)
 var variableNamePattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
 
@@ -65,15 +67,31 @@ func (m *Vars) InterpolateString(s string) string {
 		return s
 	}
 
-	return interpolationPattern.ReplaceAllStringFunc(s, func(match string) string {
-		key := match[2 : len(match)-2] // "{{" and "}}"
+	seen := map[string]struct{}{}
 
-		if value, ok := (*m)[key]; ok {
-			return value
+	for i := 0; i < maxInterpolationDepth; i++ {
+		next := interpolationPattern.ReplaceAllStringFunc(s, func(match string) string {
+			key := match[2 : len(match)-2] // "{{" and "}}"
+
+			if _, ok := seen[key]; ok {
+				return match
+			}
+			seen[key] = struct{}{}
+
+			if value, ok := (*m)[key]; ok {
+				return value
+			}
+
+			return match
+		})
+
+		if next == s {
+			break
 		}
+		s = next
+	}
 
-		return match
-	})
+	return s
 }
 
 func (m *Vars) InterpolateVars(vars Vars) Vars {

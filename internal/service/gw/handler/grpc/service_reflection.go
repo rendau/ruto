@@ -19,8 +19,7 @@ func (s *Service) buildReflectionRoutes(snapshot *domRootModel.Root) map[string]
 	routes := make(map[string]*reflectionRoute)
 
 	for _, app := range snapshot.ActiveApps() {
-		targetGrpcAddress := app.GrpcAddress()
-		if targetGrpcAddress == "" {
+		if app.Backend.GrpcUrl == "" {
 			continue
 		}
 
@@ -43,7 +42,7 @@ func (s *Service) buildReflectionRoutes(snapshot *domRootModel.Root) map[string]
 		}
 
 		routes[strings.ToLower(app.Name)] = &reflectionRoute{
-			targetGrpcAddress: targetGrpcAddress,
+			targetGrpcAddress: app.Backend.GrpcUrl,
 			services:          services,
 			methods:           methods,
 			paths:             paths,

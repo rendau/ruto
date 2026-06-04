@@ -47,7 +47,7 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root, accessLog bool) (map[
 	routes := make(map[string]*route)
 
 	for _, app := range snapshot.ActiveApps() {
-		targetGrpcAddress := app.GrpcAddress()
+		targetGrpcAddress := app.Backend.GrpcUrl
 		if targetGrpcAddress == "" {
 			continue
 		}
@@ -70,26 +70,14 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root, accessLog bool) (map[
 
 			routeName := fmt.Sprintf("(%s)%s", app.Name, ep.Grpc.Path)
 
-			variables, err := snapshot.EffectiveVariables(app, ep)
-			if err != nil {
-				return nil, fmt.Errorf("variables for %s: %w", routeName, err)
-			}
-			backendParams, err := app.BackendRequestParamsWithVariables(ep, variables)
-			if err != nil {
-				return nil, fmt.Errorf("backend request params for %s: %w", routeName, err)
-			}
-
 			rt := &route{
 				app:               app,
 				endpoint:          ep,
 				targetGrpcAddress: targetGrpcAddress,
-				backendHeaders:    backendParams.Headers,
+				backendHeaders:    ep.Backend.Headers,
 			}
 
-			authService, err := serviceAuth.New(snapshot, app, ep)
-			if err != nil {
-				return nil, fmt.Errorf("auth for %s: %w", routeName, err)
-			}
+			authService := serviceAuth.New(ep)
 			logService := serviceLog.New(app, ep, "GRPC "+routeName, accessLog)
 			metricsService := serviceMetrics.New(app, ep, "GRPC "+routeName)
 

@@ -7,13 +7,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
-
 	"github.com/rendau/ruto/internal/constant"
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
 func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
@@ -31,8 +30,10 @@ func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 			},
 			requestMethod:     http.MethodGet,
 			requestPath:       "/account/profile?page=1",
@@ -44,8 +45,10 @@ func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
 			name: "empty endpoint type is treated as HTTP",
 			endpoint: &endpointModel.Endpoint{
 				Active: true,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 			},
 			requestMethod:     http.MethodGet,
 			requestPath:       "/account/profile",
@@ -57,8 +60,10 @@ func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: "*",
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: "*",
+					Path:   "profile",
+				},
 			},
 			requestMethod:     http.MethodPatch,
 			requestPath:       "/account/profile",
@@ -70,8 +75,10 @@ func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 				Backend: endpointModel.Backend{
 					CustomPath: "internal/me",
 				},
@@ -87,8 +94,10 @@ func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "users/{id}",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "users/{id}",
+				},
 			},
 			requestMethod:     http.MethodGet,
 			requestPath:       "/account/users/42",
@@ -136,26 +145,26 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 	defer backend.Close()
 
 	snapshot := rootModel.NewEmpty()
-	snapshot.Variables = []variableModel.Variable{
-		{Key: "token", Value: "root-token"},
-		{Key: "tenant", Value: "root-tenant"},
+	snapshot.Variables = varsModel.Vars{
+		"token":  "root-token",
+		"tenant": "root-tenant",
 	}
 	snapshot.Apps = []*appModel.App{
 		{
 			Active:     true,
 			PathPrefix: "/account",
 			Name:       "account",
-			Variables: []variableModel.Variable{
-				{Key: "tenant", Value: "app-tenant"},
-				{Key: "app_token", Value: "{{token}}:app"},
+			Variables: varsModel.Vars{
+				"tenant":    "app-tenant",
+				"app_token": "{{token}}:app",
 			},
 			Backend: appModel.Backend{
 				Url: backend.URL,
-				Headers: map[string]string{
+				Headers: varsModel.Vars{
 					"X-App-Token": "{{app_token}}",
 					"X-Shared":    "app",
 				},
-				QueryParams: map[string]string{
+				QueryParams: varsModel.Vars{
 					"app_only": "1",
 					"shared":   "app",
 				},
@@ -164,17 +173,19 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 				{
 					Active: true,
 					Type:   endpointModel.TypeHTTP,
-					Method: http.MethodGet,
-					Path:   "profile",
-					Variables: []variableModel.Variable{
-						{Key: "token", Value: "endpoint-token"},
+					Http: endpointModel.Http{
+						Method: http.MethodGet,
+						Path:   "profile",
+					},
+					Variables: varsModel.Vars{
+						"token": "endpoint-token",
 					},
 					Backend: endpointModel.Backend{
-						Headers: map[string]string{
+						Headers: varsModel.Vars{
 							"X-Endpoint-Token": "{{token}}",
 							"X-Shared":         "endpoint",
 						},
-						QueryParams: map[string]string{
+						QueryParams: varsModel.Vars{
 							"ep_only": "2",
 							"shared":  "{{tenant}}",
 						},
@@ -184,6 +195,8 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 		},
 	}
 	require.NoError(t, snapshot.Normalize())
+	snapshot.InheritDown()
+	snapshot.Interpolate()
 
 	service, err := New(snapshot, false)
 	require.NoError(t, err)
@@ -211,8 +224,10 @@ func TestService_RouteExclusionAndMethodHandling(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 			},
 			requestMethod:  http.MethodGet,
 			requestPath:    "/account/profile",
@@ -224,8 +239,10 @@ func TestService_RouteExclusionAndMethodHandling(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Active: false,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 			},
 			requestMethod:  http.MethodGet,
 			requestPath:    "/account/profile",
@@ -253,8 +270,10 @@ func TestService_RouteExclusionAndMethodHandling(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 			},
 			requestMethod:  http.MethodPost,
 			requestPath:    "/account/profile",
@@ -266,8 +285,10 @@ func TestService_RouteExclusionAndMethodHandling(t *testing.T) {
 			endpoint: &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 			},
 			requestMethod:  http.MethodGet,
 			requestPath:    "/account/missing",
@@ -336,8 +357,10 @@ func TestService_AuthMiddleware(t *testing.T) {
 			endpoint := &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 				Auth: authModel.Auth{
 					Enabled: true,
 					Mode:    constant.AuthModeReplace,
@@ -458,8 +481,10 @@ func TestService_CorsMiddleware(t *testing.T) {
 			endpoint := &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 			}
 			service := newTestService(t, backend.URL, true, endpoint, tt.cors)
 
@@ -518,8 +543,10 @@ func TestService_RedirectLocationRewrite(t *testing.T) {
 			endpoint := &endpointModel.Endpoint{
 				Active: true,
 				Type:   endpointModel.TypeHTTP,
-				Method: http.MethodGet,
-				Path:   "profile",
+				Http: endpointModel.Http{
+					Method: http.MethodGet,
+					Path:   "profile",
+				},
 			}
 			service := newTestService(t, backend.URL, true, endpoint, nil)
 
@@ -556,6 +583,8 @@ func newTestService(
 		},
 	}
 	require.NoError(t, snapshot.Normalize())
+	snapshot.InheritDown()
+	snapshot.Interpolate()
 
 	service, err := New(snapshot, false)
 	require.NoError(t, err)
