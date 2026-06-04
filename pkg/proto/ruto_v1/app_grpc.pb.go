@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	App_List_FullMethodName                       = "/ruto_v1.App/List"
 	App_Get_FullMethodName                        = "/ruto_v1.App/Get"
+	App_Interpolate_FullMethodName                = "/ruto_v1.App/Interpolate"
 	App_Create_FullMethodName                     = "/ruto_v1.App/Create"
 	App_Update_FullMethodName                     = "/ruto_v1.App/Update"
 	App_Delete_FullMethodName                     = "/ruto_v1.App/Delete"
@@ -37,6 +38,7 @@ const (
 type AppClient interface {
 	List(ctx context.Context, in *AppListReq, opts ...grpc.CallOption) (*AppListRep, error)
 	Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*structpb.Struct, error)
+	Interpolate(ctx context.Context, in *AppInterpolateReq, opts ...grpc.CallOption) (*structpb.Struct, error)
 	Create(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*AppCreateRep, error)
 	Update(ctx context.Context, in *AppUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -67,6 +69,16 @@ func (c *appClient) Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOpt
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(structpb.Struct)
 	err := c.cc.Invoke(ctx, App_Get_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *appClient) Interpolate(ctx context.Context, in *AppInterpolateReq, opts ...grpc.CallOption) (*structpb.Struct, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(structpb.Struct)
+	err := c.cc.Invoke(ctx, App_Interpolate_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +151,7 @@ func (c *appClient) GetSwaggerUrlByBackendUrl(ctx context.Context, in *AppGetSwa
 type AppServer interface {
 	List(context.Context, *AppListReq) (*AppListRep, error)
 	Get(context.Context, *AppGetReq) (*structpb.Struct, error)
+	Interpolate(context.Context, *AppInterpolateReq) (*structpb.Struct, error)
 	Create(context.Context, *structpb.Struct) (*AppCreateRep, error)
 	Update(context.Context, *AppUpdateReq) (*emptypb.Empty, error)
 	Delete(context.Context, *AppGetReq) (*emptypb.Empty, error)
@@ -160,6 +173,9 @@ func (UnimplementedAppServer) List(context.Context, *AppListReq) (*AppListRep, e
 }
 func (UnimplementedAppServer) Get(context.Context, *AppGetReq) (*structpb.Struct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedAppServer) Interpolate(context.Context, *AppInterpolateReq) (*structpb.Struct, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Interpolate not implemented")
 }
 func (UnimplementedAppServer) Create(context.Context, *structpb.Struct) (*AppCreateRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
@@ -232,6 +248,24 @@ func _App_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AppServer).Get(ctx, req.(*AppGetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _App_Interpolate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AppInterpolateReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AppServer).Interpolate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: App_Interpolate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AppServer).Interpolate(ctx, req.(*AppInterpolateReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -358,6 +392,10 @@ var App_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Get",
 			Handler:    _App_Get_Handler,
+		},
+		{
+			MethodName: "Interpolate",
+			Handler:    _App_Interpolate_Handler,
 		},
 		{
 			MethodName: "Create",

@@ -8,7 +8,9 @@ import (
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 	"github.com/rendau/ruto/internal/errs"
 	swaggerService "github.com/rendau/ruto/internal/service/swagger"
 )
@@ -85,6 +87,75 @@ type testSwaggerService struct {
 
 func (s *testSwaggerService) LoadEndpoints(ctx context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
 	return s.loadEndpoints(ctx, swaggerURL)
+}
+
+type testRootService struct {
+	get func(ctx context.Context) (*rootModel.Root, error)
+}
+
+func (s *testRootService) Get(ctx context.Context) (*rootModel.Root, error) {
+	return s.get(ctx)
+}
+
+func TestUsecase_Interpolate_NotAuthorized(t *testing.T) {
+
+	uc := New(nil, nil, nil, &testSessionService{session: &sessionModel.Session{Id: 0}})
+	_, err := uc.Interpolate(context.Background(), "app-id", varsModel.Vars{"k": "v"})
+	require.ErrorIs(t, err, errs.NotAuthorized)
+}
+
+func TestUsecase_Interpolate(t *testing.T) {
+
+	uc := New(
+		&testAppService{
+			get: func(_ context.Context, id string, errNE bool) (*appModel.App, bool, error) {
+				require.Equal(t, "app-id", id)
+				require.True(t, errNE)
+				return &appModel.App{
+					Id: "app-id",
+					Variables: varsModel.Vars{
+						"app_var": "app-v",
+					},
+					Backend: appModel.Backend{
+						Headers: varsModel.Vars{
+							"X-Root": "{{root_var}}",
+							"X-Req":  "{{req_var}}",
+							"X-App":  "{{app_var}}",
+						},
+					},
+				}, true, nil
+			},
+		},
+		nil,
+		nil,
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testRootService{
+			get: func(_ context.Context) (*rootModel.Root, error) {
+				return &rootModel.Root{
+					Variables: varsModel.Vars{
+						"root_var": "root-v",
+						"req_var":  "root-default",
+					},
+				}, nil
+			},
+		},
+	)
+
+	item, err := uc.Interpolate(context.Background(), " app-id ", varsModel.Vars{
+		"req_var": "req-v",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "app-id", item.Id)
+	require.Equal(t, varsModel.Vars{
+		"app_var":  "app-v",
+		"req_var":  "req-v",
+		"root_var": "root-v",
+	}, item.Variables)
+	require.Equal(t, varsModel.Vars{
+		"X-Root": "root-v",
+		"X-Req":  "req-v",
+		"X-App":  "app-v",
+	}, item.Backend.Headers)
 }
 
 func TestUsecase_GetSwaggerEndpointsDiff_NotAuthorized(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"github.com/rendau/ruto/internal/domain/app/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 	"github.com/rendau/ruto/internal/service/grpcreflect"
 
 	"github.com/rendau/ruto/internal/errs"
@@ -79,6 +80,35 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.App, error) {
 	}
 
 	return result, nil
+}
+
+func (u *Usecase) Interpolate(ctx context.Context, id string, variables varsModel.Vars) (*model.App, error) {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return nil, errs.NotAuthorized
+	}
+
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, errs.IdRequired
+	}
+
+	appObj, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return nil, fmt.Errorf("svc.Get: %w", err)
+	}
+
+	rootObj, err := u.rootSvc.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("rootSvc.Get: %w", err)
+	}
+
+	appObj.Variables.FillMissing(variables)
+	rootObj.Apps = append(rootObj.Apps, appObj)
+	rootObj.InheritDown()
+	rootObj.Interpolate()
+
+	return appObj, nil
 }
 
 func (u *Usecase) Update(ctx context.Context, id string, obj *model.App) error {

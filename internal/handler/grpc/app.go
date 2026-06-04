@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
 	usecase "github.com/rendau/ruto/internal/usecase/app"
@@ -41,6 +42,14 @@ func (h *App) List(ctx context.Context, req *ruto_v1.AppListReq) (*ruto_v1.AppLi
 
 func (h *App) Get(ctx context.Context, req *ruto_v1.AppGetReq) (*structpb.Struct, error) {
 	item, err := h.usecase.Get(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeAppData(item, 0), nil
+}
+
+func (h *App) Interpolate(ctx context.Context, req *ruto_v1.AppInterpolateReq) (*structpb.Struct, error) {
+	item, err := h.usecase.Interpolate(ctx, req.GetId(), varsModel.Vars(req.GetVariables()))
 	if err != nil {
 		return nil, err
 	}

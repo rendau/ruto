@@ -16,6 +16,12 @@ service App {
   rpc Get(AppGetReq) returns (google.protobuf.Struct) {
     option (google.api.http) = { get: "/app/{id}" };
   };
+  rpc Interpolate(AppInterpolateReq) returns (google.protobuf.Struct) {
+    option (google.api.http) = { post: "/app/{id}/interpolate" body: "*" };
+  };
+  rpc Inherited(AppInheritedReq) returns (google.protobuf.Struct) {
+    option (google.api.http) = { post: "/app/{id}/inherited" body: "*" };
+  };
   rpc Create(google.protobuf.Struct) returns (AppCreateRep) {
     option (google.api.http) = { post: "/app" body: "*" };
   };
@@ -43,6 +49,16 @@ message AppUpdateReq {
 
 message AppGetReq {
   string id = 1;
+}
+
+message AppInterpolateReq {
+  string id = 1;
+  map<string, string> variables = 2;
+}
+
+message AppInheritedReq {
+  string id = 1;
+  map<string, string> variables = 2;
 }
 
 message AppListReq {

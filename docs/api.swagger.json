@@ -292,6 +292,44 @@
         ]
       }
     },
+    "/app/{id}/interpolate": {
+      "post": {
+        "operationId": "App_Interpolate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ruto_v1AppInterpolateBody"
+            }
+          }
+        ],
+        "tags": [
+          "App"
+        ]
+      }
+    },
     "/app/{id}/swagger/endpoints-diff": {
       "get": {
         "operationId": "App_GetSwaggerEndpointsDiff",
@@ -1140,6 +1178,17 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/ruto_v1AppGrpcReflectionEndpoint"
+          }
+        }
+      }
+    },
+    "ruto_v1AppInterpolateBody": {
+      "type": "object",
+      "properties": {
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
           }
         }
       }
