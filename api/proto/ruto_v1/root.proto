@@ -15,9 +15,16 @@ service Root {
   rpc Set(google.protobuf.Struct) returns (google.protobuf.Empty) {
     option (google.api.http) = { post: "/root" body: "*" };
   };
+  rpc Interpolate(RootInterpolateReq) returns (google.protobuf.Struct) {
+    option (google.api.http) = { post: "/root/interpolate" body: "*" };
+  };
   rpc GetJwtKidsByUrls(RootJwtKidsReq) returns (RootJwtKidsRep) {
     option (google.api.http) = { get: "/root/jwt/kids/by-urls" };
   };
+}
+
+message RootInterpolateReq {
+  map<string, string> variables = 1;
 }
 
 message RootJwtKidsRep {

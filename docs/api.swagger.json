@@ -601,6 +601,38 @@
         ]
       }
     },
+    "/root/interpolate": {
+      "post": {
+        "operationId": "Root_Interpolate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ruto_v1RootInterpolateReq"
+            }
+          }
+        ],
+        "tags": [
+          "Root"
+        ]
+      }
+    },
     "/root/jwt/kids/by-urls": {
       "get": {
         "operationId": "Root_GetJwtKidsByUrls",
@@ -1272,6 +1304,17 @@
         "total_count": {
           "type": "string",
           "format": "int64"
+        }
+      }
+    },
+    "ruto_v1RootInterpolateReq": {
+      "type": "object",
+      "properties": {
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },

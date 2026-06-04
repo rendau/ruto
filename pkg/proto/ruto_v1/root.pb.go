@@ -24,6 +24,50 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type RootInterpolateReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Variables     map[string]string      `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RootInterpolateReq) Reset() {
+	*x = RootInterpolateReq{}
+	mi := &file_ruto_v1_root_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RootInterpolateReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RootInterpolateReq) ProtoMessage() {}
+
+func (x *RootInterpolateReq) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_root_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RootInterpolateReq.ProtoReflect.Descriptor instead.
+func (*RootInterpolateReq) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *RootInterpolateReq) GetVariables() map[string]string {
+	if x != nil {
+		return x.Variables
+	}
+	return nil
+}
+
 type RootJwtKidsRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Kids          []string               `protobuf:"bytes,1,rep,name=kids,proto3" json:"kids,omitempty"`
@@ -33,7 +77,7 @@ type RootJwtKidsRep struct {
 
 func (x *RootJwtKidsRep) Reset() {
 	*x = RootJwtKidsRep{}
-	mi := &file_ruto_v1_root_proto_msgTypes[0]
+	mi := &file_ruto_v1_root_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +89,7 @@ func (x *RootJwtKidsRep) String() string {
 func (*RootJwtKidsRep) ProtoMessage() {}
 
 func (x *RootJwtKidsRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[0]
+	mi := &file_ruto_v1_root_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +102,7 @@ func (x *RootJwtKidsRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RootJwtKidsRep.ProtoReflect.Descriptor instead.
 func (*RootJwtKidsRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{0}
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RootJwtKidsRep) GetKids() []string {
@@ -77,7 +121,7 @@ type RootJwtKidsReq struct {
 
 func (x *RootJwtKidsReq) Reset() {
 	*x = RootJwtKidsReq{}
-	mi := &file_ruto_v1_root_proto_msgTypes[1]
+	mi := &file_ruto_v1_root_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -89,7 +133,7 @@ func (x *RootJwtKidsReq) String() string {
 func (*RootJwtKidsReq) ProtoMessage() {}
 
 func (x *RootJwtKidsReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[1]
+	mi := &file_ruto_v1_root_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -102,7 +146,7 @@ func (x *RootJwtKidsReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RootJwtKidsReq.ProtoReflect.Descriptor instead.
 func (*RootJwtKidsReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{1}
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *RootJwtKidsReq) GetUrls() []string {
@@ -116,15 +160,21 @@ var File_ruto_v1_root_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_root_proto_rawDesc = "" +
 	"\n" +
-	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"$\n" +
+	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x9c\x01\n" +
+	"\x12RootInterpolateReq\x12H\n" +
+	"\tvariables\x18\x01 \x03(\v2*.ruto_v1.RootInterpolateReq.VariablesEntryR\tvariables\x1a<\n" +
+	"\x0eVariablesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"$\n" +
 	"\x0eRootJwtKidsRep\x12\x12\n" +
 	"\x04kids\x18\x01 \x03(\tR\x04kids\"$\n" +
 	"\x0eRootJwtKidsReq\x12\x12\n" +
-	"\x04urls\x18\x01 \x03(\tR\x04urls2\xfd\x01\n" +
+	"\x04urls\x18\x01 \x03(\tR\x04urls2\xe0\x02\n" +
 	"\x04Root\x12E\n" +
 	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x17.google.protobuf.Struct\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/root\x12H\n" +
 	"\x03Set\x12\x17.google.protobuf.Struct\x1a\x16.google.protobuf.Empty\"\x10\x82\xd3\xe4\x93\x02\n" +
-	":\x01*\"\x05/root\x12d\n" +
+	":\x01*\"\x05/root\x12a\n" +
+	"\vInterpolate\x12\x1b.ruto_v1.RootInterpolateReq\x1a\x17.google.protobuf.Struct\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/root/interpolate\x12d\n" +
 	"\x10GetJwtKidsByUrls\x12\x17.ruto_v1.RootJwtKidsReq\x1a\x17.ruto_v1.RootJwtKidsRep\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/root/jwt/kids/by-urlsB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
@@ -140,25 +190,30 @@ func file_ruto_v1_root_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_root_proto_rawDescData
 }
 
-var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_ruto_v1_root_proto_goTypes = []any{
-	(*RootJwtKidsRep)(nil),  // 0: ruto_v1.RootJwtKidsRep
-	(*RootJwtKidsReq)(nil),  // 1: ruto_v1.RootJwtKidsReq
-	(*emptypb.Empty)(nil),   // 2: google.protobuf.Empty
-	(*structpb.Struct)(nil), // 3: google.protobuf.Struct
+	(*RootInterpolateReq)(nil), // 0: ruto_v1.RootInterpolateReq
+	(*RootJwtKidsRep)(nil),     // 1: ruto_v1.RootJwtKidsRep
+	(*RootJwtKidsReq)(nil),     // 2: ruto_v1.RootJwtKidsReq
+	nil,                        // 3: ruto_v1.RootInterpolateReq.VariablesEntry
+	(*emptypb.Empty)(nil),      // 4: google.protobuf.Empty
+	(*structpb.Struct)(nil),    // 5: google.protobuf.Struct
 }
 var file_ruto_v1_root_proto_depIdxs = []int32{
-	2, // 0: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
-	3, // 1: ruto_v1.Root.Set:input_type -> google.protobuf.Struct
-	1, // 2: ruto_v1.Root.GetJwtKidsByUrls:input_type -> ruto_v1.RootJwtKidsReq
-	3, // 3: ruto_v1.Root.Get:output_type -> google.protobuf.Struct
-	2, // 4: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
-	0, // 5: ruto_v1.Root.GetJwtKidsByUrls:output_type -> ruto_v1.RootJwtKidsRep
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	3, // 0: ruto_v1.RootInterpolateReq.variables:type_name -> ruto_v1.RootInterpolateReq.VariablesEntry
+	4, // 1: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
+	5, // 2: ruto_v1.Root.Set:input_type -> google.protobuf.Struct
+	0, // 3: ruto_v1.Root.Interpolate:input_type -> ruto_v1.RootInterpolateReq
+	2, // 4: ruto_v1.Root.GetJwtKidsByUrls:input_type -> ruto_v1.RootJwtKidsReq
+	5, // 5: ruto_v1.Root.Get:output_type -> google.protobuf.Struct
+	4, // 6: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
+	5, // 7: ruto_v1.Root.Interpolate:output_type -> google.protobuf.Struct
+	1, // 8: ruto_v1.Root.GetJwtKidsByUrls:output_type -> ruto_v1.RootJwtKidsRep
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_root_proto_init() }
@@ -172,7 +227,7 @@ func file_ruto_v1_root_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_root_proto_rawDesc), len(file_ruto_v1_root_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

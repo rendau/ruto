@@ -14,6 +14,7 @@ import (
 
 	"github.com/rendau/ruto/internal/constant"
 	"github.com/rendau/ruto/internal/domain/root/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 	"github.com/rendau/ruto/internal/errs"
 )
 
@@ -54,6 +55,25 @@ func (u *Usecase) Set(ctx context.Context, obj *model.Root) error {
 		return fmt.Errorf("svc.Set: %w", err)
 	}
 	return nil
+}
+
+func (u *Usecase) Interpolate(ctx context.Context, variables varsModel.Vars) (*model.Root, error) {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return nil, errs.NotAuthorized
+	}
+
+	item, err := u.svc.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("svc.Get: %w", err)
+	}
+
+	mergedVariables := varsModel.New(len(variables) + len(item.Variables))
+	mergedVariables.FillMissing(variables, item.Variables)
+	item.Variables = mergedVariables
+	item.Interpolate()
+
+	return item, nil
 }
 
 func (u *Usecase) GetJwtKidsByURLs(ctx context.Context, urls []string) ([]string, error) {

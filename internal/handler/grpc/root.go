@@ -35,6 +35,14 @@ func (h *Root) Set(ctx context.Context, req *structpb.Struct) (*emptypb.Empty, e
 	return &emptypb.Empty{}, nil
 }
 
+func (h *Root) Interpolate(ctx context.Context, req *ruto_v1.RootInterpolateReq) (*structpb.Struct, error) {
+	item, err := h.usecase.Interpolate(ctx, req.GetVariables())
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeRootData(item, 0), nil
+}
+
 func (h *Root) GetJwtKidsByUrls(ctx context.Context, req *ruto_v1.RootJwtKidsReq) (*ruto_v1.RootJwtKidsRep, error) {
 	kids, err := h.usecase.GetJwtKidsByURLs(ctx, req.GetUrls())
 	if err != nil {

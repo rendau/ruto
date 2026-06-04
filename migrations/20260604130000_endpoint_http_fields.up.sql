@@ -10,3 +10,15 @@ SET data = jsonb_set(
 )
 WHERE jsonb_typeof(data->'http') IS DISTINCT FROM 'object'
   AND COALESCE(data->>'type', 'http') <> 'grpc';
+
+UPDATE root
+SET data = data - 'variables'
+WHERE data ? 'variables';
+
+UPDATE app
+SET data = data - 'variables'
+WHERE data ? 'variables';
+
+UPDATE endpoint
+SET data = data - 'variables'
+WHERE data ? 'variables';
