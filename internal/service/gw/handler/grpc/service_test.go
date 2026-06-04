@@ -27,6 +27,7 @@ import (
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 	gwGrpcServer "github.com/rendau/ruto/internal/service/gw/server/grpc"
 )
 
@@ -47,7 +48,7 @@ func TestProxy_UnaryCall(t *testing.T) {
 
 	client := grpcTesting.NewTestServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
@@ -71,14 +72,15 @@ func TestProxy_BackendHeaders(t *testing.T) {
 	defer backendStop()
 
 	snapshot := buildSnapshotForBackend(t, backendAddr)
-	snapshot.Apps[0].Backend.Headers = map[string]string{
-		"X-App-Token": "app-token",
-		"X-Shared":    "app",
+	snapshot.Apps[0].Backend.Headers = varsModel.Vars{
+		"x-app-token": "app-token",
+		"x-shared":    "app",
 	}
-	snapshot.Apps[0].Endpoints[0].Backend.Headers = map[string]string{
-		"X-Endpoint-Token": "endpoint-token",
-		"X-Shared":         "endpoint",
+	snapshot.Apps[0].Endpoints[0].Backend.Headers = varsModel.Vars{
+		"x-endpoint-token": "endpoint-token",
+		"x-shared":         "endpoint",
 	}
+	snapshot.InheritDown()
 
 	svc, err := New(snapshot, false)
 	require.NoError(t, err)
@@ -92,7 +94,7 @@ func TestProxy_BackendHeaders(t *testing.T) {
 
 	client := grpcTesting.NewTestServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(
 		ctx,
@@ -114,7 +116,7 @@ func TestProxy_BackendHeaders(t *testing.T) {
 		require.Equal(t, []string{"endpoint-token"}, md.Get("x-endpoint-token"))
 		require.Equal(t, []string{"endpoint"}, md.Get("x-shared"))
 		require.Equal(t, []string{"client"}, md.Get("x-client"))
-	case <-time.After(2 * time.Second):
+	case <-time.After(5 * time.Second):
 		require.FailNow(t, "backend metadata was not captured")
 	}
 }
@@ -136,7 +138,7 @@ func TestProxy_BidiStreamingCall(t *testing.T) {
 
 	client := grpcTesting.NewTestServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
@@ -157,7 +159,7 @@ func TestProxy_BidiStreamingCall(t *testing.T) {
 		require.NoError(t, recvErr)
 		require.NotNil(t, rep)
 		require.NotNil(t, rep.Payload)
-		require.Equal(t, append([]byte("backend:"), body...), rep.Payload.Body)
+		require.Equal(t, slices.Concat([]byte("backend:"), body), rep.Payload.Body)
 	}
 
 	require.NoError(t, stream.CloseSend())
@@ -183,7 +185,7 @@ func TestProxy_MissingAppMetadata(t *testing.T) {
 
 	client := grpcTesting.NewTestServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	_, err = client.UnaryCall(ctx, &grpcTesting.SimpleRequest{
@@ -216,7 +218,7 @@ func TestProxy_DuplicateMethodResolvedByAppName(t *testing.T) {
 
 	client := grpcTesting.NewTestServiceClient(conn)
 
-	ctx1, cancel1 := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx1, cancel1 := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel1()
 	ctx1 = metadata.AppendToOutgoingContext(ctx1, metadataHeaderAppName, "backend-test-1")
 
@@ -228,7 +230,7 @@ func TestProxy_DuplicateMethodResolvedByAppName(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("backend-1:ping"), rep1.GetPayload().GetBody())
 
-	ctx2, cancel2 := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx2, cancel2 := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel2()
 	ctx2 = metadata.AppendToOutgoingContext(ctx2, metadataHeaderAppName, "backend-test-2")
 
@@ -256,7 +258,7 @@ func TestReflection_ListServicesFilteredByRegisteredEndpoints(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
@@ -292,7 +294,7 @@ func TestReflection_FileContainingRegisteredSymbolProxiedToBackend(t *testing.T)
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
@@ -327,7 +329,7 @@ func TestReflection_FileDescriptorMethodsFilteredByRegisteredEndpoints(t *testin
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
@@ -363,7 +365,7 @@ func TestReflection_FileContainingUnregisteredMethodRejected(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
@@ -397,7 +399,7 @@ func TestReflection_FileContainingUnregisteredSymbolRejected(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = conn.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	ctx = metadata.AppendToOutgoingContext(ctx, metadataHeaderAppName, "backend-test")
 
@@ -418,54 +420,54 @@ func TestReflection_FileContainingUnregisteredSymbolRejected(t *testing.T) {
 
 func TestReflection_FilterPreservesDependencyTypesFromUnregisteredServiceFiles(t *testing.T) {
 	depFile := &descriptorpb.FileDescriptorProto{
-		Name:    proto.String("nsi_v1/product_group.proto"),
-		Package: proto.String("nsi_v1"),
-		Syntax:  proto.String("proto3"),
+		Name:    new("nsi_v1/product_group.proto"),
+		Package: new("nsi_v1"),
+		Syntax:  new("proto3"),
 		MessageType: []*descriptorpb.DescriptorProto{
 			{
-				Name: proto.String("ProductGroupMain"),
+				Name: new("ProductGroupMain"),
 			},
 		},
 		Service: []*descriptorpb.ServiceDescriptorProto{
 			{
-				Name: proto.String("ProductGroup"),
+				Name: new("ProductGroup"),
 				Method: []*descriptorpb.MethodDescriptorProto{
 					{
-						Name:       proto.String("List"),
-						InputType:  proto.String(".nsi_v1.ProductGroupMain"),
-						OutputType: proto.String(".nsi_v1.ProductGroupMain"),
+						Name:       new("List"),
+						InputType:  new(".nsi_v1.ProductGroupMain"),
+						OutputType: new(".nsi_v1.ProductGroupMain"),
 					},
 				},
 			},
 		},
 	}
 	mainFile := &descriptorpb.FileDescriptorProto{
-		Name:       proto.String("nsi_v1/product.proto"),
-		Package:    proto.String("nsi_v1"),
-		Syntax:     proto.String("proto3"),
+		Name:       new("nsi_v1/product.proto"),
+		Package:    new("nsi_v1"),
+		Syntax:     new("proto3"),
 		Dependency: []string{depFile.GetName()},
 		MessageType: []*descriptorpb.DescriptorProto{
 			{
-				Name: proto.String("ProductMain"),
+				Name: new("ProductMain"),
 				Field: []*descriptorpb.FieldDescriptorProto{
 					{
-						Name:     proto.String("group"),
-						Number:   proto.Int32(1),
+						Name:     new("group"),
+						Number:   new(int32(1)),
 						Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
 						Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
-						TypeName: proto.String(".nsi_v1.ProductGroupMain"),
+						TypeName: new(".nsi_v1.ProductGroupMain"),
 					},
 				},
 			},
 		},
 		Service: []*descriptorpb.ServiceDescriptorProto{
 			{
-				Name: proto.String("Product"),
+				Name: new("Product"),
 				Method: []*descriptorpb.MethodDescriptorProto{
 					{
-						Name:       proto.String("Get"),
-						InputType:  proto.String(".nsi_v1.ProductMain"),
-						OutputType: proto.String(".nsi_v1.ProductMain"),
+						Name:       new("Get"),
+						InputType:  new(".nsi_v1.ProductMain"),
+						OutputType: new(".nsi_v1.ProductMain"),
 					},
 				},
 			},
@@ -553,13 +555,13 @@ type testBackendServer struct {
 func (s *testBackendServer) UnaryCall(ctx context.Context, req *grpcTesting.SimpleRequest) (*grpcTesting.SimpleResponse, error) {
 	s.captureMetadata(ctx)
 
-	inBody := make([]byte, 0)
+	inBody := []byte(nil)
 	if req.GetPayload() != nil {
 		inBody = req.GetPayload().GetBody()
 	}
 	return &grpcTesting.SimpleResponse{
 		Payload: &grpcTesting.Payload{
-			Body: append([]byte(s.prefix), inBody...),
+			Body: slices.Concat([]byte(s.prefix), inBody),
 		},
 	}, nil
 }
@@ -584,14 +586,14 @@ func (s *testBackendServer) FullDuplexCall(stream gogrpc.BidiStreamingServer[grp
 			return err
 		}
 
-		inBody := make([]byte, 0)
+		inBody := []byte(nil)
 		if req.GetPayload() != nil {
 			inBody = req.GetPayload().GetBody()
 		}
 
 		if sendErr := stream.Send(&grpcTesting.StreamingOutputCallResponse{
 			Payload: &grpcTesting.Payload{
-				Body: append([]byte(s.prefix), inBody...),
+				Body: slices.Concat([]byte(s.prefix), inBody),
 			},
 		}); sendErr != nil {
 			return sendErr
@@ -631,9 +633,9 @@ func runGatewayProxyServer(t *testing.T, svc *Service) (string, func()) {
 	t.Helper()
 
 	const maxAttempts = 10
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
+	for range maxAttempts {
 		port := getFreeTCPPort(t)
-		addr := "127.0.0.1:" + strconv.Itoa(port)
+		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
 
 		server := gwGrpcServer.New(port)
 		server.SetHandler(svc)
@@ -698,8 +700,8 @@ func buildSnapshotForBackend(t *testing.T, backendAddr string) *rootModel.Root {
 				PathPrefix: "/svc",
 				Name:       "backend-test",
 				Backend: appModel.Backend{
-					Url:      fmt.Sprintf("http://%s:%d", host, port),
-					GrpcPort: port,
+					Url:     fmt.Sprintf("http://%s:%d", host, port),
+					GrpcUrl: fmt.Sprintf("%s:%d", host, port),
 				},
 				Auth: authModel.Auth{
 					Enabled: false,
@@ -742,6 +744,7 @@ func buildSnapshotForBackend(t *testing.T, backendAddr string) *rootModel.Root {
 	}
 
 	require.NoError(t, snapshot.Normalize())
+	snapshot.InheritDown()
 	return snapshot
 }
 
@@ -751,6 +754,7 @@ func buildSnapshotForBackendUnaryOnly(t *testing.T, backendAddr string) *rootMod
 	snapshot := buildSnapshotForBackend(t, backendAddr)
 	snapshot.Apps[0].Endpoints = snapshot.Apps[0].Endpoints[:1]
 	require.NoError(t, snapshot.Normalize())
+	snapshot.InheritDown()
 	return snapshot
 }
 
@@ -779,8 +783,8 @@ func buildSnapshotForTwoBackends(t *testing.T, backendAddr1, backendAddr2 string
 				PathPrefix: "/svc1",
 				Name:       "backend-test-1",
 				Backend: appModel.Backend{
-					Url:      fmt.Sprintf("http://%s:%d", host1, port1),
-					GrpcPort: port1,
+					Url:     fmt.Sprintf("http://%s:%d", host1, port1),
+					GrpcUrl: fmt.Sprintf("%s:%d", host1, port1),
 				},
 				Auth: authModel.Auth{
 					Enabled: false,
@@ -810,8 +814,8 @@ func buildSnapshotForTwoBackends(t *testing.T, backendAddr1, backendAddr2 string
 				PathPrefix: "/svc2",
 				Name:       "backend-test-2",
 				Backend: appModel.Backend{
-					Url:      fmt.Sprintf("http://%s:%d", host2, port2),
-					GrpcPort: port2,
+					Url:     fmt.Sprintf("http://%s:%d", host2, port2),
+					GrpcUrl: fmt.Sprintf("%s:%d", host2, port2),
 				},
 				Auth: authModel.Auth{
 					Enabled: false,
@@ -839,5 +843,6 @@ func buildSnapshotForTwoBackends(t *testing.T, backendAddr1, backendAddr2 string
 	}
 
 	require.NoError(t, snapshot.Normalize())
+	snapshot.InheritDown()
 	return snapshot
 }
