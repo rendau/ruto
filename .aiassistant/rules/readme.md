@@ -21,7 +21,6 @@ Go monorepo: `core`, `gateway`, Vue 3 admin SPA in `apps/admin`.
 - Use `.aiassistant/rules/preferences.md`.
 - core — источник конфигурации snapshot и бизнес-логики, так же бэкенд для apps/admin
 - gateway работает как proxy
-- все API изменения начинаются с proto
 
 ## Commands
 
