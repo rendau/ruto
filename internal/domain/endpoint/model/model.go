@@ -6,7 +6,6 @@ import (
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
-	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
@@ -41,9 +40,16 @@ type Grpc struct {
 }
 
 type Backend struct {
-	CustomPath  string            `json:"custom_path"`
-	Headers     map[string]string `json:"headers"`
-	QueryParams map[string]string `json:"query_params"`
+	CustomPath  string         `json:"custom_path"`
+	Headers     varsModel.Vars `json:"headers"`
+	QueryParams varsModel.Vars `json:"query_params"`
+}
+
+type ListReq struct {
+	commonModel.ListParams
+
+	AppId  *string
+	Active *bool
 }
 
 func (m *Endpoint) Normalize() error {
@@ -65,39 +71,32 @@ func (m *Endpoint) Normalize() error {
 		}
 	}
 
-	if m.Method == "" {
-		return fmt.Errorf("method: empty")
-	}
-
-	if strings.Contains(m.Path, "*") {
-		return fmt.Errorf("path: wildcard '*' is not allowed")
-	}
-
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
 	}
+
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
-	var err error
-	m.Variables, err = variableModel.NormalizeList(m.Variables)
-	if err != nil {
+
+	if err := m.Variables.Normalize(); err != nil {
 		return fmt.Errorf("variables: %w", err)
 	}
 
 	return nil
 }
 
-func (m *Backend) Normalize() error {
-	m.CustomPath = strings.TrimPrefix(strings.TrimSpace(m.CustomPath), "/")
-	m.Headers = normalizeStringMap(m.Headers)
-	m.QueryParams = normalizeStringMap(m.QueryParams)
-	return nil
-}
-
 func (m *Http) Normalize() error {
 	m.Method = strings.ToUpper(strings.TrimSpace(m.Method))
+	if m.Method == "" {
+		return fmt.Errorf("method: empty")
+	}
+
 	m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
+	if strings.Contains(m.Path, "*") {
+		return fmt.Errorf("path: wildcard '*' is not allowed")
+	}
+
 	return nil
 }
 
@@ -124,6 +123,17 @@ func (m *Grpc) Normalize() error {
 	return nil
 }
 
+func (m *Backend) Normalize() error {
+	m.CustomPath = strings.TrimPrefix(strings.TrimSpace(m.CustomPath), "/")
+	if err := m.Headers.Normalize(); err != nil {
+		return fmt.Errorf("headers: %w", err)
+	}
+	if err := m.QueryParams.Normalize(); err != nil {
+		return fmt.Errorf("query_params: %w", err)
+	}
+	return nil
+}
+
 func normalizeType(v Type) Type {
 	switch Type(strings.ToLower(strings.TrimSpace(string(v)))) {
 	case "", TypeHTTP:
@@ -133,11 +143,4 @@ func normalizeType(v Type) Type {
 	default:
 		return ""
 	}
-}
-
-type ListReq struct {
-	commonModel.ListParams
-
-	AppId  *string
-	Active *bool
 }
