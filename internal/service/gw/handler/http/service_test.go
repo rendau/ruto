@@ -7,12 +7,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
+
 	"github.com/rendau/ruto/internal/constant"
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
-	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 )
 
 func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
@@ -148,7 +149,7 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 				{Key: "tenant", Value: "app-tenant"},
 				{Key: "app_token", Value: "{{token}}:app"},
 			},
-			Backend: appModel.AppBackend{
+			Backend: appModel.Backend{
 				Url: backend.URL,
 				Headers: map[string]string{
 					"X-App-Token": "{{app_token}}",
@@ -548,7 +549,7 @@ func newTestService(
 			Active:     appActive,
 			PathPrefix: "/account",
 			Name:       "account",
-			Backend: appModel.AppBackend{
+			Backend: appModel.Backend{
 				Url: backendURL,
 			},
 			Endpoints: []*endpointModel.Endpoint{endpoint},

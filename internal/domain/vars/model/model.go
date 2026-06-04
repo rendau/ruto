@@ -15,23 +15,16 @@ func New(cap int) Vars {
 	return make(Vars, cap)
 }
 
-func NewFromMerge(vars ...Vars) Vars {
-	resultCap := 0
-	for _, v := range vars {
-		resultCap += len(v)
-	}
-	result := New(resultCap)
-	result.Assign(vars...)
-	return result
-}
-
-func (m *Vars) Assign(vars ...Vars) {
+func (m *Vars) FillMissing(vars ...Vars) {
 	if *m == nil {
 		*m = New(0)
 	}
 
 	for _, v := range vars {
 		for k, val := range v {
+			if _, ok := (*m)[k]; ok {
+				continue
+			}
 			(*m)[k] = val
 		}
 	}

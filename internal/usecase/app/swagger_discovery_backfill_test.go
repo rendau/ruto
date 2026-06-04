@@ -52,7 +52,7 @@ func TestUsecase_BackfillSwaggerURLs(t *testing.T) {
 					Id:         "a1",
 					PathPrefix: "/svc1",
 					Name:       "Service One",
-					Backend: appModel.AppBackend{
+					Backend: appModel.Backend{
 						Url: "https://example.local/service",
 					},
 				},
@@ -60,7 +60,7 @@ func TestUsecase_BackfillSwaggerURLs(t *testing.T) {
 					Id:         "a2",
 					PathPrefix: "/svc2",
 					Name:       "Service Two",
-					Backend: appModel.AppBackend{
+					Backend: appModel.Backend{
 						Url: "",
 					},
 				},
@@ -68,7 +68,7 @@ func TestUsecase_BackfillSwaggerURLs(t *testing.T) {
 					Id:         "a3",
 					PathPrefix: "/svc3",
 					Name:       "Service Three",
-					Backend: appModel.AppBackend{
+					Backend: appModel.Backend{
 						Url:        "https://example.local/already",
 						SwaggerUrl: "https://example.local/already/swagger.json",
 					},

@@ -101,6 +101,23 @@ func (m *AuthMethod) Normalize() error {
 	return nil
 }
 
+func (m *AuthMethod) HasSingleType() bool {
+	count := 0
+	if m.Basic != nil {
+		count++
+	}
+	if m.APIKey != nil {
+		count++
+	}
+	if m.JWT != nil {
+		count++
+	}
+	if m.IPValidation != nil {
+		count++
+	}
+	return count == 1
+}
+
 func (m *AuthMethodBasic) Normalize() error {
 	for i := range m.Users {
 		if err := m.Users[i].Normalize(); err != nil {

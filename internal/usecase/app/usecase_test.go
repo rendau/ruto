@@ -102,7 +102,7 @@ func TestUsecase_GetSwaggerEndpointsDiff(t *testing.T) {
 				require.Equal(t, "app-id", id)
 				return &appModel.App{
 					Id: "app-id",
-					Backend: appModel.AppBackend{
+					Backend: appModel.Backend{
 						SwaggerUrl: "https://example.local/swagger.json",
 					},
 				}, true, nil
@@ -152,7 +152,7 @@ func TestUsecase_GetSwaggerEndpointsDiff_PathVariableNamesIgnored(t *testing.T) 
 				require.Equal(t, "app-id", id)
 				return &appModel.App{
 					Id: "app-id",
-					Backend: appModel.AppBackend{
+					Backend: appModel.Backend{
 						SwaggerUrl: "https://example.local/swagger.json",
 					},
 				}, true, nil
@@ -217,7 +217,7 @@ func TestUsecase_Create_DuplicateAppName(t *testing.T) {
 		Active:     true,
 		PathPrefix: "/gateway",
 		Name:       "gateway api",
-		Backend: appModel.AppBackend{
+		Backend: appModel.Backend{
 			Url: "https://example.local",
 		},
 	})
@@ -257,7 +257,7 @@ func TestUsecase_Update_SameAppNameForSelfAllowed(t *testing.T) {
 		Active:     true,
 		PathPrefix: "/gateway",
 		Name:       "gateway api",
-		Backend: appModel.AppBackend{
+		Backend: appModel.Backend{
 			Url: "https://example.local",
 		},
 	})

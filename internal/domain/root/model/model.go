@@ -13,9 +13,7 @@ type Root struct {
 	Auth      authModel.Auth `json:"auth"`
 	Variables varsModel.Vars `json:"variables"`
 
-	Apps                   []*appModel.App `json:"apps"`                     // not stored in db
-	MergedApps             []*appModel.App `json:"merged_apps"`              // not stored in db
-	InterpolatedMergedApps []*appModel.App `json:"interpolated_merged_apps"` // not stored in db
+	Apps []*appModel.App `json:"apps"` // not stored in db
 }
 
 type RootCors struct {

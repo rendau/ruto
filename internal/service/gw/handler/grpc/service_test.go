@@ -697,7 +697,7 @@ func buildSnapshotForBackend(t *testing.T, backendAddr string) *rootModel.Root {
 				Active:     true,
 				PathPrefix: "/svc",
 				Name:       "backend-test",
-				Backend: appModel.AppBackend{
+				Backend: appModel.Backend{
 					Url:      fmt.Sprintf("http://%s:%d", host, port),
 					GrpcPort: port,
 				},
@@ -778,7 +778,7 @@ func buildSnapshotForTwoBackends(t *testing.T, backendAddr1, backendAddr2 string
 				Active:     true,
 				PathPrefix: "/svc1",
 				Name:       "backend-test-1",
-				Backend: appModel.AppBackend{
+				Backend: appModel.Backend{
 					Url:      fmt.Sprintf("http://%s:%d", host1, port1),
 					GrpcPort: port1,
 				},
@@ -809,7 +809,7 @@ func buildSnapshotForTwoBackends(t *testing.T, backendAddr1, backendAddr2 string
 				Active:     true,
 				PathPrefix: "/svc2",
 				Name:       "backend-test-2",
-				Backend: appModel.AppBackend{
+				Backend: appModel.Backend{
 					Url:      fmt.Sprintf("http://%s:%d", host2, port2),
 					GrpcPort: port2,
 				},

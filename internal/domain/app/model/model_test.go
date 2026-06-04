@@ -7,7 +7,7 @@ import (
 func TestAppNormalize_RejectWildcardInPathPrefix(t *testing.T) {
 	item := &App{
 		PathPrefix: "api/*",
-		Backend: AppBackend{
+		Backend: Backend{
 			Url: "http://example.local/svc",
 		},
 	}
@@ -24,7 +24,7 @@ func TestAppNormalize_RejectWildcardInPathPrefix(t *testing.T) {
 func TestAppNormalize_RejectPathParamsInPathPrefix(t *testing.T) {
 	item := &App{
 		PathPrefix: "api/{id}",
-		Backend: AppBackend{
+		Backend: Backend{
 			Url: "http://example.local/svc",
 		},
 	}
@@ -41,7 +41,7 @@ func TestAppNormalize_RejectPathParamsInPathPrefix(t *testing.T) {
 func TestAppNormalize_RejectRegexParamsInPathPrefix(t *testing.T) {
 	item := &App{
 		PathPrefix: "api/{id:[0-9]+}",
-		Backend: AppBackend{
+		Backend: Backend{
 			Url: "http://example.local/svc",
 		},
 	}
@@ -58,7 +58,7 @@ func TestAppNormalize_RejectRegexParamsInPathPrefix(t *testing.T) {
 func TestAppNormalize_AllowSimplePathPrefix(t *testing.T) {
 	item := &App{
 		PathPrefix: "api/v1_public-1",
-		Backend: AppBackend{
+		Backend: Backend{
 			Url: "http://example.local/svc",
 		},
 	}
@@ -75,7 +75,7 @@ func TestAppNormalize_AllowSimplePathPrefix(t *testing.T) {
 func TestAppNormalize_RejectInvalidSwaggerURLScheme(t *testing.T) {
 	item := &App{
 		PathPrefix: "api",
-		Backend: AppBackend{
+		Backend: Backend{
 			Url:        "http://example.local/svc",
 			SwaggerUrl: "ftp://example.local/swagger.json",
 		},
@@ -93,7 +93,7 @@ func TestAppNormalize_RejectInvalidSwaggerURLScheme(t *testing.T) {
 func TestAppNormalize_AllowValidSwaggerURL(t *testing.T) {
 	item := &App{
 		PathPrefix: "api",
-		Backend: AppBackend{
+		Backend: Backend{
 			Url:        "http://example.local/svc",
 			SwaggerUrl: "https://example.local/openapi.json",
 		},
@@ -111,7 +111,7 @@ func TestAppNormalize_AllowValidSwaggerURL(t *testing.T) {
 func TestAppNormalize_BackendRequestParams(t *testing.T) {
 	item := &App{
 		PathPrefix: "api",
-		Backend: AppBackend{
+		Backend: Backend{
 			Url: "http://example.local/svc",
 			Headers: map[string]string{
 				" X-App-Token ": " secret ",

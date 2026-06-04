@@ -320,7 +320,7 @@ func mapApp(item legacyApp) (*appModel.App, error) {
 		Active:     item.Active,
 		PathPrefix: item.Data.Path,
 		Name:       item.Data.Name,
-		Backend: appModel.AppBackend{
+		Backend: appModel.Backend{
 			Url: backendURL,
 		},
 		Auth: authModel.Auth{

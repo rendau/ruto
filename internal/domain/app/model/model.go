@@ -22,16 +22,14 @@ type App struct {
 	Active     bool           `json:"active"`
 	PathPrefix string         `json:"path_prefix"`
 	Name       string         `json:"name"`
-	Backend    AppBackend     `json:"backend"`
+	Backend    Backend        `json:"backend"`
 	Auth       authModel.Auth `json:"auth"`
 	Variables  varsModel.Vars `json:"variables"`
 
-	Endpoints                   []*endpointModel.Endpoint `json:"endpoints"`                     // not stored in db
-	MergedEndpoints             []*endpointModel.Endpoint `json:"merged_endpoints"`              // not stored in db
-	InterpolatedMergedEndpoints []*endpointModel.Endpoint `json:"interpolated_merged_endpoints"` // not stored in db
+	Endpoints []*endpointModel.Endpoint `json:"endpoints"` // not stored in db
 }
 
-type AppBackend struct {
+type Backend struct {
 	Url              string         `json:"url"`
 	ParsedUrl        *url.URL       `json:"-"`
 	SwaggerUrl       string         `json:"swagger_url"`
@@ -75,7 +73,7 @@ func (m *App) Normalize() error {
 	return nil
 }
 
-func (m *AppBackend) Normalize() error {
+func (m *Backend) Normalize() error {
 	var err error
 
 	m.Url = strings.TrimSpace(m.Url)

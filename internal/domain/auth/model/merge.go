@@ -6,22 +6,21 @@ import (
 	"github.com/rendau/ruto/internal/constant"
 )
 
-func (m *Auth) Merge(rootAuth, appAuth *Auth) {
+func Merge(parent, child Auth) Auth {
 	result := Auth{}
 
-	result.mergeOne(rootAuth)
-	result.mergeOne(appAuth)
-	result.mergeOne(m)
+	result.applyChild(parent)
+	result.applyChild(child)
 
-	*m = result
+	return result
 }
 
-func (m *Auth) mergeOne(child *Auth) {
+func (m *Auth) applyChild(child Auth) {
 	m.Enabled = child.Enabled
 	m.Mode = child.Mode
 
-	if child.Enabled {
-		switch child.Mode {
+	if m.Enabled {
+		switch m.Mode {
 		case constant.AuthModeReplace:
 			m.Methods = append(make([]*AuthMethod, 0, len(child.Methods)), child.Methods...)
 		case constant.AuthModeExtend:
