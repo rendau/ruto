@@ -292,6 +292,44 @@
         ]
       }
     },
+    "/app/{id}/inherited": {
+      "post": {
+        "operationId": "App_Inherited",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AppInheritedBody"
+            }
+          }
+        ],
+        "tags": [
+          "App"
+        ]
+      }
+    },
     "/app/{id}/interpolate": {
       "post": {
         "operationId": "App_Interpolate",
@@ -1104,6 +1142,17 @@
     }
   },
   "definitions": {
+    "AppInheritedBody": {
+      "type": "object",
+      "properties": {
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {

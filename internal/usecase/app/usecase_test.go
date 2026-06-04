@@ -104,6 +104,13 @@ func TestUsecase_Interpolate_NotAuthorized(t *testing.T) {
 	require.ErrorIs(t, err, errs.NotAuthorized)
 }
 
+func TestUsecase_Inherited_NotAuthorized(t *testing.T) {
+
+	uc := New(nil, nil, nil, &testSessionService{session: &sessionModel.Session{Id: 0}})
+	_, err := uc.Inherited(context.Background(), "app-id", varsModel.Vars{"k": "v"})
+	require.ErrorIs(t, err, errs.NotAuthorized)
+}
+
 func TestUsecase_Interpolate(t *testing.T) {
 
 	uc := New(
@@ -155,6 +162,60 @@ func TestUsecase_Interpolate(t *testing.T) {
 		"X-Root": "root-v",
 		"X-Req":  "req-v",
 		"X-App":  "app-v",
+	}, item.Backend.Headers)
+}
+
+func TestUsecase_Inherited(t *testing.T) {
+
+	uc := New(
+		&testAppService{
+			get: func(_ context.Context, id string, errNE bool) (*appModel.App, bool, error) {
+				require.Equal(t, "app-id", id)
+				require.True(t, errNE)
+				return &appModel.App{
+					Id: "app-id",
+					Variables: varsModel.Vars{
+						"app_var": "app-v",
+					},
+					Backend: appModel.Backend{
+						Headers: varsModel.Vars{
+							"X-Root": "{{root_var}}",
+							"X-Req":  "{{req_var}}",
+							"X-App":  "{{app_var}}",
+						},
+					},
+				}, true, nil
+			},
+		},
+		nil,
+		nil,
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testRootService{
+			get: func(_ context.Context) (*rootModel.Root, error) {
+				return &rootModel.Root{
+					Variables: varsModel.Vars{
+						"root_var": "root-v",
+						"req_var":  "root-default",
+					},
+				}, nil
+			},
+		},
+	)
+
+	item, err := uc.Inherited(context.Background(), " app-id ", varsModel.Vars{
+		"req_var": "req-v",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "app-id", item.Id)
+	require.Equal(t, varsModel.Vars{
+		"app_var":  "app-v",
+		"req_var":  "req-v",
+		"root_var": "root-v",
+	}, item.Variables)
+	require.Equal(t, varsModel.Vars{
+		"X-Root": "{{root_var}}",
+		"X-Req":  "{{req_var}}",
+		"X-App":  "{{app_var}}",
 	}, item.Backend.Headers)
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/rendau/ruto/internal/domain/app/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 	"github.com/rendau/ruto/internal/service/grpcreflect"
 
@@ -83,6 +84,19 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.App, error) {
 }
 
 func (u *Usecase) Interpolate(ctx context.Context, id string, variables varsModel.Vars) (*model.App, error) {
+	return u.inherited(ctx, id, variables, true)
+}
+
+func (u *Usecase) Inherited(ctx context.Context, id string, variables varsModel.Vars) (*model.App, error) {
+	return u.inherited(ctx, id, variables, false)
+}
+
+func (u *Usecase) inherited(
+	ctx context.Context,
+	id string,
+	variables varsModel.Vars,
+	interpolate bool,
+) (*model.App, error) {
 	extractedSession := u.sessionSvc.FromContext(ctx)
 	if extractedSession.Id == 0 {
 		return nil, errs.NotAuthorized
@@ -98,15 +112,24 @@ func (u *Usecase) Interpolate(ctx context.Context, id string, variables varsMode
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
 
+	if u.rootSvc == nil {
+		return nil, fmt.Errorf("rootSvc: nil")
+	}
 	rootObj, err := u.rootSvc.Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("rootSvc.Get: %w", err)
+	}
+	if rootObj == nil {
+		rootObj = rootModel.NewEmpty()
 	}
 
 	appObj.Variables.FillMissing(variables)
 	rootObj.Apps = append(rootObj.Apps, appObj)
 	rootObj.InheritDown()
-	rootObj.Interpolate()
+
+	if interpolate {
+		rootObj.Interpolate()
+	}
 
 	return appObj, nil
 }

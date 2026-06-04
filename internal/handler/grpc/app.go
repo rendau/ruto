@@ -56,6 +56,14 @@ func (h *App) Interpolate(ctx context.Context, req *ruto_v1.AppInterpolateReq) (
 	return dto.EncodeAppData(item, 0), nil
 }
 
+func (h *App) Inherited(ctx context.Context, req *ruto_v1.AppInheritedReq) (*structpb.Struct, error) {
+	item, err := h.usecase.Inherited(ctx, req.GetId(), varsModel.Vars(req.GetVariables()))
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeAppData(item, 0), nil
+}
+
 func (h *App) Create(ctx context.Context, req *structpb.Struct) (*ruto_v1.AppCreateRep, error) {
 	newId, err := h.usecase.Create(ctx, dto.DecodeAppData(req))
 	if err != nil {
