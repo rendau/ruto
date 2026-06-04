@@ -5,15 +5,12 @@ import (
 	"net"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
-
-	"github.com/samber/lo"
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
-	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
 var (
@@ -21,33 +18,35 @@ var (
 )
 
 type App struct {
-	Id         string                    `json:"id"`
-	Active     bool                      `json:"active"`
-	PathPrefix string                    `json:"path_prefix"`
-	Name       string                    `json:"name"`
-	Backend    AppBackend                `json:"backend"`
-	Auth       authModel.Auth            `json:"auth"`
-	Variables  []variableModel.Variable  `json:"variables"`
-	Endpoints  []*endpointModel.Endpoint `json:"endpoints"`
+	Id         string         `json:"id"`
+	Active     bool           `json:"active"`
+	PathPrefix string         `json:"path_prefix"`
+	Name       string         `json:"name"`
+	Backend    AppBackend     `json:"backend"`
+	Auth       authModel.Auth `json:"auth"`
+	Variables  varsModel.Vars `json:"variables"`
+
+	Endpoints                   []*endpointModel.Endpoint `json:"endpoints"`                     // not stored in db
+	MergedEndpoints             []*endpointModel.Endpoint `json:"merged_endpoints"`              // not stored in db
+	InterpolatedMergedEndpoints []*endpointModel.Endpoint `json:"interpolated_merged_endpoints"` // not stored in db
 }
 
 type AppBackend struct {
-	Url              string            `json:"url"`
-	ParsedUrl        *url.URL          `json:"-"`
-	SwaggerUrl       string            `json:"swagger_url"`
-	ParsedSwaggerUrl *url.URL          `json:"-"`
-	GrpcPort         int               `json:"grpc_port"`
-	Headers          map[string]string `json:"headers"`
-	QueryParams      map[string]string `json:"query_params"`
+	Url              string         `json:"url"`
+	ParsedUrl        *url.URL       `json:"-"`
+	SwaggerUrl       string         `json:"swagger_url"`
+	ParsedSwaggerUrl *url.URL       `json:"-"`
+	GrpcUrl          string         `json:"grpc_url"`
+	Headers          varsModel.Vars `json:"headers"`
+	QueryParams      varsModel.Vars `json:"query_params"`
 }
 
-type BackendRequestParams struct {
-	Headers     map[string]string
-	QueryParams map[string]string
-}
+type ListReq struct {
+	commonModel.ListParams
 
-func (m *App) String() string {
-	return fmt.Sprintf("app{%s}", m.PathPrefix)
+	Active    *bool
+	NameEqCI  *string
+	ExcludeID *string
 }
 
 func (m *App) Normalize() error {
@@ -65,9 +64,7 @@ func (m *App) Normalize() error {
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
-	var err error
-	m.Variables, err = variableModel.NormalizeList(m.Variables)
-	if err != nil {
+	if err := m.Variables.Normalize(); err != nil {
 		return fmt.Errorf("variables: %w", err)
 	}
 	for i := range m.Endpoints {
@@ -78,44 +75,9 @@ func (m *App) Normalize() error {
 	return nil
 }
 
-func (m *App) ActiveEndpoints() []*endpointModel.Endpoint {
-	return lo.FilterMap(m.Endpoints, func(v *endpointModel.Endpoint, _ int) (*endpointModel.Endpoint, bool) {
-		return v, v.Active
-	})
-}
-
-func (m *App) BackendRequestParams(endpoint *endpointModel.Endpoint) BackendRequestParams {
-	return BackendRequestParams{
-		Headers:     mergeStringMaps(m.Backend.Headers, endpoint.Backend.Headers),
-		QueryParams: mergeStringMaps(m.Backend.QueryParams, endpoint.Backend.QueryParams),
-	}
-}
-
-func (m *App) BackendRequestParamsWithVariables(endpoint *endpointModel.Endpoint, variables []variableModel.Variable) (BackendRequestParams, error) {
-	scope, err := variableModel.Resolve(variables)
-	if err != nil {
-		return BackendRequestParams{}, err
-	}
-
-	params := m.BackendRequestParams(endpoint)
-	params.Headers, err = variableModel.InterpolateMap(params.Headers, scope)
-	if err != nil {
-		return BackendRequestParams{}, fmt.Errorf("headers: %w", err)
-	}
-	params.QueryParams, err = variableModel.InterpolateMap(params.QueryParams, scope)
-	if err != nil {
-		return BackendRequestParams{}, fmt.Errorf("query_params: %w", err)
-	}
-
-	return params, nil
-}
-
-func (m *App) GrpcAddress() string {
-	return m.Backend.GrpcAddress()
-}
-
 func (m *AppBackend) Normalize() error {
 	var err error
+
 	m.Url = strings.TrimSpace(m.Url)
 	if m.Url == "" {
 		return fmt.Errorf("url: empty")
@@ -146,76 +108,45 @@ func (m *AppBackend) Normalize() error {
 		}
 	}
 
-	if m.GrpcPort < 0 || m.GrpcPort > 65535 {
-		return fmt.Errorf("grpc_port: invalid")
+	m.GrpcUrl = strings.TrimSpace(m.GrpcUrl)
+	if m.GrpcUrl != "" {
+		if err = validateGrpcTarget(m.GrpcUrl); err != nil {
+			return fmt.Errorf("grpc_url: %w", err)
+		}
 	}
-	m.Headers = normalizeStringMap(m.Headers)
-	m.QueryParams = normalizeStringMap(m.QueryParams)
+
+	if err = m.Headers.Normalize(); err != nil {
+		return fmt.Errorf("headers: %w", err)
+	}
+	if err = m.QueryParams.Normalize(); err != nil {
+		return fmt.Errorf("query_params: %w", err)
+	}
 
 	return nil
 }
 
-func normalizeStringMap(values map[string]string) map[string]string {
-	if len(values) == 0 {
-		return nil
-	}
-	result := lo.PickBy(
-		lo.MapEntries(values, func(key, value string) (string, string) {
-			return strings.TrimSpace(key), strings.TrimSpace(value)
-		}),
-		func(key, _ string) bool {
-			return key != ""
-		},
-	)
-	if len(result) == 0 {
-		return nil
-	}
-	return result
-}
+// func (m *App) GetFullPathForEndpoint(endpointPath string) string {
+// 	if endpointPath == "" {
+// 		return m.PathPrefix
+// 	}
+// 	return m.PathPrefix + "/" + endpointPath
+// }
 
-func mergeStringMaps(base, override map[string]string) map[string]string {
-	if len(base) == 0 {
-		return override
-	}
-	if len(override) == 0 {
-		return base
-	}
-	return lo.Assign(base, override)
-}
-
-func (m *AppBackend) GrpcAddress() string {
-	if m.GrpcPort <= 0 {
-		return ""
-	}
-
-	parsedURL := m.ParsedUrl
-	if parsedURL == nil {
-		backend := *m
-		if err := backend.Normalize(); err != nil {
-			return ""
+func validateGrpcTarget(target string) error {
+	if strings.Contains(target, "://") {
+		u, err := url.Parse(target)
+		if err != nil {
+			return err
 		}
-		parsedURL = backend.ParsedUrl
+
+		switch u.Scheme {
+		case "dns", "unix", "passthrough":
+			return nil
+		default:
+			return fmt.Errorf("unsupported scheme %q", u.Scheme)
+		}
 	}
 
-	host := parsedURL.Hostname()
-	if host == "" {
-		return ""
-	}
-
-	return net.JoinHostPort(host, strconv.Itoa(m.GrpcPort))
-}
-
-func (m *App) GetFullPathForEndpoint(endpointPath string) string {
-	if endpointPath == "" {
-		return m.PathPrefix
-	}
-	return m.PathPrefix + "/" + endpointPath
-}
-
-type ListReq struct {
-	commonModel.ListParams
-
-	Active    *bool
-	NameEqCI  *string
-	ExcludeID *string
+	_, _, err := net.SplitHostPort(target)
+	return err
 }

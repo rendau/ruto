@@ -4,31 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/samber/lo"
-
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
-
-type Endpoint struct {
-	Id        string                   `json:"id"`
-	AppId     string                   `json:"app_id"`
-	Active    bool                     `json:"active"`
-	Method    string                   `json:"method"`
-	Path      string                   `json:"path"`
-	Backend   Backend                  `json:"backend"`
-	Auth      authModel.Auth           `json:"auth"`
-	Type      Type                     `json:"type"`
-	Grpc      Grpc                     `json:"grpc"`
-	Variables []variableModel.Variable `json:"variables"`
-}
-
-type Backend struct {
-	CustomPath  string            `json:"custom_path"`
-	Headers     map[string]string `json:"headers"`
-	QueryParams map[string]string `json:"query_params"`
-}
 
 type Type string
 
@@ -37,14 +17,33 @@ const (
 	TypeGRPC Type = "grpc"
 )
 
+type Endpoint struct {
+	Id        string         `json:"id"`
+	AppId     string         `json:"app_id"`
+	Active    bool           `json:"active"`
+	Type      Type           `json:"type"`
+	Http      Http           `json:"http"`
+	Grpc      Grpc           `json:"grpc"`
+	Backend   Backend        `json:"backend"`
+	Auth      authModel.Auth `json:"auth"`
+	Variables varsModel.Vars `json:"variables"`
+}
+
+type Http struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
+}
+
 type Grpc struct {
 	Service string `json:"service"`
 	Method  string `json:"method"`
 	Path    string `json:"path"`
 }
 
-func (m *Endpoint) String() string {
-	return fmt.Sprintf("endpoint{%s %s}", m.Method, m.Path)
+type Backend struct {
+	CustomPath  string            `json:"custom_path"`
+	Headers     map[string]string `json:"headers"`
+	QueryParams map[string]string `json:"query_params"`
 }
 
 func (m *Endpoint) Normalize() error {
@@ -53,16 +52,17 @@ func (m *Endpoint) Normalize() error {
 		return fmt.Errorf("type: invalid")
 	}
 
-	if m.Type == TypeGRPC {
+	switch m.Type {
+	case TypeHTTP:
+		m.Grpc = Grpc{}
+		if err := m.Http.Normalize(); err != nil {
+			return fmt.Errorf("http: %w", err)
+		}
+	case TypeGRPC:
+		m.Http = Http{}
 		if err := m.Grpc.Normalize(); err != nil {
 			return fmt.Errorf("grpc: %w", err)
 		}
-		m.Method = "GRPC"
-		m.Path = strings.TrimPrefix(m.Grpc.Path, "/")
-	} else {
-		m.Grpc = Grpc{}
-		m.Method = strings.ToUpper(strings.TrimSpace(m.Method))
-		m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
 	}
 
 	if m.Method == "" {
@@ -95,22 +95,10 @@ func (m *Backend) Normalize() error {
 	return nil
 }
 
-func normalizeStringMap(values map[string]string) map[string]string {
-	if len(values) == 0 {
-		return nil
-	}
-	result := lo.PickBy(
-		lo.MapEntries(values, func(key, value string) (string, string) {
-			return strings.TrimSpace(key), strings.TrimSpace(value)
-		}),
-		func(key, _ string) bool {
-			return key != ""
-		},
-	)
-	if len(result) == 0 {
-		return nil
-	}
-	return result
+func (m *Http) Normalize() error {
+	m.Method = strings.ToUpper(strings.TrimSpace(m.Method))
+	m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
+	return nil
 }
 
 func (m *Grpc) Normalize() error {

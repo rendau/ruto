@@ -8,17 +8,19 @@ import (
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
-	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
 type Root struct {
-	BaseUrl   string                   `json:"base_url"`
-	Cors      RootCors                 `json:"cors"`
-	Jwt       []RootJwt                `json:"jwt"`
-	Auth      authModel.Auth           `json:"auth"`
-	Variables []variableModel.Variable `json:"variables"`
-	Apps      []*appModel.App          `json:"apps"`
+	BaseUrl   string         `json:"base_url"`
+	Cors      RootCors       `json:"cors"`
+	Jwt       []RootJwt      `json:"jwt"`
+	Auth      authModel.Auth `json:"auth"`
+	Variables varsModel.Vars `json:"variables"`
+
+	Apps                   []*appModel.App `json:"apps"`                     // not stored in db
+	MergedApps             []*appModel.App `json:"merged_apps"`              // not stored in db
+	InterpolatedMergedApps []*appModel.App `json:"interpolated_merged_apps"` // not stored in db
 }
 
 type RootCors struct {
@@ -34,8 +36,19 @@ type RootJwt struct {
 	JwkUrl string `json:"jwk_url"`
 }
 
-func (m *Root) String() string {
-	return fmt.Sprintf("root{%s}", m.BaseUrl)
+func NewEmpty() *Root {
+	return &Root{
+		Cors: RootCors{
+			Enabled:          false,
+			AllowCredentials: false,
+			MaxAge:           "864000",
+			AllowOrigins:     []string{"*"},
+			AllowMethods:     []string{"*"},
+			AllowHeaders:     []string{"*"},
+		},
+		Jwt:  []RootJwt{},
+		Apps: []*appModel.App{},
+	}
 }
 
 func (m *Root) Normalize() error {
@@ -51,9 +64,7 @@ func (m *Root) Normalize() error {
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
-	var err error
-	m.Variables, err = variableModel.NormalizeList(m.Variables)
-	if err != nil {
+	if err := m.Variables.Normalize(); err != nil {
 		return fmt.Errorf("variables: %w", err)
 	}
 	for i := range m.Apps {
@@ -68,21 +79,6 @@ func (m *Root) ActiveApps() []*appModel.App {
 	return lo.FilterMap(m.Apps, func(v *appModel.App, _ int) (*appModel.App, bool) {
 		return v, v.Active
 	})
-}
-
-func (m *Root) EffectiveVariables(app *appModel.App, endpoint *endpointModel.Endpoint) ([]variableModel.Variable, error) {
-	result := m.Variables
-	if app != nil {
-		result = variableModel.Merge(result, app.Variables)
-	}
-	if endpoint != nil {
-		result = variableModel.Merge(result, endpoint.Variables)
-	}
-
-	if _, err := variableModel.Resolve(result); err != nil {
-		return nil, err
-	}
-	return result, nil
 }
 
 func (m *RootCors) Normalize() error {
@@ -108,19 +104,4 @@ func (m *RootJwt) Normalize() error {
 		return fmt.Errorf("jwk_url: empty")
 	}
 	return nil
-}
-
-func NewEmpty() *Root {
-	return &Root{
-		Cors: RootCors{
-			Enabled:          false,
-			AllowCredentials: false,
-			MaxAge:           "864000",
-			AllowOrigins:     []string{"*"},
-			AllowMethods:     []string{"*"},
-			AllowHeaders:     []string{"*"},
-		},
-		Jwt:  []RootJwt{},
-		Apps: []*appModel.App{},
-	}
 }
