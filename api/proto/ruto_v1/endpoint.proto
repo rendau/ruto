@@ -4,7 +4,7 @@ package ruto_v1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
-import "ruto_v1/auth.proto";
+import "google/protobuf/struct.proto";
 import "ruto_v1/common.proto";
 
 option go_package = "/ruto_v1";
@@ -13,14 +13,14 @@ service Endpoint {
   rpc List(EndpointListReq) returns (EndpointListRep) {
     option (google.api.http) = { get: "/endpoint" };
   };
-  rpc Get(EndpointGetReq) returns (EndpointMain) {
+  rpc Get(EndpointGetReq) returns (google.protobuf.Struct) {
     option (google.api.http) = { get: "/endpoint/{id}" };
   };
-  rpc Create(EndpointMain) returns (EndpointCreateRep) {
+  rpc Create(google.protobuf.Struct) returns (EndpointCreateRep) {
     option (google.api.http) = { post: "/endpoint" body: "*" };
   };
-  rpc Update(EndpointMain) returns (google.protobuf.Empty) {
-    option (google.api.http) = { put: "/endpoint/{id}" body: "*" };
+  rpc Update(EndpointUpdateReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { put: "/endpoint/{id}" body: "data" };
   };
   rpc Delete(EndpointGetReq) returns (google.protobuf.Empty) {
     option (google.api.http) = { delete: "/endpoint/{id}" };
@@ -30,17 +30,9 @@ service Endpoint {
   };
 }
 
-message EndpointMain {
+message EndpointUpdateReq {
   string id = 1;
-  string app_id = 2;
-  bool active = 3;
-  string method = 4;
-  string path = 5;
-  EndpointBackend backend = 6;
-  Auth auth = 7;
-  string type = 8; // http | grpc
-  EndpointGrpc grpc = 9;
-  repeated Variable variables = 10;
+  google.protobuf.Struct data = 2;
 }
 
 message EndpointGetReq {
@@ -55,27 +47,15 @@ message EndpointListReq {
 
 message EndpointListRep {
   PaginationInfoSt pagination_info = 1;
-  repeated EndpointMain results = 2;
+  repeated google.protobuf.Struct results = 2;
 }
 
 message EndpointCreateRep {
   string id = 1;
 }
 
-message EndpointBackend {
-  string custom_path = 1;
-  map<string, string> headers = 2;
-  map<string, string> query_params = 3;
-}
-
-message EndpointGrpc {
-  string service = 1;
-  string method = 2;
-  string path = 3;
-}
-
 message EndpointVariablesEffectiveReq {
   string id = 1;
   string app_id = 2;
-  repeated Variable variables = 3;
+  repeated google.protobuf.Struct variables = 3;
 }

@@ -12,6 +12,7 @@ import (
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -36,9 +37,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AppClient interface {
 	List(ctx context.Context, in *AppListReq, opts ...grpc.CallOption) (*AppListRep, error)
-	Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppMain, error)
-	Create(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*AppCreateRep, error)
-	Update(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*structpb.Struct, error)
+	Create(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*AppCreateRep, error)
+	Update(ctx context.Context, in *AppUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetSwaggerEndpointsDiff(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppSwaggerEndpointsDiffRep, error)
 	GetGrpcReflectionEndpoints(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppGrpcReflectionEndpointsRep, error)
@@ -64,9 +65,9 @@ func (c *appClient) List(ctx context.Context, in *AppListReq, opts ...grpc.CallO
 	return out, nil
 }
 
-func (c *appClient) Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppMain, error) {
+func (c *appClient) Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*structpb.Struct, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AppMain)
+	out := new(structpb.Struct)
 	err := c.cc.Invoke(ctx, App_Get_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -74,7 +75,7 @@ func (c *appClient) Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOpt
 	return out, nil
 }
 
-func (c *appClient) Create(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*AppCreateRep, error) {
+func (c *appClient) Create(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*AppCreateRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AppCreateRep)
 	err := c.cc.Invoke(ctx, App_Create_FullMethodName, in, out, cOpts...)
@@ -84,7 +85,7 @@ func (c *appClient) Create(ctx context.Context, in *AppMain, opts ...grpc.CallOp
 	return out, nil
 }
 
-func (c *appClient) Update(ctx context.Context, in *AppMain, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *appClient) Update(ctx context.Context, in *AppUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, App_Update_FullMethodName, in, out, cOpts...)
@@ -149,9 +150,9 @@ func (c *appClient) GetVariablesEffective(ctx context.Context, in *AppVariablesE
 // for forward compatibility.
 type AppServer interface {
 	List(context.Context, *AppListReq) (*AppListRep, error)
-	Get(context.Context, *AppGetReq) (*AppMain, error)
-	Create(context.Context, *AppMain) (*AppCreateRep, error)
-	Update(context.Context, *AppMain) (*emptypb.Empty, error)
+	Get(context.Context, *AppGetReq) (*structpb.Struct, error)
+	Create(context.Context, *structpb.Struct) (*AppCreateRep, error)
+	Update(context.Context, *AppUpdateReq) (*emptypb.Empty, error)
 	Delete(context.Context, *AppGetReq) (*emptypb.Empty, error)
 	GetSwaggerEndpointsDiff(context.Context, *AppGetReq) (*AppSwaggerEndpointsDiffRep, error)
 	GetGrpcReflectionEndpoints(context.Context, *AppGetReq) (*AppGrpcReflectionEndpointsRep, error)
@@ -170,13 +171,13 @@ type UnimplementedAppServer struct{}
 func (UnimplementedAppServer) List(context.Context, *AppListReq) (*AppListRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-func (UnimplementedAppServer) Get(context.Context, *AppGetReq) (*AppMain, error) {
+func (UnimplementedAppServer) Get(context.Context, *AppGetReq) (*structpb.Struct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedAppServer) Create(context.Context, *AppMain) (*AppCreateRep, error) {
+func (UnimplementedAppServer) Create(context.Context, *structpb.Struct) (*AppCreateRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedAppServer) Update(context.Context, *AppMain) (*emptypb.Empty, error) {
+func (UnimplementedAppServer) Update(context.Context, *AppUpdateReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedAppServer) Delete(context.Context, *AppGetReq) (*emptypb.Empty, error) {
@@ -252,7 +253,7 @@ func _App_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 }
 
 func _App_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AppMain)
+	in := new(structpb.Struct)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -264,13 +265,13 @@ func _App_Create_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		FullMethod: App_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AppServer).Create(ctx, req.(*AppMain))
+		return srv.(AppServer).Create(ctx, req.(*structpb.Struct))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _App_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AppMain)
+	in := new(AppUpdateReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -282,7 +283,7 @@ func _App_Update_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		FullMethod: App_Update_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AppServer).Update(ctx, req.(*AppMain))
+		return srv.(AppServer).Update(ctx, req.(*AppUpdateReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }

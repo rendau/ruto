@@ -5,6 +5,7 @@ import (
 
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/rendau/ruto/internal/handler/grpc/dto"
 	usecase "github.com/rendau/ruto/internal/usecase/root"
@@ -20,16 +21,16 @@ func NewRoot(usecase *usecase.Usecase) *Root {
 	return &Root{usecase: usecase}
 }
 
-func (h *Root) Get(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.RootMain, error) {
+func (h *Root) Get(ctx context.Context, _ *emptypb.Empty) (*structpb.Struct, error) {
 	item, err := h.usecase.Get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return dto.EncodeRootMain(item, 0), nil
+	return dto.EncodeRootData(item, 0), nil
 }
 
-func (h *Root) Set(ctx context.Context, req *ruto_v1.RootMain) (*emptypb.Empty, error) {
-	if err := h.usecase.Set(ctx, dto.DecodeRootMain(req)); err != nil {
+func (h *Root) Set(ctx context.Context, req *structpb.Struct) (*emptypb.Empty, error) {
+	if err := h.usecase.Set(ctx, dto.DecodeRootData(req)); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

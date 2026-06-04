@@ -5,6 +5,7 @@ import (
 
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
@@ -34,28 +35,28 @@ func (h *App) List(ctx context.Context, req *ruto_v1.AppListReq) (*ruto_v1.AppLi
 			PageSize:   req.ListParams.PageSize,
 			TotalCount: tCount,
 		},
-		Results: lo.Map(items, dto.EncodeAppMain),
+		Results: lo.Map(items, dto.EncodeAppData),
 	}, nil
 }
 
-func (h *App) Get(ctx context.Context, req *ruto_v1.AppGetReq) (*ruto_v1.AppMain, error) {
+func (h *App) Get(ctx context.Context, req *ruto_v1.AppGetReq) (*structpb.Struct, error) {
 	item, err := h.usecase.Get(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
-	return dto.EncodeAppMain(item, 0), nil
+	return dto.EncodeAppData(item, 0), nil
 }
 
-func (h *App) Create(ctx context.Context, req *ruto_v1.AppMain) (*ruto_v1.AppCreateRep, error) {
-	newId, err := h.usecase.Create(ctx, dto.DecodeAppMain(req))
+func (h *App) Create(ctx context.Context, req *structpb.Struct) (*ruto_v1.AppCreateRep, error) {
+	newId, err := h.usecase.Create(ctx, dto.DecodeAppData(req))
 	if err != nil {
 		return nil, err
 	}
 	return &ruto_v1.AppCreateRep{Id: newId}, nil
 }
 
-func (h *App) Update(ctx context.Context, req *ruto_v1.AppMain) (*emptypb.Empty, error) {
-	if err := h.usecase.Update(ctx, req.Id, dto.DecodeAppMain(req)); err != nil {
+func (h *App) Update(ctx context.Context, req *ruto_v1.AppUpdateReq) (*emptypb.Empty, error) {
+	if err := h.usecase.Update(ctx, req.Id, dto.DecodeAppData(req.GetData())); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

@@ -5,6 +5,7 @@ import (
 
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
@@ -34,28 +35,28 @@ func (h *Endpoint) List(ctx context.Context, req *ruto_v1.EndpointListReq) (*rut
 			PageSize:   req.ListParams.PageSize,
 			TotalCount: tCount,
 		},
-		Results: lo.Map(items, dto.EncodeEndpointMain),
+		Results: lo.Map(items, dto.EncodeEndpointData),
 	}, nil
 }
 
-func (h *Endpoint) Get(ctx context.Context, req *ruto_v1.EndpointGetReq) (*ruto_v1.EndpointMain, error) {
+func (h *Endpoint) Get(ctx context.Context, req *ruto_v1.EndpointGetReq) (*structpb.Struct, error) {
 	item, err := h.usecase.Get(ctx, req.Id)
 	if err != nil {
 		return nil, err
 	}
-	return dto.EncodeEndpointMain(item, 0), nil
+	return dto.EncodeEndpointData(item, 0), nil
 }
 
-func (h *Endpoint) Create(ctx context.Context, req *ruto_v1.EndpointMain) (*ruto_v1.EndpointCreateRep, error) {
-	newId, err := h.usecase.Create(ctx, dto.DecodeEndpointMain(req))
+func (h *Endpoint) Create(ctx context.Context, req *structpb.Struct) (*ruto_v1.EndpointCreateRep, error) {
+	newId, err := h.usecase.Create(ctx, dto.DecodeEndpointData(req))
 	if err != nil {
 		return nil, err
 	}
 	return &ruto_v1.EndpointCreateRep{Id: newId}, nil
 }
 
-func (h *Endpoint) Update(ctx context.Context, req *ruto_v1.EndpointMain) (*emptypb.Empty, error) {
-	if err := h.usecase.Update(ctx, req.Id, dto.DecodeEndpointMain(req)); err != nil {
+func (h *Endpoint) Update(ctx context.Context, req *ruto_v1.EndpointUpdateReq) (*emptypb.Empty, error) {
+	if err := h.usecase.Update(ctx, req.Id, dto.DecodeEndpointData(req.GetData())); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

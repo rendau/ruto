@@ -11,6 +11,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -23,210 +24,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type RootMain struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BaseUrl       string                 `protobuf:"bytes,1,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
-	Cors          *RootCors              `protobuf:"bytes,2,opt,name=cors,proto3" json:"cors,omitempty"`
-	Jwt           []*RootJwt             `protobuf:"bytes,3,rep,name=jwt,proto3" json:"jwt,omitempty"`
-	Auth          *Auth                  `protobuf:"bytes,4,opt,name=auth,proto3" json:"auth,omitempty"`
-	Variables     []*Variable            `protobuf:"bytes,5,rep,name=variables,proto3" json:"variables,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RootMain) Reset() {
-	*x = RootMain{}
-	mi := &file_ruto_v1_root_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RootMain) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RootMain) ProtoMessage() {}
-
-func (x *RootMain) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RootMain.ProtoReflect.Descriptor instead.
-func (*RootMain) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *RootMain) GetBaseUrl() string {
-	if x != nil {
-		return x.BaseUrl
-	}
-	return ""
-}
-
-func (x *RootMain) GetCors() *RootCors {
-	if x != nil {
-		return x.Cors
-	}
-	return nil
-}
-
-func (x *RootMain) GetJwt() []*RootJwt {
-	if x != nil {
-		return x.Jwt
-	}
-	return nil
-}
-
-func (x *RootMain) GetAuth() *Auth {
-	if x != nil {
-		return x.Auth
-	}
-	return nil
-}
-
-func (x *RootMain) GetVariables() []*Variable {
-	if x != nil {
-		return x.Variables
-	}
-	return nil
-}
-
-type RootCors struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Enabled          bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	AllowCredentials bool                   `protobuf:"varint,2,opt,name=allow_credentials,json=allowCredentials,proto3" json:"allow_credentials,omitempty"`
-	MaxAge           string                 `protobuf:"bytes,3,opt,name=max_age,json=maxAge,proto3" json:"max_age,omitempty"`
-	AllowOrigins     []string               `protobuf:"bytes,4,rep,name=allow_origins,json=allowOrigins,proto3" json:"allow_origins,omitempty"`
-	AllowMethods     []string               `protobuf:"bytes,5,rep,name=allow_methods,json=allowMethods,proto3" json:"allow_methods,omitempty"`
-	AllowHeaders     []string               `protobuf:"bytes,6,rep,name=allow_headers,json=allowHeaders,proto3" json:"allow_headers,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *RootCors) Reset() {
-	*x = RootCors{}
-	mi := &file_ruto_v1_root_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RootCors) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RootCors) ProtoMessage() {}
-
-func (x *RootCors) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RootCors.ProtoReflect.Descriptor instead.
-func (*RootCors) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *RootCors) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *RootCors) GetAllowCredentials() bool {
-	if x != nil {
-		return x.AllowCredentials
-	}
-	return false
-}
-
-func (x *RootCors) GetMaxAge() string {
-	if x != nil {
-		return x.MaxAge
-	}
-	return ""
-}
-
-func (x *RootCors) GetAllowOrigins() []string {
-	if x != nil {
-		return x.AllowOrigins
-	}
-	return nil
-}
-
-func (x *RootCors) GetAllowMethods() []string {
-	if x != nil {
-		return x.AllowMethods
-	}
-	return nil
-}
-
-func (x *RootCors) GetAllowHeaders() []string {
-	if x != nil {
-		return x.AllowHeaders
-	}
-	return nil
-}
-
-type RootJwt struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	JwkUrl        string                 `protobuf:"bytes,1,opt,name=jwk_url,json=jwkUrl,proto3" json:"jwk_url,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RootJwt) Reset() {
-	*x = RootJwt{}
-	mi := &file_ruto_v1_root_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RootJwt) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RootJwt) ProtoMessage() {}
-
-func (x *RootJwt) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RootJwt.ProtoReflect.Descriptor instead.
-func (*RootJwt) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *RootJwt) GetJwkUrl() string {
-	if x != nil {
-		return x.JwkUrl
-	}
-	return ""
-}
-
 type RootJwtKidsRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Kids          []string               `protobuf:"bytes,1,rep,name=kids,proto3" json:"kids,omitempty"`
@@ -236,7 +33,7 @@ type RootJwtKidsRep struct {
 
 func (x *RootJwtKidsRep) Reset() {
 	*x = RootJwtKidsRep{}
-	mi := &file_ruto_v1_root_proto_msgTypes[3]
+	mi := &file_ruto_v1_root_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -248,7 +45,7 @@ func (x *RootJwtKidsRep) String() string {
 func (*RootJwtKidsRep) ProtoMessage() {}
 
 func (x *RootJwtKidsRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[3]
+	mi := &file_ruto_v1_root_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -261,7 +58,7 @@ func (x *RootJwtKidsRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RootJwtKidsRep.ProtoReflect.Descriptor instead.
 func (*RootJwtKidsRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{3}
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *RootJwtKidsRep) GetKids() []string {
@@ -280,7 +77,7 @@ type RootJwtKidsReq struct {
 
 func (x *RootJwtKidsReq) Reset() {
 	*x = RootJwtKidsReq{}
-	mi := &file_ruto_v1_root_proto_msgTypes[4]
+	mi := &file_ruto_v1_root_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -292,7 +89,7 @@ func (x *RootJwtKidsReq) String() string {
 func (*RootJwtKidsReq) ProtoMessage() {}
 
 func (x *RootJwtKidsReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[4]
+	mi := &file_ruto_v1_root_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -305,7 +102,7 @@ func (x *RootJwtKidsReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RootJwtKidsReq.ProtoReflect.Descriptor instead.
 func (*RootJwtKidsReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{4}
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RootJwtKidsReq) GetUrls() []string {
@@ -317,14 +114,14 @@ func (x *RootJwtKidsReq) GetUrls() []string {
 
 type RootVariablesEffectiveReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Variables     []*Variable            `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty"`
+	Variables     []*structpb.Struct     `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RootVariablesEffectiveReq) Reset() {
 	*x = RootVariablesEffectiveReq{}
-	mi := &file_ruto_v1_root_proto_msgTypes[5]
+	mi := &file_ruto_v1_root_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -336,7 +133,7 @@ func (x *RootVariablesEffectiveReq) String() string {
 func (*RootVariablesEffectiveReq) ProtoMessage() {}
 
 func (x *RootVariablesEffectiveReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_root_proto_msgTypes[5]
+	mi := &file_ruto_v1_root_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -349,10 +146,10 @@ func (x *RootVariablesEffectiveReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RootVariablesEffectiveReq.ProtoReflect.Descriptor instead.
 func (*RootVariablesEffectiveReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_root_proto_rawDescGZIP(), []int{5}
+	return file_ruto_v1_root_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *RootVariablesEffectiveReq) GetVariables() []*Variable {
+func (x *RootVariablesEffectiveReq) GetVariables() []*structpb.Struct {
 	if x != nil {
 		return x.Variables
 	}
@@ -363,31 +160,16 @@ var File_ruto_v1_root_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_root_proto_rawDesc = "" +
 	"\n" +
-	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x12ruto_v1/auth.proto\x1a\x14ruto_v1/common.proto\"\xc4\x01\n" +
-	"\bRootMain\x12\x19\n" +
-	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12%\n" +
-	"\x04cors\x18\x02 \x01(\v2\x11.ruto_v1.RootCorsR\x04cors\x12\"\n" +
-	"\x03jwt\x18\x03 \x03(\v2\x10.ruto_v1.RootJwtR\x03jwt\x12!\n" +
-	"\x04auth\x18\x04 \x01(\v2\r.ruto_v1.AuthR\x04auth\x12/\n" +
-	"\tvariables\x18\x05 \x03(\v2\x11.ruto_v1.VariableR\tvariables\"\xd9\x01\n" +
-	"\bRootCors\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12+\n" +
-	"\x11allow_credentials\x18\x02 \x01(\bR\x10allowCredentials\x12\x17\n" +
-	"\amax_age\x18\x03 \x01(\tR\x06maxAge\x12#\n" +
-	"\rallow_origins\x18\x04 \x03(\tR\fallowOrigins\x12#\n" +
-	"\rallow_methods\x18\x05 \x03(\tR\fallowMethods\x12#\n" +
-	"\rallow_headers\x18\x06 \x03(\tR\fallowHeaders\"\"\n" +
-	"\aRootJwt\x12\x17\n" +
-	"\ajwk_url\x18\x01 \x01(\tR\x06jwkUrl\"$\n" +
+	"\x12ruto_v1/root.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x14ruto_v1/common.proto\"$\n" +
 	"\x0eRootJwtKidsRep\x12\x12\n" +
 	"\x04kids\x18\x01 \x03(\tR\x04kids\"$\n" +
 	"\x0eRootJwtKidsReq\x12\x12\n" +
-	"\x04urls\x18\x01 \x03(\tR\x04urls\"L\n" +
-	"\x19RootVariablesEffectiveReq\x12/\n" +
-	"\tvariables\x18\x01 \x03(\v2\x11.ruto_v1.VariableR\tvariables2\xf5\x02\n" +
-	"\x04Root\x12?\n" +
-	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x11.ruto_v1.RootMain\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/root\x12B\n" +
-	"\x03Set\x12\x11.ruto_v1.RootMain\x1a\x16.google.protobuf.Empty\"\x10\x82\xd3\xe4\x93\x02\n" +
+	"\x04urls\x18\x01 \x03(\tR\x04urls\"R\n" +
+	"\x19RootVariablesEffectiveReq\x125\n" +
+	"\tvariables\x18\x01 \x03(\v2\x17.google.protobuf.StructR\tvariables2\x81\x03\n" +
+	"\x04Root\x12E\n" +
+	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x17.google.protobuf.Struct\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/root\x12H\n" +
+	"\x03Set\x12\x17.google.protobuf.Struct\x1a\x16.google.protobuf.Empty\"\x10\x82\xd3\xe4\x93\x02\n" +
 	":\x01*\"\x05/root\x12d\n" +
 	"\x10GetJwtKidsByUrls\x12\x17.ruto_v1.RootJwtKidsReq\x1a\x17.ruto_v1.RootJwtKidsRep\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/root/jwt/kids/by-urls\x12\x81\x01\n" +
 	"\x15GetVariablesEffective\x12\".ruto_v1.RootVariablesEffectiveReq\x1a\x1e.ruto_v1.VariablesEffectiveRep\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/root/variables/effectiveB\n" +
@@ -405,38 +187,30 @@ func file_ruto_v1_root_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_root_proto_rawDescData
 }
 
-var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_ruto_v1_root_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_ruto_v1_root_proto_goTypes = []any{
-	(*RootMain)(nil),                  // 0: ruto_v1.RootMain
-	(*RootCors)(nil),                  // 1: ruto_v1.RootCors
-	(*RootJwt)(nil),                   // 2: ruto_v1.RootJwt
-	(*RootJwtKidsRep)(nil),            // 3: ruto_v1.RootJwtKidsRep
-	(*RootJwtKidsReq)(nil),            // 4: ruto_v1.RootJwtKidsReq
-	(*RootVariablesEffectiveReq)(nil), // 5: ruto_v1.RootVariablesEffectiveReq
-	(*Auth)(nil),                      // 6: ruto_v1.Auth
-	(*Variable)(nil),                  // 7: ruto_v1.Variable
-	(*emptypb.Empty)(nil),             // 8: google.protobuf.Empty
-	(*VariablesEffectiveRep)(nil),     // 9: ruto_v1.VariablesEffectiveRep
+	(*RootJwtKidsRep)(nil),            // 0: ruto_v1.RootJwtKidsRep
+	(*RootJwtKidsReq)(nil),            // 1: ruto_v1.RootJwtKidsReq
+	(*RootVariablesEffectiveReq)(nil), // 2: ruto_v1.RootVariablesEffectiveReq
+	(*structpb.Struct)(nil),           // 3: google.protobuf.Struct
+	(*emptypb.Empty)(nil),             // 4: google.protobuf.Empty
+	(*VariablesEffectiveRep)(nil),     // 5: ruto_v1.VariablesEffectiveRep
 }
 var file_ruto_v1_root_proto_depIdxs = []int32{
-	1, // 0: ruto_v1.RootMain.cors:type_name -> ruto_v1.RootCors
-	2, // 1: ruto_v1.RootMain.jwt:type_name -> ruto_v1.RootJwt
-	6, // 2: ruto_v1.RootMain.auth:type_name -> ruto_v1.Auth
-	7, // 3: ruto_v1.RootMain.variables:type_name -> ruto_v1.Variable
-	7, // 4: ruto_v1.RootVariablesEffectiveReq.variables:type_name -> ruto_v1.Variable
-	8, // 5: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
-	0, // 6: ruto_v1.Root.Set:input_type -> ruto_v1.RootMain
-	4, // 7: ruto_v1.Root.GetJwtKidsByUrls:input_type -> ruto_v1.RootJwtKidsReq
-	5, // 8: ruto_v1.Root.GetVariablesEffective:input_type -> ruto_v1.RootVariablesEffectiveReq
-	0, // 9: ruto_v1.Root.Get:output_type -> ruto_v1.RootMain
-	8, // 10: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
-	3, // 11: ruto_v1.Root.GetJwtKidsByUrls:output_type -> ruto_v1.RootJwtKidsRep
-	9, // 12: ruto_v1.Root.GetVariablesEffective:output_type -> ruto_v1.VariablesEffectiveRep
-	9, // [9:13] is the sub-list for method output_type
-	5, // [5:9] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	3, // 0: ruto_v1.RootVariablesEffectiveReq.variables:type_name -> google.protobuf.Struct
+	4, // 1: ruto_v1.Root.Get:input_type -> google.protobuf.Empty
+	3, // 2: ruto_v1.Root.Set:input_type -> google.protobuf.Struct
+	1, // 3: ruto_v1.Root.GetJwtKidsByUrls:input_type -> ruto_v1.RootJwtKidsReq
+	2, // 4: ruto_v1.Root.GetVariablesEffective:input_type -> ruto_v1.RootVariablesEffectiveReq
+	3, // 5: ruto_v1.Root.Get:output_type -> google.protobuf.Struct
+	4, // 6: ruto_v1.Root.Set:output_type -> google.protobuf.Empty
+	0, // 7: ruto_v1.Root.GetJwtKidsByUrls:output_type -> ruto_v1.RootJwtKidsRep
+	5, // 8: ruto_v1.Root.GetVariablesEffective:output_type -> ruto_v1.VariablesEffectiveRep
+	5, // [5:9] is the sub-list for method output_type
+	1, // [1:5] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_root_proto_init() }
@@ -444,7 +218,6 @@ func file_ruto_v1_root_proto_init() {
 	if File_ruto_v1_root_proto != nil {
 		return
 	}
-	file_ruto_v1_auth_proto_init()
 	file_ruto_v1_common_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -452,7 +225,7 @@ func file_ruto_v1_root_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_root_proto_rawDesc), len(file_ruto_v1_root_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

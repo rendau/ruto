@@ -12,6 +12,7 @@ import (
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -33,9 +34,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EndpointClient interface {
 	List(ctx context.Context, in *EndpointListReq, opts ...grpc.CallOption) (*EndpointListRep, error)
-	Get(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*EndpointMain, error)
-	Create(ctx context.Context, in *EndpointMain, opts ...grpc.CallOption) (*EndpointCreateRep, error)
-	Update(ctx context.Context, in *EndpointMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Get(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*structpb.Struct, error)
+	Create(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*EndpointCreateRep, error)
+	Update(ctx context.Context, in *EndpointUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetVariablesEffective(ctx context.Context, in *EndpointVariablesEffectiveReq, opts ...grpc.CallOption) (*VariablesEffectiveRep, error)
 }
@@ -58,9 +59,9 @@ func (c *endpointClient) List(ctx context.Context, in *EndpointListReq, opts ...
 	return out, nil
 }
 
-func (c *endpointClient) Get(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*EndpointMain, error) {
+func (c *endpointClient) Get(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*structpb.Struct, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EndpointMain)
+	out := new(structpb.Struct)
 	err := c.cc.Invoke(ctx, Endpoint_Get_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -68,7 +69,7 @@ func (c *endpointClient) Get(ctx context.Context, in *EndpointGetReq, opts ...gr
 	return out, nil
 }
 
-func (c *endpointClient) Create(ctx context.Context, in *EndpointMain, opts ...grpc.CallOption) (*EndpointCreateRep, error) {
+func (c *endpointClient) Create(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*EndpointCreateRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EndpointCreateRep)
 	err := c.cc.Invoke(ctx, Endpoint_Create_FullMethodName, in, out, cOpts...)
@@ -78,7 +79,7 @@ func (c *endpointClient) Create(ctx context.Context, in *EndpointMain, opts ...g
 	return out, nil
 }
 
-func (c *endpointClient) Update(ctx context.Context, in *EndpointMain, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *endpointClient) Update(ctx context.Context, in *EndpointUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Endpoint_Update_FullMethodName, in, out, cOpts...)
@@ -113,9 +114,9 @@ func (c *endpointClient) GetVariablesEffective(ctx context.Context, in *Endpoint
 // for forward compatibility.
 type EndpointServer interface {
 	List(context.Context, *EndpointListReq) (*EndpointListRep, error)
-	Get(context.Context, *EndpointGetReq) (*EndpointMain, error)
-	Create(context.Context, *EndpointMain) (*EndpointCreateRep, error)
-	Update(context.Context, *EndpointMain) (*emptypb.Empty, error)
+	Get(context.Context, *EndpointGetReq) (*structpb.Struct, error)
+	Create(context.Context, *structpb.Struct) (*EndpointCreateRep, error)
+	Update(context.Context, *EndpointUpdateReq) (*emptypb.Empty, error)
 	Delete(context.Context, *EndpointGetReq) (*emptypb.Empty, error)
 	GetVariablesEffective(context.Context, *EndpointVariablesEffectiveReq) (*VariablesEffectiveRep, error)
 	mustEmbedUnimplementedEndpointServer()
@@ -131,13 +132,13 @@ type UnimplementedEndpointServer struct{}
 func (UnimplementedEndpointServer) List(context.Context, *EndpointListReq) (*EndpointListRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-func (UnimplementedEndpointServer) Get(context.Context, *EndpointGetReq) (*EndpointMain, error) {
+func (UnimplementedEndpointServer) Get(context.Context, *EndpointGetReq) (*structpb.Struct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedEndpointServer) Create(context.Context, *EndpointMain) (*EndpointCreateRep, error) {
+func (UnimplementedEndpointServer) Create(context.Context, *structpb.Struct) (*EndpointCreateRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedEndpointServer) Update(context.Context, *EndpointMain) (*emptypb.Empty, error) {
+func (UnimplementedEndpointServer) Update(context.Context, *EndpointUpdateReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
 func (UnimplementedEndpointServer) Delete(context.Context, *EndpointGetReq) (*emptypb.Empty, error) {
@@ -204,7 +205,7 @@ func _Endpoint_Get_Handler(srv interface{}, ctx context.Context, dec func(interf
 }
 
 func _Endpoint_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EndpointMain)
+	in := new(structpb.Struct)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -216,13 +217,13 @@ func _Endpoint_Create_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Endpoint_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EndpointServer).Create(ctx, req.(*EndpointMain))
+		return srv.(EndpointServer).Create(ctx, req.(*structpb.Struct))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Endpoint_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EndpointMain)
+	in := new(EndpointUpdateReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -234,7 +235,7 @@ func _Endpoint_Update_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Endpoint_Update_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EndpointServer).Update(ctx, req.(*EndpointMain))
+		return srv.(EndpointServer).Update(ctx, req.(*EndpointUpdateReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }

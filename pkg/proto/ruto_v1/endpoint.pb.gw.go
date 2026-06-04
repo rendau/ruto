@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Suppress "imported and not used" errors
@@ -111,7 +112,7 @@ func local_request_Endpoint_Get_0(ctx context.Context, marshaler runtime.Marshal
 
 func request_Endpoint_Create_0(ctx context.Context, marshaler runtime.Marshaler, client EndpointClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq EndpointMain
+		protoReq structpb.Struct
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -126,7 +127,7 @@ func request_Endpoint_Create_0(ctx context.Context, marshaler runtime.Marshaler,
 
 func local_request_Endpoint_Create_0(ctx context.Context, marshaler runtime.Marshaler, server EndpointServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq EndpointMain
+		protoReq structpb.Struct
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -138,11 +139,11 @@ func local_request_Endpoint_Create_0(ctx context.Context, marshaler runtime.Mars
 
 func request_Endpoint_Update_0(ctx context.Context, marshaler runtime.Marshaler, client EndpointClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq EndpointMain
+		protoReq EndpointUpdateReq
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Data); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if req.Body != nil {
@@ -162,11 +163,11 @@ func request_Endpoint_Update_0(ctx context.Context, marshaler runtime.Marshaler,
 
 func local_request_Endpoint_Update_0(ctx context.Context, marshaler runtime.Marshaler, server EndpointServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq EndpointMain
+		protoReq EndpointUpdateReq
 		metadata runtime.ServerMetadata
 		err      error
 	)
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Data); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	val, ok := pathParams["id"]

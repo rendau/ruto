@@ -9,6 +9,7 @@ package ruto_v1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -225,68 +226,16 @@ func (x *ErrorRep) GetFields() map[string]string {
 	return nil
 }
 
-type Variable struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Variable) Reset() {
-	*x = Variable{}
-	mi := &file_ruto_v1_common_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Variable) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Variable) ProtoMessage() {}
-
-func (x *Variable) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_common_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Variable.ProtoReflect.Descriptor instead.
-func (*Variable) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_common_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *Variable) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *Variable) GetValue() string {
-	if x != nil {
-		return x.Value
-	}
-	return ""
-}
-
 type VariablesEffectiveRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Variables     []*Variable            `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty"`
+	Variables     []*structpb.Struct     `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *VariablesEffectiveRep) Reset() {
 	*x = VariablesEffectiveRep{}
-	mi := &file_ruto_v1_common_proto_msgTypes[4]
+	mi := &file_ruto_v1_common_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -298,7 +247,7 @@ func (x *VariablesEffectiveRep) String() string {
 func (*VariablesEffectiveRep) ProtoMessage() {}
 
 func (x *VariablesEffectiveRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_common_proto_msgTypes[4]
+	mi := &file_ruto_v1_common_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -311,10 +260,10 @@ func (x *VariablesEffectiveRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VariablesEffectiveRep.ProtoReflect.Descriptor instead.
 func (*VariablesEffectiveRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_common_proto_rawDescGZIP(), []int{4}
+	return file_ruto_v1_common_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *VariablesEffectiveRep) GetVariables() []*Variable {
+func (x *VariablesEffectiveRep) GetVariables() []*structpb.Struct {
 	if x != nil {
 		return x.Variables
 	}
@@ -325,7 +274,7 @@ var File_ruto_v1_common_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x14ruto_v1/common.proto\x12\aruto_v1\"\xb9\x01\n" +
+	"\x14ruto_v1/common.proto\x12\aruto_v1\x1a\x1cgoogle/protobuf/struct.proto\"\xb9\x01\n" +
 	"\fListParamsSt\x12\x12\n" +
 	"\x04page\x18\x02 \x01(\x03R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x03 \x01(\x03R\bpageSize\x12(\n" +
@@ -345,12 +294,9 @@ const file_ruto_v1_common_proto_rawDesc = "" +
 	"\x06fields\x18\x03 \x03(\v2\x1d.ruto_v1.ErrorRep.FieldsEntryR\x06fields\x1a9\n" +
 	"\vFieldsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"2\n" +
-	"\bVariable\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"H\n" +
-	"\x15VariablesEffectiveRep\x12/\n" +
-	"\tvariables\x18\x01 \x03(\v2\x11.ruto_v1.VariableR\tvariablesB\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"N\n" +
+	"\x15VariablesEffectiveRep\x125\n" +
+	"\tvariables\x18\x01 \x03(\v2\x17.google.protobuf.StructR\tvariablesB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
 var (
@@ -365,18 +311,18 @@ func file_ruto_v1_common_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_common_proto_rawDescData
 }
 
-var file_ruto_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_ruto_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_ruto_v1_common_proto_goTypes = []any{
 	(*ListParamsSt)(nil),          // 0: ruto_v1.ListParamsSt
 	(*PaginationInfoSt)(nil),      // 1: ruto_v1.PaginationInfoSt
 	(*ErrorRep)(nil),              // 2: ruto_v1.ErrorRep
-	(*Variable)(nil),              // 3: ruto_v1.Variable
-	(*VariablesEffectiveRep)(nil), // 4: ruto_v1.VariablesEffectiveRep
-	nil,                           // 5: ruto_v1.ErrorRep.FieldsEntry
+	(*VariablesEffectiveRep)(nil), // 3: ruto_v1.VariablesEffectiveRep
+	nil,                           // 4: ruto_v1.ErrorRep.FieldsEntry
+	(*structpb.Struct)(nil),       // 5: google.protobuf.Struct
 }
 var file_ruto_v1_common_proto_depIdxs = []int32{
-	5, // 0: ruto_v1.ErrorRep.fields:type_name -> ruto_v1.ErrorRep.FieldsEntry
-	3, // 1: ruto_v1.VariablesEffectiveRep.variables:type_name -> ruto_v1.Variable
+	4, // 0: ruto_v1.ErrorRep.fields:type_name -> ruto_v1.ErrorRep.FieldsEntry
+	5, // 1: ruto_v1.VariablesEffectiveRep.variables:type_name -> google.protobuf.Struct
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
@@ -395,7 +341,7 @@ func file_ruto_v1_common_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_common_proto_rawDesc), len(file_ruto_v1_common_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

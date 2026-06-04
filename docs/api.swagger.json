@@ -130,7 +130,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ruto_v1AppMain"
+              "type": "object"
             }
           }
         ],
@@ -208,7 +208,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/ruto_v1AppMain"
+              "type": "object"
             }
           },
           "default": {
@@ -284,11 +284,11 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "data",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ruto_v1AppUpdateBody"
+              "type": "object"
             }
           }
         ],
@@ -456,7 +456,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ruto_v1EndpointMain"
+              "type": "object"
             }
           }
         ],
@@ -504,7 +504,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/ruto_v1EndpointMain"
+              "type": "object"
             }
           },
           "default": {
@@ -580,11 +580,11 @@
             "type": "string"
           },
           {
-            "name": "body",
+            "name": "data",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ruto_v1EndpointUpdateBody"
+              "type": "object"
             }
           }
         ],
@@ -654,7 +654,7 @@
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/ruto_v1RootMain"
+              "type": "object"
             }
           },
           "default": {
@@ -691,7 +691,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ruto_v1RootMain"
+              "type": "object"
             }
           }
         ],
@@ -1201,33 +1201,6 @@
         }
       }
     },
-    "ruto_v1AppBackend": {
-      "type": "object",
-      "properties": {
-        "url": {
-          "type": "string"
-        },
-        "swagger_url": {
-          "type": "string"
-        },
-        "grpc_port": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "headers": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "query_params": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "ruto_v1AppCreateRep": {
       "type": "object",
       "properties": {
@@ -1279,38 +1252,7 @@
         "results": {
           "type": "array",
           "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1AppMain"
-          }
-        }
-      }
-    },
-    "ruto_v1AppMain": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "active": {
-          "type": "boolean"
-        },
-        "path_prefix": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "backend": {
-          "$ref": "#/definitions/ruto_v1AppBackend"
-        },
-        "auth": {
-          "$ref": "#/definitions/ruto_v1Auth"
-        },
-        "variables": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1Variable"
+            "type": "object"
           }
         }
       }
@@ -1345,33 +1287,6 @@
         }
       }
     },
-    "ruto_v1AppUpdateBody": {
-      "type": "object",
-      "properties": {
-        "active": {
-          "type": "boolean"
-        },
-        "path_prefix": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "backend": {
-          "$ref": "#/definitions/ruto_v1AppBackend"
-        },
-        "auth": {
-          "$ref": "#/definitions/ruto_v1Auth"
-        },
-        "variables": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1Variable"
-          }
-        }
-      }
-    },
     "ruto_v1AppVariablesEffectiveReq": {
       "type": "object",
       "properties": {
@@ -1381,125 +1296,7 @@
         "variables": {
           "type": "array",
           "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1Variable"
-          }
-        }
-      }
-    },
-    "ruto_v1Auth": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
-        "mode": {
-          "type": "string"
-        },
-        "methods": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1AuthMethod"
-          }
-        }
-      }
-    },
-    "ruto_v1AuthMethod": {
-      "type": "object",
-      "properties": {
-        "basic": {
-          "$ref": "#/definitions/ruto_v1AuthMethodBasic"
-        },
-        "api_key": {
-          "$ref": "#/definitions/ruto_v1AuthMethodAPIKey"
-        },
-        "jwt": {
-          "$ref": "#/definitions/ruto_v1AuthMethodJWT"
-        },
-        "ip_validation": {
-          "$ref": "#/definitions/ruto_v1AuthMethodIPValidation"
-        }
-      }
-    },
-    "ruto_v1AuthMethodAPIKey": {
-      "type": "object",
-      "properties": {
-        "header": {
-          "type": "string"
-        },
-        "keys": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "ruto_v1AuthMethodBasic": {
-      "type": "object",
-      "properties": {
-        "users": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1AuthMethodBasicUser"
-          }
-        }
-      }
-    },
-    "ruto_v1AuthMethodBasicUser": {
-      "type": "object",
-      "properties": {
-        "username": {
-          "type": "string"
-        },
-        "password": {
-          "type": "string"
-        }
-      }
-    },
-    "ruto_v1AuthMethodIPValidation": {
-      "type": "object",
-      "properties": {
-        "allowed_ips": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "ruto_v1AuthMethodJWT": {
-      "type": "object",
-      "properties": {
-        "kid": {
-          "type": "string"
-        },
-        "roles": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "ruto_v1EndpointBackend": {
-      "type": "object",
-      "properties": {
-        "custom_path": {
-          "type": "string"
-        },
-        "headers": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "query_params": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
+            "type": "object"
           }
         }
       }
@@ -1508,20 +1305,6 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
-        }
-      }
-    },
-    "ruto_v1EndpointGrpc": {
-      "type": "object",
-      "properties": {
-        "service": {
-          "type": "string"
-        },
-        "method": {
-          "type": "string"
-        },
-        "path": {
           "type": "string"
         }
       }
@@ -1535,85 +1318,7 @@
         "results": {
           "type": "array",
           "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1EndpointMain"
-          }
-        }
-      }
-    },
-    "ruto_v1EndpointMain": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "app_id": {
-          "type": "string"
-        },
-        "active": {
-          "type": "boolean"
-        },
-        "method": {
-          "type": "string"
-        },
-        "path": {
-          "type": "string"
-        },
-        "backend": {
-          "$ref": "#/definitions/ruto_v1EndpointBackend"
-        },
-        "auth": {
-          "$ref": "#/definitions/ruto_v1Auth"
-        },
-        "type": {
-          "type": "string",
-          "title": "http | grpc"
-        },
-        "grpc": {
-          "$ref": "#/definitions/ruto_v1EndpointGrpc"
-        },
-        "variables": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1Variable"
-          }
-        }
-      }
-    },
-    "ruto_v1EndpointUpdateBody": {
-      "type": "object",
-      "properties": {
-        "app_id": {
-          "type": "string"
-        },
-        "active": {
-          "type": "boolean"
-        },
-        "method": {
-          "type": "string"
-        },
-        "path": {
-          "type": "string"
-        },
-        "backend": {
-          "$ref": "#/definitions/ruto_v1EndpointBackend"
-        },
-        "auth": {
-          "$ref": "#/definitions/ruto_v1Auth"
-        },
-        "type": {
-          "type": "string",
-          "title": "http | grpc"
-        },
-        "grpc": {
-          "$ref": "#/definitions/ruto_v1EndpointGrpc"
-        },
-        "variables": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1Variable"
+            "type": "object"
           }
         }
       }
@@ -1630,8 +1335,7 @@
         "variables": {
           "type": "array",
           "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1Variable"
+            "type": "object"
           }
         }
       }
@@ -1763,46 +1467,6 @@
         }
       }
     },
-    "ruto_v1RootCors": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
-        "allow_credentials": {
-          "type": "boolean"
-        },
-        "max_age": {
-          "type": "string"
-        },
-        "allow_origins": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "allow_methods": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "allow_headers": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "ruto_v1RootJwt": {
-      "type": "object",
-      "properties": {
-        "jwk_url": {
-          "type": "string"
-        }
-      }
-    },
     "ruto_v1RootJwtKidsRep": {
       "type": "object",
       "properties": {
@@ -1814,42 +1478,13 @@
         }
       }
     },
-    "ruto_v1RootMain": {
-      "type": "object",
-      "properties": {
-        "base_url": {
-          "type": "string"
-        },
-        "cors": {
-          "$ref": "#/definitions/ruto_v1RootCors"
-        },
-        "jwt": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1RootJwt"
-          }
-        },
-        "auth": {
-          "$ref": "#/definitions/ruto_v1Auth"
-        },
-        "variables": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1Variable"
-          }
-        }
-      }
-    },
     "ruto_v1RootVariablesEffectiveReq": {
       "type": "object",
       "properties": {
         "variables": {
           "type": "array",
           "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1Variable"
+            "type": "object"
           }
         }
       }
@@ -2070,25 +1705,13 @@
         }
       }
     },
-    "ruto_v1Variable": {
-      "type": "object",
-      "properties": {
-        "key": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
     "ruto_v1VariablesEffectiveRep": {
       "type": "object",
       "properties": {
         "variables": {
           "type": "array",
           "items": {
-            "type": "object",
-            "$ref": "#/definitions/ruto_v1Variable"
+            "type": "object"
           }
         }
       }

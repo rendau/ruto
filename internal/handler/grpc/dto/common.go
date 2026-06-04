@@ -54,3 +54,30 @@ func GrpcStructToJsonObj(v *structpb.Struct) []byte {
 
 	return result
 }
+
+func DomainToGrpcStruct(v any) *structpb.Struct {
+	result, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+
+	return JsonObjToGrpcStruct(result)
+}
+
+func GrpcStructToDomain[T any](v *structpb.Struct) *T {
+	var result T
+	if v == nil {
+		return nil
+	}
+
+	raw := GrpcStructToJsonObj(v)
+	if len(raw) == 0 {
+		return nil
+	}
+
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil
+	}
+
+	return &result
+}

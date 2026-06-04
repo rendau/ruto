@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/samber/lo"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
@@ -9,16 +10,8 @@ import (
 	usecaseApp "github.com/rendau/ruto/internal/usecase/app"
 )
 
-func EncodeAppMain(v *model.App, _ int) *ruto_v1.AppMain {
-	return &ruto_v1.AppMain{
-		Id:         v.Id,
-		Active:     v.Active,
-		PathPrefix: v.PathPrefix,
-		Name:       v.Name,
-		Backend:    EncodeAppBackend(v.Backend),
-		Auth:       EncodeEndpointAuth(v.Auth),
-		Variables:  lo.Map(v.Variables, EncodeVariable),
-	}
+func EncodeAppData(v *model.App, _ int) *structpb.Struct {
+	return DomainToGrpcStruct(v)
 }
 
 func DecodeAppListReq(v *ruto_v1.AppListReq) *model.ListReq {
@@ -28,41 +21,8 @@ func DecodeAppListReq(v *ruto_v1.AppListReq) *model.ListReq {
 	}
 }
 
-func DecodeAppMain(v *ruto_v1.AppMain) *model.App {
-	return &model.App{
-		Id:         v.Id,
-		Active:     v.Active,
-		PathPrefix: v.PathPrefix,
-		Name:       v.Name,
-		Backend:    DecodeAppBackend(v.Backend),
-		Auth:       DecodeEndpointAuth(v.Auth),
-		Variables:  lo.FilterMap(v.Variables, DecodeVariable),
-	}
-}
-
-// AppBackend
-
-func EncodeAppBackend(x model.AppBackend) *ruto_v1.AppBackend {
-	return &ruto_v1.AppBackend{
-		Url:         x.Url,
-		SwaggerUrl:  x.SwaggerUrl,
-		GrpcPort:    uint32(x.GrpcPort),
-		Headers:     x.Headers,
-		QueryParams: x.QueryParams,
-	}
-}
-
-func DecodeAppBackend(x *ruto_v1.AppBackend) model.AppBackend {
-	if x == nil {
-		return model.AppBackend{}
-	}
-	return model.AppBackend{
-		Url:         x.Url,
-		SwaggerUrl:  x.SwaggerUrl,
-		GrpcPort:    int(x.GrpcPort),
-		Headers:     x.Headers,
-		QueryParams: x.QueryParams,
-	}
+func DecodeAppData(v *structpb.Struct) *model.App {
+	return GrpcStructToDomain[model.App](v)
 }
 
 func EncodeSwaggerEndpointDiff(x *usecaseApp.SwaggerEndpointsDiff) *ruto_v1.AppSwaggerEndpointsDiffRep {

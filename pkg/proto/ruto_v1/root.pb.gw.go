@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // Suppress "imported and not used" errors
@@ -59,7 +60,7 @@ func local_request_Root_Get_0(ctx context.Context, marshaler runtime.Marshaler, 
 
 func request_Root_Set_0(ctx context.Context, marshaler runtime.Marshaler, client RootClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq RootMain
+		protoReq structpb.Struct
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -74,7 +75,7 @@ func request_Root_Set_0(ctx context.Context, marshaler runtime.Marshaler, client
 
 func local_request_Root_Set_0(ctx context.Context, marshaler runtime.Marshaler, server RootServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq RootMain
+		protoReq structpb.Struct
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {

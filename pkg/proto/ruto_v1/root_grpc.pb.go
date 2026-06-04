@@ -12,6 +12,7 @@ import (
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -30,8 +31,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RootClient interface {
-	Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RootMain, error)
-	Set(ctx context.Context, in *RootMain, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*structpb.Struct, error)
+	Set(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetJwtKidsByUrls(ctx context.Context, in *RootJwtKidsReq, opts ...grpc.CallOption) (*RootJwtKidsRep, error)
 	GetVariablesEffective(ctx context.Context, in *RootVariablesEffectiveReq, opts ...grpc.CallOption) (*VariablesEffectiveRep, error)
 }
@@ -44,9 +45,9 @@ func NewRootClient(cc grpc.ClientConnInterface) RootClient {
 	return &rootClient{cc}
 }
 
-func (c *rootClient) Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*RootMain, error) {
+func (c *rootClient) Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*structpb.Struct, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RootMain)
+	out := new(structpb.Struct)
 	err := c.cc.Invoke(ctx, Root_Get_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -54,7 +55,7 @@ func (c *rootClient) Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.Ca
 	return out, nil
 }
 
-func (c *rootClient) Set(ctx context.Context, in *RootMain, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *rootClient) Set(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Root_Set_FullMethodName, in, out, cOpts...)
@@ -88,8 +89,8 @@ func (c *rootClient) GetVariablesEffective(ctx context.Context, in *RootVariable
 // All implementations must embed UnimplementedRootServer
 // for forward compatibility.
 type RootServer interface {
-	Get(context.Context, *emptypb.Empty) (*RootMain, error)
-	Set(context.Context, *RootMain) (*emptypb.Empty, error)
+	Get(context.Context, *emptypb.Empty) (*structpb.Struct, error)
+	Set(context.Context, *structpb.Struct) (*emptypb.Empty, error)
 	GetJwtKidsByUrls(context.Context, *RootJwtKidsReq) (*RootJwtKidsRep, error)
 	GetVariablesEffective(context.Context, *RootVariablesEffectiveReq) (*VariablesEffectiveRep, error)
 	mustEmbedUnimplementedRootServer()
@@ -102,10 +103,10 @@ type RootServer interface {
 // pointer dereference when methods are called.
 type UnimplementedRootServer struct{}
 
-func (UnimplementedRootServer) Get(context.Context, *emptypb.Empty) (*RootMain, error) {
+func (UnimplementedRootServer) Get(context.Context, *emptypb.Empty) (*structpb.Struct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedRootServer) Set(context.Context, *RootMain) (*emptypb.Empty, error) {
+func (UnimplementedRootServer) Set(context.Context, *structpb.Struct) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Set not implemented")
 }
 func (UnimplementedRootServer) GetJwtKidsByUrls(context.Context, *RootJwtKidsReq) (*RootJwtKidsRep, error) {
@@ -154,7 +155,7 @@ func _Root_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{
 }
 
 func _Root_Set_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RootMain)
+	in := new(structpb.Struct)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -166,7 +167,7 @@ func _Root_Set_Handler(srv interface{}, ctx context.Context, dec func(interface{
 		FullMethod: Root_Set_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RootServer).Set(ctx, req.(*RootMain))
+		return srv.(RootServer).Set(ctx, req.(*structpb.Struct))
 	}
 	return interceptor(ctx, in, info, handler)
 }
