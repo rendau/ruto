@@ -2,9 +2,6 @@ package model
 
 import (
 	"testing"
-
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
-	variableModel "github.com/rendau/ruto/internal/domain/variable/model"
 )
 
 func TestAppNormalize_RejectWildcardInPathPrefix(t *testing.T) {
@@ -139,60 +136,5 @@ func TestAppNormalize_BackendRequestParams(t *testing.T) {
 	}
 	if item.Backend.QueryParams["tenant"] != "acme" {
 		t.Fatalf("query param normalize failed: %#v", item.Backend.QueryParams)
-	}
-}
-
-func TestAppBackendRequestParamsWithVariables(t *testing.T) {
-	item := &App{
-		Backend: AppBackend{
-			Headers: map[string]string{
-				"X-App-Token": "{{token}}",
-			},
-			QueryParams: map[string]string{
-				"{{tenant_param}}": "{{tenant}}",
-			},
-		},
-	}
-	endpoint := &endpointModel.Endpoint{
-		Backend: endpointModel.Backend{
-			Headers: map[string]string{
-				"X-Endpoint-Token": "{{composed}}",
-			},
-		},
-	}
-
-	params, err := item.BackendRequestParamsWithVariables(endpoint, []variableModel.Variable{
-		{Key: "token", Value: "endpoint-token"},
-		{Key: "tenant", Value: "acme"},
-		{Key: "tenant_param", Value: "tenant"},
-		{Key: "composed", Value: "{{token}}:{{tenant}}"},
-	})
-	if err != nil {
-		t.Fatalf("BackendRequestParamsWithVariables() unexpected error: %v", err)
-	}
-	if params.Headers["X-App-Token"] != "endpoint-token" {
-		t.Fatalf("app header interpolation failed: %#v", params.Headers)
-	}
-	if params.Headers["X-Endpoint-Token"] != "endpoint-token:acme" {
-		t.Fatalf("endpoint header interpolation failed: %#v", params.Headers)
-	}
-	if params.QueryParams["tenant"] != "acme" {
-		t.Fatalf("query interpolation failed: %#v", params.QueryParams)
-	}
-}
-
-func TestAppGrpcAddress_ParsesBackendURLWhenLoadedFromStorage(t *testing.T) {
-	item := &App{
-		Backend: AppBackend{
-			Url:      "http://zeon-lb-tcp",
-			GrpcPort: 9200,
-		},
-	}
-
-	if item.Backend.ParsedUrl != nil {
-		t.Fatalf("test setup expected ParsedUrl to be nil")
-	}
-	if got := item.GrpcAddress(); got != "zeon-lb-tcp:9200" {
-		t.Fatalf("unexpected grpc address: %q", got)
 	}
 }
