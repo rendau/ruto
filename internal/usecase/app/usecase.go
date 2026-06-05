@@ -84,18 +84,18 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.App, error) {
 }
 
 func (u *Usecase) Interpolate(ctx context.Context, id string, variables varsModel.Vars) (*model.App, error) {
-	return u.inherited(ctx, id, variables, true)
+	return u.getInherited(ctx, id, variables, true)
 }
 
 func (u *Usecase) Inherited(ctx context.Context, id string, variables varsModel.Vars) (*model.App, error) {
-	return u.inherited(ctx, id, variables, false)
+	return u.getInherited(ctx, id, variables, false)
 }
 
-func (u *Usecase) inherited(
+func (u *Usecase) getInherited(
 	ctx context.Context,
 	id string,
 	variables varsModel.Vars,
-	interpolate bool,
+	withInterpolate bool,
 ) (*model.App, error) {
 	extractedSession := u.sessionSvc.FromContext(ctx)
 	if extractedSession.Id == 0 {
@@ -127,7 +127,7 @@ func (u *Usecase) inherited(
 	rootObj.Apps = append(rootObj.Apps, appObj)
 	rootObj.InheritDown()
 
-	if interpolate {
+	if withInterpolate {
 		rootObj.Interpolate()
 	}
 

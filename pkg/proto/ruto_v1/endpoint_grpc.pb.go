@@ -21,11 +21,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Endpoint_List_FullMethodName   = "/ruto_v1.Endpoint/List"
-	Endpoint_Get_FullMethodName    = "/ruto_v1.Endpoint/Get"
-	Endpoint_Create_FullMethodName = "/ruto_v1.Endpoint/Create"
-	Endpoint_Update_FullMethodName = "/ruto_v1.Endpoint/Update"
-	Endpoint_Delete_FullMethodName = "/ruto_v1.Endpoint/Delete"
+	Endpoint_List_FullMethodName        = "/ruto_v1.Endpoint/List"
+	Endpoint_Get_FullMethodName         = "/ruto_v1.Endpoint/Get"
+	Endpoint_Interpolate_FullMethodName = "/ruto_v1.Endpoint/Interpolate"
+	Endpoint_Inherited_FullMethodName   = "/ruto_v1.Endpoint/Inherited"
+	Endpoint_Create_FullMethodName      = "/ruto_v1.Endpoint/Create"
+	Endpoint_Update_FullMethodName      = "/ruto_v1.Endpoint/Update"
+	Endpoint_Delete_FullMethodName      = "/ruto_v1.Endpoint/Delete"
 )
 
 // EndpointClient is the client API for Endpoint service.
@@ -34,6 +36,8 @@ const (
 type EndpointClient interface {
 	List(ctx context.Context, in *EndpointListReq, opts ...grpc.CallOption) (*EndpointListRep, error)
 	Get(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*structpb.Struct, error)
+	Interpolate(ctx context.Context, in *EndpointInterpolateReq, opts ...grpc.CallOption) (*structpb.Struct, error)
+	Inherited(ctx context.Context, in *EndpointInheritedReq, opts ...grpc.CallOption) (*structpb.Struct, error)
 	Create(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*EndpointCreateRep, error)
 	Update(ctx context.Context, in *EndpointUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -61,6 +65,26 @@ func (c *endpointClient) Get(ctx context.Context, in *EndpointGetReq, opts ...gr
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(structpb.Struct)
 	err := c.cc.Invoke(ctx, Endpoint_Get_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *endpointClient) Interpolate(ctx context.Context, in *EndpointInterpolateReq, opts ...grpc.CallOption) (*structpb.Struct, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(structpb.Struct)
+	err := c.cc.Invoke(ctx, Endpoint_Interpolate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *endpointClient) Inherited(ctx context.Context, in *EndpointInheritedReq, opts ...grpc.CallOption) (*structpb.Struct, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(structpb.Struct)
+	err := c.cc.Invoke(ctx, Endpoint_Inherited_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +127,8 @@ func (c *endpointClient) Delete(ctx context.Context, in *EndpointGetReq, opts ..
 type EndpointServer interface {
 	List(context.Context, *EndpointListReq) (*EndpointListRep, error)
 	Get(context.Context, *EndpointGetReq) (*structpb.Struct, error)
+	Interpolate(context.Context, *EndpointInterpolateReq) (*structpb.Struct, error)
+	Inherited(context.Context, *EndpointInheritedReq) (*structpb.Struct, error)
 	Create(context.Context, *structpb.Struct) (*EndpointCreateRep, error)
 	Update(context.Context, *EndpointUpdateReq) (*emptypb.Empty, error)
 	Delete(context.Context, *EndpointGetReq) (*emptypb.Empty, error)
@@ -121,6 +147,12 @@ func (UnimplementedEndpointServer) List(context.Context, *EndpointListReq) (*End
 }
 func (UnimplementedEndpointServer) Get(context.Context, *EndpointGetReq) (*structpb.Struct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedEndpointServer) Interpolate(context.Context, *EndpointInterpolateReq) (*structpb.Struct, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Interpolate not implemented")
+}
+func (UnimplementedEndpointServer) Inherited(context.Context, *EndpointInheritedReq) (*structpb.Struct, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Inherited not implemented")
 }
 func (UnimplementedEndpointServer) Create(context.Context, *structpb.Struct) (*EndpointCreateRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
@@ -184,6 +216,42 @@ func _Endpoint_Get_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EndpointServer).Get(ctx, req.(*EndpointGetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Endpoint_Interpolate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EndpointInterpolateReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EndpointServer).Interpolate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Endpoint_Interpolate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EndpointServer).Interpolate(ctx, req.(*EndpointInterpolateReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Endpoint_Inherited_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EndpointInheritedReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EndpointServer).Inherited(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Endpoint_Inherited_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EndpointServer).Inherited(ctx, req.(*EndpointInheritedReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -256,6 +324,14 @@ var Endpoint_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Get",
 			Handler:    _Endpoint_Get_Handler,
+		},
+		{
+			MethodName: "Interpolate",
+			Handler:    _Endpoint_Interpolate_Handler,
+		},
+		{
+			MethodName: "Inherited",
+			Handler:    _Endpoint_Inherited_Handler,
 		},
 		{
 			MethodName: "Create",

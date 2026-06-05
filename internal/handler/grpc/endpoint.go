@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 
 	usecase "github.com/rendau/ruto/internal/usecase/endpoint"
@@ -41,6 +42,22 @@ func (h *Endpoint) List(ctx context.Context, req *ruto_v1.EndpointListReq) (*rut
 
 func (h *Endpoint) Get(ctx context.Context, req *ruto_v1.EndpointGetReq) (*structpb.Struct, error) {
 	item, err := h.usecase.Get(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeEndpointData(item, 0), nil
+}
+
+func (h *Endpoint) Interpolate(ctx context.Context, req *ruto_v1.EndpointInterpolateReq) (*structpb.Struct, error) {
+	item, err := h.usecase.Interpolate(ctx, req.GetId(), varsModel.Vars(req.GetVariables()))
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeEndpointData(item, 0), nil
+}
+
+func (h *Endpoint) Inherited(ctx context.Context, req *ruto_v1.EndpointInheritedReq) (*structpb.Struct, error) {
+	item, err := h.usecase.Inherited(ctx, req.GetId(), varsModel.Vars(req.GetVariables()))
 	if err != nil {
 		return nil, err
 	}

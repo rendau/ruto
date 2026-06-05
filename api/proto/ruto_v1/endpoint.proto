@@ -16,6 +16,12 @@ service Endpoint {
   rpc Get(EndpointGetReq) returns (google.protobuf.Struct) {
     option (google.api.http) = { get: "/endpoint/{id}" };
   };
+  rpc Interpolate(EndpointInterpolateReq) returns (google.protobuf.Struct) {
+    option (google.api.http) = { post: "/endpoint/{id}/interpolate" body: "*" };
+  };
+  rpc Inherited(EndpointInheritedReq) returns (google.protobuf.Struct) {
+    option (google.api.http) = { post: "/endpoint/{id}/inherited" body: "*" };
+  };
   rpc Create(google.protobuf.Struct) returns (EndpointCreateRep) {
     option (google.api.http) = { post: "/endpoint" body: "*" };
   };
@@ -34,6 +40,16 @@ message EndpointUpdateReq {
 
 message EndpointGetReq {
   string id = 1;
+}
+
+message EndpointInterpolateReq {
+  string id = 1;
+  map<string, string> variables = 2;
+}
+
+message EndpointInheritedReq {
+  string id = 1;
+  map<string, string> variables = 2;
 }
 
 message EndpointListReq {

@@ -120,6 +120,110 @@ func (x *EndpointGetReq) GetId() string {
 	return ""
 }
 
+type EndpointInterpolateReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Variables     map[string]string      `protobuf:"bytes,2,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointInterpolateReq) Reset() {
+	*x = EndpointInterpolateReq{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointInterpolateReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointInterpolateReq) ProtoMessage() {}
+
+func (x *EndpointInterpolateReq) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointInterpolateReq.ProtoReflect.Descriptor instead.
+func (*EndpointInterpolateReq) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *EndpointInterpolateReq) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EndpointInterpolateReq) GetVariables() map[string]string {
+	if x != nil {
+		return x.Variables
+	}
+	return nil
+}
+
+type EndpointInheritedReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Variables     map[string]string      `protobuf:"bytes,2,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointInheritedReq) Reset() {
+	*x = EndpointInheritedReq{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointInheritedReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointInheritedReq) ProtoMessage() {}
+
+func (x *EndpointInheritedReq) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointInheritedReq.ProtoReflect.Descriptor instead.
+func (*EndpointInheritedReq) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *EndpointInheritedReq) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EndpointInheritedReq) GetVariables() map[string]string {
+	if x != nil {
+		return x.Variables
+	}
+	return nil
+}
+
 type EndpointListReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ListParams    *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
@@ -131,7 +235,7 @@ type EndpointListReq struct {
 
 func (x *EndpointListReq) Reset() {
 	*x = EndpointListReq{}
-	mi := &file_ruto_v1_endpoint_proto_msgTypes[2]
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -143,7 +247,7 @@ func (x *EndpointListReq) String() string {
 func (*EndpointListReq) ProtoMessage() {}
 
 func (x *EndpointListReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_endpoint_proto_msgTypes[2]
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -156,7 +260,7 @@ func (x *EndpointListReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndpointListReq.ProtoReflect.Descriptor instead.
 func (*EndpointListReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{2}
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *EndpointListReq) GetListParams() *ListParamsSt {
@@ -190,7 +294,7 @@ type EndpointListRep struct {
 
 func (x *EndpointListRep) Reset() {
 	*x = EndpointListRep{}
-	mi := &file_ruto_v1_endpoint_proto_msgTypes[3]
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -202,7 +306,7 @@ func (x *EndpointListRep) String() string {
 func (*EndpointListRep) ProtoMessage() {}
 
 func (x *EndpointListRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_endpoint_proto_msgTypes[3]
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -215,7 +319,7 @@ func (x *EndpointListRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndpointListRep.ProtoReflect.Descriptor instead.
 func (*EndpointListRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{3}
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *EndpointListRep) GetPaginationInfo() *PaginationInfoSt {
@@ -241,7 +345,7 @@ type EndpointCreateRep struct {
 
 func (x *EndpointCreateRep) Reset() {
 	*x = EndpointCreateRep{}
-	mi := &file_ruto_v1_endpoint_proto_msgTypes[4]
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -253,7 +357,7 @@ func (x *EndpointCreateRep) String() string {
 func (*EndpointCreateRep) ProtoMessage() {}
 
 func (x *EndpointCreateRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_endpoint_proto_msgTypes[4]
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -266,7 +370,7 @@ func (x *EndpointCreateRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndpointCreateRep.ProtoReflect.Descriptor instead.
 func (*EndpointCreateRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{4}
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *EndpointCreateRep) GetId() string {
@@ -285,7 +389,19 @@ const file_ruto_v1_endpoint_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12+\n" +
 	"\x04data\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04data\" \n" +
 	"\x0eEndpointGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x98\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xb4\x01\n" +
+	"\x16EndpointInterpolateReq\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12L\n" +
+	"\tvariables\x18\x02 \x03(\v2..ruto_v1.EndpointInterpolateReq.VariablesEntryR\tvariables\x1a<\n" +
+	"\x0eVariablesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb0\x01\n" +
+	"\x14EndpointInheritedReq\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12J\n" +
+	"\tvariables\x18\x02 \x03(\v2,.ruto_v1.EndpointInheritedReq.VariablesEntryR\tvariables\x1a<\n" +
+	"\x0eVariablesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x98\x01\n" +
 	"\x0fEndpointListReq\x126\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x15.ruto_v1.ListParamsStR\n" +
 	"listParams\x12\x1a\n" +
@@ -297,10 +413,12 @@ const file_ruto_v1_endpoint_proto_rawDesc = "" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x19.ruto_v1.PaginationInfoStR\x0epaginationInfo\x121\n" +
 	"\aresults\x18\x02 \x03(\v2\x17.google.protobuf.StructR\aresults\"#\n" +
 	"\x11EndpointCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id2\xae\x03\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id2\x88\x05\n" +
 	"\bEndpoint\x12M\n" +
 	"\x04List\x12\x18.ruto_v1.EndpointListReq\x1a\x18.ruto_v1.EndpointListRep\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/endpoint\x12O\n" +
-	"\x03Get\x12\x17.ruto_v1.EndpointGetReq\x1a\x17.google.protobuf.Struct\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/endpoint/{id}\x12S\n" +
+	"\x03Get\x12\x17.ruto_v1.EndpointGetReq\x1a\x17.google.protobuf.Struct\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/endpoint/{id}\x12n\n" +
+	"\vInterpolate\x12\x1f.ruto_v1.EndpointInterpolateReq\x1a\x17.google.protobuf.Struct\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/endpoint/{id}/interpolate\x12h\n" +
+	"\tInherited\x12\x1d.ruto_v1.EndpointInheritedReq\x1a\x17.google.protobuf.Struct\"#\x82\xd3\xe4\x93\x02\x1d:\x01*\"\x18/endpoint/{id}/inherited\x12S\n" +
 	"\x06Create\x12\x17.google.protobuf.Struct\x1a\x1a.ruto_v1.EndpointCreateRep\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\"\t/endpoint\x12Z\n" +
 	"\x06Update\x12\x1a.ruto_v1.EndpointUpdateReq\x1a\x16.google.protobuf.Empty\"\x1c\x82\xd3\xe4\x93\x02\x16:\x04data\x1a\x0e/endpoint/{id}\x12Q\n" +
 	"\x06Delete\x12\x17.ruto_v1.EndpointGetReq\x1a\x16.google.protobuf.Empty\"\x16\x82\xd3\xe4\x93\x02\x10*\x0e/endpoint/{id}B\n" +
@@ -318,38 +436,48 @@ func file_ruto_v1_endpoint_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_endpoint_proto_rawDescData
 }
 
-var file_ruto_v1_endpoint_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_ruto_v1_endpoint_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_ruto_v1_endpoint_proto_goTypes = []any{
-	(*EndpointUpdateReq)(nil), // 0: ruto_v1.EndpointUpdateReq
-	(*EndpointGetReq)(nil),    // 1: ruto_v1.EndpointGetReq
-	(*EndpointListReq)(nil),   // 2: ruto_v1.EndpointListReq
-	(*EndpointListRep)(nil),   // 3: ruto_v1.EndpointListRep
-	(*EndpointCreateRep)(nil), // 4: ruto_v1.EndpointCreateRep
-	(*structpb.Struct)(nil),   // 5: google.protobuf.Struct
-	(*ListParamsSt)(nil),      // 6: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),  // 7: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),     // 8: google.protobuf.Empty
+	(*EndpointUpdateReq)(nil),      // 0: ruto_v1.EndpointUpdateReq
+	(*EndpointGetReq)(nil),         // 1: ruto_v1.EndpointGetReq
+	(*EndpointInterpolateReq)(nil), // 2: ruto_v1.EndpointInterpolateReq
+	(*EndpointInheritedReq)(nil),   // 3: ruto_v1.EndpointInheritedReq
+	(*EndpointListReq)(nil),        // 4: ruto_v1.EndpointListReq
+	(*EndpointListRep)(nil),        // 5: ruto_v1.EndpointListRep
+	(*EndpointCreateRep)(nil),      // 6: ruto_v1.EndpointCreateRep
+	nil,                            // 7: ruto_v1.EndpointInterpolateReq.VariablesEntry
+	nil,                            // 8: ruto_v1.EndpointInheritedReq.VariablesEntry
+	(*structpb.Struct)(nil),        // 9: google.protobuf.Struct
+	(*ListParamsSt)(nil),           // 10: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),       // 11: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),          // 12: google.protobuf.Empty
 }
 var file_ruto_v1_endpoint_proto_depIdxs = []int32{
-	5, // 0: ruto_v1.EndpointUpdateReq.data:type_name -> google.protobuf.Struct
-	6, // 1: ruto_v1.EndpointListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	7, // 2: ruto_v1.EndpointListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
-	5, // 3: ruto_v1.EndpointListRep.results:type_name -> google.protobuf.Struct
-	2, // 4: ruto_v1.Endpoint.List:input_type -> ruto_v1.EndpointListReq
-	1, // 5: ruto_v1.Endpoint.Get:input_type -> ruto_v1.EndpointGetReq
-	5, // 6: ruto_v1.Endpoint.Create:input_type -> google.protobuf.Struct
-	0, // 7: ruto_v1.Endpoint.Update:input_type -> ruto_v1.EndpointUpdateReq
-	1, // 8: ruto_v1.Endpoint.Delete:input_type -> ruto_v1.EndpointGetReq
-	3, // 9: ruto_v1.Endpoint.List:output_type -> ruto_v1.EndpointListRep
-	5, // 10: ruto_v1.Endpoint.Get:output_type -> google.protobuf.Struct
-	4, // 11: ruto_v1.Endpoint.Create:output_type -> ruto_v1.EndpointCreateRep
-	8, // 12: ruto_v1.Endpoint.Update:output_type -> google.protobuf.Empty
-	8, // 13: ruto_v1.Endpoint.Delete:output_type -> google.protobuf.Empty
-	9, // [9:14] is the sub-list for method output_type
-	4, // [4:9] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	9,  // 0: ruto_v1.EndpointUpdateReq.data:type_name -> google.protobuf.Struct
+	7,  // 1: ruto_v1.EndpointInterpolateReq.variables:type_name -> ruto_v1.EndpointInterpolateReq.VariablesEntry
+	8,  // 2: ruto_v1.EndpointInheritedReq.variables:type_name -> ruto_v1.EndpointInheritedReq.VariablesEntry
+	10, // 3: ruto_v1.EndpointListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	11, // 4: ruto_v1.EndpointListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	9,  // 5: ruto_v1.EndpointListRep.results:type_name -> google.protobuf.Struct
+	4,  // 6: ruto_v1.Endpoint.List:input_type -> ruto_v1.EndpointListReq
+	1,  // 7: ruto_v1.Endpoint.Get:input_type -> ruto_v1.EndpointGetReq
+	2,  // 8: ruto_v1.Endpoint.Interpolate:input_type -> ruto_v1.EndpointInterpolateReq
+	3,  // 9: ruto_v1.Endpoint.Inherited:input_type -> ruto_v1.EndpointInheritedReq
+	9,  // 10: ruto_v1.Endpoint.Create:input_type -> google.protobuf.Struct
+	0,  // 11: ruto_v1.Endpoint.Update:input_type -> ruto_v1.EndpointUpdateReq
+	1,  // 12: ruto_v1.Endpoint.Delete:input_type -> ruto_v1.EndpointGetReq
+	5,  // 13: ruto_v1.Endpoint.List:output_type -> ruto_v1.EndpointListRep
+	9,  // 14: ruto_v1.Endpoint.Get:output_type -> google.protobuf.Struct
+	9,  // 15: ruto_v1.Endpoint.Interpolate:output_type -> google.protobuf.Struct
+	9,  // 16: ruto_v1.Endpoint.Inherited:output_type -> google.protobuf.Struct
+	6,  // 17: ruto_v1.Endpoint.Create:output_type -> ruto_v1.EndpointCreateRep
+	12, // 18: ruto_v1.Endpoint.Update:output_type -> google.protobuf.Empty
+	12, // 19: ruto_v1.Endpoint.Delete:output_type -> google.protobuf.Empty
+	13, // [13:20] is the sub-list for method output_type
+	6,  // [6:13] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_endpoint_proto_init() }
@@ -358,14 +486,14 @@ func file_ruto_v1_endpoint_proto_init() {
 		return
 	}
 	file_ruto_v1_common_proto_init()
-	file_ruto_v1_endpoint_proto_msgTypes[2].OneofWrappers = []any{}
+	file_ruto_v1_endpoint_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_endpoint_proto_rawDesc), len(file_ruto_v1_endpoint_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

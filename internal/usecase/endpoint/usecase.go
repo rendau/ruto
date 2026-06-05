@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	"github.com/rendau/ruto/internal/domain/endpoint/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 	"github.com/rendau/ruto/internal/errs"
 )
 
@@ -79,6 +82,14 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Endpoint, error) {
 	return result, nil
 }
 
+func (u *Usecase) Interpolate(ctx context.Context, id string, variables varsModel.Vars) (*model.Endpoint, error) {
+	return u.getInherited(ctx, id, variables, true)
+}
+
+func (u *Usecase) Inherited(ctx context.Context, id string, variables varsModel.Vars) (*model.Endpoint, error) {
+	return u.getInherited(ctx, id, variables, false)
+}
+
 func (u *Usecase) Update(ctx context.Context, id string, obj *model.Endpoint) error {
 	extractedSession := u.sessionSvc.FromContext(ctx)
 	if extractedSession.Id == 0 {
@@ -129,4 +140,62 @@ func (u *Usecase) validateEdit(obj *model.Endpoint, forCreate bool) error {
 	}
 
 	return nil
+}
+
+func (u *Usecase) getInherited(
+	ctx context.Context,
+	id string,
+	variables varsModel.Vars,
+	withInterpolate bool,
+) (*model.Endpoint, error) {
+	extractedSession := u.sessionSvc.FromContext(ctx)
+	if extractedSession.Id == 0 {
+		return nil, errs.NotAuthorized
+	}
+
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil, errs.IdRequired
+	}
+
+	epObj, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return nil, fmt.Errorf("svc.Get: %w", err)
+	}
+	if epObj == nil {
+		return nil, fmt.Errorf("svc.Get: nil endpoint")
+	}
+
+	if u.appSvc == nil {
+		return nil, fmt.Errorf("appSvc: nil")
+	}
+	appObj, _, err := u.appSvc.Get(ctx, epObj.AppId, true)
+	if err != nil {
+		return nil, fmt.Errorf("appSvc.Get: %w", err)
+	}
+	if appObj == nil {
+		return nil, fmt.Errorf("appSvc.Get: nil app")
+	}
+
+	if u.rootSvc == nil {
+		return nil, fmt.Errorf("rootSvc: nil")
+	}
+	rootObj, err := u.rootSvc.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("rootSvc.Get: %w", err)
+	}
+	if rootObj == nil {
+		rootObj = rootModel.NewEmpty()
+	}
+
+	epObj.Variables.FillMissing(variables)
+
+	appObj.Endpoints = []*model.Endpoint{epObj}
+	rootObj.Apps = []*appModel.App{appObj}
+	rootObj.InheritDown()
+	if withInterpolate {
+		rootObj.Interpolate()
+	}
+
+	return epObj, nil
 }

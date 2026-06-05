@@ -321,7 +321,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/AppInheritedBody"
+              "$ref": "#/definitions/ruto_v1AppInheritedBody"
             }
           }
         ],
@@ -594,6 +594,82 @@
             "required": true,
             "schema": {
               "type": "object"
+            }
+          }
+        ],
+        "tags": [
+          "Endpoint"
+        ]
+      }
+    },
+    "/endpoint/{id}/inherited": {
+      "post": {
+        "operationId": "Endpoint_Inherited",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ruto_v1EndpointInheritedBody"
+            }
+          }
+        ],
+        "tags": [
+          "Endpoint"
+        ]
+      }
+    },
+    "/endpoint/{id}/interpolate": {
+      "post": {
+        "operationId": "Endpoint_Interpolate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ruto_v1EndpointInterpolateBody"
             }
           }
         ],
@@ -1142,17 +1218,6 @@
     }
   },
   "definitions": {
-    "AppInheritedBody": {
-      "type": "object",
-      "properties": {
-        "variables": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -1231,6 +1296,17 @@
         }
       }
     },
+    "ruto_v1AppInheritedBody": {
+      "type": "object",
+      "properties": {
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "ruto_v1AppInterpolateBody": {
       "type": "object",
       "properties": {
@@ -1291,6 +1367,28 @@
       "properties": {
         "id": {
           "type": "string"
+        }
+      }
+    },
+    "ruto_v1EndpointInheritedBody": {
+      "type": "object",
+      "properties": {
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ruto_v1EndpointInterpolateBody": {
+      "type": "object",
+      "properties": {
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
