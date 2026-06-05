@@ -78,7 +78,7 @@ onMounted(async () => {
   <main class="login-page">
     <form v-if="bootstrapStatusLoading" class="login-form">
       <div class="login-brand">
-        <img class="login-brand-logo" src="/logo-ruto.svg" alt="Ruto logo" />
+        <img class="login-brand-logo" src="/ruto_logo.svg" alt="Ruto logo" />
         <h1>Ruto Admin</h1>
       </div>
       <p class="hint">Loading...</p>
@@ -86,7 +86,7 @@ onMounted(async () => {
 
     <form v-else-if="!bootstrapAvailable" class="login-form" @submit.prevent="submit">
       <div class="login-brand">
-        <img class="login-brand-logo" src="/logo-ruto.svg" alt="Ruto logo" />
+        <img class="login-brand-logo" src="/ruto_logo.svg" alt="Ruto logo" />
         <h1>Ruto Admin</h1>
       </div>
       <label class="field">
@@ -107,7 +107,7 @@ onMounted(async () => {
 
     <form v-else class="login-form" @submit.prevent="submitBootstrap">
       <div class="login-brand">
-        <img class="login-brand-logo" src="/logo-ruto.svg" alt="Ruto logo" />
+        <img class="login-brand-logo" src="/ruto_logo.svg" alt="Ruto logo" />
         <h1>First Admin Setup</h1>
       </div>
       <label class="field">

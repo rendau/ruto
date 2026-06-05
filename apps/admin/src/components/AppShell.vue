@@ -232,7 +232,7 @@ onBeforeUnmount(() => {
   <div ref="layoutRef" class="layout" :style="{ '--sidebar-width': `${sidebarWidth}px` }">
     <aside class="sidebar" :class="{ 'mobile-open': mobileSidebarOpen }">
       <RouterLink class="brand brand-link" to="/">
-        <img class="brand-logo" src="/logo-ruto.svg" alt="Ruto logo" />
+        <img class="brand-logo" src="/ruto_logo.svg" alt="Ruto logo" />
         <span class="brand-text">Ruto Admin</span>
       </RouterLink>
       <nav class="nav">
