@@ -357,11 +357,12 @@ function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "all
         </label>
         <label class="field">
           <span>Roles (one per line)</span>
-          <n-input
-            :value="methodText[methodIndex]?.jwtRoles || ''"
+          <VariableInput
+            :model-value="methodText[methodIndex]?.jwtRoles || ''"
+            :variables="variableOptions"
             type="textarea"
-            rows="3"
-            @update:value="(value: string) => setMethodText(methodIndex, 'jwtRoles', value)"
+            :rows="3"
+            @update:model-value="(value: string) => setMethodText(methodIndex, 'jwtRoles', value)"
           />
         </label>
       </div>

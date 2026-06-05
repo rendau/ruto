@@ -126,7 +126,6 @@ func TestUsecase_EndpointInherited(t *testing.T) {
 	item, err := uc.Inherited(context.Background(), " ep-1 ", varsModel.Vars{"req": "req-v"})
 	require.NoError(t, err)
 	require.Equal(t, varsModel.Vars{
-		"ep":   "ep-v",
 		"req":  "req-v",
 		"app":  "app-v",
 		"root": "root-v",
@@ -193,7 +192,6 @@ func TestUsecase_EndpointInterpolate(t *testing.T) {
 	item, err := uc.Interpolate(context.Background(), "ep-1", varsModel.Vars{"req": "req-v"})
 	require.NoError(t, err)
 	require.Equal(t, varsModel.Vars{
-		"ep":   "ep-v",
 		"req":  "req-v",
 		"app":  "app-v",
 		"root": "root-v",
@@ -202,7 +200,7 @@ func TestUsecase_EndpointInterpolate(t *testing.T) {
 		"X-Req":      "req-v",
 		"X-App":      "app-v",
 		"X-Root":     "root-v",
-		"X-Ep":       "ep-v",
+		"X-Ep":       "{{ep}}",
 		"X-From-App": "app-v",
 	}, item.Backend.Headers)
 }

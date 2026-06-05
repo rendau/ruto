@@ -20,13 +20,15 @@ import type {
   RootMain,
   RootJwtKidsReq,
   RootJwtKidsRep,
-  RootVariablesEffectiveReq,
+  RootInterpolateReq,
   UsrLoginRep,
   UsrMain,
   UsrBootstrapStatusRep,
-  VariablesEffectiveRep,
-  AppVariablesEffectiveReq,
-  EndpointVariablesEffectiveReq
+  AppInterpolateReq,
+  AppInheritedReq,
+  EndpointInterpolateReq,
+  EndpointInheritedReq,
+  Variable
 } from "../types/api";
 import { API_BASE_URL } from "./config";
 import { clearSession, getToken, renewTokenOnce, setCredentials, setToken } from "./auth-session";
@@ -70,6 +72,148 @@ function withQuery(path: string, query: Record<string, string | number | boolean
 
   const queryStr = params.toString();
   return queryStr ? `${path}?${queryStr}` : path;
+}
+
+function variablesToArray(variables?: Variable[] | Record<string, string> | null): Variable[] {
+  if (!variables) {
+    return [];
+  }
+  if (Array.isArray(variables)) {
+    return variables.map((item) => ({
+      key: item?.key || "",
+      value: item?.value || ""
+    }));
+  }
+  return Object.entries(variables).map(([key, value]) => ({
+    key,
+    value: value || ""
+  }));
+}
+
+function variablesToMap(variables?: Variable[] | Record<string, string> | null): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const item of variablesToArray(variables)) {
+    const key = (item.key || "").trim();
+    if (!key) {
+      continue;
+    }
+    result[key] = item.value || "";
+  }
+  return result;
+}
+
+function normalizeRoot(value: RootMain): RootMain {
+  return {
+    base_url: value?.base_url || "",
+    cors: value?.cors || {
+      enabled: false,
+      allow_credentials: false,
+      max_age: "",
+      allow_origins: [],
+      allow_methods: [],
+      allow_headers: []
+    },
+    jwt: value?.jwt || [],
+    auth: value?.auth || {
+      enabled: false,
+      mode: "extend",
+      methods: []
+    },
+    variables: variablesToArray((value as RootMain & { variables?: Variable[] | Record<string, string> }).variables)
+  };
+}
+
+function normalizeApp(value: AppMain): AppMain {
+  return {
+    id: value?.id || "",
+    active: Boolean(value?.active),
+    path_prefix: value?.path_prefix || "",
+    name: value?.name || "",
+    backend: {
+      url: value?.backend?.url || "",
+      swagger_url: value?.backend?.swagger_url || "",
+      grpc_url: value?.backend?.grpc_url || "",
+      headers: value?.backend?.headers || {},
+      query_params: value?.backend?.query_params || {}
+    },
+    auth: value?.auth || {
+      enabled: false,
+      mode: "extend",
+      methods: []
+    },
+    variables: variablesToArray((value as AppMain & { variables?: Variable[] | Record<string, string> }).variables)
+  };
+}
+
+function normalizeEndpoint(value: EndpointMain): EndpointMain {
+  const endpointWithLegacyFields = value as EndpointMain & {
+    method?: string;
+    path?: string;
+    http?: { method?: string; path?: string };
+  };
+
+  return {
+    id: value?.id || "",
+    app_id: value?.app_id || "",
+    active: Boolean(value?.active),
+    http: {
+      method: endpointWithLegacyFields.http?.method || endpointWithLegacyFields.method || "",
+      path: endpointWithLegacyFields.http?.path || endpointWithLegacyFields.path || ""
+    },
+    backend: {
+      custom_path: value?.backend?.custom_path || "",
+      headers: value?.backend?.headers || {},
+      query_params: value?.backend?.query_params || {}
+    },
+    auth: value?.auth || {
+      enabled: false,
+      mode: "extend",
+      methods: []
+    },
+    type: value?.type === "grpc" ? "grpc" : "http",
+    grpc: {
+      service: value?.grpc?.service || "",
+      method: value?.grpc?.method || "",
+      path: value?.grpc?.path || ""
+    },
+    variables: variablesToArray((value as EndpointMain & { variables?: Variable[] | Record<string, string> }).variables)
+  };
+}
+
+function serializeRoot(value: RootMain): RootMain {
+  return {
+    base_url: value?.base_url || "",
+    cors: value?.cors || {
+      enabled: false,
+      allow_credentials: false,
+      max_age: "",
+      allow_origins: [],
+      allow_methods: [],
+      allow_headers: []
+    },
+    jwt: value?.jwt || [],
+    auth: value?.auth || {
+      enabled: false,
+      mode: "extend",
+      methods: []
+    },
+    variables: variablesToMap(value?.variables) as unknown as Variable[]
+  };
+}
+
+function serializeApp(value: AppMain): AppMain {
+  return {
+    ...normalizeApp(value),
+    variables: variablesToMap(value?.variables) as unknown as Variable[]
+  };
+}
+
+function serializeEndpoint(value: EndpointMain): EndpointMain {
+  const normalized = normalizeEndpoint(value);
+  return {
+    ...normalized,
+    variables: variablesToMap(value?.variables) as unknown as Variable[]
+  };
 }
 
 async function parseApiError(response: Response): Promise<ApiError> {
@@ -196,24 +340,27 @@ export function listApps(req?: { active?: boolean }): Promise<AppListRep> {
     withQuery("/app", {
       active: req?.active
     })
-  );
+  ).then((rep) => ({
+    ...rep,
+    results: (rep.results || []).map(normalizeApp)
+  }));
 }
 
 export function getApp(id: string): Promise<AppMain> {
-  return apiFetch<AppMain>(`/app/${id}`);
+  return apiFetch<AppMain>(`/app/${id}`).then(normalizeApp);
 }
 
 export function createApp(req: AppMain): Promise<AppCreateRep> {
   return apiFetch<AppCreateRep>("/app", {
     method: "POST",
-    body: JSON.stringify(req)
+    body: JSON.stringify(serializeApp(req))
   });
 }
 
 export function updateApp(req: AppMain): Promise<void> {
   return apiFetch<void>(`/app/${req.id}`, {
     method: "PUT",
-    body: JSON.stringify(req)
+    body: JSON.stringify(serializeApp(req))
   });
 }
 
@@ -239,11 +386,24 @@ export function getAppSwaggerUrlByBackendUrl(req: AppGetSwaggerUrlByBackendUrlRe
   );
 }
 
-export function getAppVariablesEffective(req: AppVariablesEffectiveReq): Promise<VariablesEffectiveRep> {
-  return apiFetch<VariablesEffectiveRep>("/app/variables/effective", {
+export function getAppInterpolate(req: AppInterpolateReq): Promise<AppMain> {
+  return apiFetch<AppMain>(`/app/${req.id || ""}/interpolate`, {
     method: "POST",
-    body: JSON.stringify(req)
-  });
+    body: JSON.stringify({
+      id: req.id || "",
+      variables: variablesToMap(req.variables)
+    })
+  }).then(normalizeApp);
+}
+
+export function getAppInherited(req: AppInheritedReq): Promise<AppMain> {
+  return apiFetch<AppMain>(`/app/${req.id || ""}/inherited`, {
+    method: "POST",
+    body: JSON.stringify({
+      id: req.id || "",
+      variables: variablesToMap(req.variables)
+    })
+  }).then(normalizeApp);
 }
 
 export function listEndpoints(req?: { app_id?: string; active?: boolean }): Promise<EndpointListRep> {
@@ -252,24 +412,27 @@ export function listEndpoints(req?: { app_id?: string; active?: boolean }): Prom
       app_id: req?.app_id,
       active: req?.active
     })
-  );
+  ).then((rep) => ({
+    ...rep,
+    results: (rep.results || []).map(normalizeEndpoint)
+  }));
 }
 
 export function getEndpoint(id: string): Promise<EndpointMain> {
-  return apiFetch<EndpointMain>(`/endpoint/${id}`);
+  return apiFetch<EndpointMain>(`/endpoint/${id}`).then(normalizeEndpoint);
 }
 
 export function createEndpoint(req: EndpointMain): Promise<EndpointCreateRep> {
   return apiFetch<EndpointCreateRep>("/endpoint", {
     method: "POST",
-    body: JSON.stringify(req)
+    body: JSON.stringify(serializeEndpoint(req))
   });
 }
 
 export function updateEndpoint(req: EndpointMain): Promise<void> {
   return apiFetch<void>(`/endpoint/${req.id}`, {
     method: "PUT",
-    body: JSON.stringify(req)
+    body: JSON.stringify(serializeEndpoint(req))
   });
 }
 
@@ -279,21 +442,34 @@ export function deleteEndpoint(id: string): Promise<void> {
   });
 }
 
-export function getEndpointVariablesEffective(req: EndpointVariablesEffectiveReq): Promise<VariablesEffectiveRep> {
-  return apiFetch<VariablesEffectiveRep>("/endpoint/variables/effective", {
+export function getEndpointInterpolate(req: EndpointInterpolateReq): Promise<EndpointMain> {
+  return apiFetch<EndpointMain>(`/endpoint/${req.id || ""}/interpolate`, {
     method: "POST",
-    body: JSON.stringify(req)
-  });
+    body: JSON.stringify({
+      id: req.id || "",
+      variables: variablesToMap(req.variables)
+    })
+  }).then(normalizeEndpoint);
+}
+
+export function getEndpointInherited(req: EndpointInheritedReq): Promise<EndpointMain> {
+  return apiFetch<EndpointMain>(`/endpoint/${req.id || ""}/inherited`, {
+    method: "POST",
+    body: JSON.stringify({
+      id: req.id || "",
+      variables: variablesToMap(req.variables)
+    })
+  }).then(normalizeEndpoint);
 }
 
 export function getRoot(): Promise<RootMain> {
-  return apiFetch<RootMain>("/root");
+  return apiFetch<RootMain>("/root").then(normalizeRoot);
 }
 
 export function setRoot(req: RootMain): Promise<void> {
   return apiFetch<void>("/root", {
     method: "POST",
-    body: JSON.stringify(req)
+    body: JSON.stringify(serializeRoot(req))
   });
 }
 
@@ -305,11 +481,13 @@ export function getRootJwtKidsByUrls(req: RootJwtKidsReq): Promise<RootJwtKidsRe
   );
 }
 
-export function getRootVariablesEffective(req: RootVariablesEffectiveReq): Promise<VariablesEffectiveRep> {
-  return apiFetch<VariablesEffectiveRep>("/root/variables/effective", {
+export function getRootInterpolate(req: RootInterpolateReq): Promise<RootMain> {
+  return apiFetch<RootMain>("/root/interpolate", {
     method: "POST",
-    body: JSON.stringify(req)
-  });
+    body: JSON.stringify({
+      variables: variablesToMap(req.variables)
+    })
+  }).then(normalizeRoot);
 }
 
 export function getStats(): Promise<StatsResponse> {

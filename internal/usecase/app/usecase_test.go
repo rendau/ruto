@@ -154,14 +154,13 @@ func TestUsecase_Interpolate(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "app-id", item.Id)
 	require.Equal(t, varsModel.Vars{
-		"app_var":  "app-v",
 		"req_var":  "req-v",
 		"root_var": "root-v",
 	}, item.Variables)
 	require.Equal(t, varsModel.Vars{
 		"X-Root": "root-v",
 		"X-Req":  "req-v",
-		"X-App":  "app-v",
+		"X-App":  "{{app_var}}",
 	}, item.Backend.Headers)
 }
 
@@ -208,7 +207,6 @@ func TestUsecase_Inherited(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "app-id", item.Id)
 	require.Equal(t, varsModel.Vars{
-		"app_var":  "app-v",
 		"req_var":  "req-v",
 		"root_var": "root-v",
 	}, item.Variables)

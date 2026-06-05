@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createEndpoint, getApp, getEndpoint, getEndpointVariablesEffective, getRoot, getRootJwtKidsByUrls, updateEndpoint } from "../lib/api";
+import {
+  createEndpoint,
+  getApp,
+  getAppInterpolate,
+  getEndpoint,
+  getEndpointInherited,
+  getEndpointInterpolate,
+  getRoot,
+  getRootJwtKidsByUrls,
+  updateEndpoint
+} from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
 import VariableEditor from "../components/VariableEditor.vue";
 import VariableInput from "../components/VariableInput.vue";
-import { hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, recordToKeyValueLines } from "../lib/forms";
+import { hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, normalizeVariables, recordToKeyValueLines } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { EndpointMain, EndpointType, Variable } from "../types/api";
 
@@ -40,14 +50,17 @@ const appGrpcEnabled = ref(false);
 const headersText = ref("");
 const queryParamsText = ref("");
 const effectiveVariables = ref<Variable[]>([]);
+const hydratingVariables = ref(false);
 let variablesRequestSeq = 0;
 
 const form = ref<EndpointMain>({
   id: "",
   app_id: appIdFromRoute.value,
   active: true,
-  method: "GET",
-  path: "",
+  http: {
+    method: "GET",
+    path: ""
+  },
   backend: {
     custom_path: "",
     headers: {},
@@ -80,6 +93,10 @@ function normalizeLoadedEndpoint(item: EndpointMain): EndpointMain {
   return {
     ...item,
     type: endpointType,
+    http: {
+      method: item.http?.method || "GET",
+      path: item.http?.path || ""
+    },
     backend: {
       custom_path: item.backend?.custom_path || "",
       headers: item.backend?.headers || {},
@@ -110,10 +127,10 @@ function applyPrefillFromQuery() {
     }
   } else {
     if (prefillMethodFromQuery.value && endpointMethodOptions.includes(prefillMethodFromQuery.value)) {
-      form.value.method = prefillMethodFromQuery.value;
+      form.value.http.method = prefillMethodFromQuery.value;
     }
     if (prefillPathFromQuery.value) {
-      form.value.path = prefillPathFromQuery.value;
+      form.value.http.path = prefillPathFromQuery.value;
     }
   }
 }
@@ -127,7 +144,7 @@ async function loadAppName() {
   try {
     const app = await getApp(form.value.app_id);
     appName.value = app.name;
-    appGrpcEnabled.value = Number(app.backend.grpc_port || 0) > 0;
+    appGrpcEnabled.value = Boolean((app.backend.grpc_url || "").trim());
   } catch {
     appName.value = "";
     appGrpcEnabled.value = false;
@@ -144,14 +161,17 @@ async function load() {
   loading.value = true;
   errorMessage.value = "";
   try {
+    hydratingVariables.value = true;
     form.value = normalizeLoadedEndpoint(await getEndpoint(endpointId.value));
     headersText.value = recordToKeyValueLines(form.value.backend.headers);
     queryParamsText.value = recordToKeyValueLines(form.value.backend.query_params);
     await loadAppName();
     await refreshEffectiveVariables();
+    hydratingVariables.value = false;
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load endpoint";
   } finally {
+    hydratingVariables.value = false;
     loading.value = false;
   }
 }
@@ -206,15 +226,19 @@ function buildPayload(): EndpointMain {
       method: payload.grpc.method.trim(),
       path: normalizeGrpcPath(payload.grpc.service, payload.grpc.method, payload.grpc.path)
     };
-    payload.method = "GRPC";
-    payload.path = payload.grpc.path;
+    payload.http = {
+      method: "",
+      path: ""
+    };
     payload.backend.custom_path = "";
     payload.backend.query_params = {};
     return payload;
   }
 
-  payload.method = (payload.method || "").trim().toUpperCase();
-  payload.path = (payload.path || "").trim();
+  payload.http = {
+    method: (payload.http?.method || "").trim().toUpperCase(),
+    path: (payload.http?.path || "").trim()
+  };
   payload.grpc = {
     service: "",
     method: "",
@@ -269,13 +293,24 @@ async function refreshEffectiveVariables() {
   }
   const requestId = ++variablesRequestSeq;
   try {
-    const rep = await getEndpointVariablesEffective({
-      id: isEdit.value ? endpointId.value : "",
-      app_id: form.value.app_id,
-      variables: form.value.variables || []
-    });
+    const rep = isEdit.value && endpointId.value
+      ? await getEndpointInterpolate({
+        id: endpointId.value,
+        app_id: form.value.app_id,
+        variables: form.value.variables || []
+      }).catch(async () =>
+        getEndpointInherited({
+          id: endpointId.value,
+          app_id: form.value.app_id,
+          variables: form.value.variables || []
+        })
+      )
+      : await getAppInterpolate({
+        id: form.value.app_id,
+        variables: form.value.variables || []
+      });
     if (requestId === variablesRequestSeq) {
-      effectiveVariables.value = rep.variables || [];
+      effectiveVariables.value = normalizeVariables(rep.variables);
     }
   } catch {
     if (requestId === variablesRequestSeq) {
@@ -287,6 +322,9 @@ async function refreshEffectiveVariables() {
 watch(
   () => form.value.variables,
   () => {
+    if (hydratingVariables.value) {
+      return;
+    }
     void refreshEffectiveVariables();
   },
   { deep: true }
@@ -336,11 +374,11 @@ onMounted(() => {
     <template v-if="form.type === 'http'">
       <label class="field">
         <span>Method</span>
-        <n-select v-model:value="form.method" :options="endpointMethodOptions.map((method) => ({ label: method, value: method }))" />
+        <n-select v-model:value="form.http.method" :options="endpointMethodOptions.map((method) => ({ label: method, value: method }))" />
       </label>
       <label class="field">
         <span>Path</span>
-        <n-input v-model:value="form.path" placeholder="/path or empty for app root" />
+        <n-input v-model:value="form.http.path" placeholder="/path or empty for app root" />
       </label>
       <label class="field">
         <span>Custom Backend Path</span>

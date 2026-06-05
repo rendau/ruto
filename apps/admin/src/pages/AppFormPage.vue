@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createApp, getApp, getAppSwaggerUrlByBackendUrl, getAppVariablesEffective, getRoot, getRootJwtKidsByUrls, updateApp } from "../lib/api";
+import {
+  createApp,
+  getApp,
+  getAppInherited,
+  getAppInterpolate,
+  getAppSwaggerUrlByBackendUrl,
+  getRoot,
+  getRootInterpolate,
+  getRootJwtKidsByUrls,
+  updateApp
+} from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
 import VariableEditor from "../components/VariableEditor.vue";
 import VariableInput from "../components/VariableInput.vue";
-import { hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, recordToKeyValueLines } from "../lib/forms";
+import { hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, normalizeVariables, recordToKeyValueLines } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain, Variable } from "../types/api";
 import { useAppsStore } from "../stores/apps";
@@ -26,6 +36,7 @@ const autoDetectedSwaggerUrl = ref("");
 const headersText = ref("");
 const queryParamsText = ref("");
 const effectiveVariables = ref<Variable[]>([]);
+const hydratingVariables = ref(false);
 let discoverTimer: ReturnType<typeof setTimeout> | null = null;
 let discoverRequestSeq = 0;
 let variablesRequestSeq = 0;
@@ -38,7 +49,7 @@ const form = ref<AppMain>({
   backend: {
     url: "",
     swagger_url: "",
-    grpc_port: 0,
+    grpc_url: "",
     headers: {},
     query_params: {}
   },
@@ -52,18 +63,20 @@ const form = ref<AppMain>({
 
 async function load() {
   if (!isEdit.value) {
+    await refreshEffectiveVariables();
     return;
   }
 
   loading.value = true;
   errorMessage.value = "";
   try {
+    hydratingVariables.value = true;
     const item = await getApp(entityId.value);
     form.value = {
       ...item,
       backend: {
         ...item.backend,
-        grpc_port: Number(item.backend.grpc_port || 0),
+        grpc_url: item.backend.grpc_url || "",
         headers: item.backend.headers || {},
         query_params: item.backend.query_params || {}
       },
@@ -73,12 +86,14 @@ async function load() {
     headersText.value = recordToKeyValueLines(form.value.backend.headers);
     queryParamsText.value = recordToKeyValueLines(form.value.backend.query_params);
     await refreshEffectiveVariables();
+    hydratingVariables.value = false;
     if (!form.value.backend.swagger_url.trim()) {
       void discoverSwaggerUrl(form.value.backend.url);
     }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load app";
   } finally {
+    hydratingVariables.value = false;
     loading.value = false;
   }
 }
@@ -108,7 +123,7 @@ async function submit() {
     ...form.value,
     backend: {
       ...form.value.backend,
-      grpc_port: Number(form.value.backend.grpc_port || 0),
+      grpc_url: (form.value.backend.grpc_url || "").trim(),
       headers: keyValueLinesToRecord(headersText.value),
       query_params: keyValueLinesToRecord(queryParamsText.value)
     }
@@ -203,12 +218,21 @@ function triggerSwaggerDiscoveryNow() {
 async function refreshEffectiveVariables() {
   const requestId = ++variablesRequestSeq;
   try {
-    const rep = await getAppVariablesEffective({
-      id: isEdit.value ? entityId.value : "",
-      variables: form.value.variables || []
-    });
+    const rep = isEdit.value && entityId.value
+      ? await getAppInterpolate({
+        id: entityId.value,
+        variables: form.value.variables || []
+      }).catch(async () =>
+        getAppInherited({
+          id: entityId.value,
+          variables: form.value.variables || []
+        })
+      )
+      : await getRootInterpolate({
+        variables: form.value.variables || []
+      });
     if (requestId === variablesRequestSeq) {
-      effectiveVariables.value = rep.variables || [];
+      effectiveVariables.value = normalizeVariables(rep.variables);
     }
   } catch {
     if (requestId === variablesRequestSeq) {
@@ -220,13 +244,16 @@ async function refreshEffectiveVariables() {
 watch(
   () => form.value.variables,
   () => {
+    if (hydratingVariables.value) {
+      return;
+    }
     void refreshEffectiveVariables();
   },
   { deep: true }
 );
 
 onMounted(() => {
-  void Promise.all([load(), loadJwtKidOptions(), refreshEffectiveVariables()]);
+  void Promise.all([load(), loadJwtKidOptions()]);
 });
 
 onBeforeUnmount(() => {
@@ -276,9 +303,9 @@ onBeforeUnmount(() => {
         <span v-if="discoveringSwagger" class="inline-spinner" role="status" aria-label="Searching swagger URL" />
       </div>
     </label>
-    <label class="field compact">
-      <span>gRPC Port</span>
-      <n-input-number v-model:value="form.backend.grpc_port" :min="0" :max="65535" placeholder="0" />
+    <label class="field">
+      <span>gRPC URL</span>
+      <n-input v-model:value="form.backend.grpc_url" placeholder="host:port or dns:///svc:port" />
     </label>
     <label class="field">
       <span>Backend Headers</span>

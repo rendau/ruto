@@ -67,9 +67,8 @@ func TestUsecase_Interpolate(t *testing.T) {
 		"secret":  "qwerty",
 		"api_key": "abc123",
 		"db_user": "request-user",
-		"db_pass": "{{secret}}",
 	}, item.Variables)
-	require.Equal(t, []string{"request-user", "qwerty", "abc123"}, item.Auth.Methods[0].APIKey.Keys)
+	require.Equal(t, []string{"request-user", "{{db_pass}}", "abc123"}, item.Auth.Methods[0].APIKey.Keys)
 }
 
 func TestUsecase_Interpolate_NotAuthorized(t *testing.T) {

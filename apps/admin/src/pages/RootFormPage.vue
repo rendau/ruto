@@ -2,8 +2,8 @@
 import { onMounted, ref, watch } from "vue";
 import AuthEditor from "../components/AuthEditor.vue";
 import VariableEditor from "../components/VariableEditor.vue";
-import { getRoot, getRootJwtKidsByUrls, getRootVariablesEffective, setRoot } from "../lib/api";
-import { arrayToLines, emptyAuth, hasDuplicateVariableKeys, linesToArray, normalizeAuth } from "../lib/forms";
+import { getRoot, getRootInterpolate, getRootJwtKidsByUrls, setRoot } from "../lib/api";
+import { arrayToLines, emptyAuth, hasDuplicateVariableKeys, linesToArray, normalizeAuth, normalizeVariables } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { RootMain, Variable } from "../types/api";
 
@@ -52,7 +52,6 @@ async function load() {
     allowMethodsText.value = arrayToLines(root.cors?.allow_methods);
     allowHeadersText.value = arrayToLines(root.cors?.allow_headers);
     jwkUrlsText.value = arrayToLines((root.jwt || []).map((x) => x.jwk_url));
-    await refreshEffectiveVariables();
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Unable to load root settings";
   } finally {
@@ -85,9 +84,9 @@ async function submit() {
 async function refreshEffectiveVariables() {
   const requestId = ++variablesRequestSeq;
   try {
-    const rep = await getRootVariablesEffective({ variables: form.value.variables || [] });
+    const rep = await getRootInterpolate({ variables: form.value.variables || [] });
     if (requestId === variablesRequestSeq) {
-      effectiveVariables.value = rep.variables || [];
+      effectiveVariables.value = normalizeVariables(rep.variables);
     }
   } catch {
     if (requestId === variablesRequestSeq) {
@@ -150,16 +149,16 @@ onMounted(() => {
       <n-input v-model:value="jwkUrlsText" type="textarea" :autosize="{ minRows: 5 }" placeholder="https://example.com/.well-known/jwks.json" />
     </label>
 
-    <h3 class="section-title">Auth</h3>
-    <div class="field">
-      <span>Auth</span>
-      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
-    </div>
-
     <h3 class="section-title">Variables</h3>
     <div class="field">
       <span>Variables</span>
       <VariableEditor v-model="form.variables" :available-variables="effectiveVariables" />
+    </div>
+
+    <h3 class="section-title">Auth</h3>
+    <div class="field">
+      <span>Auth</span>
+      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
     </div>
 
     <div class="actions">

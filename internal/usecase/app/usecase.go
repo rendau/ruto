@@ -123,7 +123,7 @@ func (u *Usecase) getInherited(
 		rootObj = rootModel.NewEmpty()
 	}
 
-	appObj.Variables.FillMissing(variables)
+	appObj.Variables = variables.Clone()
 	rootObj.Apps = append(rootObj.Apps, appObj)
 	rootObj.InheritDown()
 

@@ -60,20 +60,27 @@ export interface Variable {
   value: string;
 }
 
-export interface VariablesEffectiveRep {
+export interface RootInterpolateReq {
   variables: Variable[];
 }
 
-export interface RootVariablesEffectiveReq {
-  variables: Variable[];
-}
-
-export interface AppVariablesEffectiveReq {
+export interface AppInterpolateReq {
   id?: string;
   variables: Variable[];
 }
 
-export interface EndpointVariablesEffectiveReq {
+export interface AppInheritedReq {
+  id?: string;
+  variables: Variable[];
+}
+
+export interface EndpointInterpolateReq {
+  id?: string;
+  app_id?: string;
+  variables: Variable[];
+}
+
+export interface EndpointInheritedReq {
   id?: string;
   app_id?: string;
   variables: Variable[];
@@ -111,7 +118,7 @@ export interface RootJwtKidsReq {
 export interface AppBackend {
   url: string;
   swagger_url: string;
-  grpc_port: number;
+  grpc_url: string;
   headers: Record<string, string>;
   query_params: Record<string, string>;
 }
@@ -177,12 +184,16 @@ export interface EndpointGrpc {
   path: string;
 }
 
+export interface EndpointHttp {
+  method: string;
+  path: string;
+}
+
 export interface EndpointMain {
   id: string;
   app_id: string;
   active: boolean;
-  method: string;
-  path: string;
+  http: EndpointHttp;
   backend: EndpointBackend;
   auth: Auth;
   type: EndpointType;

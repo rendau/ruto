@@ -188,7 +188,7 @@ func (u *Usecase) getInherited(
 		rootObj = rootModel.NewEmpty()
 	}
 
-	epObj.Variables.FillMissing(variables)
+	epObj.Variables = variables.Clone()
 
 	appObj.Endpoints = []*model.Endpoint{epObj}
 	rootObj.Apps = []*appModel.App{appObj}

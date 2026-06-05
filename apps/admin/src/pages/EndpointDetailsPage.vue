@@ -31,11 +31,11 @@ const appName = ref("");
 const endpointType = computed(() => (endpoint.value?.type === "grpc" ? "grpc" : "http"));
 const endpointPath = computed(() => {
   if (endpointType.value === "grpc") {
-    return normalizedRoutePath(endpoint.value?.grpc?.path || endpoint.value?.path || "");
+    return normalizedRoutePath(endpoint.value?.grpc?.path || endpoint.value?.http?.path || "");
   }
-  return normalizedRoutePath(endpoint.value?.path || "");
+  return normalizedRoutePath(endpoint.value?.http?.path || "");
 });
-const endpointMethod = computed(() => (endpointType.value === "grpc" ? "GRPC" : (endpoint.value?.method || "").trim().toUpperCase() || "*"));
+const endpointMethod = computed(() => (endpointType.value === "grpc" ? "GRPC" : (endpoint.value?.http?.method || "").trim().toUpperCase() || "*"));
 const publicRoute = computed(() => {
   if (endpointType.value === "grpc") {
     return endpointPath.value;
@@ -43,7 +43,7 @@ const publicRoute = computed(() => {
   if (!app.value || !rootBaseUrl.value) {
     return "";
   }
-  const routePath = joinPathParts(app.value.path_prefix, endpoint.value?.path || "");
+  const routePath = joinPathParts(app.value.path_prefix, endpoint.value?.http?.path || "");
   return joinUrl(rootBaseUrl.value, routePath);
 });
 const backendUrl = computed(() => {
@@ -53,7 +53,7 @@ const backendUrl = computed(() => {
   if (endpointType.value === "grpc") {
     return grpcBackendAddress(app.value);
   }
-  const targetPath = endpoint.value?.backend.custom_path || endpoint.value?.path || "";
+  const targetPath = endpoint.value?.backend.custom_path || endpoint.value?.http?.path || "";
   return joinUrl(app.value.backend.url, targetPath);
 });
 
@@ -86,16 +86,7 @@ function joinUrl(baseUrl: string, path: string): string {
 }
 
 function grpcBackendAddress(item: AppMain): string {
-  const port = Number(item.backend.grpc_port || 0);
-  if (port <= 0) {
-    return "";
-  }
-  try {
-    const parsed = new URL(item.backend.url);
-    return `${parsed.hostname}:${port}`;
-  } catch {
-    return "";
-  }
+  return (item.backend.grpc_url || "").trim();
 }
 
 function endpointMethodBadgeClass(method: string): string {

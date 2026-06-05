@@ -187,6 +187,22 @@ export function keyValueLinesToVariables(value: string): Variable[] {
   return result;
 }
 
+export function normalizeVariables(value?: Variable[] | Record<string, string> | null): Variable[] {
+  if (!value) {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => ({
+      key: item?.key || "",
+      value: item?.value || ""
+    }));
+  }
+  return Object.entries(value).map(([key, itemValue]) => ({
+    key,
+    value: itemValue || ""
+  }));
+}
+
 export function hasDuplicateVariableKeys(value?: Variable[] | null): boolean {
   const seen = new Set<string>();
   for (const item of value || []) {

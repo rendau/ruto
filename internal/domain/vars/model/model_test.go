@@ -54,6 +54,20 @@ func TestVarsFillMissing_AllowsNilInputVars(t *testing.T) {
 	assert.Equal(t, "ap-south", item["region"])
 }
 
+func TestVars_Clone(t *testing.T) {
+	original := Vars{
+		"env":  "prod",
+		"zone": "kz",
+	}
+
+	cloned := original.Clone()
+	require.Equal(t, original, cloned)
+
+	cloned["env"] = "dev"
+	assert.Equal(t, "prod", original["env"])
+	assert.Equal(t, "dev", cloned["env"])
+}
+
 func TestVars_InterpolateString(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -93,8 +93,8 @@ const methodSortOrder: Record<string, number> = {
 
 const protocolOptions = computed(() => {
   const options: Array<{ value: EndpointType; label: string }> = [{ value: "http", label: "HTTP" }];
-  const hasGrpcPort = Number(app.value?.backend.grpc_port || 0) > 0;
-  if (hasGrpcPort || grpcEndpoints.value.length > 0) {
+  const hasGrpcUrl = Boolean((app.value?.backend.grpc_url || "").trim());
+  if (hasGrpcUrl || grpcEndpoints.value.length > 0) {
     options.push({ value: "grpc", label: "gRPC" });
   }
   return options;
@@ -106,7 +106,7 @@ const activeProtocolTotal = computed(() => (activeEndpointType.value === "grpc" 
 const httpMethodOptions = computed(() => {
   const items = new Set<string>();
   for (const endpoint of httpEndpoints.value) {
-    const method = (endpoint.method || "").trim().toUpperCase();
+    const method = (endpoint.http?.method || "").trim().toUpperCase();
     if (method) {
       items.add(method);
     }
@@ -381,8 +381,10 @@ function buildDefaultEndpointPayload(item: AppSwaggerEndpoint): EndpointMain {
     id: "",
     app_id: id.value,
     active: true,
-    method: (item.method || "").trim().toUpperCase() || "GET",
-    path: normalizedRoutePath(item.path),
+    http: {
+      method: (item.method || "").trim().toUpperCase() || "GET",
+      path: normalizedRoutePath(item.path)
+    },
     backend: {
       custom_path: "",
       headers: {},
@@ -433,7 +435,7 @@ function grpcEndpointFromRegistered(item: EndpointMain): AppGrpcReflectionEndpoi
   let service = (item.grpc?.service || "").trim();
   let method = (item.grpc?.method || "").trim();
   if (!service || !method) {
-    const parts = normalizedRoutePath(item.path).split("/").filter(Boolean);
+    const parts = normalizedRoutePath(item.http?.path || "").split("/").filter(Boolean);
     if (parts.length === 2) {
       service = service || parts[0];
       method = method || parts[1];
@@ -442,7 +444,7 @@ function grpcEndpointFromRegistered(item: EndpointMain): AppGrpcReflectionEndpoi
   if (!service || !method) {
     return null;
   }
-  const path = normalizeGrpcPath(service, method, item.grpc?.path || item.path || "");
+  const path = normalizeGrpcPath(service, method, item.grpc?.path || item.http?.path || "");
   return {
     service,
     method,
@@ -586,8 +588,10 @@ function buildDefaultGrpcEndpointPayload(item: AppGrpcReflectionEndpoint): Endpo
     id: "",
     app_id: id.value,
     active: true,
-    method: "GRPC",
-    path: normalized.path,
+    http: {
+      method: "",
+      path: ""
+    },
     backend: {
       custom_path: "",
       headers: {},
@@ -865,9 +869,9 @@ function endpointGroupSegment(endpoint: EndpointMain, key: string): string {
 
 function endpointRoutePath(endpoint: EndpointMain): string {
   if (endpointType(endpoint) === "grpc") {
-    return normalizedRoutePath(endpoint.grpc?.path || endpoint.path);
+    return normalizedRoutePath(endpoint.grpc?.path || endpoint.http?.path || "");
   }
-  return normalizedRoutePath(endpoint.path);
+  return normalizedRoutePath(endpoint.http?.path || "");
 }
 
 function endpointDisplayPath(endpoint: EndpointMain): string {
@@ -890,7 +894,7 @@ function endpointRouteMethod(endpoint: EndpointMain): string {
   if (endpointType(endpoint) === "grpc") {
     return "GRPC";
   }
-  return (endpoint.method || "").trim().toUpperCase() || "*";
+  return (endpoint.http?.method || "").trim().toUpperCase() || "*";
 }
 
 function endpointRouteTitle(endpoint: EndpointMain): string {
@@ -934,7 +938,7 @@ async function load() {
     if (!app.value.backend.swagger_url) {
       swaggerPanelOpen.value = false;
     }
-    if (Number(app.value.backend.grpc_port || 0) <= 0) {
+    if (!app.value.backend.grpc_url?.trim()) {
       grpcPanelOpen.value = false;
     }
     if (swaggerPanelOpen.value) {
@@ -989,7 +993,7 @@ function closeSwaggerPanel() {
 }
 
 async function loadGrpcDiff() {
-  if (!app.value || Number(app.value.backend.grpc_port || 0) <= 0 || grpcDiffLoading.value || grpcDiffLoaded.value) {
+  if (!app.value || !app.value.backend.grpc_url?.trim() || grpcDiffLoading.value || grpcDiffLoaded.value) {
     return;
   }
 
@@ -1013,7 +1017,7 @@ async function loadGrpcDiff() {
 }
 
 function toggleGrpcPanel() {
-  if (!app.value || Number(app.value.backend.grpc_port || 0) <= 0) {
+  if (!app.value || !app.value.backend.grpc_url?.trim()) {
     return;
   }
   grpcPanelOpen.value = !grpcPanelOpen.value;
@@ -1370,8 +1374,8 @@ onBeforeRouteLeave((to) => {
         <strong>{{ app.backend.url }}</strong>
       </div>
       <div>
-        <span class="label">gRPC Port</span>
-        <strong>{{ app.backend.grpc_port || "disabled" }}</strong>
+        <span class="label">gRPC URL</span>
+        <strong>{{ app.backend.grpc_url || "disabled" }}</strong>
       </div>
       <div>
         <span class="label">Status</span>
@@ -1532,7 +1536,7 @@ onBeforeRouteLeave((to) => {
           </div>
     </n-modal>
     <n-modal
-      :show="Boolean(activeEndpointType === 'grpc' && Number(app.backend.grpc_port || 0) > 0 && grpcPanelOpen)"
+      :show="Boolean(activeEndpointType === 'grpc' && app.backend.grpc_url?.trim() && grpcPanelOpen)"
       preset="card"
       title="gRPC Reflection Diff"
       class="diff-modal-card"
@@ -1682,7 +1686,7 @@ onBeforeRouteLeave((to) => {
           Connect
         </n-button>
         <n-button
-          v-if="activeEndpointType === 'http' || Number(app?.backend.grpc_port || 0) > 0"
+          v-if="activeEndpointType === 'http' || Boolean(app?.backend.grpc_url?.trim())"
           type="primary"
           :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
           @click="router.push({ name: 'endpoint-create', params: { appId: id }, query: { type: activeEndpointType } })"
@@ -1705,7 +1709,7 @@ onBeforeRouteLeave((to) => {
           Swagger
         </n-button>
         <n-button
-          v-if="activeEndpointType === 'grpc' && Number(app?.backend.grpc_port || 0) > 0"
+          v-if="activeEndpointType === 'grpc' && Boolean(app?.backend.grpc_url?.trim())"
           class="grpc-reflection-toggle-button"
           :disabled="loading || deletingApp || deletingEndpointId !== '' || togglingApp"
           secondary

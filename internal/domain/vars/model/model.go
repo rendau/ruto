@@ -17,6 +17,12 @@ func New(cap int) Vars {
 	return make(Vars, cap)
 }
 
+func (m *Vars) Clone() Vars {
+	result := New(len(*m))
+	result.FillMissing(*m)
+	return result
+}
+
 func (m *Vars) FillMissing(vars ...Vars) {
 	if *m == nil {
 		*m = New(0)

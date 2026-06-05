@@ -68,9 +68,7 @@ func (u *Usecase) Interpolate(ctx context.Context, variables varsModel.Vars) (*m
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
 
-	mergedVariables := varsModel.New(len(variables) + len(item.Variables))
-	mergedVariables.FillMissing(variables, item.Variables)
-	item.Variables = mergedVariables
+	item.Variables = variables.Clone()
 	item.Interpolate()
 
 	return item, nil
