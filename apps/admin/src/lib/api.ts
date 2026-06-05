@@ -127,6 +127,7 @@ function normalizeApp(value: AppMain): AppMain {
   return {
     id: value?.id || "",
     active: Boolean(value?.active),
+    exclude_from_metrics: Boolean(value?.exclude_from_metrics),
     path_prefix: value?.path_prefix || "",
     name: value?.name || "",
     backend: {
@@ -156,6 +157,7 @@ function normalizeEndpoint(value: EndpointMain): EndpointMain {
     id: value?.id || "",
     app_id: value?.app_id || "",
     active: Boolean(value?.active),
+    exclude_from_metrics: Boolean(value?.exclude_from_metrics),
     http: {
       method: endpointWithLegacyFields.http?.method || endpointWithLegacyFields.method || "",
       path: endpointWithLegacyFields.http?.path || endpointWithLegacyFields.path || ""

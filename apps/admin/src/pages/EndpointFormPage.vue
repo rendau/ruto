@@ -57,6 +57,7 @@ const form = ref<EndpointMain>({
   id: "",
   app_id: appIdFromRoute.value,
   active: true,
+  exclude_from_metrics: false,
   http: {
     method: "GET",
     path: ""
@@ -79,6 +80,12 @@ const form = ref<EndpointMain>({
   },
   variables: []
 });
+const includeInMetrics = computed({
+  get: () => !form.value.exclude_from_metrics,
+  set: (value: boolean) => {
+    form.value.exclude_from_metrics = !value;
+  }
+});
 const appDisplayName = computed(() => appName.value || form.value.app_id || "-");
 const endpointMethodOptions = ["*", "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "CONNECT", "TRACE"];
 const protocolOptions = computed(() => {
@@ -93,6 +100,7 @@ function normalizeLoadedEndpoint(item: EndpointMain): EndpointMain {
   return {
     ...item,
     type: endpointType,
+    exclude_from_metrics: Boolean(item.exclude_from_metrics),
     http: {
       method: item.http?.method || "GET",
       path: item.http?.path || ""
@@ -360,10 +368,16 @@ onMounted(() => {
       <span>Application</span>
       <div class="field-readonly">{{ appDisplayName }}</div>
     </div>
-    <n-switch v-model:value="form.active">
-      <template #checked>Active</template>
-      <template #unchecked>Inactive</template>
-    </n-switch>
+    <div class="switches-row">
+      <n-switch v-model:value="form.active">
+        <template #checked>Active</template>
+        <template #unchecked>Inactive</template>
+      </n-switch>
+      <n-switch v-model:value="includeInMetrics">
+        <template #checked>Metrics</template>
+        <template #unchecked>Metrics</template>
+      </n-switch>
+    </div>
     <div v-if="protocolOptions.length > 1" class="field">
       <span>Protocol</span>
       <n-tabs v-model:value="form.type" class="form-protocol-tabs" type="line" size="small" animated>
@@ -431,3 +445,15 @@ onMounted(() => {
     </div>
   </form>
 </template>
+
+<style scoped>
+.switches-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 8px;
+}
+</style>

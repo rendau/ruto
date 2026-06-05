@@ -14,15 +14,16 @@ const (
 )
 
 type Endpoint struct {
-	Id        string         `json:"id"`
-	AppId     string         `json:"app_id"`
-	Active    bool           `json:"active"`
-	Type      Type           `json:"type"`
-	Http      Http           `json:"http"`
-	Grpc      Grpc           `json:"grpc"`
-	Backend   Backend        `json:"backend"`
-	Auth      authModel.Auth `json:"auth"`
-	Variables varsModel.Vars `json:"variables"`
+	Id                 string         `json:"id"`
+	AppId              string         `json:"app_id"`
+	Active             bool           `json:"active"`
+	ExcludeFromMetrics bool           `json:"exclude_from_metrics"`
+	Type               Type           `json:"type"`
+	Http               Http           `json:"http"`
+	Grpc               Grpc           `json:"grpc"`
+	Backend            Backend        `json:"backend"`
+	Auth               authModel.Auth `json:"auth"`
+	Variables          varsModel.Vars `json:"variables"`
 }
 
 type Http struct {

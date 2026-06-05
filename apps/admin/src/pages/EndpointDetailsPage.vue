@@ -171,6 +171,7 @@ function buildEndpointCard(item: EndpointMain | null): EndpointCardView | null {
 
   const fields: EndpointCardField[] = [
     { key: "protocol", label: "Protocol", value: type === "grpc" ? "gRPC" : "HTTP" },
+    { key: "exclude-from-metrics", label: "Metrics", value: item.exclude_from_metrics ? "excluded" : "included" },
     { key: "application", label: "Application", value: appName.value || item.app_id || "-" },
     { key: "app-id", label: "App ID", value: item.app_id || "-" },
     { key: "endpoint-id", label: "Endpoint ID", value: item.id || "-", multiline: true }

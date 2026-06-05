@@ -75,6 +75,9 @@ func New(
 	if httpRequestsTotal == nil || httpRequestDurationSeconds == nil {
 		return nil
 	}
+	if app.ExcludeFromMetrics || ep.ExcludeFromMetrics {
+		return nil
+	}
 
 	return &Service{
 		app:      app,

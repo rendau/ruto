@@ -126,6 +126,7 @@ export interface AppBackend {
 export interface AppMain {
   id: string;
   active: boolean;
+  exclude_from_metrics: boolean;
   path_prefix: string;
   name: string;
   backend: AppBackend;
@@ -193,6 +194,7 @@ export interface EndpointMain {
   id: string;
   app_id: string;
   active: boolean;
+  exclude_from_metrics: boolean;
   http: EndpointHttp;
   backend: EndpointBackend;
   auth: Auth;

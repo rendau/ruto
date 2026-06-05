@@ -381,6 +381,7 @@ function buildDefaultEndpointPayload(item: AppSwaggerEndpoint): EndpointMain {
     id: "",
     app_id: id.value,
     active: true,
+    exclude_from_metrics: false,
     http: {
       method: (item.method || "").trim().toUpperCase() || "GET",
       path: normalizedRoutePath(item.path)
@@ -588,6 +589,7 @@ function buildDefaultGrpcEndpointPayload(item: AppGrpcReflectionEndpoint): Endpo
     id: "",
     app_id: id.value,
     active: true,
+    exclude_from_metrics: false,
     http: {
       method: "",
       path: ""

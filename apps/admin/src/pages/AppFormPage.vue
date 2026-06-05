@@ -44,6 +44,7 @@ let variablesRequestSeq = 0;
 const form = ref<AppMain>({
   id: "",
   active: true,
+  exclude_from_metrics: false,
   path_prefix: "",
   name: "",
   backend: {
@@ -59,6 +60,12 @@ const form = ref<AppMain>({
     methods: []
   },
   variables: []
+});
+const includeInMetrics = computed({
+  get: () => !form.value.exclude_from_metrics,
+  set: (value: boolean) => {
+    form.value.exclude_from_metrics = !value;
+  }
 });
 
 async function load() {
@@ -269,10 +276,16 @@ onBeforeUnmount(() => {
   <p v-if="loading" class="muted">Loading...</p>
 
   <form v-else class="stack" @submit.prevent="submit">
-    <n-switch v-model:value="form.active">
-      <template #checked>Active</template>
-      <template #unchecked>Inactive</template>
-    </n-switch>
+    <div class="switches-row">
+      <n-switch v-model:value="form.active">
+        <template #checked>Active</template>
+        <template #unchecked>Inactive</template>
+      </n-switch>
+      <n-switch v-model:value="includeInMetrics">
+        <template #checked>Metrics</template>
+        <template #unchecked>Metrics</template>
+      </n-switch>
+    </div>
     <label class="field">
       <span>Name</span>
       <n-input v-model:value="form.name" required />
@@ -334,6 +347,15 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.switches-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
 .input-with-indicator {
   position: relative;
 }

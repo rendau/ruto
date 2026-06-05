@@ -12,13 +12,14 @@ import (
 )
 
 type App struct {
-	Id         string         `json:"id"`
-	Active     bool           `json:"active"`
-	PathPrefix string         `json:"path_prefix"`
-	Name       string         `json:"name"`
-	Backend    Backend        `json:"backend"`
-	Auth       authModel.Auth `json:"auth"`
-	Variables  varsModel.Vars `json:"variables"`
+	Id                 string         `json:"id"`
+	Active             bool           `json:"active"`
+	ExcludeFromMetrics bool           `json:"exclude_from_metrics"`
+	PathPrefix         string         `json:"path_prefix"`
+	Name               string         `json:"name"`
+	Backend            Backend        `json:"backend"`
+	Auth               authModel.Auth `json:"auth"`
+	Variables          varsModel.Vars `json:"variables"`
 
 	Endpoints []*endpointModel.Endpoint `json:"endpoints"` // not stored in db
 }
