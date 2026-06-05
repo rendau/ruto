@@ -5,6 +5,8 @@ import {
   NButton,
   NCard,
   NCheckbox,
+  NCollapse,
+  NCollapseItem,
   NConfigProvider,
   NDialogProvider,
   NDropdown,
@@ -32,6 +34,8 @@ app.component("NAlert", NAlert);
 app.component("NButton", NButton);
 app.component("NCard", NCard);
 app.component("NCheckbox", NCheckbox);
+app.component("NCollapse", NCollapse);
+app.component("NCollapseItem", NCollapseItem);
 app.component("NConfigProvider", NConfigProvider);
 app.component("NDialogProvider", NDialogProvider);
 app.component("NDropdown", NDropdown);
