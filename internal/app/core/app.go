@@ -131,7 +131,7 @@ func (a *App) Init() error {
 	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
 
 	// stats
-	usecaseStats := usecaseStatsP.New(domainRootService, domainAppService, domainEndpointService, domainUsrService)
+	usecaseStats := usecaseStatsP.New(domainRootService, domainAppService, domainEndpointService, domainUsrService, time.Now())
 	handlerGrpcStats := handlerGrpcP.NewStats(usecaseStats)
 
 	// gateway

@@ -13,6 +13,7 @@ type Stats struct {
 	RootJWTProviders  int64
 	RootAuthEnabled   bool
 	RootCorsEnabled   bool
+	CoreUptimeSeconds int64
 	Methods           []MethodStats
 }
 

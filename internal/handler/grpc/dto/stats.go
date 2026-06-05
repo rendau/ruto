@@ -21,6 +21,7 @@ func EncodeStatsResponse(v *usecase.Stats) *ruto_v1.StatsResponse {
 		RootJwtProviders:  v.RootJWTProviders,
 		RootAuthEnabled:   v.RootAuthEnabled,
 		RootCorsEnabled:   v.RootCorsEnabled,
+		CoreUptimeSeconds: v.CoreUptimeSeconds,
 		Methods:           lo.Map(v.Methods, EncodeStatsMethodStats),
 	}
 }

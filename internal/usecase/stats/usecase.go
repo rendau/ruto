@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -15,14 +16,16 @@ type Usecase struct {
 	appSvc      AppServiceI
 	endpointSvc EndpointServiceI
 	usrSvc      UsrServiceI
+	startedAt   time.Time
 }
 
-func New(rootSvc RootServiceI, appSvc AppServiceI, endpointSvc EndpointServiceI, usrSvc UsrServiceI) *Usecase {
+func New(rootSvc RootServiceI, appSvc AppServiceI, endpointSvc EndpointServiceI, usrSvc UsrServiceI, startedAt time.Time) *Usecase {
 	return &Usecase{
 		rootSvc:     rootSvc,
 		appSvc:      appSvc,
 		endpointSvc: endpointSvc,
 		usrSvc:      usrSvc,
+		startedAt:   startedAt,
 	}
 }
 
@@ -48,12 +51,13 @@ func (u *Usecase) Get(ctx context.Context) (*Stats, error) {
 	}
 
 	stats := &Stats{
-		AppsTotal:        int64(len(apps)),
-		EndpointsTotal:   int64(len(endpoints)),
-		UsersTotal:       int64(len(users)),
-		RootJWTProviders: int64(len(rootObj.Jwt)),
-		RootAuthEnabled:  rootObj.Auth.Enabled,
-		RootCorsEnabled:  rootObj.Cors.Enabled,
+		AppsTotal:         int64(len(apps)),
+		EndpointsTotal:    int64(len(endpoints)),
+		UsersTotal:        int64(len(users)),
+		RootJWTProviders:  int64(len(rootObj.Jwt)),
+		RootAuthEnabled:   rootObj.Auth.Enabled,
+		RootCorsEnabled:   rootObj.Cors.Enabled,
+		CoreUptimeSeconds: int64(time.Since(u.startedAt).Seconds()),
 	}
 
 	for _, app := range apps {

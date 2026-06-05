@@ -272,6 +272,7 @@ export interface StatsResponse {
   root_jwt_providers: number;
   root_auth_enabled: boolean;
   root_cors_enabled: boolean;
+  core_uptime_seconds: number;
   methods: StatsMethodStats[];
 }
 

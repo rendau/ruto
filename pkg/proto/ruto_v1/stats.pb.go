@@ -38,6 +38,7 @@ type StatsResponse struct {
 	RootAuthEnabled   bool                   `protobuf:"varint,11,opt,name=root_auth_enabled,json=rootAuthEnabled,proto3" json:"root_auth_enabled,omitempty"`
 	RootCorsEnabled   bool                   `protobuf:"varint,12,opt,name=root_cors_enabled,json=rootCorsEnabled,proto3" json:"root_cors_enabled,omitempty"`
 	Methods           []*StatsMethodStats    `protobuf:"bytes,13,rep,name=methods,proto3" json:"methods,omitempty"`
+	CoreUptimeSeconds int64                  `protobuf:"varint,14,opt,name=core_uptime_seconds,json=coreUptimeSeconds,proto3" json:"core_uptime_seconds,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -163,6 +164,13 @@ func (x *StatsResponse) GetMethods() []*StatsMethodStats {
 	return nil
 }
 
+func (x *StatsResponse) GetCoreUptimeSeconds() int64 {
+	if x != nil {
+		return x.CoreUptimeSeconds
+	}
+	return 0
+}
+
 type StatsMethodStats struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Method        string                 `protobuf:"bytes,1,opt,name=method,proto3" json:"method,omitempty"`
@@ -227,7 +235,7 @@ var File_ruto_v1_stats_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_stats_proto_rawDesc = "" +
 	"\n" +
-	"\x13ruto_v1/stats.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\x97\x04\n" +
+	"\x13ruto_v1/stats.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xc7\x04\n" +
 	"\rStatsResponse\x12\x1d\n" +
 	"\n" +
 	"apps_total\x18\x01 \x01(\x03R\tappsTotal\x12\x1f\n" +
@@ -246,7 +254,8 @@ const file_ruto_v1_stats_proto_rawDesc = "" +
 	" \x01(\x03R\x10rootJwtProviders\x12*\n" +
 	"\x11root_auth_enabled\x18\v \x01(\bR\x0frootAuthEnabled\x12*\n" +
 	"\x11root_cors_enabled\x18\f \x01(\bR\x0frootCorsEnabled\x123\n" +
-	"\amethods\x18\r \x03(\v2\x19.ruto_v1.StatsMethodStatsR\amethods\"X\n" +
+	"\amethods\x18\r \x03(\v2\x19.ruto_v1.StatsMethodStatsR\amethods\x12.\n" +
+	"\x13core_uptime_seconds\x18\x0e \x01(\x03R\x11coreUptimeSeconds\"X\n" +
 	"\x10StatsMethodStats\x12\x16\n" +
 	"\x06method\x18\x01 \x01(\tR\x06method\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x03R\x05total\x12\x16\n" +

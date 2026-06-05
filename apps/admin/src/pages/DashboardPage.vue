@@ -200,6 +200,28 @@ function formatMemoryBytes(value: unknown): string {
   return `${mib.toFixed(mib >= 100 ? 0 : 1)} MiB`;
 }
 
+function formatDurationSeconds(value: unknown): string {
+  const totalSeconds = Math.max(0, Math.floor(Number(value)));
+  if (!Number.isFinite(totalSeconds)) {
+    return "n/a";
+  }
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
 function isCurrentVersionApplied(gateway: GatewayStateItem): boolean {
   const currentVersion = (currentSnapshotVersion.value || "").trim();
   const gatewayVersion = (gateway.snapshot_version || "").trim();
@@ -309,6 +331,9 @@ onMounted(() => {
                 </n-tag>
               </n-descriptions-item>
               <n-descriptions-item label="Admin Users Ratio">{{ userAdminPercent }}%</n-descriptions-item>
+              <n-descriptions-item label="Core Uptime">
+                {{ formatDurationSeconds(stats.core_uptime_seconds) }}
+              </n-descriptions-item>
             </n-descriptions>
           </n-card>
         </n-gi>
