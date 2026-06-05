@@ -87,6 +87,9 @@ func (m *AuthMethodBasicUser) Normalize() error {
 
 func (m *AuthMethodAPIKey) Normalize() error {
 	m.Header = strings.TrimSpace(m.Header)
+	if m.Header == "" {
+		m.Header = "X-Api-Key"
+	}
 	m.Keys = lo.FilterMap(m.Keys, func(v string, _ int) (string, bool) {
 		v = strings.TrimSpace(v)
 		return v, v != ""

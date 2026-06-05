@@ -7,93 +7,97 @@ import (
 )
 
 func Merge(parent, child Auth) Auth {
-	result := Auth{}
+	if !child.Enabled {
+		return Auth{
+			Enabled: false,
+			Mode:    child.Mode,
+		}
+	}
 
-	result.applyChild(parent)
-	result.applyChild(child)
+	result := Auth{
+		Enabled: true,
+		Mode:    child.Mode,
+	}
+
+	switch child.Mode {
+	case constant.AuthModeReplace:
+		result.Methods = child.CloneMethods()
+	case constant.AuthModeExtend:
+		result.Methods = mergeMethods(parent.Methods, child.Methods)
+	}
 
 	return result
 }
 
-func (m *Auth) applyChild(child Auth) {
-	m.Enabled = child.Enabled
-	m.Mode = child.Mode
-
-	if m.Enabled {
-		switch m.Mode {
-		case constant.AuthModeReplace:
-			m.Methods = append(make([]*AuthMethod, 0, len(child.Methods)), child.Methods...)
-		case constant.AuthModeExtend:
-			m.Methods = mergeMethods(m.Methods, child.Methods)
-		}
-	} else {
-		m.Methods = []*AuthMethod{}
-	}
-}
-
 func mergeMethods(parent, child []*AuthMethod) []*AuthMethod {
 	result := make([]*AuthMethod, 0, len(parent)+len(child))
-	jwtMethodByKid := make(map[string]*AuthMethod, len(parent))
+
 	var (
 		basicMethod        *AuthMethod
-		apiKeyMethod       *AuthMethod
 		ipValidationMethod *AuthMethod
 	)
 
+	apiKeyMethods := make(map[string]*AuthMethod)
+	jwtMethods := make(map[string]*AuthMethod)
+
 	appendMethod := func(method *AuthMethod) {
 		if method == nil {
-			result = append(result, method)
+			result = append(result, nil)
 			return
 		}
 
-		if !method.HasSingleType() {
-			result = append(result, method)
-			return
-		}
-
-		switch {
-		case method.Basic != nil:
+		switch method.Type() {
+		case AuthMethodTypeBasic:
 			if basicMethod == nil {
-				basicMethod = method
-				result = append(result, method)
+				basicMethod = method.Clone()
+				result = append(result, basicMethod)
 				return
 			}
 
-			basicMethod.Basic.Users = append(basicMethod.Basic.Users, method.Basic.Users...)
-		case method.APIKey != nil:
-			if apiKeyMethod == nil {
-				apiKeyMethod = method
-				result = append(result, method)
+			basicMethod.Basic.Users = append(
+				basicMethod.Basic.Users,
+				method.Basic.Users...,
+			)
+
+		case AuthMethodTypeAPIKey:
+			if existing, ok := apiKeyMethods[method.APIKey.Header]; ok {
+				existing.APIKey.Keys = append(
+					existing.APIKey.Keys,
+					method.APIKey.Keys...,
+				)
 				return
 			}
 
-			if apiKeyMethod.APIKey.Header == "" {
-				apiKeyMethod.APIKey.Header = method.APIKey.Header
-			}
-			apiKeyMethod.APIKey.Keys = append(apiKeyMethod.APIKey.Keys, method.APIKey.Keys...)
-		case method.IPValidation != nil:
+			cloned := method.Clone()
+			apiKeyMethods[cloned.APIKey.Header] = cloned
+			result = append(result, cloned)
+
+		case AuthMethodTypeIPValidation:
 			if ipValidationMethod == nil {
-				ipValidationMethod = method
-				result = append(result, method)
+				ipValidationMethod = method.Clone()
+				result = append(result, ipValidationMethod)
 				return
 			}
 
-			ipValidationMethod.IPValidation.AllowedIps = append(ipValidationMethod.IPValidation.AllowedIps, method.IPValidation.AllowedIps...)
-		case method.JWT != nil:
-			if method.JWT.Kid == "" {
-				result = append(result, method)
+			ipValidationMethod.IPValidation.AllowedIps = append(
+				ipValidationMethod.IPValidation.AllowedIps,
+				method.IPValidation.AllowedIps...,
+			)
+
+		case AuthMethodTypeJWT:
+			if existing, ok := jwtMethods[method.JWT.Kid]; ok {
+				existing.JWT.Roles = lo.Uniq(
+					append(existing.JWT.Roles, method.JWT.Roles...),
+				)
 				return
 			}
 
-			if parentMethod, ok := jwtMethodByKid[method.JWT.Kid]; ok {
-				parentMethod.JWT.Roles = lo.Uniq(append(parentMethod.JWT.Roles, method.JWT.Roles...))
-				return
-			}
+			cloned := method.Clone()
+			jwtMethods[cloned.JWT.Kid] = cloned
+			result = append(result, cloned)
 
-			jwtMethodByKid[method.JWT.Kid] = method
-			result = append(result, method)
 		default:
-			result = append(result, method)
+			result = append(result, method.Clone())
 		}
 	}
 

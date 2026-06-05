@@ -203,7 +203,7 @@ func TestAuthMerge(t *testing.T) {
 		}, final.Methods[0].Basic.Users)
 	})
 
-	t.Run("api key single-type methods merge keys on extend", func(t *testing.T) {
+	t.Run("api key methods with different headers do not merge", func(t *testing.T) {
 		root := Auth{
 			Enabled: true,
 			Mode:    "extend",
@@ -221,13 +221,16 @@ func TestAuthMerge(t *testing.T) {
 
 		final := Merge(root, app)
 
-		require.Len(t, final.Methods, 1)
+		require.Len(t, final.Methods, 2)
 		require.NotNil(t, final.Methods[0].APIKey)
+		require.NotNil(t, final.Methods[1].APIKey)
 		require.Equal(t, "X-Api-Key", final.Methods[0].APIKey.Header)
-		require.Equal(t, []string{"k1", "k2"}, final.Methods[0].APIKey.Keys)
+		require.Equal(t, []string{"k1"}, final.Methods[0].APIKey.Keys)
+		require.Equal(t, "X-Other-Key", final.Methods[1].APIKey.Header)
+		require.Equal(t, []string{"k2"}, final.Methods[1].APIKey.Keys)
 	})
 
-	t.Run("api key merged method takes child header when parent header is empty", func(t *testing.T) {
+	t.Run("api key methods merge after normalize sets default header", func(t *testing.T) {
 		root := Auth{
 			Enabled: true,
 			Mode:    "extend",
@@ -242,6 +245,8 @@ func TestAuthMerge(t *testing.T) {
 				{APIKey: &AuthMethodAPIKey{Header: "X-Api-Key", Keys: []string{"k2"}}},
 			},
 		}
+		require.NoError(t, root.Normalize())
+		require.NoError(t, app.Normalize())
 
 		final := Merge(root, app)
 
