@@ -1734,10 +1734,18 @@ h3 {
 }
 
 .endpoint-path-link {
+  position: relative;
+  display: inline-block;
   color: #cfe2ff;
   text-decoration: underline;
   text-decoration-color: transparent;
   transition: color 0.14s ease, text-decoration-color 0.14s ease;
+}
+
+.endpoint-path-link::before {
+  content: "";
+  position: absolute;
+  inset: -6px -8px;
 }
 
 .endpoint-path-link:hover,
@@ -2008,7 +2016,7 @@ h3 {
 
 .endpoint-details-hero {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
@@ -2086,20 +2094,72 @@ h3 {
   cursor: default;
 }
 
-.endpoint-auth-panel {
-  max-width: 920px;
+.endpoint-card {
+  width: 100%;
 }
 
-.endpoint-auth-head {
-  display: flex;
+.endpoint-card + .endpoint-card {
+  margin-top: 14px;
+}
+
+.endpoint-card-modal {
+  width: 100%;
+}
+
+.endpoint-card-title {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: 8px;
 }
 
-.endpoint-auth-summary {
-  margin-top: 0;
+.endpoint-inherited-collapse {
+  --n-title-font-size: 20px;
+  --n-font-size: 14px;
+}
+
+.endpoint-inherited-collapse .n-collapse-item__header {
+  margin-bottom: 12px;
+}
+
+.endpoint-modal-card {
+  width: min(980px, calc(100vw - 48px));
+  height: min(860px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.endpoint-modal-card > .n-card-header {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.endpoint-modal-card .n-card-header__close {
+  z-index: 3;
+}
+
+.endpoint-modal-card .n-card__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+  max-height: none;
+  padding: 0 14px 14px !important;
+}
+
+.endpoint-modal-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.endpoint-multiline {
+  white-space: pre-wrap;
 }
 
 .panel {
@@ -2348,6 +2408,26 @@ h3 {
   .diff-modal-card .diff-modal {
     max-height: none;
     padding: 0;
+  }
+
+  .endpoint-modal-card {
+    width: calc(100vw - 4px);
+    height: calc(100dvh - 4px);
+    max-height: calc(100dvh - 4px);
+    margin: 2px auto;
+  }
+
+  .endpoint-modal-card > .n-card-header {
+    padding: 8px;
+  }
+
+  .endpoint-modal-card > .n-card__action {
+    padding: 8px;
+  }
+
+  .endpoint-modal-card .n-card-content,
+  .endpoint-modal-card .n-card__content {
+    padding: 0 4px 4px !important;
   }
 
   .diff-toolbar {

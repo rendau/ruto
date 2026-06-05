@@ -1,16 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, type Component } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useDialog } from "naive-ui";
-import { ArrowBackOutline, BanOutline, CopyOutline, CreateOutline, GlobeOutline, KeyOutline, LockClosedOutline, PersonOutline, TrashOutline } from "@vicons/ionicons5";
-import { deleteEndpoint, getApp, getEndpoint, getRoot, updateEndpoint } from "../lib/api";
+import { ArrowBackOutline, BanOutline, CopyOutline, CreateOutline, EyeOutline, GitNetworkOutline, TrashOutline } from "@vicons/ionicons5";
+import EndpointAuthCard from "../components/EndpointAuthCard.vue";
+import { deleteEndpoint, getApp, getEndpoint, getEndpointInherited, getEndpointInterpolate, getRoot, updateEndpoint } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain, EndpointMain } from "../types/api";
 
-type EndpointAuthIcon = {
-  key: "ip_validation" | "jwt" | "basic" | "api_key";
-  component: Component;
+type EndpointCardField = {
+  key: string;
   label: string;
+  value: string;
+  multiline?: boolean;
+  copyLabel?: string;
+};
+
+type EndpointCardView = {
+  method: string;
+  path: string;
+  active: boolean;
+  fields: EndpointCardField[];
 };
 
 const route = useRoute();
@@ -24,38 +34,20 @@ const deleting = ref(false);
 const errorMessage = ref("");
 
 const endpoint = ref<EndpointMain | null>(null);
+const endpointInherited = ref<EndpointMain | null>(null);
+const endpointInheritedError = ref("");
 const app = ref<AppMain | null>(null);
 const rootBaseUrl = ref("");
 const appName = ref("");
+const interpolateModalVisible = ref(false);
+const interpolatedLoading = ref(false);
+const interpolatedError = ref("");
+const endpointInterpolated = ref<EndpointMain | null>(null);
+const inheritedExpandedNames = ref<string[]>([]);
 
-const endpointType = computed(() => (endpoint.value?.type === "grpc" ? "grpc" : "http"));
-const endpointPath = computed(() => {
-  if (endpointType.value === "grpc") {
-    return normalizedRoutePath(endpoint.value?.grpc?.path || endpoint.value?.http?.path || "");
-  }
-  return normalizedRoutePath(endpoint.value?.http?.path || "");
-});
-const endpointMethod = computed(() => (endpointType.value === "grpc" ? "GRPC" : (endpoint.value?.http?.method || "").trim().toUpperCase() || "*"));
-const publicRoute = computed(() => {
-  if (endpointType.value === "grpc") {
-    return endpointPath.value;
-  }
-  if (!app.value || !rootBaseUrl.value) {
-    return "";
-  }
-  const routePath = joinPathParts(app.value.path_prefix, endpoint.value?.http?.path || "");
-  return joinUrl(rootBaseUrl.value, routePath);
-});
-const backendUrl = computed(() => {
-  if (!app.value) {
-    return "";
-  }
-  if (endpointType.value === "grpc") {
-    return grpcBackendAddress(app.value);
-  }
-  const targetPath = endpoint.value?.backend.custom_path || endpoint.value?.http?.path || "";
-  return joinUrl(app.value.backend.url, targetPath);
-});
+const currentCard = computed(() => buildEndpointCard(endpoint.value));
+const inheritedCard = computed(() => buildEndpointCard(endpointInherited.value));
+const interpolatedCard = computed(() => buildEndpointCard(endpointInterpolated.value));
 
 function normalizedRoutePath(path: string): string {
   const trimmed = (path || "").trim();
@@ -89,6 +81,46 @@ function grpcBackendAddress(item: AppMain): string {
   return (item.backend.grpc_url || "").trim();
 }
 
+function endpointTypeOf(item: EndpointMain): "grpc" | "http" {
+  return item.type === "grpc" ? "grpc" : "http";
+}
+
+function endpointPathOf(item: EndpointMain): string {
+  if (endpointTypeOf(item) === "grpc") {
+    return normalizedRoutePath(item.grpc.path || item.http.path || "");
+  }
+  return normalizedRoutePath(item.http.path || "");
+}
+
+function endpointMethodOf(item: EndpointMain): string {
+  if (endpointTypeOf(item) === "grpc") {
+    return "GRPC";
+  }
+  return (item.http.method || "").trim().toUpperCase() || "*";
+}
+
+function endpointPublicRoute(item: EndpointMain): string {
+  if (endpointTypeOf(item) === "grpc") {
+    return endpointPathOf(item);
+  }
+  if (!app.value || !rootBaseUrl.value) {
+    return "";
+  }
+  const routePath = joinPathParts(app.value.path_prefix, item.http.path || "");
+  return joinUrl(rootBaseUrl.value, routePath);
+}
+
+function endpointBackendRoute(item: EndpointMain): string {
+  if (!app.value) {
+    return "";
+  }
+  if (endpointTypeOf(item) === "grpc") {
+    return grpcBackendAddress(app.value);
+  }
+  const targetPath = item.backend.custom_path || item.http.path || "";
+  return joinUrl(app.value.backend.url, targetPath);
+}
+
 function endpointMethodBadgeClass(method: string): string {
   const normalized = (method || "").trim().toUpperCase();
   switch (normalized) {
@@ -113,35 +145,120 @@ function endpointMethodBadgeClass(method: string): string {
   }
 }
 
-function endpointAuthIcons(item: EndpointMain): EndpointAuthIcon[] {
-  const methods = item.auth?.methods || [];
-  const hasIpValidation = methods.some((method) => Boolean(method.ip_validation));
-  const hasJwt = methods.some((method) => Boolean(method.jwt));
-  const hasBasic = methods.some((method) => Boolean(method.basic));
-  const hasApiKey = methods.some((method) => Boolean(method.api_key));
-
-  const icons: EndpointAuthIcon[] = [];
-  if (hasIpValidation) {
-    icons.push({ key: "ip_validation", component: GlobeOutline, label: "IP Validation" });
+function recordRows(record: Record<string, string> | undefined): string {
+  const entries = Object.entries(record || {});
+  if (entries.length === 0) {
+    return "none";
   }
-  if (hasJwt) {
-    icons.push({ key: "jwt", component: KeyOutline, label: "JWT" });
-  }
-  if (hasBasic) {
-    icons.push({ key: "basic", component: PersonOutline, label: "Basic Auth" });
-  }
-  if (hasApiKey) {
-    icons.push({ key: "api_key", component: KeyOutline, label: "API Key" });
-  }
-  return icons;
+  return entries.map(([key, value]) => `${key}: ${value}`).join("\n");
 }
 
-function authSummary(item: EndpointMain): string {
-  if (!item.auth?.enabled) {
-    return "Public access (auth disabled)";
+function variableRows(item: EndpointMain): string {
+  if (!item.variables || item.variables.length === 0) {
+    return "none";
   }
-  const mode = (item.auth.mode || "extend").toLowerCase() === "replace" ? "replace" : "extend";
-  return `Auth enabled, mode: ${mode}`;
+  return item.variables.map((entry) => `${entry.key}: ${entry.value}`).join("\n");
+}
+
+function buildEndpointCard(item: EndpointMain | null): EndpointCardView | null {
+  if (!item) {
+    return null;
+  }
+
+  const type = endpointTypeOf(item);
+  const publicRoute = endpointPublicRoute(item) || "unavailable";
+  const backendRoute = endpointBackendRoute(item) || "unavailable";
+
+  const fields: EndpointCardField[] = [
+    { key: "protocol", label: "Protocol", value: type === "grpc" ? "gRPC" : "HTTP" },
+    { key: "application", label: "Application", value: appName.value || item.app_id || "-" },
+    { key: "app-id", label: "App ID", value: item.app_id || "-" },
+    { key: "endpoint-id", label: "Endpoint ID", value: item.id || "-", multiline: true }
+  ];
+
+  if (type === "grpc") {
+    fields.push(
+      { key: "grpc-service", label: "gRPC Service", value: item.grpc.service || "-" },
+      { key: "grpc-method", label: "gRPC Method", value: item.grpc.method || "-" }
+    );
+  } else {
+    fields.push({
+      key: "custom-path",
+      label: "Custom Backend Path",
+      value: item.backend.custom_path || "inherit app backend path"
+    });
+  }
+
+  fields.push(
+    {
+      key: "public-route",
+      label: type === "grpc" ? "gRPC Path" : "Public URL",
+      value: publicRoute,
+      copyLabel: type === "grpc" ? "gRPC Path" : "Public URL"
+    },
+    { key: "backend-headers", label: "Backend Headers", value: recordRows(item.backend.headers), multiline: true },
+    {
+      key: "backend-route",
+      label: type === "grpc" ? "Backend gRPC Address" : "Backend URL",
+      value: backendRoute,
+      copyLabel: type === "grpc" ? "Backend gRPC Address" : "Backend URL"
+    },
+    { key: "backend-query", label: "Backend Query Params", value: recordRows(item.backend.query_params), multiline: true },
+    { key: "variables", label: "Variables", value: variableRows(item), multiline: true }
+  );
+
+  return {
+    method: endpointMethodOf(item),
+    path: endpointPathOf(item),
+    active: Boolean(item.active),
+    fields
+  };
+}
+
+function canCopyField(field: EndpointCardField): boolean {
+  return Boolean(field.copyLabel && field.value && field.value !== "unavailable");
+}
+
+async function copyField(field: EndpointCardField) {
+  if (!field.copyLabel) {
+    return;
+  }
+  await copyUrl(field.copyLabel, canCopyField(field) ? field.value : "");
+}
+
+async function loadInherited(item: EndpointMain) {
+  endpointInheritedError.value = "";
+  endpointInherited.value = null;
+  try {
+    endpointInherited.value = await getEndpointInherited({
+      id: item.id,
+      app_id: item.app_id,
+      variables: item.variables || []
+    });
+  } catch (error) {
+    endpointInheritedError.value = error instanceof Error ? error.message : "Unable to load inherited values";
+  }
+}
+
+async function openInterpolatedModal() {
+  if (!endpoint.value || interpolatedLoading.value) {
+    return;
+  }
+  interpolateModalVisible.value = true;
+  interpolatedLoading.value = true;
+  interpolatedError.value = "";
+  endpointInterpolated.value = null;
+  try {
+    endpointInterpolated.value = await getEndpointInterpolate({
+      id: endpoint.value.id,
+      app_id: endpoint.value.app_id,
+      variables: endpoint.value.variables || []
+    });
+  } catch (error) {
+    interpolatedError.value = error instanceof Error ? error.message : "Unable to load interpolated values";
+  } finally {
+    interpolatedLoading.value = false;
+  }
 }
 
 async function load() {
@@ -149,6 +266,7 @@ async function load() {
   errorMessage.value = "";
   try {
     endpoint.value = await getEndpoint(id.value);
+    await loadInherited(endpoint.value);
     app.value = null;
     rootBaseUrl.value = "";
     appName.value = "";
@@ -169,6 +287,8 @@ async function load() {
     }
   } catch (error) {
     endpoint.value = null;
+    endpointInherited.value = null;
+    endpointInheritedError.value = "";
     errorMessage.value = error instanceof Error ? error.message : "Unable to load endpoint";
   } finally {
     loading.value = false;
@@ -181,7 +301,7 @@ async function deactivateEndpoint() {
   }
   dialog.warning({
     title: "Deactivate endpoint",
-    content: `Deactivate endpoint ${endpointMethod.value} ${endpointPath.value}?`,
+    content: `Deactivate endpoint ${endpointMethodOf(endpoint.value)} ${endpointPathOf(endpoint.value)}?`,
     positiveText: "Deactivate",
     negativeText: "Cancel",
     onPositiveClick: () => {
@@ -217,7 +337,7 @@ async function removeEndpoint() {
   }
   dialog.error({
     title: "Delete endpoint",
-    content: `Delete endpoint ${endpointMethod.value} ${endpointPath.value}?`,
+    content: `Delete endpoint ${endpointMethodOf(endpoint.value)} ${endpointPathOf(endpoint.value)}?`,
     positiveText: "Delete",
     negativeText: "Cancel",
     onPositiveClick: () => {
@@ -308,6 +428,14 @@ onMounted(() => {
     >
       <n-icon v-if="!deleting" :component="TrashOutline" />
     </n-button>
+    <n-button
+      v-if="endpoint"
+      title="Show interpolated values"
+      aria-label="Show interpolated values"
+      @click="openInterpolatedModal"
+    >
+      <n-icon :component="EyeOutline" />
+    </n-button>
   </div>
 
   <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
@@ -315,95 +443,139 @@ onMounted(() => {
   <p v-else-if="!endpoint" class="muted">Endpoint not found.</p>
 
   <template v-else>
-    <section class="endpoint-details-hero">
-      <div class="endpoint-details-main">
-        <span class="http-method-badge" :class="endpointMethodBadgeClass(endpointMethod)">{{ endpointMethod }}</span>
-        <h2 class="endpoint-details-path">{{ endpointPath }}</h2>
+    <section v-if="currentCard" class="panel endpoint-card">
+      <div class="panel-head">
+        <h3 class="endpoint-card-title">
+          <n-icon :component="GitNetworkOutline" />
+          <span>Endpoint</span>
+        </h3>
       </div>
-      <n-tag size="small" :type="endpoint.active ? 'success' : 'warning'">
-        {{ endpoint.active ? "active" : "inactive" }}
-      </n-tag>
+      <div class="endpoint-details-hero">
+        <div class="endpoint-details-main">
+          <span class="http-method-badge" :class="endpointMethodBadgeClass(currentCard.method)">{{ currentCard.method }}</span>
+          <h2 class="endpoint-details-path">{{ currentCard.path }}</h2>
+        </div>
+        <n-tag size="small" :type="currentCard.active ? 'success' : 'warning'">
+          {{ currentCard.active ? "active" : "inactive" }}
+        </n-tag>
+      </div>
+      <div class="summary-grid endpoint-summary-grid">
+        <div v-for="field in currentCard.fields" :key="`current-${field.key}`">
+          <span class="label">{{ field.label }}</span>
+          <button
+            v-if="field.copyLabel"
+            class="endpoint-copy-link"
+            type="button"
+            :disabled="!canCopyField(field)"
+            :title="`Copy ${field.copyLabel}`"
+            :aria-label="`Copy ${field.copyLabel}`"
+            @click="copyField(field)"
+          >
+            <span class="endpoint-copy-value endpoint-value-break" :class="{ muted: !canCopyField(field), 'endpoint-multiline': field.multiline }">
+              {{ field.value }}
+            </span>
+            <n-icon class="endpoint-copy-icon" :component="CopyOutline" aria-hidden="true" />
+          </button>
+          <strong v-else class="endpoint-value-break" :class="{ 'endpoint-multiline': field.multiline }">{{ field.value }}</strong>
+        </div>
+      </div>
+      <EndpointAuthCard :auth="endpoint?.auth" />
     </section>
 
-    <section class="summary-grid endpoint-summary-grid">
-      <div>
-        <span class="label">Protocol</span>
-        <strong>{{ endpointType === "grpc" ? "gRPC" : "HTTP" }}</strong>
-      </div>
-      <div>
-        <span class="label">Application</span>
-        <strong>{{ appName || endpoint.app_id }}</strong>
-      </div>
-      <div>
-        <span class="label">App ID</span>
-        <strong>{{ endpoint.app_id }}</strong>
-      </div>
-      <div>
-        <span class="label">Endpoint ID</span>
-        <strong class="endpoint-value-break">{{ endpoint.id }}</strong>
-      </div>
-      <div v-if="endpointType === 'http'">
-        <span class="label">Custom Backend Path</span>
-        <strong>{{ endpoint.backend.custom_path || "inherit app backend path" }}</strong>
-      </div>
-      <div v-if="endpointType === 'grpc'">
-        <span class="label">gRPC Service</span>
-        <strong>{{ endpoint.grpc.service }}</strong>
-      </div>
-      <div v-if="endpointType === 'grpc'">
-        <span class="label">gRPC Method</span>
-        <strong>{{ endpoint.grpc.method }}</strong>
-      </div>
-      <div>
-        <span class="label">{{ endpointType === "grpc" ? "gRPC Path" : "Public URL" }}</span>
-        <button
-          class="endpoint-copy-link"
-          type="button"
-          :disabled="!publicRoute"
-          :title="endpointType === 'grpc' ? 'Copy gRPC Path' : 'Copy Public URL'"
-          :aria-label="endpointType === 'grpc' ? 'Copy gRPC Path' : 'Copy Public URL'"
-          @click="copyUrl(endpointType === 'grpc' ? 'gRPC Path' : 'Public URL', publicRoute)"
-        >
-          <span class="endpoint-copy-value" :class="{ muted: !publicRoute }">{{ publicRoute || "unavailable" }}</span>
-          <n-icon class="endpoint-copy-icon" :component="CopyOutline" aria-hidden="true" />
-        </button>
-      </div>
-      <div>
-        <span class="label">{{ endpointType === "grpc" ? "Backend gRPC Address" : "Backend URL" }}</span>
-        <button
-          class="endpoint-copy-link"
-          type="button"
-          :disabled="!backendUrl"
-          :title="endpointType === 'grpc' ? 'Copy Backend gRPC Address' : 'Copy Backend URL'"
-          :aria-label="endpointType === 'grpc' ? 'Copy Backend gRPC Address' : 'Copy Backend URL'"
-          @click="copyUrl(endpointType === 'grpc' ? 'Backend gRPC Address' : 'Backend URL', backendUrl)"
-        >
-          <span class="endpoint-copy-value" :class="{ muted: !backendUrl }">{{ backendUrl || "unavailable" }}</span>
-          <n-icon class="endpoint-copy-icon" :component="CopyOutline" aria-hidden="true" />
-        </button>
-      </div>
+    <section class="panel endpoint-card">
+      <n-collapse v-model:expanded-names="inheritedExpandedNames" class="endpoint-inherited-collapse">
+        <n-collapse-item name="inherited" display-directive="if">
+          <template #header>
+            <span class="endpoint-card-title">
+              <n-icon :component="GitNetworkOutline" />
+              <span>Endpoint (Inherited)</span>
+            </span>
+          </template>
+
+          <p v-if="endpointInheritedError" class="muted">{{ endpointInheritedError }}</p>
+          <template v-else-if="inheritedCard">
+            <div class="endpoint-details-hero">
+              <div class="endpoint-details-main">
+                <span class="http-method-badge" :class="endpointMethodBadgeClass(inheritedCard.method)">{{ inheritedCard.method }}</span>
+                <h2 class="endpoint-details-path">{{ inheritedCard.path }}</h2>
+              </div>
+              <n-tag size="small" :type="inheritedCard.active ? 'success' : 'warning'">
+                {{ inheritedCard.active ? "active" : "inactive" }}
+              </n-tag>
+            </div>
+            <div class="summary-grid endpoint-summary-grid">
+              <div v-for="field in inheritedCard.fields" :key="`inherited-${field.key}`">
+                <span class="label">{{ field.label }}</span>
+                <button
+                  v-if="field.copyLabel"
+                  class="endpoint-copy-link"
+                  type="button"
+                  :disabled="!canCopyField(field)"
+                  :title="`Copy ${field.copyLabel}`"
+                  :aria-label="`Copy ${field.copyLabel}`"
+                  @click="copyField(field)"
+                >
+                  <span class="endpoint-copy-value endpoint-value-break" :class="{ muted: !canCopyField(field), 'endpoint-multiline': field.multiline }">
+                    {{ field.value }}
+                  </span>
+                  <n-icon class="endpoint-copy-icon" :component="CopyOutline" aria-hidden="true" />
+                </button>
+                <strong v-else class="endpoint-value-break" :class="{ 'endpoint-multiline': field.multiline }">{{ field.value }}</strong>
+              </div>
+            </div>
+            <EndpointAuthCard :auth="endpointInherited?.auth" />
+          </template>
+          <p v-else class="muted">Inherited values unavailable.</p>
+        </n-collapse-item>
+      </n-collapse>
     </section>
 
-    <section class="panel endpoint-auth-panel">
-      <div class="endpoint-auth-head">
-        <h3>Auth</h3>
-        <span v-if="endpoint.auth?.enabled" class="endpoint-lock-chip" title="Auth required" aria-label="Auth required">
-          <n-icon :component="LockClosedOutline" />
-        </span>
+    <n-modal
+      v-model:show="interpolateModalVisible"
+      preset="card"
+      title="Interpolated Endpoint"
+      class="endpoint-modal-card"
+      :bordered="false"
+      :mask-closable="true"
+      content-style="display: flex; min-height: 0; height: 100%; overflow: hidden;"
+    >
+      <div class="endpoint-modal-content">
+        <p v-if="interpolatedLoading" class="muted">Loading interpolated values...</p>
+        <n-alert v-else-if="interpolatedError" type="error" :show-icon="false">{{ interpolatedError }}</n-alert>
+        <section v-else-if="interpolatedCard" class="endpoint-card endpoint-card-modal">
+          <div class="endpoint-details-hero">
+            <div class="endpoint-details-main">
+              <span class="http-method-badge" :class="endpointMethodBadgeClass(interpolatedCard.method)">{{ interpolatedCard.method }}</span>
+              <h2 class="endpoint-details-path">{{ interpolatedCard.path }}</h2>
+            </div>
+            <n-tag size="small" :type="interpolatedCard.active ? 'success' : 'warning'">
+              {{ interpolatedCard.active ? "active" : "inactive" }}
+            </n-tag>
+          </div>
+          <div class="summary-grid endpoint-summary-grid">
+            <div v-for="field in interpolatedCard.fields" :key="`interpolate-${field.key}`">
+              <span class="label">{{ field.label }}</span>
+              <button
+                v-if="field.copyLabel"
+                class="endpoint-copy-link"
+                type="button"
+                :disabled="!canCopyField(field)"
+                :title="`Copy ${field.copyLabel}`"
+                :aria-label="`Copy ${field.copyLabel}`"
+                @click="copyField(field)"
+              >
+                <span class="endpoint-copy-value endpoint-value-break" :class="{ muted: !canCopyField(field), 'endpoint-multiline': field.multiline }">
+                  {{ field.value }}
+                </span>
+                <n-icon class="endpoint-copy-icon" :component="CopyOutline" aria-hidden="true" />
+              </button>
+              <strong v-else class="endpoint-value-break" :class="{ 'endpoint-multiline': field.multiline }">{{ field.value }}</strong>
+            </div>
+          </div>
+          <EndpointAuthCard :auth="endpointInterpolated?.auth" />
+        </section>
+        <p v-else class="muted">Interpolated values unavailable.</p>
       </div>
-      <p class="muted endpoint-auth-summary">{{ authSummary(endpoint) }}</p>
-      <div v-if="endpointAuthIcons(endpoint).length > 0" class="endpoint-auth-icons">
-        <span
-          v-for="authIcon in endpointAuthIcons(endpoint)"
-          :key="authIcon.key"
-          class="endpoint-auth-icon"
-          :title="authIcon.label"
-          :aria-label="authIcon.label"
-        >
-          <n-icon :component="authIcon.component" />
-        </span>
-      </div>
-      <p v-else class="muted">No auth methods configured.</p>
-    </section>
+    </n-modal>
   </template>
 </template>
