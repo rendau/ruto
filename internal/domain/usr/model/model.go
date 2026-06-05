@@ -10,6 +10,8 @@ type Usr struct {
 	Id       int64
 	Active   bool
 	IsAdmin  bool
+	AllApps  bool
+	AppIds   []string
 	Name     string
 	Username string
 	Password string
@@ -22,11 +24,14 @@ type ListReq struct {
 }
 
 type Edit struct {
-	Active   *bool
-	IsAdmin  *bool
-	Name     *string
-	Username *string
-	Password *string
+	Active       *bool
+	IsAdmin      *bool
+	AllApps      *bool
+	UpdateAppIds bool
+	AppIds       []string
+	Name         *string
+	Username     *string
+	Password     *string
 }
 
 func (m *Usr) Normalize() error {

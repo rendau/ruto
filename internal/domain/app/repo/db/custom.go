@@ -26,6 +26,9 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 	if pars.ExcludeID != nil {
 		conditionExps["id != ?"] = []any{*pars.ExcludeID}
 	}
+	if pars.IdsIn != nil {
+		conditionExps["id = ANY(?)"] = []any{*pars.IdsIn}
+	}
 
 	return conditions, conditionExps
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/rendau/ruto/internal/domain/app/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -41,6 +43,14 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.App, 
 		return nil, 0, errs.NotAuthorized
 	}
 
+	if pars == nil {
+		pars = &model.ListReq{}
+	}
+	if !u.sessionSvc.CtxHasFullAppAccess(ctx) {
+		ids := u.sessionSvc.CtxGetAppIds(ctx)
+		pars.IdsIn = &ids
+	}
+
 	items, tCount, err := u.svc.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
@@ -52,6 +62,9 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.App, 
 func (u *Usecase) Create(ctx context.Context, obj *model.App) (string, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return "", errs.NotAuthorized
+	}
+	if !u.sessionSvc.CtxHasFullAppAccess(ctx) {
+		return "", errs.NoPermission
 	}
 
 	err := u.validateEdit(ctx, obj, "")
@@ -70,6 +83,9 @@ func (u *Usecase) Create(ctx context.Context, obj *model.App) (string, error) {
 func (u *Usecase) Get(ctx context.Context, id string) (*model.App, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
+	}
+	if err := u.requireAppAccess(ctx, id); err != nil {
+		return nil, err
 	}
 
 	result, _, err := u.svc.Get(ctx, id, true)
@@ -101,6 +117,9 @@ func (u *Usecase) getInherited(
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return nil, errs.IdRequired
+	}
+	if err := u.requireAppAccess(ctx, id); err != nil {
+		return nil, err
 	}
 
 	appObj, _, err := u.svc.Get(ctx, id, true)
@@ -138,6 +157,9 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.App) error {
 	if id == "" {
 		return errs.IdRequired
 	}
+	if err := u.requireAppAccess(ctx, id); err != nil {
+		return err
+	}
 	err := u.validateEdit(ctx, obj, id)
 	if err != nil {
 		return err
@@ -159,6 +181,9 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 	if id == "" {
 		return errs.IdRequired
 	}
+	if err := u.requireAppAccess(ctx, id); err != nil {
+		return err
+	}
 	err := u.svc.Delete(ctx, id)
 	if err != nil {
 		return fmt.Errorf("svc.Delete: %w", err)
@@ -174,6 +199,9 @@ func (u *Usecase) GetSwaggerEndpointsDiff(ctx context.Context, id string) (*Swag
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return nil, errs.IdRequired
+	}
+	if err := u.requireAppAccess(ctx, id); err != nil {
+		return nil, err
 	}
 
 	appObj, _, err := u.svc.Get(ctx, id, true)
@@ -216,6 +244,9 @@ func (u *Usecase) GetGrpcReflectionEndpoints(ctx context.Context, id string) ([]
 	if id == "" {
 		return nil, errs.IdRequired
 	}
+	if err := u.requireAppAccess(ctx, id); err != nil {
+		return nil, err
+	}
 
 	appObj, _, err := u.svc.Get(ctx, id, true)
 	if err != nil {
@@ -240,6 +271,16 @@ func (u *Usecase) GetGrpcReflectionEndpoints(ctx context.Context, id string) ([]
 		})
 	}
 	return result, nil
+}
+
+func (u *Usecase) requireAppAccess(ctx context.Context, id string) error {
+	if u.sessionSvc.CtxHasFullAppAccess(ctx) {
+		return nil
+	}
+	if lo.Contains(u.sessionSvc.CtxGetAppIds(ctx), id) {
+		return nil
+	}
+	return errs.NoPermission
 }
 
 func (u *Usecase) validateEdit(ctx context.Context, obj *model.App, selfID string) error {

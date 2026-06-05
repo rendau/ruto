@@ -94,7 +94,7 @@ func TestUsecase_BackfillSwaggerURLs(t *testing.T) {
 				return nil, errors.New("not found")
 			},
 		},
-		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AllApps: true}},
 	)
 
 	err := uc.BackfillSwaggerURLs(context.Background())

@@ -1644,6 +1644,15 @@
         },
         "password": {
           "type": "string"
+        },
+        "all_apps": {
+          "type": "boolean"
+        },
+        "app_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1711,6 +1720,15 @@
         },
         "password": {
           "type": "string"
+        },
+        "all_apps": {
+          "type": "boolean"
+        },
+        "app_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1731,6 +1749,18 @@
         },
         "password": {
           "type": "string"
+        },
+        "all_apps": {
+          "type": "boolean"
+        },
+        "update_app_ids": {
+          "type": "boolean"
+        },
+        "app_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

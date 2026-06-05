@@ -45,6 +45,8 @@ message UsrMain {
   string name = 4;
   string username = 5;
   string password = 6;
+  bool all_apps = 7;
+  repeated string app_ids = 8;
 }
 
 message UsrCreate {
@@ -53,6 +55,8 @@ message UsrCreate {
   optional string name = 3;
   optional string username = 4;
   optional string password = 5;
+  optional bool all_apps = 6;
+  repeated string app_ids = 7;
 }
 
 message UsrEdit {
@@ -62,6 +66,9 @@ message UsrEdit {
   optional string name = 4;
   optional string username = 5;
   optional string password = 6;
+  optional bool all_apps = 7;
+  bool update_app_ids = 8;
+  repeated string app_ids = 9;
 }
 
 message UsrGetReq {

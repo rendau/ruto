@@ -31,6 +31,8 @@ type UsrMain struct {
 	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Username      string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
 	Password      string                 `protobuf:"bytes,6,opt,name=password,proto3" json:"password,omitempty"`
+	AllApps       bool                   `protobuf:"varint,7,opt,name=all_apps,json=allApps,proto3" json:"all_apps,omitempty"`
+	AppIds        []string               `protobuf:"bytes,8,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -107,6 +109,20 @@ func (x *UsrMain) GetPassword() string {
 	return ""
 }
 
+func (x *UsrMain) GetAllApps() bool {
+	if x != nil {
+		return x.AllApps
+	}
+	return false
+}
+
+func (x *UsrMain) GetAppIds() []string {
+	if x != nil {
+		return x.AppIds
+	}
+	return nil
+}
+
 type UsrCreate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Active        *bool                  `protobuf:"varint,1,opt,name=active,proto3,oneof" json:"active,omitempty"`
@@ -114,6 +130,8 @@ type UsrCreate struct {
 	Name          *string                `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Username      *string                `protobuf:"bytes,4,opt,name=username,proto3,oneof" json:"username,omitempty"`
 	Password      *string                `protobuf:"bytes,5,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	AllApps       *bool                  `protobuf:"varint,6,opt,name=all_apps,json=allApps,proto3,oneof" json:"all_apps,omitempty"`
+	AppIds        []string               `protobuf:"bytes,7,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -183,6 +201,20 @@ func (x *UsrCreate) GetPassword() string {
 	return ""
 }
 
+func (x *UsrCreate) GetAllApps() bool {
+	if x != nil && x.AllApps != nil {
+		return *x.AllApps
+	}
+	return false
+}
+
+func (x *UsrCreate) GetAppIds() []string {
+	if x != nil {
+		return x.AppIds
+	}
+	return nil
+}
+
 type UsrEdit struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -191,6 +223,9 @@ type UsrEdit struct {
 	Name          *string                `protobuf:"bytes,4,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Username      *string                `protobuf:"bytes,5,opt,name=username,proto3,oneof" json:"username,omitempty"`
 	Password      *string                `protobuf:"bytes,6,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	AllApps       *bool                  `protobuf:"varint,7,opt,name=all_apps,json=allApps,proto3,oneof" json:"all_apps,omitempty"`
+	UpdateAppIds  bool                   `protobuf:"varint,8,opt,name=update_app_ids,json=updateAppIds,proto3" json:"update_app_ids,omitempty"`
+	AppIds        []string               `protobuf:"bytes,9,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -265,6 +300,27 @@ func (x *UsrEdit) GetPassword() string {
 		return *x.Password
 	}
 	return ""
+}
+
+func (x *UsrEdit) GetAllApps() bool {
+	if x != nil && x.AllApps != nil {
+		return *x.AllApps
+	}
+	return false
+}
+
+func (x *UsrEdit) GetUpdateAppIds() bool {
+	if x != nil {
+		return x.UpdateAppIds
+	}
+	return false
+}
+
+func (x *UsrEdit) GetAppIds() []string {
+	if x != nil {
+		return x.AppIds
+	}
+	return nil
 }
 
 type UsrGetReq struct {
@@ -655,37 +711,46 @@ var File_ruto_v1_usr_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_usr_proto_rawDesc = "" +
 	"\n" +
-	"\x11ruto_v1/usr.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x14ruto_v1/common.proto\"\x98\x01\n" +
+	"\x11ruto_v1/usr.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x14ruto_v1/common.proto\"\xcc\x01\n" +
 	"\aUsrMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x19\n" +
 	"\bis_admin\x18\x03 \x01(\bR\aisAdmin\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x05 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x06 \x01(\tR\bpassword\"\xde\x01\n" +
+	"\bpassword\x18\x06 \x01(\tR\bpassword\x12\x19\n" +
+	"\ball_apps\x18\a \x01(\bR\aallApps\x12\x17\n" +
+	"\aapp_ids\x18\b \x03(\tR\x06appIds\"\xa4\x02\n" +
 	"\tUsrCreate\x12\x1b\n" +
 	"\x06active\x18\x01 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1e\n" +
 	"\bis_admin\x18\x02 \x01(\bH\x01R\aisAdmin\x88\x01\x01\x12\x17\n" +
 	"\x04name\x18\x03 \x01(\tH\x02R\x04name\x88\x01\x01\x12\x1f\n" +
 	"\busername\x18\x04 \x01(\tH\x03R\busername\x88\x01\x01\x12\x1f\n" +
-	"\bpassword\x18\x05 \x01(\tH\x04R\bpassword\x88\x01\x01B\t\n" +
+	"\bpassword\x18\x05 \x01(\tH\x04R\bpassword\x88\x01\x01\x12\x1e\n" +
+	"\ball_apps\x18\x06 \x01(\bH\x05R\aallApps\x88\x01\x01\x12\x17\n" +
+	"\aapp_ids\x18\a \x03(\tR\x06appIdsB\t\n" +
 	"\a_activeB\v\n" +
 	"\t_is_adminB\a\n" +
 	"\x05_nameB\v\n" +
 	"\t_usernameB\v\n" +
-	"\t_password\"\xec\x01\n" +
+	"\t_passwordB\v\n" +
+	"\t_all_apps\"\xd8\x02\n" +
 	"\aUsrEdit\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1e\n" +
 	"\bis_admin\x18\x03 \x01(\bH\x01R\aisAdmin\x88\x01\x01\x12\x17\n" +
 	"\x04name\x18\x04 \x01(\tH\x02R\x04name\x88\x01\x01\x12\x1f\n" +
 	"\busername\x18\x05 \x01(\tH\x03R\busername\x88\x01\x01\x12\x1f\n" +
-	"\bpassword\x18\x06 \x01(\tH\x04R\bpassword\x88\x01\x01B\t\n" +
+	"\bpassword\x18\x06 \x01(\tH\x04R\bpassword\x88\x01\x01\x12\x1e\n" +
+	"\ball_apps\x18\a \x01(\bH\x05R\aallApps\x88\x01\x01\x12$\n" +
+	"\x0eupdate_app_ids\x18\b \x01(\bR\fupdateAppIds\x12\x17\n" +
+	"\aapp_ids\x18\t \x03(\tR\x06appIdsB\t\n" +
 	"\a_activeB\v\n" +
 	"\t_is_adminB\a\n" +
 	"\x05_nameB\v\n" +
 	"\t_usernameB\v\n" +
-	"\t_password\"\x1b\n" +
+	"\t_passwordB\v\n" +
+	"\t_all_apps\"\x1b\n" +
 	"\tUsrGetReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"l\n" +
 	"\n" +

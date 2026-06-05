@@ -11,6 +11,8 @@ func EncodeUsrMain(v *model.Usr, _ int) *ruto_v1.UsrMain {
 		Id:       v.Id,
 		Active:   v.Active,
 		IsAdmin:  v.IsAdmin,
+		AllApps:  v.AllApps,
+		AppIds:   v.AppIds,
 		Name:     v.Name,
 		Username: v.Username,
 		Password: v.Password,
@@ -22,11 +24,14 @@ func DecodeUsrCreate(v *ruto_v1.UsrCreate) *model.Edit {
 		return &model.Edit{}
 	}
 	return &model.Edit{
-		Active:   v.Active,
-		IsAdmin:  v.IsAdmin,
-		Name:     v.Name,
-		Username: v.Username,
-		Password: v.Password,
+		Active:       v.Active,
+		IsAdmin:      v.IsAdmin,
+		AllApps:      v.AllApps,
+		UpdateAppIds: true,
+		AppIds:       v.AppIds,
+		Name:         v.Name,
+		Username:     v.Username,
+		Password:     v.Password,
 	}
 }
 
@@ -35,11 +40,14 @@ func DecodeUsrEdit(v *ruto_v1.UsrEdit) *model.Edit {
 		return &model.Edit{}
 	}
 	return &model.Edit{
-		Active:   v.Active,
-		IsAdmin:  v.IsAdmin,
-		Name:     v.Name,
-		Username: v.Username,
-		Password: v.Password,
+		Active:       v.Active,
+		IsAdmin:      v.IsAdmin,
+		AllApps:      v.AllApps,
+		UpdateAppIds: v.UpdateAppIds,
+		AppIds:       v.AppIds,
+		Name:         v.Name,
+		Username:     v.Username,
+		Password:     v.Password,
 	}
 }
 

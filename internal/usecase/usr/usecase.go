@@ -32,7 +32,7 @@ func (u *Usecase) Login(ctx context.Context, username, password string) (string,
 		return "", errs.NotAuthorized
 	}
 
-	token, err := u.sessionSvc.CreateToken(item.Id, item.IsAdmin)
+	token, err := u.sessionSvc.CreateToken(item.Id, item.IsAdmin, item.AllApps, item.AppIds)
 	if err != nil {
 		return "", fmt.Errorf("sessionSvc.CreateToken: %w", err)
 	}

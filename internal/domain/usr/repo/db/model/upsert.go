@@ -5,11 +5,14 @@ import domainModel "github.com/rendau/ruto/internal/domain/usr/model"
 type Upsert struct {
 	PKId int64
 
-	Active   *bool
-	IsAdmin  *bool
-	Name     *string
-	Username *string
-	Password *string
+	Active       *bool
+	IsAdmin      *bool
+	AllApps      *bool
+	UpdateAppIds bool
+	AppIds       []string
+	Name         *string
+	Username     *string
+	Password     *string
 }
 
 func (m *Upsert) CreateColumnMap() map[string]any {
@@ -20,6 +23,12 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 	}
 	if m.IsAdmin != nil {
 		result["is_admin"] = *m.IsAdmin
+	}
+	if m.AllApps != nil {
+		result["all_apps"] = *m.AllApps
+	}
+	if m.UpdateAppIds {
+		result["app_ids"] = m.AppIds
 	}
 	if m.Name != nil {
 		result["name"] = *m.Name
@@ -50,11 +59,14 @@ func (m *Upsert) PKColumnMap() map[string]any {
 
 func DecodeUpsert(v *domainModel.Usr) *Upsert {
 	return &Upsert{
-		Active:   &v.Active,
-		IsAdmin:  &v.IsAdmin,
-		Name:     &v.Name,
-		Username: &v.Username,
-		Password: &v.Password,
+		Active:       &v.Active,
+		IsAdmin:      &v.IsAdmin,
+		AllApps:      &v.AllApps,
+		UpdateAppIds: true,
+		AppIds:       v.AppIds,
+		Name:         &v.Name,
+		Username:     &v.Username,
+		Password:     &v.Password,
 	}
 }
 
@@ -63,10 +75,13 @@ func DecodeUpsertEdit(v *domainModel.Edit) *Upsert {
 		return &Upsert{}
 	}
 	return &Upsert{
-		Active:   v.Active,
-		IsAdmin:  v.IsAdmin,
-		Name:     v.Name,
-		Username: v.Username,
-		Password: v.Password,
+		Active:       v.Active,
+		IsAdmin:      v.IsAdmin,
+		AllApps:      v.AllApps,
+		UpdateAppIds: v.UpdateAppIds,
+		AppIds:       v.AppIds,
+		Name:         v.Name,
+		Username:     v.Username,
+		Password:     v.Password,
 	}
 }

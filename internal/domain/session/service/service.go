@@ -53,6 +53,15 @@ func (s *Service) CtxIsAdmin(ctx context.Context) bool {
 	return s.FromContext(ctx).IsAdmin()
 }
 
+func (s *Service) CtxHasFullAppAccess(ctx context.Context) bool {
+	sess := s.FromContext(ctx)
+	return sess.IsAdmin() || (sess.IsAuthorized() && sess.AllApps)
+}
+
+func (s *Service) CtxGetAppIds(ctx context.Context) []string {
+	return s.FromContext(ctx).AppIds
+}
+
 func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
 	if s.secret == "" {
 		return nil, errs.InvalidConfig
@@ -93,21 +102,47 @@ func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
 		return nil, err
 	}
 
+	allAppsRaw, ok := claims["all_apps"]
+	if !ok {
+		return nil, fmt.Errorf("missing all_apps claim in token")
+	}
+	allApps, err := boolFromClaim(allAppsRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	appIdsRaw, ok := claims["app_ids"]
+	if !ok {
+		return nil, fmt.Errorf("missing app_ids claim in token")
+	}
+	appIds, err := stringSliceFromClaim(appIdsRaw)
+	if err != nil {
+		return nil, err
+	}
+
 	return &sessionModel.Session{
-		Id:    usrId,
-		Admin: isAdmin,
+		Id:      usrId,
+		Admin:   isAdmin,
+		AllApps: allApps,
+		AppIds:  appIds,
 	}, nil
 }
 
-func (s *Service) CreateToken(usrId int64, isAdmin bool) (string, error) {
+func (s *Service) CreateToken(usrId int64, isAdmin bool, allApps bool, appIds []string) (string, error) {
 	if s.secret == "" {
 		return "", errs.InvalidConfig
+	}
+
+	if appIds == nil {
+		appIds = []string{}
 	}
 
 	now := time.Now().UTC()
 	claims := jwtv5.MapClaims{
 		"id":       usrId,
 		"is_admin": isAdmin,
+		"all_apps": allApps,
+		"app_ids":  appIds,
 		"iat":      now.Unix(),
 		"exp":      now.Add(tokenTTL).Unix(),
 	}
@@ -141,6 +176,28 @@ func boolFromClaim(v any) (bool, error) {
 		return false, fmt.Errorf("invalid is_admin claim")
 	default:
 		return false, fmt.Errorf("invalid is_admin claim")
+	}
+}
+
+func stringSliceFromClaim(v any) ([]string, error) {
+	if v == nil {
+		return []string{}, nil
+	}
+	switch x := v.(type) {
+	case []string:
+		return x, nil
+	case []any:
+		result := make([]string, 0, len(x))
+		for _, item := range x {
+			s, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("invalid app_ids claim item")
+			}
+			result = append(result, s)
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("invalid app_ids claim")
 	}
 }
 

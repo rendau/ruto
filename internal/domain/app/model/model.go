@@ -39,6 +39,7 @@ type ListReq struct {
 	Active    *bool
 	NameEqCI  *string
 	ExcludeID *string
+	IdsIn     *[]string // if set, only return apps with these IDs
 }
 
 func (m *App) ActiveEndpoints() []*endpointModel.Endpoint {

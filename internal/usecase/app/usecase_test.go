@@ -31,6 +31,14 @@ func (s *testSessionService) CtxIsAdmin(_ context.Context) bool {
 	return s.session.IsAdmin()
 }
 
+func (s *testSessionService) CtxHasFullAppAccess(_ context.Context) bool {
+	return s.session.IsAdmin() || (s.session.IsAuthorized() && s.session.AllApps)
+}
+
+func (s *testSessionService) CtxGetAppIds(_ context.Context) []string {
+	return s.session.AppIds
+}
+
 type testAppService struct {
 	get func(ctx context.Context, id string, errNE bool) (*appModel.App, bool, error)
 }
@@ -143,7 +151,7 @@ func TestUsecase_Interpolate(t *testing.T) {
 		},
 		nil,
 		nil,
-		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AllApps: true}},
 		&testRootService{
 			get: func(_ context.Context) (*rootModel.Root, error) {
 				return &rootModel.Root{
@@ -196,7 +204,7 @@ func TestUsecase_Inherited(t *testing.T) {
 		},
 		nil,
 		nil,
-		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AllApps: true}},
 		&testRootService{
 			get: func(_ context.Context) (*rootModel.Root, error) {
 				return &rootModel.Root{
@@ -267,7 +275,7 @@ func TestUsecase_GetSwaggerEndpointsDiff(t *testing.T) {
 				}, nil
 			},
 		},
-		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AllApps: true}},
 	)
 
 	rep, err := uc.GetSwaggerEndpointsDiff(context.Background(), "app-id")
@@ -315,7 +323,7 @@ func TestUsecase_GetSwaggerEndpointsDiff_PathVariableNamesIgnored(t *testing.T) 
 				}, nil
 			},
 		},
-		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AllApps: true}},
 	)
 
 	rep, err := uc.GetSwaggerEndpointsDiff(context.Background(), "app-id")
@@ -348,7 +356,7 @@ func TestUsecase_Create_DuplicateAppName(t *testing.T) {
 		},
 		nil,
 		nil,
-		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AllApps: true}},
 	)
 
 	_, err := uc.Create(context.Background(), &appModel.App{
@@ -388,7 +396,7 @@ func TestUsecase_Update_SameAppNameForSelfAllowed(t *testing.T) {
 		},
 		nil,
 		nil,
-		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AllApps: true}},
 	)
 
 	err := uc.Update(context.Background(), "app-1", &appModel.App{

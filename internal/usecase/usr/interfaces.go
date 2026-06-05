@@ -21,5 +21,5 @@ type SessionServiceI interface {
 	FromContext(ctx context.Context) *sessionModel.Session
 	CtxIsAuthorized(ctx context.Context) bool
 	CtxIsAdmin(ctx context.Context) bool
-	CreateToken(usrId int64, isAdmin bool) (string, error)
+	CreateToken(usrId int64, isAdmin bool, allApps bool, appIds []string) (string, error)
 }

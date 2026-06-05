@@ -7,6 +7,8 @@ type Select struct {
 
 	Active   bool
 	IsAdmin  bool
+	AllApps  bool
+	AppIds   []string
 	Name     string
 	Username string
 	Password string
@@ -17,6 +19,8 @@ func (m *Select) ListColumnMap() map[string]any {
 		"id":       &m.PKId,
 		"active":   &m.Active,
 		"is_admin": &m.IsAdmin,
+		"all_apps": &m.AllApps,
+		"app_ids":  &m.AppIds,
 		"name":     &m.Name,
 		"username": &m.Username,
 		"password": &m.Password,
@@ -41,6 +45,8 @@ func EncodeSelect(v *Select, _ int) *domainModel.Usr {
 		Id:       v.PKId,
 		Active:   v.Active,
 		IsAdmin:  v.IsAdmin,
+		AllApps:  v.AllApps,
+		AppIds:   v.AppIds,
 		Name:     v.Name,
 		Username: v.Username,
 		Password: v.Password,
