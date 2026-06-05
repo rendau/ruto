@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - develop
 jobs:
   test:
     name: Run tests
@@ -31,14 +32,15 @@ jobs:
       matrix:
         include:
           - service: core
-            image: ruto-core:latest
+            image: ruto-core
             dockerfile: docker/core.Dockerfile
           - service: gateway
-            image: ruto-gateway:latest
+            image: ruto-gateway
             dockerfile: docker/gateway.Dockerfile
     env:
       OWNER: ${{ github.repository_owner }}
       IMAGE: ${{ matrix.image }}
+      TAG: ${{ github.ref_name == 'develop' && 'develop' || 'latest' }}
     steps:
       - uses: actions/checkout@v6
 
@@ -48,6 +50,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: docker build -f ${{ matrix.dockerfile }} -t ghcr.io/$OWNER/$IMAGE .
+      - run: docker build -f ${{ matrix.dockerfile }} -t ghcr.io/$OWNER/$IMAGE:$TAG .
 
-      - run: docker push ghcr.io/$OWNER/$IMAGE
+      - run: docker push ghcr.io/$OWNER/$IMAGE:$TAG
