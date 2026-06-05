@@ -6,6 +6,16 @@ type Auth struct {
 	Methods []*AuthMethod `json:"methods"`
 }
 
+type AuthMethodType int
+
+const (
+	AuthMethodTypeCombined AuthMethodType = iota
+	AuthMethodTypeBasic
+	AuthMethodTypeAPIKey
+	AuthMethodTypeJWT
+	AuthMethodTypeIPValidation
+)
+
 type AuthMethod struct {
 	Basic        *AuthMethodBasic        `json:"basic,omitempty"`
 	APIKey       *AuthMethodAPIKey       `json:"api_key,omitempty"`

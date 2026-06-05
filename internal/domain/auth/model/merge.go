@@ -32,42 +32,77 @@ func (m *Auth) applyChild(child Auth) {
 }
 
 func mergeMethods(parent, child []*AuthMethod) []*AuthMethod {
-	result := append(make([]*AuthMethod, 0, len(parent)+len(child)), parent...)
+	result := make([]*AuthMethod, 0, len(parent)+len(child))
 	jwtMethodByKid := make(map[string]*AuthMethod, len(parent))
+	var (
+		basicMethod        *AuthMethod
+		apiKeyMethod       *AuthMethod
+		ipValidationMethod *AuthMethod
+	)
 
-	for _, method := range result {
-		if method.JWT == nil || method.JWT.Kid == "" {
-			continue
+	appendMethod := func(method *AuthMethod) {
+		if method == nil {
+			result = append(result, method)
+			return
 		}
 
-		// Skip JWT merging if method has other auth types
-		if *method != (AuthMethod{JWT: method.JWT}) {
-			continue
+		if !method.HasSingleType() {
+			result = append(result, method)
+			return
 		}
 
-		jwtMethodByKid[method.JWT.Kid] = method
+		switch {
+		case method.Basic != nil:
+			if basicMethod == nil {
+				basicMethod = method
+				result = append(result, method)
+				return
+			}
+
+			basicMethod.Basic.Users = append(basicMethod.Basic.Users, method.Basic.Users...)
+		case method.APIKey != nil:
+			if apiKeyMethod == nil {
+				apiKeyMethod = method
+				result = append(result, method)
+				return
+			}
+
+			if apiKeyMethod.APIKey.Header == "" {
+				apiKeyMethod.APIKey.Header = method.APIKey.Header
+			}
+			apiKeyMethod.APIKey.Keys = append(apiKeyMethod.APIKey.Keys, method.APIKey.Keys...)
+		case method.IPValidation != nil:
+			if ipValidationMethod == nil {
+				ipValidationMethod = method
+				result = append(result, method)
+				return
+			}
+
+			ipValidationMethod.IPValidation.AllowedIps = append(ipValidationMethod.IPValidation.AllowedIps, method.IPValidation.AllowedIps...)
+		case method.JWT != nil:
+			if method.JWT.Kid == "" {
+				result = append(result, method)
+				return
+			}
+
+			if parentMethod, ok := jwtMethodByKid[method.JWT.Kid]; ok {
+				parentMethod.JWT.Roles = lo.Uniq(append(parentMethod.JWT.Roles, method.JWT.Roles...))
+				return
+			}
+
+			jwtMethodByKid[method.JWT.Kid] = method
+			result = append(result, method)
+		default:
+			result = append(result, method)
+		}
+	}
+
+	for _, method := range parent {
+		appendMethod(method)
 	}
 
 	for _, method := range child {
-		if method.JWT == nil || method.JWT.Kid == "" {
-			result = append(result, method)
-			continue
-		}
-
-		// Skip JWT merging if method has other auth types
-		if *method != (AuthMethod{JWT: method.JWT}) {
-			result = append(result, method)
-			continue
-		}
-
-		if parentMethod, ok := jwtMethodByKid[method.JWT.Kid]; ok {
-			parentMethod.JWT.Roles = lo.Uniq(append(parentMethod.JWT.Roles, method.JWT.Roles...))
-			continue
-		}
-
-		jwtMethodByKid[method.JWT.Kid] = method
-
-		result = append(result, method)
+		appendMethod(method)
 	}
 
 	return result
