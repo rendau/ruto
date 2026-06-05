@@ -446,7 +446,7 @@ select {
   width: 100%;
   min-width: 0;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   overflow: hidden;
 }
@@ -462,25 +462,69 @@ select {
   text-overflow: ellipsis;
 }
 
+.app-meta-line {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-left: 10px;
+  margin-top: 2px;
+}
+
 .app-prefix {
-  flex: 0 1 45%;
+  flex: 1 1 auto;
   min-width: 0;
   display: block;
   font-size: 12px;
-  color: #9fb1cf;
+  color: #7f90ae;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.app-badges {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.app-badge-inactive {
+  color: #ffd2a4;
+  border-color: rgba(255, 178, 107, 0.5);
+  background: rgba(130, 84, 40, 0.35);
+}
+
+.app-badge-grpc {
+  color: #c9deff;
+  border-color: rgba(148, 184, 255, 0.44);
+  background: rgba(74, 99, 156, 0.35);
+}
+
 .app-backend {
-  width: 100%;
+  flex: 0 1 58%;
   min-width: 0;
   display: block;
-  padding-left: 32px;
-  margin-top: 4px;
   font-size: 12px;
   color: #b6c4dc;
+  text-align: right;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

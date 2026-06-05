@@ -202,6 +202,10 @@ function displayBackendUrl(url?: string): string {
   return url.replace(/^https?:\/\//i, "");
 }
 
+function hasGrpcBackend(grpcUrl?: string): boolean {
+  return Boolean((grpcUrl || "").trim());
+}
+
 onMounted(() => {
   const stored = Number(localStorage.getItem("ruto_admin_sidebar_width") || "");
   if (Number.isFinite(stored) && stored >= minSidebarWidth && stored <= maxSidebarWidth) {
@@ -290,10 +294,18 @@ onBeforeUnmount(() => {
         >
           <span class="app-topline">
             <span class="app-name">{{ app.name || app.id }}</span>
-            <span class="app-prefix">{{ app.path_prefix || "/" }}</span>
+            <span class="app-badges">
+              <span v-if="!app.active" class="app-badge app-badge-inactive">not active</span>
+              <span v-if="hasGrpcBackend(app.backend?.grpc_url)" class="app-badge app-badge-grpc">gRPC</span>
+            </span>
           </span>
-          <span class="app-backend" :title="app.backend?.url || '-'">
-            {{ displayBackendUrl(app.backend?.url) }}
+          <span class="app-meta-line">
+            <span class="app-prefix" :title="app.path_prefix || '/'">
+              {{ app.path_prefix || "/" }}
+            </span>
+            <span class="app-backend" :title="app.backend?.url || '-'">
+              {{ displayBackendUrl(app.backend?.url) }}
+            </span>
           </span>
         </RouterLink>
         <div v-if="filteredApps.length === 0" class="apps-empty muted">No apps found</div>
