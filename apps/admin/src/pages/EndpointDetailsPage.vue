@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useDialog } from "naive-ui";
 import { ArrowBackOutline, BanOutline, CopyOutline, CreateOutline, EyeOutline, GitNetworkOutline, TrashOutline } from "@vicons/ionicons5";
-import EndpointAuthCard from "../components/EndpointAuthCard.vue";
+import AuthCard from "../components/AuthCard.vue";
 import { deleteEndpoint, getApp, getEndpoint, getEndpointInherited, getEndpointInterpolate, getRoot, updateEndpoint } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain, EndpointMain } from "../types/api";
@@ -479,7 +479,7 @@ onMounted(() => {
           <strong v-else class="endpoint-value-break" :class="{ 'endpoint-multiline': field.multiline }">{{ field.value }}</strong>
         </div>
       </div>
-      <EndpointAuthCard :auth="endpoint?.auth" />
+      <AuthCard :auth="endpoint?.auth" />
     </section>
 
     <section class="panel endpoint-card">
@@ -523,7 +523,7 @@ onMounted(() => {
                 <strong v-else class="endpoint-value-break" :class="{ 'endpoint-multiline': field.multiline }">{{ field.value }}</strong>
               </div>
             </div>
-            <EndpointAuthCard :auth="endpointInherited?.auth" />
+            <AuthCard :auth="endpointInherited?.auth" />
           </template>
           <p v-else class="muted">Inherited values unavailable.</p>
         </n-collapse-item>
@@ -572,7 +572,7 @@ onMounted(() => {
               <strong v-else class="endpoint-value-break" :class="{ 'endpoint-multiline': field.multiline }">{{ field.value }}</strong>
             </div>
           </div>
-          <EndpointAuthCard :auth="endpointInterpolated?.auth" />
+          <AuthCard :auth="endpointInterpolated?.auth" />
         </section>
         <p v-else class="muted">Interpolated values unavailable.</p>
       </div>
