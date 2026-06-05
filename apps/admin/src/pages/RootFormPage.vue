@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import AuthEditor from "../components/AuthEditor.vue";
+import AuthCard from "../components/AuthCard.vue";
 import VariableEditor from "../components/VariableEditor.vue";
 import { getRoot, getRootInterpolate, getRootJwtKidsByUrls, setRoot } from "../lib/api";
 import { arrayToLines, emptyAuth, hasDuplicateVariableKeys, linesToArray, normalizeAuth, normalizeVariables } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
+import { useAuthStore } from "../stores/auth";
 import type { RootMain, Variable } from "../types/api";
+
+const authStore = useAuthStore();
+const canEdit = computed(() => Boolean(authStore.profile?.is_admin));
 
 const loading = ref(false);
 const saving = ref(false);
@@ -158,10 +163,11 @@ onMounted(() => {
     <h3 class="section-title">Auth</h3>
     <div class="field">
       <span>Auth</span>
-      <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
+      <AuthEditor v-if="canEdit" v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
+      <AuthCard v-else :auth="form.auth" title="" />
     </div>
 
-    <div class="actions">
+    <div v-if="canEdit" class="actions">
       <n-button type="primary" attr-type="submit" :loading="saving">
         {{ saving ? "Saving..." : "Save Root" }}
       </n-button>

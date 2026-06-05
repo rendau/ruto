@@ -189,6 +189,7 @@ onMounted(() => {
             <th>Username</th>
             <th>Name</th>
             <th>Role</th>
+            <th>Apps</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -200,6 +201,11 @@ onMounted(() => {
             <td>{{ user.name }}</td>
             <td>
               <n-tag size="small" :type="user.is_admin ? 'success' : 'default'">{{ user.is_admin ? "admin" : "user" }}</n-tag>
+            </td>
+            <td>
+              <n-tag v-if="user.is_admin || user.all_apps" size="small" type="info">all</n-tag>
+              <span v-else-if="user.app_ids && user.app_ids.length > 0" class="muted">{{ user.app_ids.length }}</span>
+              <span v-else class="muted">—</span>
             </td>
             <td>
               <n-tag size="small" :type="user.active ? 'success' : 'warning'">{{ user.active ? "active" : "inactive" }}</n-tag>
@@ -243,10 +249,10 @@ onMounted(() => {
             </td>
           </tr>
           <tr v-if="!loading && users.length === 0">
-            <td colspan="6" class="muted">No users found.</td>
+            <td colspan="7" class="muted">No users found.</td>
           </tr>
           <tr v-if="loading && users.length === 0">
-            <td colspan="6" class="muted">Loading users...</td>
+            <td colspan="7" class="muted">Loading users...</td>
           </tr>
         </tbody>
       </table>
@@ -272,6 +278,12 @@ onMounted(() => {
           <div class="users-mobile-row">
             <span class="label">Role</span>
             <n-tag size="small" :type="user.is_admin ? 'success' : 'default'">{{ user.is_admin ? "admin" : "user" }}</n-tag>
+          </div>
+          <div class="users-mobile-row">
+            <span class="label">Apps</span>
+            <n-tag v-if="user.is_admin || user.all_apps" size="small" type="info">all</n-tag>
+            <span v-else-if="user.app_ids && user.app_ids.length > 0" class="muted">{{ user.app_ids.length }}</span>
+            <span v-else class="muted">—</span>
           </div>
         </div>
         <div class="users-mobile-actions">

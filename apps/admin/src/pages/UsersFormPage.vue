@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { createUser, getUser, updateUser } from "../lib/api";
+import { createUser, getUser, listApps, updateUser } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
 import { useAuthStore } from "../stores/auth";
-import type { UsrCreateReq, UsrEditReq } from "../types/api";
+import type { AppMain, UsrCreateReq, UsrEditReq } from "../types/api";
 
 interface UserForm {
   id: number;
   active: boolean;
   is_admin: boolean;
+  all_apps: boolean;
+  app_ids: string[];
   name: string;
   username: string;
   password: string;
@@ -22,11 +24,14 @@ const authStore = useAuthStore();
 const loading = ref(false);
 const saving = ref(false);
 const errorMessage = ref("");
+const allApps = ref<AppMain[]>([]);
 
 const form = ref<UserForm>({
   id: 0,
   active: true,
   is_admin: false,
+  all_apps: false,
+  app_ids: [],
   name: "",
   username: "",
   password: ""
@@ -40,6 +45,15 @@ const entityId = computed(() => {
   return Number.isFinite(parsed) ? parsed : 0;
 });
 
+const appOptions = computed(() =>
+  allApps.value.map((app) => ({
+    label: app.name || app.id,
+    value: app.id
+  }))
+);
+
+const showAppAccess = computed(() => !form.value.is_admin);
+
 async function loadUser() {
   if (!isEdit.value || !entityId.value) {
     return;
@@ -52,6 +66,8 @@ async function loadUser() {
       id: entityId.value,
       active: Boolean(user.active),
       is_admin: Boolean(user.is_admin),
+      all_apps: Boolean(user.all_apps),
+      app_ids: Array.isArray(user.app_ids) ? user.app_ids : [],
       name: user.name || "",
       username: user.username || "",
       password: ""
@@ -61,6 +77,15 @@ async function loadUser() {
     notifyError(errorMessage.value);
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadAppsList() {
+  try {
+    const rep = await listApps();
+    allApps.value = rep.results || [];
+  } catch {
+    // non-critical
   }
 }
 
@@ -82,6 +107,9 @@ async function submitForm() {
         id: entityId.value,
         active: form.value.active,
         is_admin: form.value.is_admin,
+        all_apps: form.value.is_admin ? undefined : form.value.all_apps,
+        update_app_ids: !form.value.is_admin,
+        app_ids: form.value.is_admin ? undefined : form.value.app_ids,
         name: form.value.name.trim(),
         username: form.value.username.trim()
       };
@@ -91,6 +119,8 @@ async function submitForm() {
       const payload: UsrCreateReq = {
         active: form.value.active,
         is_admin: form.value.is_admin,
+        all_apps: form.value.is_admin ? undefined : form.value.all_apps,
+        app_ids: form.value.is_admin ? undefined : form.value.app_ids,
         name: form.value.name.trim(),
         username: form.value.username.trim(),
         password: form.value.password
@@ -145,6 +175,7 @@ async function changePassword() {
 
 onMounted(() => {
   void loadUser();
+  void loadAppsList();
 });
 </script>
 
@@ -172,6 +203,25 @@ onMounted(() => {
       <span>Password</span>
       <n-input v-model:value="form.password" type="password" show-password-on="click" required />
     </label>
+
+    <template v-if="showAppAccess">
+      <n-divider />
+      <div class="field">
+        <span class="field-label">App Access</span>
+        <n-checkbox v-model:checked="form.all_apps">All apps</n-checkbox>
+      </div>
+      <div v-if="!form.all_apps" class="field">
+        <span>Apps</span>
+        <n-select
+          v-model:value="form.app_ids"
+          multiple
+          filterable
+          clearable
+          :options="appOptions"
+          placeholder="Select apps..."
+        />
+      </div>
+    </template>
 
     <div class="actions">
       <n-button type="primary" attr-type="submit" :loading="saving">{{ saving ? "Saving..." : "Save" }}</n-button>

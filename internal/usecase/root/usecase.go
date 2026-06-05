@@ -45,8 +45,8 @@ func (u *Usecase) Get(ctx context.Context) (*model.Root, error) {
 }
 
 func (u *Usecase) Set(ctx context.Context, obj *model.Root) error {
-	if !u.sessionSvc.CtxIsAuthorized(ctx) {
-		return errs.NotAuthorized
+	if !u.sessionSvc.CtxIsAdmin(ctx) {
+		return errs.NoPermission
 	}
 
 	if err := u.svc.Set(ctx, obj); err != nil {

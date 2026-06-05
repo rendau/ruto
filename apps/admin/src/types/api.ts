@@ -214,6 +214,8 @@ export interface UsrMain {
   id: number;
   active: boolean;
   is_admin: boolean;
+  all_apps: boolean;
+  app_ids: string[];
   name: string;
   username: string;
   password: string;
@@ -231,6 +233,8 @@ export interface UsrCreateRep {
 export interface UsrCreateReq {
   active?: boolean;
   is_admin?: boolean;
+  all_apps?: boolean;
+  app_ids?: string[];
   name?: string;
   username?: string;
   password?: string;
@@ -240,6 +244,9 @@ export interface UsrEditReq {
   id: number;
   active?: boolean;
   is_admin?: boolean;
+  all_apps?: boolean;
+  update_app_ids?: boolean;
+  app_ids?: string[];
   name?: string;
   username?: string;
   password?: string;
