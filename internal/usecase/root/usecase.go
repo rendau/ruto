@@ -33,8 +33,7 @@ func New(srv ServiceI, sessionSvc SessionServiceI) *Usecase {
 }
 
 func (u *Usecase) Get(ctx context.Context) (*model.Root, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 
@@ -46,8 +45,7 @@ func (u *Usecase) Get(ctx context.Context) (*model.Root, error) {
 }
 
 func (u *Usecase) Set(ctx context.Context, obj *model.Root) error {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return errs.NotAuthorized
 	}
 
@@ -58,8 +56,7 @@ func (u *Usecase) Set(ctx context.Context, obj *model.Root) error {
 }
 
 func (u *Usecase) Interpolate(ctx context.Context, variables varsModel.Vars) (*model.Root, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 
@@ -75,8 +72,7 @@ func (u *Usecase) Interpolate(ctx context.Context, variables varsModel.Vars) (*m
 }
 
 func (u *Usecase) GetJwtKidsByURLs(ctx context.Context, urls []string) ([]string, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 

@@ -9,6 +9,8 @@ import (
 
 type SessionServiceI interface {
 	FromContext(ctx context.Context) *sessionModel.Session
+	CtxIsAuthorized(ctx context.Context) bool
+	CtxIsAdmin(ctx context.Context) bool
 }
 
 type CacheI interface {

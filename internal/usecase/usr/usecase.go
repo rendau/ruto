@@ -49,10 +49,10 @@ func (u *Usecase) BootstrapStatus(ctx context.Context) (bool, error) {
 }
 
 func (u *Usecase) GetProfile(ctx context.Context) (*model.Usr, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
+	extractedSession := u.sessionSvc.FromContext(ctx)
 
 	item, _, err := u.svc.Get(ctx, extractedSession.Id, true)
 	if err != nil {
@@ -68,10 +68,10 @@ func (u *Usecase) GetProfile(ctx context.Context) (*model.Usr, error) {
 }
 
 func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) error {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return errs.NotAuthorized
 	}
+	extractedSession := u.sessionSvc.FromContext(ctx)
 	if req == nil {
 		return errs.InvalidRequest
 	}
@@ -104,8 +104,7 @@ func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) erro
 }
 
 func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Usr, int64, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, 0, errs.NotAuthorized
 	}
 
@@ -122,8 +121,7 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Usr, 
 }
 
 func (u *Usecase) Get(ctx context.Context, id int64) (*model.Usr, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 
@@ -147,10 +145,10 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 	}
 
 	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id > 0 && !extractedSession.IsAdmin {
+	if extractedSession.IsAuthorized() && !u.sessionSvc.CtxIsAdmin(ctx) {
 		return 0, errs.NoPermission
 	}
-	if extractedSession.Id == 0 {
+	if !extractedSession.IsAuthorized() {
 		hasAny, err := u.svc.HasAny(ctx)
 		if err != nil {
 			return 0, fmt.Errorf("svc.HasAny: %w", err)
@@ -175,11 +173,7 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 }
 
 func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Edit) error {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
-		return errs.NotAuthorized
-	}
-	if !extractedSession.IsAdmin {
+	if !u.sessionSvc.CtxIsAdmin(ctx) {
 		return errs.NoPermission
 	}
 
@@ -199,11 +193,7 @@ func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Edit) error {
 }
 
 func (u *Usecase) Delete(ctx context.Context, id int64) error {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
-		return errs.NotAuthorized
-	}
-	if !extractedSession.IsAdmin {
+	if !u.sessionSvc.CtxIsAdmin(ctx) {
 		return errs.NoPermission
 	}
 

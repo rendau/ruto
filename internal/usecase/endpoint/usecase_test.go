@@ -22,6 +22,14 @@ func (s *testSessionService) FromContext(_ context.Context) *sessionModel.Sessio
 	return s.session
 }
 
+func (s *testSessionService) CtxIsAuthorized(_ context.Context) bool {
+	return s.session.IsAuthorized()
+}
+
+func (s *testSessionService) CtxIsAdmin(_ context.Context) bool {
+	return s.session.IsAdmin()
+}
+
 type testEndpointService struct {
 	get func(ctx context.Context, id string, errNE bool) (*endpointModel.Endpoint, bool, error)
 }

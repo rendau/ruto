@@ -37,8 +37,7 @@ func New(srv ServiceI, endpointSvc EndpointServiceI, swaggerSvc SwaggerServiceI,
 }
 
 func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.App, int64, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, 0, errs.NotAuthorized
 	}
 
@@ -51,8 +50,7 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.App, 
 }
 
 func (u *Usecase) Create(ctx context.Context, obj *model.App) (string, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return "", errs.NotAuthorized
 	}
 
@@ -70,8 +68,7 @@ func (u *Usecase) Create(ctx context.Context, obj *model.App) (string, error) {
 }
 
 func (u *Usecase) Get(ctx context.Context, id string) (*model.App, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 
@@ -97,8 +94,7 @@ func (u *Usecase) getInherited(
 	variables varsModel.Vars,
 	withInterpolate bool,
 ) (*model.App, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 
@@ -135,8 +131,7 @@ func (u *Usecase) getInherited(
 }
 
 func (u *Usecase) Update(ctx context.Context, id string, obj *model.App) error {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return errs.NotAuthorized
 	}
 
@@ -157,8 +152,7 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.App) error {
 }
 
 func (u *Usecase) Delete(ctx context.Context, id string) error {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return errs.NotAuthorized
 	}
 
@@ -174,8 +168,7 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 }
 
 func (u *Usecase) GetSwaggerEndpointsDiff(ctx context.Context, id string) (*SwaggerEndpointsDiff, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 	id = strings.TrimSpace(id)
@@ -216,8 +209,7 @@ func (u *Usecase) GetSwaggerEndpointsDiff(ctx context.Context, id string) (*Swag
 }
 
 func (u *Usecase) GetGrpcReflectionEndpoints(ctx context.Context, id string) ([]GrpcReflectionEndpoint, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 	id = strings.TrimSpace(id)

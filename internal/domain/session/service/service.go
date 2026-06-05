@@ -45,6 +45,14 @@ func (s *Service) FromContext(ctx context.Context) *sessionModel.Session {
 	return sessionModel.New(0)
 }
 
+func (s *Service) CtxIsAuthorized(ctx context.Context) bool {
+	return s.FromContext(ctx).IsAuthorized()
+}
+
+func (s *Service) CtxIsAdmin(ctx context.Context) bool {
+	return s.FromContext(ctx).IsAdmin()
+}
+
 func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
 	if s.secret == "" {
 		return nil, errs.InvalidConfig
@@ -86,8 +94,8 @@ func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
 	}
 
 	return &sessionModel.Session{
-		Id:      usrId,
-		IsAdmin: isAdmin,
+		Id:    usrId,
+		Admin: isAdmin,
 	}, nil
 }
 

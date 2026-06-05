@@ -36,6 +36,14 @@ func (s *testSessionService) FromContext(_ context.Context) *sessionModel.Sessio
 	return s.session
 }
 
+func (s *testSessionService) CtxIsAuthorized(_ context.Context) bool {
+	return s.session.IsAuthorized()
+}
+
+func (s *testSessionService) CtxIsAdmin(_ context.Context) bool {
+	return s.session.IsAdmin()
+}
+
 func TestUsecase_Interpolate(t *testing.T) {
 	uc := New(&testRootService{
 		item: &rootModel.Root{

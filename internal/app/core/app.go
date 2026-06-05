@@ -106,7 +106,7 @@ func (a *App) Init() error {
 	handlerGrpcApp := handlerGrpcP.NewApp(usecaseApp)
 
 	if configCore.Conf.AppSwaggerDiscoveryOnStart {
-		systemCtx := sessionService.WithContext(a.ctx, &sessionModel.Session{Id: 1, IsAdmin: true})
+		systemCtx := sessionService.WithContext(a.ctx, &sessionModel.Session{Id: 1, Admin: true})
 		go func() {
 			if err := usecaseApp.BackfillSwaggerURLs(systemCtx); err != nil {
 				slog.Error("app swagger discovery on start failed", "error", err)

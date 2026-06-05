@@ -36,8 +36,7 @@ func New(srv ServiceI, sessionSvc SessionServiceI, services ...any) *Usecase {
 }
 
 func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Endpoint, int64, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, 0, errs.NotAuthorized
 	}
 
@@ -50,8 +49,7 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Endpo
 }
 
 func (u *Usecase) Create(ctx context.Context, obj *model.Endpoint) (string, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return "", errs.NotAuthorized
 	}
 
@@ -69,8 +67,7 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Endpoint) (string, erro
 }
 
 func (u *Usecase) Get(ctx context.Context, id string) (*model.Endpoint, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 
@@ -91,8 +88,7 @@ func (u *Usecase) Inherited(ctx context.Context, id string, variables varsModel.
 }
 
 func (u *Usecase) Update(ctx context.Context, id string, obj *model.Endpoint) error {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return errs.NotAuthorized
 	}
 
@@ -113,8 +109,7 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Endpoint) er
 }
 
 func (u *Usecase) Delete(ctx context.Context, id string) error {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return errs.NotAuthorized
 	}
 
@@ -148,8 +143,7 @@ func (u *Usecase) getInherited(
 	variables varsModel.Vars,
 	withInterpolate bool,
 ) (*model.Endpoint, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 

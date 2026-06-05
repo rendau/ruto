@@ -20,8 +20,7 @@ const swaggerProbeWorkers = 4
 var errStopSwaggerDiscovery = errors.New("stop swagger discovery")
 
 func (u *Usecase) GetSwaggerURLByBackendURL(ctx context.Context, backendURL string) (string, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return "", errs.NotAuthorized
 	}
 

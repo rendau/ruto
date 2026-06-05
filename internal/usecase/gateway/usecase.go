@@ -57,8 +57,7 @@ func (u *Usecase) Heartbeat(_ context.Context, req *Heartbeat) error {
 }
 
 func (u *Usecase) List(ctx context.Context) ([]*Item, error) {
-	extractedSession := u.sessionSvc.FromContext(ctx)
-	if extractedSession.Id == 0 {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 
