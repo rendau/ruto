@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { TrashOutline } from "@vicons/ionicons5";
-import { arrayToLines, cloneAuthMethod, createEmptyAuthMethod, linesToArray, normalizeAuth } from "../lib/forms";
+import { RefreshOutline, TrashOutline } from "@vicons/ionicons5";
+import { arrayToLines, cloneAuthMethod, createEmptyAuthMethod, generateSecret, linesToArray, normalizeAuth } from "../lib/forms";
 import type { Auth, AuthMethod, Variable } from "../types/api";
 import VariableInput from "./VariableInput.vue";
 
@@ -134,11 +134,11 @@ function toggleType(methodIndex: number, type: "basic" | "api_key" | "jwt" | "ip
   if (type === "basic") {
     updateMethod(methodIndex, { basic: enabled ? method.basic || { users: [{ username: "", password: "" }] } : undefined });
   } else if (type === "api_key") {
-    updateMethod(methodIndex, { api_key: enabled ? method.api_key || { header: "", keys: [] } : undefined });
+    updateMethod(methodIndex, { api_key: enabled ? method.api_key || { header: "", keys: [{ name: "", key: "" }] } : undefined });
   } else if (type === "jwt") {
     updateMethod(methodIndex, { jwt: enabled ? method.jwt || { kid: "", roles: [] } : undefined });
   } else {
-    updateMethod(methodIndex, { ip_validation: enabled ? method.ip_validation || { allowed_ips: [] } : undefined });
+    updateMethod(methodIndex, { ip_validation: enabled ? method.ip_validation || { allowed_ips: [{ name: "", ip: "" }] } : undefined });
   }
 }
 
@@ -186,6 +186,10 @@ function setBasicPassword(methodIndex: number, userIndex: number, value: string)
   updateMethod(methodIndex, { basic: { ...method.basic, users } });
 }
 
+function generateBasicPassword(methodIndex: number, userIndex: number) {
+  setBasicPassword(methodIndex, userIndex, generateSecret(20));
+}
+
 function setApiHeader(methodIndex: number, value: string) {
   const method = localAuth.value.methods[methodIndex];
   if (!method?.api_key) {
@@ -221,6 +225,10 @@ function setApiKeyField(methodIndex: number, keyIndex: number, field: "name" | "
   }
   const keys = method.api_key.keys.map((item, idx) => (idx === keyIndex ? { ...item, [field]: value } : item));
   updateMethod(methodIndex, { api_key: { ...method.api_key, keys } });
+}
+
+function generateApiKey(methodIndex: number, keyIndex: number) {
+  setApiKeyField(methodIndex, keyIndex, "key", generateSecret(42));
 }
 
 function addAllowedIp(methodIndex: number) {
@@ -341,9 +349,17 @@ function setJwtRoles(methodIndex: number, value: string) {
             :model-value="user.password"
             :variables="variableOptions"
             placeholder="password"
-            type="password"
             @update:model-value="(value: string) => setBasicPassword(methodIndex, userIndex, value)"
           />
+          <n-button
+            secondary
+            circle
+            aria-label="Generate password"
+            title="Generate password"
+            @click="generateBasicPassword(methodIndex, userIndex)"
+          >
+            <n-icon :component="RefreshOutline" />
+          </n-button>
           <n-button
             class="danger-icon-button"
             type="error"
@@ -374,7 +390,7 @@ function setJwtRoles(methodIndex: number, value: string) {
             <n-button size="small" secondary @click="addApiKey(methodIndex)">+ Key</n-button>
           </div>
           <p v-if="method.api_key.keys.length === 0" class="muted auth-named-empty">No keys yet.</p>
-          <div v-for="(item, keyIndex) in method.api_key.keys" :key="keyIndex" class="auth-named-row">
+          <div v-for="(item, keyIndex) in method.api_key.keys" :key="keyIndex" class="auth-named-row auth-named-row--generatable">
             <n-input
               class="auth-named-name"
               :value="item.name"
@@ -387,6 +403,15 @@ function setJwtRoles(methodIndex: number, value: string) {
               placeholder="key"
               @update:model-value="(value: string) => setApiKeyField(methodIndex, keyIndex, 'key', value)"
             />
+            <n-button
+              secondary
+              circle
+              aria-label="Generate key"
+              title="Generate key"
+              @click="generateApiKey(methodIndex, keyIndex)"
+            >
+              <n-icon :component="RefreshOutline" />
+            </n-button>
             <n-button
               class="danger-icon-button"
               type="error"

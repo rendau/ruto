@@ -1204,7 +1204,7 @@ h3 {
 
 .auth-basic-user-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
   gap: 6px;
   align-items: center;
 }
@@ -1216,6 +1216,10 @@ h3 {
   align-items: center;
 }
 
+.auth-named-row--generatable {
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) auto auto;
+}
+
 .auth-named-empty {
   font-size: 12px;
   margin: 0;
@@ -1224,6 +1228,10 @@ h3 {
 @media (max-width: 640px) {
   .auth-named-row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+
+  .auth-named-row--generatable {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
   }
 }
 
