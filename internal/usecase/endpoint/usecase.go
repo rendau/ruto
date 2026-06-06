@@ -2,8 +2,12 @@ package endpoint
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
+	"net/http"
 	"strings"
+	"time"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	"github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -17,12 +21,24 @@ type Usecase struct {
 	rootSvc    RootServiceI
 	appSvc     AppServiceI
 	sessionSvc SessionServiceI
+	httpClient *http.Client
 }
 
 func New(srv ServiceI, sessionSvc SessionServiceI, services ...any) *Usecase {
 	result := &Usecase{
 		svc:        srv,
 		sessionSvc: sessionSvc,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout: 2 * time.Second,
+				}).DialContext,
+				TLSHandshakeTimeout: 2 * time.Second,
+				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+				MaxIdleConnsPerHost: 20,
+			},
+		},
 	}
 	for _, service := range services {
 		if rootSvc, ok := service.(RootServiceI); ok {
@@ -147,36 +163,48 @@ func (u *Usecase) getInherited(
 		return nil, errs.NotAuthorized
 	}
 
+	epObj, _, err := u.resolveInherited(ctx, id, variables, withInterpolate)
+	if err != nil {
+		return nil, err
+	}
+
+	return epObj, nil
+}
+
+// resolveInherited loads the endpoint together with its parent app and root,
+// applies the Root→App→Endpoint inheritance (and optionally interpolation), and
+// returns the resolved endpoint and its resolved app. It performs no
+// authorization check — callers must do that themselves.
+func (u *Usecase) resolveInherited(
+	ctx context.Context,
+	id string,
+	variables varsModel.Vars,
+	withInterpolate bool,
+) (*model.Endpoint, *appModel.App, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return nil, errs.IdRequired
+		return nil, nil, errs.IdRequired
 	}
 
 	epObj, _, err := u.svc.Get(ctx, id, true)
 	if err != nil {
-		return nil, fmt.Errorf("svc.Get: %w", err)
+		return nil, nil, fmt.Errorf("svc.Get: %w", err)
 	}
 	if epObj == nil {
-		return nil, fmt.Errorf("svc.Get: nil endpoint")
+		return nil, nil, fmt.Errorf("svc.Get: nil endpoint")
 	}
 
-	if u.appSvc == nil {
-		return nil, fmt.Errorf("appSvc: nil")
-	}
 	appObj, _, err := u.appSvc.Get(ctx, epObj.AppId, true)
 	if err != nil {
-		return nil, fmt.Errorf("appSvc.Get: %w", err)
+		return nil, nil, fmt.Errorf("appSvc.Get: %w", err)
 	}
 	if appObj == nil {
-		return nil, fmt.Errorf("appSvc.Get: nil app")
+		return nil, nil, fmt.Errorf("appSvc.Get: nil app")
 	}
 
-	if u.rootSvc == nil {
-		return nil, fmt.Errorf("rootSvc: nil")
-	}
 	rootObj, err := u.rootSvc.Get(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("rootSvc.Get: %w", err)
+		return nil, nil, fmt.Errorf("rootSvc.Get: %w", err)
 	}
 	if rootObj == nil {
 		rootObj = rootModel.NewEmpty()
@@ -191,5 +219,5 @@ func (u *Usecase) getInherited(
 		rootObj.Interpolate()
 	}
 
-	return epObj, nil
+	return epObj, appObj, nil
 }

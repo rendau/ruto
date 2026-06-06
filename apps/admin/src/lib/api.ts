@@ -9,6 +9,8 @@ import type {
   EndpointCreateRep,
   EndpointListRep,
   EndpointMain,
+  EndpointTestRequest,
+  EndpointTestResponse,
   ErrorRep,
   GatewayStateListRep,
   UsrCreateRep,
@@ -452,6 +454,18 @@ export function getEndpointInterpolate(req: EndpointInterpolateReq): Promise<End
       variables: variablesToMap(req.variables)
     })
   }).then(normalizeEndpoint);
+}
+
+export function testEndpointRequest(id: string, req: EndpointTestRequest): Promise<EndpointTestResponse> {
+  return apiFetch<EndpointTestResponse>(`/endpoint/${id}/test`, {
+    method: "POST",
+    body: JSON.stringify({
+      id,
+      path_params: (req.path_params || []).filter((item) => (item.key || "").trim() !== ""),
+      query_params: (req.query_params || []).filter((item) => (item.key || "").trim() !== ""),
+      body: req.body || ""
+    })
+  });
 }
 
 export function getEndpointInherited(req: EndpointInheritedReq): Promise<EndpointMain> {

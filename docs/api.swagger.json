@@ -678,6 +678,44 @@
         ]
       }
     },
+    "/endpoint/{id}/test": {
+      "post": {
+        "operationId": "Endpoint_TestRequest",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1EndpointTestRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EndpointTestRequestBody"
+            }
+          }
+        ],
+        "tags": [
+          "Endpoint"
+        ]
+      }
+    },
     "/gateway": {
       "get": {
         "operationId": "Gateway_List",
@@ -1218,6 +1256,30 @@
     }
   },
   "definitions": {
+    "EndpointTestRequestBody": {
+      "type": "object",
+      "properties": {
+        "query_params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1EndpointTestKV"
+          },
+          "title": "user overrides/additions"
+        },
+        "body": {
+          "type": "string"
+        },
+        "path_params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1EndpointTestKV"
+          },
+          "title": "{name} -\u003e value substitutions"
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -1403,6 +1465,54 @@
           "items": {
             "type": "object"
           }
+        }
+      }
+    },
+    "ruto_v1EndpointTestKV": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "ruto_v1EndpointTestRep": {
+      "type": "object",
+      "properties": {
+        "request_url": {
+          "type": "string",
+          "title": "resolved target URL actually called"
+        },
+        "request_method": {
+          "type": "string",
+          "title": "resolved method"
+        },
+        "status_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "headers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1EndpointTestKV"
+          },
+          "title": "response headers (multi-value flattened)"
+        },
+        "body": {
+          "type": "string",
+          "title": "response body (truncated if large)"
+        },
+        "duration_ms": {
+          "type": "string",
+          "format": "int64"
+        },
+        "error": {
+          "type": "string",
+          "title": "set on connection/transport failure (gRPC still OK)"
         }
       }
     },

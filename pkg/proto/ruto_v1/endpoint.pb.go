@@ -380,6 +380,218 @@ func (x *EndpointCreateRep) GetId() string {
 	return ""
 }
 
+type EndpointTestKV struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointTestKV) Reset() {
+	*x = EndpointTestKV{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointTestKV) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointTestKV) ProtoMessage() {}
+
+func (x *EndpointTestKV) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointTestKV.ProtoReflect.Descriptor instead.
+func (*EndpointTestKV) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *EndpointTestKV) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *EndpointTestKV) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+type EndpointTestReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	QueryParams   []*EndpointTestKV      `protobuf:"bytes,2,rep,name=query_params,json=queryParams,proto3" json:"query_params,omitempty"` // user overrides/additions
+	Body          string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	PathParams    []*EndpointTestKV      `protobuf:"bytes,4,rep,name=path_params,json=pathParams,proto3" json:"path_params,omitempty"` // {name} -> value substitutions
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointTestReq) Reset() {
+	*x = EndpointTestReq{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointTestReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointTestReq) ProtoMessage() {}
+
+func (x *EndpointTestReq) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointTestReq.ProtoReflect.Descriptor instead.
+func (*EndpointTestReq) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *EndpointTestReq) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EndpointTestReq) GetQueryParams() []*EndpointTestKV {
+	if x != nil {
+		return x.QueryParams
+	}
+	return nil
+}
+
+func (x *EndpointTestReq) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *EndpointTestReq) GetPathParams() []*EndpointTestKV {
+	if x != nil {
+		return x.PathParams
+	}
+	return nil
+}
+
+type EndpointTestRep struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestUrl    string                 `protobuf:"bytes,1,opt,name=request_url,json=requestUrl,proto3" json:"request_url,omitempty"`          // resolved target URL actually called
+	RequestMethod string                 `protobuf:"bytes,2,opt,name=request_method,json=requestMethod,proto3" json:"request_method,omitempty"` // resolved method
+	StatusCode    int32                  `protobuf:"varint,3,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
+	Headers       []*EndpointTestKV      `protobuf:"bytes,4,rep,name=headers,proto3" json:"headers,omitempty"` // response headers (multi-value flattened)
+	Body          string                 `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`       // response body (truncated if large)
+	DurationMs    int64                  `protobuf:"varint,6,opt,name=duration_ms,json=durationMs,proto3" json:"duration_ms,omitempty"`
+	Error         string                 `protobuf:"bytes,7,opt,name=error,proto3" json:"error,omitempty"` // set on connection/transport failure (gRPC still OK)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndpointTestRep) Reset() {
+	*x = EndpointTestRep{}
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndpointTestRep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndpointTestRep) ProtoMessage() {}
+
+func (x *EndpointTestRep) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_endpoint_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndpointTestRep.ProtoReflect.Descriptor instead.
+func (*EndpointTestRep) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_endpoint_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *EndpointTestRep) GetRequestUrl() string {
+	if x != nil {
+		return x.RequestUrl
+	}
+	return ""
+}
+
+func (x *EndpointTestRep) GetRequestMethod() string {
+	if x != nil {
+		return x.RequestMethod
+	}
+	return ""
+}
+
+func (x *EndpointTestRep) GetStatusCode() int32 {
+	if x != nil {
+		return x.StatusCode
+	}
+	return 0
+}
+
+func (x *EndpointTestRep) GetHeaders() []*EndpointTestKV {
+	if x != nil {
+		return x.Headers
+	}
+	return nil
+}
+
+func (x *EndpointTestRep) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *EndpointTestRep) GetDurationMs() int64 {
+	if x != nil {
+		return x.DurationMs
+	}
+	return 0
+}
+
+func (x *EndpointTestRep) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 var File_ruto_v1_endpoint_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_endpoint_proto_rawDesc = "" +
@@ -413,12 +625,33 @@ const file_ruto_v1_endpoint_proto_rawDesc = "" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x19.ruto_v1.PaginationInfoStR\x0epaginationInfo\x121\n" +
 	"\aresults\x18\x02 \x03(\v2\x17.google.protobuf.StructR\aresults\"#\n" +
 	"\x11EndpointCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id2\x88\x05\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"8\n" +
+	"\x0eEndpointTestKV\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xab\x01\n" +
+	"\x0fEndpointTestReq\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12:\n" +
+	"\fquery_params\x18\x02 \x03(\v2\x17.ruto_v1.EndpointTestKVR\vqueryParams\x12\x12\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\x128\n" +
+	"\vpath_params\x18\x04 \x03(\v2\x17.ruto_v1.EndpointTestKVR\n" +
+	"pathParams\"\xf8\x01\n" +
+	"\x0fEndpointTestRep\x12\x1f\n" +
+	"\vrequest_url\x18\x01 \x01(\tR\n" +
+	"requestUrl\x12%\n" +
+	"\x0erequest_method\x18\x02 \x01(\tR\rrequestMethod\x12\x1f\n" +
+	"\vstatus_code\x18\x03 \x01(\x05R\n" +
+	"statusCode\x121\n" +
+	"\aheaders\x18\x04 \x03(\v2\x17.ruto_v1.EndpointTestKVR\aheaders\x12\x12\n" +
+	"\x04body\x18\x05 \x01(\tR\x04body\x12\x1f\n" +
+	"\vduration_ms\x18\x06 \x01(\x03R\n" +
+	"durationMs\x12\x14\n" +
+	"\x05error\x18\a \x01(\tR\x05error2\xeb\x05\n" +
 	"\bEndpoint\x12M\n" +
 	"\x04List\x12\x18.ruto_v1.EndpointListReq\x1a\x18.ruto_v1.EndpointListRep\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/endpoint\x12O\n" +
 	"\x03Get\x12\x17.ruto_v1.EndpointGetReq\x1a\x17.google.protobuf.Struct\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/endpoint/{id}\x12n\n" +
 	"\vInterpolate\x12\x1f.ruto_v1.EndpointInterpolateReq\x1a\x17.google.protobuf.Struct\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/endpoint/{id}/interpolate\x12h\n" +
-	"\tInherited\x12\x1d.ruto_v1.EndpointInheritedReq\x1a\x17.google.protobuf.Struct\"#\x82\xd3\xe4\x93\x02\x1d:\x01*\"\x18/endpoint/{id}/inherited\x12S\n" +
+	"\tInherited\x12\x1d.ruto_v1.EndpointInheritedReq\x1a\x17.google.protobuf.Struct\"#\x82\xd3\xe4\x93\x02\x1d:\x01*\"\x18/endpoint/{id}/inherited\x12a\n" +
+	"\vTestRequest\x12\x18.ruto_v1.EndpointTestReq\x1a\x18.ruto_v1.EndpointTestRep\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/endpoint/{id}/test\x12S\n" +
 	"\x06Create\x12\x17.google.protobuf.Struct\x1a\x1a.ruto_v1.EndpointCreateRep\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\"\t/endpoint\x12Z\n" +
 	"\x06Update\x12\x1a.ruto_v1.EndpointUpdateReq\x1a\x16.google.protobuf.Empty\"\x1c\x82\xd3\xe4\x93\x02\x16:\x04data\x1a\x0e/endpoint/{id}\x12Q\n" +
 	"\x06Delete\x12\x17.ruto_v1.EndpointGetReq\x1a\x16.google.protobuf.Empty\"\x16\x82\xd3\xe4\x93\x02\x10*\x0e/endpoint/{id}B\n" +
@@ -436,7 +669,7 @@ func file_ruto_v1_endpoint_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_endpoint_proto_rawDescData
 }
 
-var file_ruto_v1_endpoint_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_ruto_v1_endpoint_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_ruto_v1_endpoint_proto_goTypes = []any{
 	(*EndpointUpdateReq)(nil),      // 0: ruto_v1.EndpointUpdateReq
 	(*EndpointGetReq)(nil),         // 1: ruto_v1.EndpointGetReq
@@ -445,39 +678,47 @@ var file_ruto_v1_endpoint_proto_goTypes = []any{
 	(*EndpointListReq)(nil),        // 4: ruto_v1.EndpointListReq
 	(*EndpointListRep)(nil),        // 5: ruto_v1.EndpointListRep
 	(*EndpointCreateRep)(nil),      // 6: ruto_v1.EndpointCreateRep
-	nil,                            // 7: ruto_v1.EndpointInterpolateReq.VariablesEntry
-	nil,                            // 8: ruto_v1.EndpointInheritedReq.VariablesEntry
-	(*structpb.Struct)(nil),        // 9: google.protobuf.Struct
-	(*ListParamsSt)(nil),           // 10: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),       // 11: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),          // 12: google.protobuf.Empty
+	(*EndpointTestKV)(nil),         // 7: ruto_v1.EndpointTestKV
+	(*EndpointTestReq)(nil),        // 8: ruto_v1.EndpointTestReq
+	(*EndpointTestRep)(nil),        // 9: ruto_v1.EndpointTestRep
+	nil,                            // 10: ruto_v1.EndpointInterpolateReq.VariablesEntry
+	nil,                            // 11: ruto_v1.EndpointInheritedReq.VariablesEntry
+	(*structpb.Struct)(nil),        // 12: google.protobuf.Struct
+	(*ListParamsSt)(nil),           // 13: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),       // 14: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),          // 15: google.protobuf.Empty
 }
 var file_ruto_v1_endpoint_proto_depIdxs = []int32{
-	9,  // 0: ruto_v1.EndpointUpdateReq.data:type_name -> google.protobuf.Struct
-	7,  // 1: ruto_v1.EndpointInterpolateReq.variables:type_name -> ruto_v1.EndpointInterpolateReq.VariablesEntry
-	8,  // 2: ruto_v1.EndpointInheritedReq.variables:type_name -> ruto_v1.EndpointInheritedReq.VariablesEntry
-	10, // 3: ruto_v1.EndpointListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	11, // 4: ruto_v1.EndpointListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
-	9,  // 5: ruto_v1.EndpointListRep.results:type_name -> google.protobuf.Struct
-	4,  // 6: ruto_v1.Endpoint.List:input_type -> ruto_v1.EndpointListReq
-	1,  // 7: ruto_v1.Endpoint.Get:input_type -> ruto_v1.EndpointGetReq
-	2,  // 8: ruto_v1.Endpoint.Interpolate:input_type -> ruto_v1.EndpointInterpolateReq
-	3,  // 9: ruto_v1.Endpoint.Inherited:input_type -> ruto_v1.EndpointInheritedReq
-	9,  // 10: ruto_v1.Endpoint.Create:input_type -> google.protobuf.Struct
-	0,  // 11: ruto_v1.Endpoint.Update:input_type -> ruto_v1.EndpointUpdateReq
-	1,  // 12: ruto_v1.Endpoint.Delete:input_type -> ruto_v1.EndpointGetReq
-	5,  // 13: ruto_v1.Endpoint.List:output_type -> ruto_v1.EndpointListRep
-	9,  // 14: ruto_v1.Endpoint.Get:output_type -> google.protobuf.Struct
-	9,  // 15: ruto_v1.Endpoint.Interpolate:output_type -> google.protobuf.Struct
-	9,  // 16: ruto_v1.Endpoint.Inherited:output_type -> google.protobuf.Struct
-	6,  // 17: ruto_v1.Endpoint.Create:output_type -> ruto_v1.EndpointCreateRep
-	12, // 18: ruto_v1.Endpoint.Update:output_type -> google.protobuf.Empty
-	12, // 19: ruto_v1.Endpoint.Delete:output_type -> google.protobuf.Empty
-	13, // [13:20] is the sub-list for method output_type
-	6,  // [6:13] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	12, // 0: ruto_v1.EndpointUpdateReq.data:type_name -> google.protobuf.Struct
+	10, // 1: ruto_v1.EndpointInterpolateReq.variables:type_name -> ruto_v1.EndpointInterpolateReq.VariablesEntry
+	11, // 2: ruto_v1.EndpointInheritedReq.variables:type_name -> ruto_v1.EndpointInheritedReq.VariablesEntry
+	13, // 3: ruto_v1.EndpointListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	14, // 4: ruto_v1.EndpointListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	12, // 5: ruto_v1.EndpointListRep.results:type_name -> google.protobuf.Struct
+	7,  // 6: ruto_v1.EndpointTestReq.query_params:type_name -> ruto_v1.EndpointTestKV
+	7,  // 7: ruto_v1.EndpointTestReq.path_params:type_name -> ruto_v1.EndpointTestKV
+	7,  // 8: ruto_v1.EndpointTestRep.headers:type_name -> ruto_v1.EndpointTestKV
+	4,  // 9: ruto_v1.Endpoint.List:input_type -> ruto_v1.EndpointListReq
+	1,  // 10: ruto_v1.Endpoint.Get:input_type -> ruto_v1.EndpointGetReq
+	2,  // 11: ruto_v1.Endpoint.Interpolate:input_type -> ruto_v1.EndpointInterpolateReq
+	3,  // 12: ruto_v1.Endpoint.Inherited:input_type -> ruto_v1.EndpointInheritedReq
+	8,  // 13: ruto_v1.Endpoint.TestRequest:input_type -> ruto_v1.EndpointTestReq
+	12, // 14: ruto_v1.Endpoint.Create:input_type -> google.protobuf.Struct
+	0,  // 15: ruto_v1.Endpoint.Update:input_type -> ruto_v1.EndpointUpdateReq
+	1,  // 16: ruto_v1.Endpoint.Delete:input_type -> ruto_v1.EndpointGetReq
+	5,  // 17: ruto_v1.Endpoint.List:output_type -> ruto_v1.EndpointListRep
+	12, // 18: ruto_v1.Endpoint.Get:output_type -> google.protobuf.Struct
+	12, // 19: ruto_v1.Endpoint.Interpolate:output_type -> google.protobuf.Struct
+	12, // 20: ruto_v1.Endpoint.Inherited:output_type -> google.protobuf.Struct
+	9,  // 21: ruto_v1.Endpoint.TestRequest:output_type -> ruto_v1.EndpointTestRep
+	6,  // 22: ruto_v1.Endpoint.Create:output_type -> ruto_v1.EndpointCreateRep
+	15, // 23: ruto_v1.Endpoint.Update:output_type -> google.protobuf.Empty
+	15, // 24: ruto_v1.Endpoint.Delete:output_type -> google.protobuf.Empty
+	17, // [17:25] is the sub-list for method output_type
+	9,  // [9:17] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_endpoint_proto_init() }
@@ -493,7 +734,7 @@ func file_ruto_v1_endpoint_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_endpoint_proto_rawDesc), len(file_ruto_v1_endpoint_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./conf.yml)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/*.p12)",
+      "Read(./**/*.crt)",
+      "Bash(cat:*.env*)",
+      "Bash(cat:*conf.yml*)",
+      "Bash(cat:*.pem*)",
+      "Bash(cat:*.key*)",
+      "Bash(cat:*.p12*)",
+      "Bash(cat:*.crt*)",
+      "Bash(head:*.env*)",
+      "Bash(head:*conf.yml*)",
+      "Bash(tail:*.env*)",
+      "Bash(tail:*conf.yml*)",
+      "Bash(less:*.env*)",
+      "Bash(less:*conf.yml*)",
+      "Bash(sed:*.env*)",
+      "Bash(sed:*conf.yml*)",
+      "Bash(awk:*.env*)",
+      "Bash(grep:*.env*)",
+      "Bash(grep:*conf.yml*)"
+    ]
+  }
+}

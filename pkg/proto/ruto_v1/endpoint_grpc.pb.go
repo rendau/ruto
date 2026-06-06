@@ -25,6 +25,7 @@ const (
 	Endpoint_Get_FullMethodName         = "/ruto_v1.Endpoint/Get"
 	Endpoint_Interpolate_FullMethodName = "/ruto_v1.Endpoint/Interpolate"
 	Endpoint_Inherited_FullMethodName   = "/ruto_v1.Endpoint/Inherited"
+	Endpoint_TestRequest_FullMethodName = "/ruto_v1.Endpoint/TestRequest"
 	Endpoint_Create_FullMethodName      = "/ruto_v1.Endpoint/Create"
 	Endpoint_Update_FullMethodName      = "/ruto_v1.Endpoint/Update"
 	Endpoint_Delete_FullMethodName      = "/ruto_v1.Endpoint/Delete"
@@ -38,6 +39,7 @@ type EndpointClient interface {
 	Get(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*structpb.Struct, error)
 	Interpolate(ctx context.Context, in *EndpointInterpolateReq, opts ...grpc.CallOption) (*structpb.Struct, error)
 	Inherited(ctx context.Context, in *EndpointInheritedReq, opts ...grpc.CallOption) (*structpb.Struct, error)
+	TestRequest(ctx context.Context, in *EndpointTestReq, opts ...grpc.CallOption) (*EndpointTestRep, error)
 	Create(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*EndpointCreateRep, error)
 	Update(ctx context.Context, in *EndpointUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *EndpointGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -91,6 +93,16 @@ func (c *endpointClient) Inherited(ctx context.Context, in *EndpointInheritedReq
 	return out, nil
 }
 
+func (c *endpointClient) TestRequest(ctx context.Context, in *EndpointTestReq, opts ...grpc.CallOption) (*EndpointTestRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EndpointTestRep)
+	err := c.cc.Invoke(ctx, Endpoint_TestRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *endpointClient) Create(ctx context.Context, in *structpb.Struct, opts ...grpc.CallOption) (*EndpointCreateRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EndpointCreateRep)
@@ -129,6 +141,7 @@ type EndpointServer interface {
 	Get(context.Context, *EndpointGetReq) (*structpb.Struct, error)
 	Interpolate(context.Context, *EndpointInterpolateReq) (*structpb.Struct, error)
 	Inherited(context.Context, *EndpointInheritedReq) (*structpb.Struct, error)
+	TestRequest(context.Context, *EndpointTestReq) (*EndpointTestRep, error)
 	Create(context.Context, *structpb.Struct) (*EndpointCreateRep, error)
 	Update(context.Context, *EndpointUpdateReq) (*emptypb.Empty, error)
 	Delete(context.Context, *EndpointGetReq) (*emptypb.Empty, error)
@@ -153,6 +166,9 @@ func (UnimplementedEndpointServer) Interpolate(context.Context, *EndpointInterpo
 }
 func (UnimplementedEndpointServer) Inherited(context.Context, *EndpointInheritedReq) (*structpb.Struct, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Inherited not implemented")
+}
+func (UnimplementedEndpointServer) TestRequest(context.Context, *EndpointTestReq) (*EndpointTestRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TestRequest not implemented")
 }
 func (UnimplementedEndpointServer) Create(context.Context, *structpb.Struct) (*EndpointCreateRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
@@ -256,6 +272,24 @@ func _Endpoint_Inherited_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Endpoint_TestRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EndpointTestReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EndpointServer).TestRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Endpoint_TestRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EndpointServer).TestRequest(ctx, req.(*EndpointTestReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Endpoint_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(structpb.Struct)
 	if err := dec(in); err != nil {
@@ -332,6 +366,10 @@ var Endpoint_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Inherited",
 			Handler:    _Endpoint_Inherited_Handler,
+		},
+		{
+			MethodName: "TestRequest",
+			Handler:    _Endpoint_TestRequest_Handler,
 		},
 		{
 			MethodName: "Create",

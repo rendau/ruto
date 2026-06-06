@@ -64,6 +64,20 @@ func (h *Endpoint) Inherited(ctx context.Context, req *ruto_v1.EndpointInherited
 	return dto.EncodeEndpointData(item, 0), nil
 }
 
+func (h *Endpoint) TestRequest(ctx context.Context, req *ruto_v1.EndpointTestReq) (*ruto_v1.EndpointTestRep, error) {
+	result, err := h.usecase.TestRequest(
+		ctx,
+		req.GetId(),
+		dto.DecodeEndpointTestKVs(req.GetPathParams()),
+		dto.DecodeEndpointTestKVs(req.GetQueryParams()),
+		req.GetBody(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeEndpointTestResult(result), nil
+}
+
 func (h *Endpoint) Create(ctx context.Context, req *structpb.Struct) (*ruto_v1.EndpointCreateRep, error) {
 	newId, err := h.usecase.Create(ctx, dto.DecodeEndpointData(req))
 	if err != nil {

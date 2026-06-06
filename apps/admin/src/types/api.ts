@@ -212,6 +212,22 @@ export interface EndpointCreateRep {
   id: string;
 }
 
+export interface EndpointTestRequest {
+  path_params: Variable[];
+  query_params: Variable[];
+  body: string;
+}
+
+export interface EndpointTestResponse {
+  request_url: string;
+  request_method: string;
+  status_code: number;
+  headers: Variable[];
+  body: string;
+  duration_ms: number;
+  error: string;
+}
+
 export interface UsrMain {
   id: number;
   active: boolean;

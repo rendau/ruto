@@ -2,8 +2,9 @@
 import { computed, onMounted, ref } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useDialog } from "naive-ui";
-import { ArrowBackOutline, BanOutline, CopyOutline, CreateOutline, EyeOutline, GitNetworkOutline, TrashOutline } from "@vicons/ionicons5";
+import { ArrowBackOutline, BanOutline, CopyOutline, CreateOutline, EyeOutline, FlashOutline, GitNetworkOutline, TrashOutline } from "@vicons/ionicons5";
 import AuthCard from "../components/AuthCard.vue";
+import EndpointTestPanel from "../components/EndpointTestPanel.vue";
 import { deleteEndpoint, getApp, getEndpoint, getEndpointInherited, getEndpointInterpolate, getRoot, updateEndpoint } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain, EndpointMain } from "../types/api";
@@ -40,6 +41,8 @@ const app = ref<AppMain | null>(null);
 const rootBaseUrl = ref("");
 const appName = ref("");
 const interpolateModalVisible = ref(false);
+const testModalVisible = ref(false);
+const isHttpEndpoint = computed(() => !!endpoint.value && endpointTypeOf(endpoint.value) === "http");
 const interpolatedLoading = ref(false);
 const interpolatedError = ref("");
 const endpointInterpolated = ref<EndpointMain | null>(null);
@@ -437,6 +440,16 @@ onMounted(() => {
     >
       <n-icon :component="EyeOutline" />
     </n-button>
+    <n-button
+      v-if="isHttpEndpoint"
+      type="primary"
+      secondary
+      title="Test request"
+      aria-label="Test request"
+      @click="testModalVisible = true"
+    >
+      <n-icon :component="FlashOutline" />
+    </n-button>
   </div>
 
   <n-alert v-if="errorMessage" class="form-alert" type="error" :show-icon="false">{{ errorMessage }}</n-alert>
@@ -578,5 +591,13 @@ onMounted(() => {
         <p v-else class="muted">Interpolated values unavailable.</p>
       </div>
     </n-modal>
+
+    <EndpointTestPanel
+      v-if="endpoint && isHttpEndpoint"
+      :endpoint="endpoint"
+      :app="app"
+      :open="testModalVisible"
+      @close="testModalVisible = false"
+    />
   </template>
 </template>

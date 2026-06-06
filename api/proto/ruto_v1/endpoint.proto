@@ -22,6 +22,9 @@ service Endpoint {
   rpc Inherited(EndpointInheritedReq) returns (google.protobuf.Struct) {
     option (google.api.http) = { post: "/endpoint/{id}/inherited" body: "*" };
   };
+  rpc TestRequest(EndpointTestReq) returns (EndpointTestRep) {
+    option (google.api.http) = { post: "/endpoint/{id}/test" body: "*" };
+  };
   rpc Create(google.protobuf.Struct) returns (EndpointCreateRep) {
     option (google.api.http) = { post: "/endpoint" body: "*" };
   };
@@ -65,4 +68,26 @@ message EndpointListRep {
 
 message EndpointCreateRep {
   string id = 1;
+}
+
+message EndpointTestKV {
+  string key = 1;
+  string value = 2;
+}
+
+message EndpointTestReq {
+  string id = 1;
+  repeated EndpointTestKV query_params = 2; // user overrides/additions
+  string body = 3;
+  repeated EndpointTestKV path_params = 4; // {name} -> value substitutions
+}
+
+message EndpointTestRep {
+  string request_url = 1; // resolved target URL actually called
+  string request_method = 2; // resolved method
+  int32 status_code = 3;
+  repeated EndpointTestKV headers = 4; // response headers (multi-value flattened)
+  string body = 5; // response body (truncated if large)
+  int64 duration_ms = 6;
+  string error = 7; // set on connection/transport failure (gRPC still OK)
 }
