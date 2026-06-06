@@ -22,11 +22,11 @@ export function createEmptyAuthMethod(type: "basic" | "api_key" | "jwt" | "ip_va
   if (type === "basic") {
     result.basic = { users: [{ username: "", password: "" }] };
   } else if (type === "api_key") {
-    result.api_key = { header: "", keys: [] };
+    result.api_key = { header: "", keys: [{ name: "", key: "" }] };
   } else if (type === "jwt") {
     result.jwt = { kid: "", roles: [] };
   } else {
-    result.ip_validation = { allowed_ips: [] };
+    result.ip_validation = { allowed_ips: [{ name: "", ip: "" }] };
   }
   return result;
 }
@@ -103,6 +103,17 @@ export function normalizeAuth(value?: Auth | null): Auth {
     mode: value.mode === "replace" ? "replace" : "extend",
     methods: (value.methods || []).map((method) => cloneAuthMethod(method))
   };
+}
+
+export function generateSecret(length = 32): string {
+  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let result = "";
+  for (let i = 0; i < length; i += 1) {
+    result += charset[bytes[i] % charset.length];
+  }
+  return result;
 }
 
 export function prettyJson(value: unknown): string {
