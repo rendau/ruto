@@ -22,4 +22,5 @@ type CacheI interface {
 type GatewaysI interface {
 	Register(gatewayID string, notify func()) int64
 	Unregister(id int64)
+	Done() <-chan struct{}
 }

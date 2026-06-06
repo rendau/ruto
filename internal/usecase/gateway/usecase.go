@@ -60,6 +60,9 @@ func (u *Usecase) Subscribe(ctx context.Context, gatewayID string, send func() e
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-u.gateways.Done():
+			// core is shutting down — end the stream so GracefulStop unblocks.
+			return nil
 		case <-notifyCh:
 			if err := send(); err != nil {
 				return fmt.Errorf("send: %w", err)

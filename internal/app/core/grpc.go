@@ -11,6 +11,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -74,7 +75,21 @@ func (s *GrpcServer) Start() error {
 }
 
 func (s *GrpcServer) Stop() {
-	s.server.GracefulStop()
+	// Prefer a graceful stop, but never hang shutdown: if some long-lived RPC
+	// fails to drain in time, fall back to a hard stop.
+	stopped := make(chan struct{})
+	go func() {
+		s.server.GracefulStop()
+		close(stopped)
+	}()
+
+	select {
+	case <-stopped:
+	case <-time.After(10 * time.Second):
+		slog.Warn(s.name + "-grpc-server graceful stop timed out, forcing stop")
+		s.server.Stop()
+		<-stopped
+	}
 }
 
 func GrpcInterceptorCtxWithoutCancel() grpc.UnaryServerInterceptor {

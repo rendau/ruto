@@ -78,16 +78,17 @@ Snapshot — это центральный механизм синхрониза
 3. Сериализация в jsonb, `sha256` от содержимого → **версия** (hash).
 4. Сохранение в таблицу `snapshot`. Отдаётся через `Snapshot.GetVersion` / `Snapshot.Get`.
 
-**На стороне gateway** (`internal/service/gw/core_client`):
-1. **`refreshWorker`** — единственная горутина, выполняющая `refresh()`. Её срабатывание инициируют: тикер раз в `CheckInterval` (10s) **или** push-уведомление (см. ниже). Одна горутина-потребитель `triggerCh` гарантирует, что проверки версии и применение snapshot **никогда не идут параллельно**.
-2. `refresh()` шлёт `GetVersion`; если версия не изменилась — выходит.
-3. Если изменилась — `Get`, декодирует в `rootModel.Root`, зовёт `onConfig` (= `gw.Service.SetConfig`).
-4. Параллельно шлёт `Gateway.Heartbeat` (id, host, версия, память, горутины, последняя ошибка) — для мониторинга в админке.
+**На стороне gateway** (`internal/service/gw/core_client`) — три независимые горутины:
+1. **`refreshWorker`** — единственная горутина, выполняющая `refresh()` (проверка версии + применение). Делает **одну** проверку при старте, дальше реагирует только на триггеры из `triggerCh`. **Периодического опроса версии нет.** Единственный потребитель `triggerCh` гарантирует, что проверки версии и применение snapshot **никогда не идут параллельно**.
+2. `refresh()` шлёт `GetVersion`; если версия не изменилась — выходит. Если изменилась — `Get`, декодирует в `rootModel.Root`, зовёт `onConfig` (= `gw.Service.SetConfig`).
+3. **`heartbeatWorker`** — раз в `HeartbeatInterval` (10s) шлёт `Gateway.Heartbeat` (id, host, версия, память, горутины, последняя ошибка) для мониторинга в админке. Полностью независим от refresh: это только liveness/телеметрия.
+4. **`subscribeWorker`** — push-канал (см. ниже).
 
-**Мгновенное уведомление (push).** Чтобы не ждать до 10s после деплоя, gateway держит постоянный серверный стрим `Gateway.Subscribe` к core:
+**Мгновенное уведомление (push).** Распространение конфига — событийное, а не по таймеру. Gateway держит постоянный серверный стрим `Gateway.Subscribe` к core:
 - **gw**: `subscribeWorker` открывает стрим и читает уведомления; на каждое — кладёт триггер в `triggerCh` (досрочный `refresh`). При обрыве стрима (рестарт core, сеть) — бесконечно переподключается с задержкой `subscribeReconnectDelay`.
-- **core**: хендлер `Subscribe` через usecase регистрирует gateway в пуле `internal/service/gateways` (callback-уведомитель) и блокируется на время жизни стрима. После успешного `Refresh` snapshot'а usecase зовёт `gateways.NotifyAll()` → каждый callback шлёт уведомление в свой стрим.
+- **core**: хендлер `Subscribe` через usecase регистрирует gateway в пуле `internal/service/gateways` (callback-уведомитель) и блокируется на время жизни стрима. Сразу после (пере)подключения шлёт начальное уведомление — это и есть catch-up после простоя/реконнекта. После успешного `Refresh` snapshot'а usecase зовёт `gateways.NotifyAll()` → каждый callback шлёт уведомление в свой стрим.
 - **отключение**: когда gw отпадает, контекст стрима отменяется → хендлер выходит → `defer Unregister` убирает callback из пула. Отправка в стрим сериализована (один потребитель `notifyCh` на стрим), параллельных `Send` нет.
+- **graceful shutdown core**: `gRPC GracefulStop` ждёт завершения всех RPC, а `Subscribe` — долгоживущий стрим. Поэтому при остановке core `app.Stop()` зовёт `gatewaysService.Close()` (закрывает `Done()`-канал) → все `Subscribe` сразу выходят → `GracefulStop` завершается мгновенно. Плюс у самого `GrpcServer.Stop()` есть таймаут-фолбэк на жёсткий `Stop()`.
 
 **Конфигурационный pipeline** (`gw.Service.SetConfig`) — три чистых преобразования над `Root`:
 

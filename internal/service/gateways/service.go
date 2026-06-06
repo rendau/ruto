@@ -13,6 +13,9 @@ type Service struct {
 	mu   sync.Mutex
 	seq  int64
 	subs map[int64]subscriber
+
+	closeOnce sync.Once
+	done      chan struct{}
 }
 
 type subscriber struct {
@@ -23,7 +26,22 @@ type subscriber struct {
 func New() *Service {
 	return &Service{
 		subs: make(map[int64]subscriber),
+		done: make(chan struct{}),
 	}
+}
+
+// Done is closed when the service is shutting down. Subscribers select on it to
+// unblock their stream handlers so the gRPC server's GracefulStop can finish
+// promptly instead of waiting for each long-lived stream to drop on its own.
+func (s *Service) Done() <-chan struct{} {
+	return s.done
+}
+
+// Close signals all subscribers to disconnect. Safe to call multiple times.
+func (s *Service) Close() {
+	s.closeOnce.Do(func() {
+		close(s.done)
+	})
 }
 
 // Register adds a notify callback for a connected gateway and returns an opaque

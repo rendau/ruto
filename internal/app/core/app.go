@@ -48,9 +48,10 @@ type App struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	pgpool     *pgxpool.Pool
-	grpcServer *GrpcServer
-	httpServer *http.Server
+	pgpool          *pgxpool.Pool
+	grpcServer      *GrpcServer
+	httpServer      *http.Server
+	gatewaysService *gatewaysServiceP.Service
 
 	exitCode int
 }
@@ -94,6 +95,7 @@ func (a *App) Init() error {
 
 	// gateways pool (in-memory registry of connected gateways for push notifications)
 	gatewaysService := gatewaysServiceP.New()
+	a.gatewaysService = gatewaysService
 
 	// root
 	domainRootRepoDb := domainRootRepoDbP.New(a.pgpool)
@@ -227,6 +229,12 @@ func (a *App) Stop() {
 	slog.Info("Shutting down core...")
 
 	a.ctxCancel()
+
+	// end gateway notification streams so grpcServer.Stop() (GracefulStop)
+	// does not wait for these long-lived RPCs to drop on their own.
+	if a.gatewaysService != nil {
+		a.gatewaysService.Close()
+	}
 
 	// grpc gateway server
 	{
