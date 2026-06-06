@@ -90,10 +90,14 @@ func (m *AuthMethodAPIKey) Normalize() error {
 	if m.Header == "" {
 		m.Header = "X-Api-Key"
 	}
-	m.Keys = lo.FilterMap(m.Keys, func(v string, _ int) (string, bool) {
-		v = strings.TrimSpace(v)
-		return v, v != ""
+	m.Keys = lo.FilterMap(m.Keys, func(v AuthMethodAPIKeyItem, _ int) (AuthMethodAPIKeyItem, bool) {
+		v.Name = strings.TrimSpace(v.Name)
+		v.Key = strings.TrimSpace(v.Key)
+		return v, v.Key != ""
 	})
+	if len(m.Keys) == 0 {
+		return fmt.Errorf("keys: empty")
+	}
 	return nil
 }
 
@@ -111,9 +115,13 @@ func (m *AuthMethodJWT) Normalize() error {
 }
 
 func (m *AuthMethodIPValidation) Normalize() error {
-	m.AllowedIps = lo.FilterMap(m.AllowedIps, func(v string, _ int) (string, bool) {
-		v = strings.TrimSpace(v)
-		return v, v != ""
+	m.AllowedIps = lo.FilterMap(m.AllowedIps, func(v AuthMethodIPValidationItem, _ int) (AuthMethodIPValidationItem, bool) {
+		v.Name = strings.TrimSpace(v.Name)
+		v.Ip = strings.TrimSpace(v.Ip)
+		return v, v.Ip != ""
 	})
+	if len(m.AllowedIps) == 0 {
+		return fmt.Errorf("allowed_ips: empty")
+	}
 	return nil
 }

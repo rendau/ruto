@@ -17,10 +17,10 @@ type Authorizer struct {
 }
 
 func New(conf *authModel.AuthMethodIPValidation, trustedProxyAddresses []string) *Authorizer {
-	allowedIPMap := lo.FilterSliceToMap(conf.AllowedIps, func(ip string) (netip.Addr, struct{}, bool) {
-		addr, err := netip.ParseAddr(strings.TrimSpace(ip))
+	allowedIPMap := lo.FilterSliceToMap(conf.AllowedIps, func(item authModel.AuthMethodIPValidationItem) (netip.Addr, struct{}, bool) {
+		addr, err := netip.ParseAddr(item.Ip)
 		if err != nil {
-			slog.Warn("ip_validation: skip invalid allowed ip: " + ip)
+			slog.Warn("ip_validation: skip invalid allowed ip: " + item.Ip)
 			return netip.Addr{}, struct{}{}, false
 		}
 		return addr, struct{}{}, true

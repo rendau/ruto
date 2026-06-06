@@ -2,9 +2,11 @@ import type {
   Auth,
   AuthMethod,
   AuthMethodApiKey,
+  AuthMethodApiKeyItem,
   AuthMethodBasic,
   AuthMethodBasicUser,
   AuthMethodIpValidation,
+  AuthMethodIpValidationItem,
   AuthMethodJwt,
   Variable
 } from "../types/api";
@@ -29,6 +31,14 @@ export function createEmptyAuthMethod(type: "basic" | "api_key" | "jwt" | "ip_va
   return result;
 }
 
+function normalizeApiKeyItem(value: AuthMethodApiKeyItem): AuthMethodApiKeyItem {
+  return { name: value?.name || "", key: value?.key || "" };
+}
+
+function normalizeIpItem(value: AuthMethodIpValidationItem): AuthMethodIpValidationItem {
+  return { name: value?.name || "", ip: value?.ip || "" };
+}
+
 function cloneBasicUser(value: AuthMethodBasicUser): AuthMethodBasicUser {
   return {
     username: value.username || "",
@@ -51,7 +61,7 @@ function cloneApiKey(value?: AuthMethodApiKey): AuthMethodApiKey | undefined {
   }
   return {
     header: value.header || "",
-    keys: [...(value.keys || [])]
+    keys: (value.keys || []).map(normalizeApiKeyItem)
   };
 }
 
@@ -70,7 +80,7 @@ function cloneIpValidation(value?: AuthMethodIpValidation): AuthMethodIpValidati
     return undefined;
   }
   return {
-    allowed_ips: [...(value.allowed_ips || [])]
+    allowed_ips: (value.allowed_ips || []).map(normalizeIpItem)
   };
 }
 

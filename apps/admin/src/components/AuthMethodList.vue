@@ -33,6 +33,13 @@ function listValue(values: string[] | undefined): string {
   return values.join("\n");
 }
 
+function namedListValue(items: { name: string; value: string }[] | undefined): string {
+  if (!items || items.length === 0) {
+    return "none";
+  }
+  return items.map((item) => (item.name ? `${item.name}: ${item.value}` : item.value)).join("\n");
+}
+
 function methodTypes(method: AuthMethod): MethodTypeView[] {
   const views: MethodTypeView[] = [];
   if (method.ip_validation) {
@@ -43,7 +50,7 @@ function methodTypes(method: AuthMethod): MethodTypeView[] {
       fields: [
         {
           label: "Allowed IPs",
-          value: listValue(method.ip_validation.allowed_ips),
+          value: namedListValue((method.ip_validation.allowed_ips || []).map((item) => ({ name: item.name, value: item.ip }))),
           multiline: true
         }
       ]
@@ -95,7 +102,7 @@ function methodTypes(method: AuthMethod): MethodTypeView[] {
         { label: "Header", value: method.api_key.header || "-" },
         {
           label: "Keys",
-          value: listValue(method.api_key.keys),
+          value: namedListValue((method.api_key.keys || []).map((item) => ({ name: item.name, value: item.key }))),
           multiline: true
         }
       ]

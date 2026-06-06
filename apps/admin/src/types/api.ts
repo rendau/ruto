@@ -43,7 +43,12 @@ export interface AuthMethodBasicUser {
 
 export interface AuthMethodApiKey {
   header: string;
-  keys: string[];
+  keys: AuthMethodApiKeyItem[];
+}
+
+export interface AuthMethodApiKeyItem {
+  name: string;
+  key: string;
 }
 
 export interface AuthMethodJwt {
@@ -52,7 +57,12 @@ export interface AuthMethodJwt {
 }
 
 export interface AuthMethodIpValidation {
-  allowed_ips: string[];
+  allowed_ips: AuthMethodIpValidationItem[];
+}
+
+export interface AuthMethodIpValidationItem {
+  name: string;
+  ip: string;
 }
 
 export interface Variable {

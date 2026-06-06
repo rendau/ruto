@@ -368,7 +368,7 @@ func TestService_AuthMiddleware(t *testing.T) {
 						{
 							APIKey: &authModel.AuthMethodAPIKey{
 								Header: "X-API-Key",
-								Keys:   []string{"secret"},
+								Keys:   []authModel.AuthMethodAPIKeyItem{{Key: "secret"}},
 							},
 						},
 					},

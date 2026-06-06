@@ -40,7 +40,9 @@ func (m *AuthMethodBasicUser) Interpolate(vars varsModel.Vars) {
 
 func (m *AuthMethodAPIKey) Interpolate(vars varsModel.Vars) {
 	m.Header = vars.InterpolateString(m.Header)
-	m.Keys = vars.InterpolateStrings(m.Keys)
+	for i := range m.Keys {
+		m.Keys[i].Key = vars.InterpolateString(m.Keys[i].Key)
+	}
 }
 
 func (m *AuthMethodJWT) Interpolate(vars varsModel.Vars) {
@@ -48,5 +50,7 @@ func (m *AuthMethodJWT) Interpolate(vars varsModel.Vars) {
 }
 
 func (m *AuthMethodIPValidation) Interpolate(vars varsModel.Vars) {
-	m.AllowedIps = vars.InterpolateStrings(m.AllowedIps)
+	for i := range m.AllowedIps {
+		m.AllowedIps[i].Ip = vars.InterpolateString(m.AllowedIps[i].Ip)
+	}
 }

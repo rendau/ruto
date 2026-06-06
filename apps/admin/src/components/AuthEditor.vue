@@ -16,9 +16,7 @@ const emit = defineEmits<{
 }>();
 
 const localAuth = ref<Auth>(normalizeAuth(props.modelValue));
-const methodText = ref<
-  Record<number, { apiKeys: string; jwtRoles: string; allowedIps: string }>
->({});
+const methodText = ref<Record<number, { jwtRoles: string }>>({});
 const pushingToParent = ref(false);
 const methodKeys = ref<string[]>([]);
 let nextMethodKey = 0;
@@ -52,12 +50,10 @@ watch(
 );
 
 function syncMethodTextFromAuth() {
-  const next: Record<number, { apiKeys: string; jwtRoles: string; allowedIps: string }> = {};
+  const next: Record<number, { jwtRoles: string }> = {};
   localAuth.value.methods.forEach((method, idx) => {
     next[idx] = {
-      apiKeys: arrayToLines(method.api_key?.keys),
-      jwtRoles: arrayToLines(method.jwt?.roles),
-      allowedIps: arrayToLines(method.ip_validation?.allowed_ips)
+      jwtRoles: arrayToLines(method.jwt?.roles)
     };
   });
   methodText.value = next;
@@ -198,6 +194,66 @@ function setApiHeader(methodIndex: number, value: string) {
   updateMethod(methodIndex, { api_key: { ...method.api_key, header: value } });
 }
 
+function addApiKey(methodIndex: number) {
+  const method = localAuth.value.methods[methodIndex];
+  if (!method?.api_key) {
+    return;
+  }
+  updateMethod(methodIndex, {
+    api_key: { ...method.api_key, keys: [...method.api_key.keys, { name: "", key: "" }] }
+  });
+}
+
+function removeApiKey(methodIndex: number, keyIndex: number) {
+  const method = localAuth.value.methods[methodIndex];
+  if (!method?.api_key) {
+    return;
+  }
+  updateMethod(methodIndex, {
+    api_key: { ...method.api_key, keys: method.api_key.keys.filter((_, idx) => idx !== keyIndex) }
+  });
+}
+
+function setApiKeyField(methodIndex: number, keyIndex: number, field: "name" | "key", value: string) {
+  const method = localAuth.value.methods[methodIndex];
+  if (!method?.api_key) {
+    return;
+  }
+  const keys = method.api_key.keys.map((item, idx) => (idx === keyIndex ? { ...item, [field]: value } : item));
+  updateMethod(methodIndex, { api_key: { ...method.api_key, keys } });
+}
+
+function addAllowedIp(methodIndex: number) {
+  const method = localAuth.value.methods[methodIndex];
+  if (!method?.ip_validation) {
+    return;
+  }
+  updateMethod(methodIndex, {
+    ip_validation: { ...method.ip_validation, allowed_ips: [...method.ip_validation.allowed_ips, { name: "", ip: "" }] }
+  });
+}
+
+function removeAllowedIp(methodIndex: number, ipIndex: number) {
+  const method = localAuth.value.methods[methodIndex];
+  if (!method?.ip_validation) {
+    return;
+  }
+  updateMethod(methodIndex, {
+    ip_validation: { ...method.ip_validation, allowed_ips: method.ip_validation.allowed_ips.filter((_, idx) => idx !== ipIndex) }
+  });
+}
+
+function setAllowedIpField(methodIndex: number, ipIndex: number, field: "name" | "ip", value: string) {
+  const method = localAuth.value.methods[methodIndex];
+  if (!method?.ip_validation) {
+    return;
+  }
+  const allowed_ips = method.ip_validation.allowed_ips.map((item, idx) =>
+    idx === ipIndex ? { ...item, [field]: value } : item
+  );
+  updateMethod(methodIndex, { ip_validation: { ...method.ip_validation, allowed_ips } });
+}
+
 function setJwtKid(methodIndex: number, value: string) {
   const method = localAuth.value.methods[methodIndex];
   if (!method?.jwt) {
@@ -206,25 +262,15 @@ function setJwtKid(methodIndex: number, value: string) {
   updateMethod(methodIndex, { jwt: { ...method.jwt, kid: value } });
 }
 
-function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "allowedIps", value: string) {
-  const prev = methodText.value[methodIndex] || { apiKeys: "", jwtRoles: "", allowedIps: "" };
+function setJwtRoles(methodIndex: number, value: string) {
+  const prev = methodText.value[methodIndex] || { jwtRoles: "" };
   methodText.value = {
     ...methodText.value,
-    [methodIndex]: {
-      ...prev,
-      [field]: value
-    }
+    [methodIndex]: { ...prev, jwtRoles: value }
   };
   const method = localAuth.value.methods[methodIndex];
-  if (!method) {
-    return;
-  }
-  if (field === "apiKeys" && method.api_key) {
-    updateMethod(methodIndex, { api_key: { ...method.api_key, keys: linesToArray(value) } });
-  } else if (field === "jwtRoles" && method.jwt) {
+  if (method?.jwt) {
     updateMethod(methodIndex, { jwt: { ...method.jwt, roles: linesToArray(value) } });
-  } else if (field === "allowedIps" && method.ip_validation) {
-    updateMethod(methodIndex, { ip_validation: { ...method.ip_validation, allowed_ips: linesToArray(value) } });
   }
 }
 </script>
@@ -322,16 +368,38 @@ function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "all
             @update:model-value="(value: string) => setApiHeader(methodIndex, value)"
           />
         </label>
-        <label class="field">
-          <span>Keys (one per line)</span>
-          <VariableInput
-            :model-value="methodText[methodIndex]?.apiKeys || ''"
-            :variables="variableOptions"
-            type="textarea"
-            :rows="3"
-            @update:model-value="(value: string) => setMethodText(methodIndex, 'apiKeys', value)"
-          />
-        </label>
+        <div class="field">
+          <div class="field-inline">
+            <span>Keys</span>
+            <n-button size="small" secondary @click="addApiKey(methodIndex)">+ Key</n-button>
+          </div>
+          <p v-if="method.api_key.keys.length === 0" class="muted auth-named-empty">No keys yet.</p>
+          <div v-for="(item, keyIndex) in method.api_key.keys" :key="keyIndex" class="auth-named-row">
+            <n-input
+              class="auth-named-name"
+              :value="item.name"
+              placeholder="name (optional)"
+              @update:value="(value: string) => setApiKeyField(methodIndex, keyIndex, 'name', value)"
+            />
+            <VariableInput
+              :model-value="item.key"
+              :variables="variableOptions"
+              placeholder="key"
+              @update:model-value="(value: string) => setApiKeyField(methodIndex, keyIndex, 'key', value)"
+            />
+            <n-button
+              class="danger-icon-button"
+              type="error"
+              secondary
+              circle
+              aria-label="Remove key"
+              title="Remove key"
+              @click="removeApiKey(methodIndex, keyIndex)"
+            >
+              <n-icon :component="TrashOutline" />
+            </n-button>
+          </div>
+        </div>
       </div>
 
       <div v-if="method.jwt" class="auth-type-block">
@@ -362,22 +430,44 @@ function setMethodText(methodIndex: number, field: "apiKeys" | "jwtRoles" | "all
             :variables="variableOptions"
             type="textarea"
             :rows="3"
-            @update:model-value="(value: string) => setMethodText(methodIndex, 'jwtRoles', value)"
+            @update:model-value="(value: string) => setJwtRoles(methodIndex, value)"
           />
         </label>
       </div>
 
       <div v-if="method.ip_validation" class="auth-type-block">
-        <label class="field">
-          <span>Allowed IPs (one per line)</span>
-          <VariableInput
-            :model-value="methodText[methodIndex]?.allowedIps || ''"
-            :variables="variableOptions"
-            type="textarea"
-            :rows="3"
-            @update:model-value="(value: string) => setMethodText(methodIndex, 'allowedIps', value)"
-          />
-        </label>
+        <div class="field">
+          <div class="field-inline">
+            <span>Allowed IPs</span>
+            <n-button size="small" secondary @click="addAllowedIp(methodIndex)">+ IP</n-button>
+          </div>
+          <p v-if="method.ip_validation.allowed_ips.length === 0" class="muted auth-named-empty">No IPs yet.</p>
+          <div v-for="(item, ipIndex) in method.ip_validation.allowed_ips" :key="ipIndex" class="auth-named-row">
+            <n-input
+              class="auth-named-name"
+              :value="item.name"
+              placeholder="name (optional)"
+              @update:value="(value: string) => setAllowedIpField(methodIndex, ipIndex, 'name', value)"
+            />
+            <VariableInput
+              :model-value="item.ip"
+              :variables="variableOptions"
+              placeholder="IP address"
+              @update:model-value="(value: string) => setAllowedIpField(methodIndex, ipIndex, 'ip', value)"
+            />
+            <n-button
+              class="danger-icon-button"
+              type="error"
+              secondary
+              circle
+              aria-label="Remove IP"
+              title="Remove IP"
+              @click="removeAllowedIp(methodIndex, ipIndex)"
+            >
+              <n-icon :component="TrashOutline" />
+            </n-button>
+          </div>
+        </div>
       </div>
       </n-card>
     </TransitionGroup>
