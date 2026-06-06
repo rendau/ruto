@@ -21,6 +21,7 @@ type Usecase struct {
 	rootSvc     RootServiceI
 	appSvc      AppServiceI
 	endpointSvc EndpointServiceI
+	gateways    GatewaysNotifierI
 }
 
 func New(
@@ -28,12 +29,14 @@ func New(
 	rootSvc RootServiceI,
 	appSvc AppServiceI,
 	endpointSvc EndpointServiceI,
+	gateways GatewaysNotifierI,
 ) *Usecase {
 	result := &Usecase{
 		snapshotSvc: snapshotSvc,
 		rootSvc:     rootSvc,
 		appSvc:      appSvc,
 		endpointSvc: endpointSvc,
+		gateways:    gateways,
 	}
 
 	if err := result.ensure(context.Background()); err != nil {
@@ -85,6 +88,10 @@ func (u *Usecase) Refresh(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("snapshotSvc.Set: %w", err)
 	}
+
+	// Push a notification to all connected gateways so they re-check the
+	// snapshot version immediately instead of waiting for the next poll.
+	u.gateways.NotifyAll()
 
 	return nil
 }

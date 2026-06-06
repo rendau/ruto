@@ -23,6 +23,95 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type GatewaySubscribeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GatewayId     string                 `protobuf:"bytes,1,opt,name=gateway_id,json=gatewayId,proto3" json:"gateway_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GatewaySubscribeRequest) Reset() {
+	*x = GatewaySubscribeRequest{}
+	mi := &file_ruto_v1_gateway_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GatewaySubscribeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GatewaySubscribeRequest) ProtoMessage() {}
+
+func (x *GatewaySubscribeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_gateway_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GatewaySubscribeRequest.ProtoReflect.Descriptor instead.
+func (*GatewaySubscribeRequest) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *GatewaySubscribeRequest) GetGatewayId() string {
+	if x != nil {
+		return x.GatewayId
+	}
+	return ""
+}
+
+type GatewayNotification struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// type of notification, e.g. "check_version".
+	Type          string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GatewayNotification) Reset() {
+	*x = GatewayNotification{}
+	mi := &file_ruto_v1_gateway_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GatewayNotification) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GatewayNotification) ProtoMessage() {}
+
+func (x *GatewayNotification) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_gateway_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GatewayNotification.ProtoReflect.Descriptor instead.
+func (*GatewayNotification) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GatewayNotification) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
 type GatewayHeartbeatRequest struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	GatewayId        string                 `protobuf:"bytes,1,opt,name=gateway_id,json=gatewayId,proto3" json:"gateway_id,omitempty"`
@@ -39,7 +128,7 @@ type GatewayHeartbeatRequest struct {
 
 func (x *GatewayHeartbeatRequest) Reset() {
 	*x = GatewayHeartbeatRequest{}
-	mi := &file_ruto_v1_gateway_proto_msgTypes[0]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -51,7 +140,7 @@ func (x *GatewayHeartbeatRequest) String() string {
 func (*GatewayHeartbeatRequest) ProtoMessage() {}
 
 func (x *GatewayHeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_gateway_proto_msgTypes[0]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -64,7 +153,7 @@ func (x *GatewayHeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayHeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*GatewayHeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{0}
+	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GatewayHeartbeatRequest) GetGatewayId() string {
@@ -132,7 +221,7 @@ type GatewayListResponse struct {
 
 func (x *GatewayListResponse) Reset() {
 	*x = GatewayListResponse{}
-	mi := &file_ruto_v1_gateway_proto_msgTypes[1]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -144,7 +233,7 @@ func (x *GatewayListResponse) String() string {
 func (*GatewayListResponse) ProtoMessage() {}
 
 func (x *GatewayListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_gateway_proto_msgTypes[1]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -157,7 +246,7 @@ func (x *GatewayListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayListResponse.ProtoReflect.Descriptor instead.
 func (*GatewayListResponse) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{1}
+	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GatewayListResponse) GetResults() []*GatewayStateItem {
@@ -185,7 +274,7 @@ type GatewayStateItem struct {
 
 func (x *GatewayStateItem) Reset() {
 	*x = GatewayStateItem{}
-	mi := &file_ruto_v1_gateway_proto_msgTypes[2]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -197,7 +286,7 @@ func (x *GatewayStateItem) String() string {
 func (*GatewayStateItem) ProtoMessage() {}
 
 func (x *GatewayStateItem) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_gateway_proto_msgTypes[2]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -210,7 +299,7 @@ func (x *GatewayStateItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayStateItem.ProtoReflect.Descriptor instead.
 func (*GatewayStateItem) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{2}
+	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GatewayStateItem) GetGatewayId() string {
@@ -287,7 +376,12 @@ var File_ruto_v1_gateway_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"\n" +
-	"\x15ruto_v1/gateway.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xd3\x02\n" +
+	"\x15ruto_v1/gateway.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"8\n" +
+	"\x17GatewaySubscribeRequest\x12\x1d\n" +
+	"\n" +
+	"gateway_id\x18\x01 \x01(\tR\tgatewayId\")\n" +
+	"\x13GatewayNotification\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\"\xd3\x02\n" +
 	"\x17GatewayHeartbeatRequest\x12\x1d\n" +
 	"\n" +
 	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x1b\n" +
@@ -315,11 +409,12 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	" \x01(\x03R\x0elastSeenAtUnix\x12\x16\n" +
 	"\x06status\x18\v \x01(\tR\x06status\x12,\n" +
 	"\x12memory_alloc_bytes\x18\f \x01(\x04R\x10memoryAllocBytes\x12)\n" +
-	"\x10goroutines_count\x18\r \x01(\rR\x0fgoroutinesCountJ\x04\b\x03\x10\x042\xa0\x01\n" +
+	"\x10goroutines_count\x18\r \x01(\rR\x0fgoroutinesCountJ\x04\b\x03\x10\x042\xef\x01\n" +
 	"\aGateway\x12E\n" +
 	"\tHeartbeat\x12 .ruto_v1.GatewayHeartbeatRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
 	"\x04List\x12\x16.google.protobuf.Empty\x1a\x1c.ruto_v1.GatewayListResponse\"\x10\x82\xd3\xe4\x93\x02\n" +
-	"\x12\b/gatewayB\n" +
+	"\x12\b/gateway\x12M\n" +
+	"\tSubscribe\x12 .ruto_v1.GatewaySubscribeRequest\x1a\x1c.ruto_v1.GatewayNotification0\x01B\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
 var (
@@ -334,21 +429,25 @@ func file_ruto_v1_gateway_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_gateway_proto_rawDescData
 }
 
-var file_ruto_v1_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_ruto_v1_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_ruto_v1_gateway_proto_goTypes = []any{
-	(*GatewayHeartbeatRequest)(nil), // 0: ruto_v1.GatewayHeartbeatRequest
-	(*GatewayListResponse)(nil),     // 1: ruto_v1.GatewayListResponse
-	(*GatewayStateItem)(nil),        // 2: ruto_v1.GatewayStateItem
-	(*emptypb.Empty)(nil),           // 3: google.protobuf.Empty
+	(*GatewaySubscribeRequest)(nil), // 0: ruto_v1.GatewaySubscribeRequest
+	(*GatewayNotification)(nil),     // 1: ruto_v1.GatewayNotification
+	(*GatewayHeartbeatRequest)(nil), // 2: ruto_v1.GatewayHeartbeatRequest
+	(*GatewayListResponse)(nil),     // 3: ruto_v1.GatewayListResponse
+	(*GatewayStateItem)(nil),        // 4: ruto_v1.GatewayStateItem
+	(*emptypb.Empty)(nil),           // 5: google.protobuf.Empty
 }
 var file_ruto_v1_gateway_proto_depIdxs = []int32{
-	2, // 0: ruto_v1.GatewayListResponse.results:type_name -> ruto_v1.GatewayStateItem
-	0, // 1: ruto_v1.Gateway.Heartbeat:input_type -> ruto_v1.GatewayHeartbeatRequest
-	3, // 2: ruto_v1.Gateway.List:input_type -> google.protobuf.Empty
-	3, // 3: ruto_v1.Gateway.Heartbeat:output_type -> google.protobuf.Empty
-	1, // 4: ruto_v1.Gateway.List:output_type -> ruto_v1.GatewayListResponse
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
+	4, // 0: ruto_v1.GatewayListResponse.results:type_name -> ruto_v1.GatewayStateItem
+	2, // 1: ruto_v1.Gateway.Heartbeat:input_type -> ruto_v1.GatewayHeartbeatRequest
+	5, // 2: ruto_v1.Gateway.List:input_type -> google.protobuf.Empty
+	0, // 3: ruto_v1.Gateway.Subscribe:input_type -> ruto_v1.GatewaySubscribeRequest
+	5, // 4: ruto_v1.Gateway.Heartbeat:output_type -> google.protobuf.Empty
+	3, // 5: ruto_v1.Gateway.List:output_type -> ruto_v1.GatewayListResponse
+	1, // 6: ruto_v1.Gateway.Subscribe:output_type -> ruto_v1.GatewayNotification
+	4, // [4:7] is the sub-list for method output_type
+	1, // [1:4] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -365,7 +464,7 @@ func file_ruto_v1_gateway_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_gateway_proto_rawDesc), len(file_ruto_v1_gateway_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

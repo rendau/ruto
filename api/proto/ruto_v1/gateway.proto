@@ -12,6 +12,19 @@ service Gateway {
   rpc List(google.protobuf.Empty) returns (GatewayListResponse) {
     option (google.api.http) = { get: "/gateway" };
   };
+  // Subscribe opens a long-lived server stream. The gateway keeps it open and
+  // core pushes notifications (e.g. "check snapshot version now") through it,
+  // making config propagation instant instead of poll-driven.
+  rpc Subscribe(GatewaySubscribeRequest) returns (stream GatewayNotification);
+}
+
+message GatewaySubscribeRequest {
+  string gateway_id = 1;
+}
+
+message GatewayNotification {
+  // type of notification, e.g. "check_version".
+  string type = 1;
 }
 
 message GatewayHeartbeatRequest {

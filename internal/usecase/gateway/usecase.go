@@ -13,6 +13,7 @@ import (
 type Usecase struct {
 	sessionSvc SessionServiceI
 	cache      CacheI
+	gateways   GatewaysI
 }
 
 const (
@@ -21,10 +22,52 @@ const (
 	statusStaleTTL  = time.Minute
 )
 
-func New(sessionSvc SessionServiceI, cache CacheI) *Usecase {
+func New(sessionSvc SessionServiceI, cache CacheI, gateways GatewaysI) *Usecase {
 	return &Usecase{
 		sessionSvc: sessionSvc,
 		cache:      cache,
+		gateways:   gateways,
+	}
+}
+
+// Subscribe registers a connected gateway in the in-memory pool and blocks for
+// the lifetime of its stream. Whenever core wants the gateway to re-check the
+// snapshot version, the registered trigger fires and `send` pushes a
+// notification down the stream. The call returns when the stream context is
+// done (gateway disconnected) or `send` fails, removing the gateway from the
+// pool via the deferred Unregister.
+func (u *Usecase) Subscribe(ctx context.Context, gatewayID string, send func() error) error {
+	gatewayID = strings.TrimSpace(gatewayID)
+
+	// buffered+coalescing: redundant triggers collapse into a single pending
+	// notification, so a burst of deploys still results in one re-check.
+	notifyCh := make(chan struct{}, 1)
+	trigger := func() {
+		select {
+		case notifyCh <- struct{}{}:
+		default:
+		}
+	}
+
+	id := u.gateways.Register(gatewayID, trigger)
+	defer u.gateways.Unregister(id)
+
+	// Ask the gateway to sync right after (re)connect: while it was
+	// disconnected, the snapshot version may have changed.
+	trigger()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-u.gateways.Done():
+			// core is shutting down — end the stream so GracefulStop unblocks.
+			return nil
+		case <-notifyCh:
+			if err := send(); err != nil {
+				return fmt.Errorf("send: %w", err)
+			}
+		}
 	}
 }
 

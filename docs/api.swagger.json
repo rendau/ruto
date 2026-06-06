@@ -1528,6 +1528,15 @@
         }
       }
     },
+    "ruto_v1GatewayNotification": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "type of notification, e.g. \"check_version\"."
+        }
+      }
+    },
     "ruto_v1GatewayStateItem": {
       "type": "object",
       "properties": {
