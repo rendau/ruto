@@ -178,8 +178,10 @@ onBeforeUnmount(() => {
     title="Test request"
     :bordered="false"
     :mask-closable="true"
+    content-style="display: flex; min-height: 0; height: 100%; overflow: hidden;"
     @update:show="(value: boolean) => { if (!value) close(); }"
   >
+    <div class="endpoint-test-content">
     <div class="endpoint-test-body">
       <section class="test-section">
         <div class="test-request-line">
@@ -256,6 +258,7 @@ onBeforeUnmount(() => {
         </template>
       </section>
     </div>
+    </div>
   </n-modal>
 </template>
 
@@ -272,8 +275,17 @@ onBeforeUnmount(() => {
 :global(.endpoint-test-card .n-card__content) {
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+  max-height: none;
+}
+
+.endpoint-test-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   overflow-y: auto;
-  max-height: calc(100dvh - 136px);
 }
 
 .endpoint-test-body {

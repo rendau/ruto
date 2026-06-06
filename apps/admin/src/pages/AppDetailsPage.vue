@@ -6,6 +6,7 @@ import {
   AddOutline,
   CreateOutline,
   DocumentTextOutline,
+  FlashOutline,
   GitCompareOutline,
   GlobeOutline,
   KeyOutline,
@@ -31,6 +32,7 @@ import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppGrpcReflectionEndpoint, AppMain, AppSwaggerEndpoint, EndpointMain, EndpointType, RootMain } from "../types/api";
 import { useAppsStore } from "../stores/apps";
 import GrpcInstructionPanel from "../components/GrpcInstructionPanel.vue";
+import EndpointTestPanel from "../components/EndpointTestPanel.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -74,6 +76,8 @@ const grpcSelectedKeys = ref<Record<string, boolean>>({});
 const grpcDiffSearch = ref("");
 const grpcInstructionOpen = ref(false);
 const root = ref<RootMain | null>(null);
+const testEndpoint = ref<EndpointMain | null>(null);
+const testModalVisible = ref(false);
 
 type EndpointAuthIcon = {
   key: "ip_validation" | "jwt" | "basic" | "api_key";
@@ -911,6 +915,18 @@ function resetEndpointFilters() {
   authVisibilityFilter.value = "all";
   activeFilter.value = "all";
   httpMethodFilter.value = "all";
+}
+
+function openEndpointTest(endpoint: EndpointMain) {
+  if (endpointType(endpoint) !== "http") {
+    return;
+  }
+  testEndpoint.value = endpoint;
+  testModalVisible.value = true;
+}
+
+function closeEndpointTest() {
+  testModalVisible.value = false;
 }
 
 watch(protocolOptions, (options) => {
@@ -1816,6 +1832,18 @@ onBeforeRouteLeave((to) => {
             </n-tag>
           </td>
           <td class="actions">
+            <n-button
+              v-if="endpointType(endpoint) === 'http'"
+              type="primary"
+              secondary
+              size="small"
+              circle
+              title="Test request"
+              aria-label="Test request"
+              @click="openEndpointTest(endpoint)"
+            >
+              <n-icon :component="FlashOutline" />
+            </n-button>
             <RouterLink
               class="icon-action-button secondary"
               :to="{ name: 'endpoint-edit', params: { id: endpoint.id } }"
@@ -1888,6 +1916,18 @@ onBeforeRouteLeave((to) => {
               </div>
             </div>
             <div class="endpoint-mobile-actions">
+              <n-button
+                v-if="endpointType(endpoint) === 'http'"
+                type="primary"
+                secondary
+                size="small"
+                circle
+                title="Test request"
+                aria-label="Test request"
+                @click="openEndpointTest(endpoint)"
+              >
+                <n-icon :component="FlashOutline" />
+              </n-button>
               <RouterLink
                 class="icon-action-button secondary"
                 :to="{ name: 'endpoint-edit', params: { id: endpoint.id } }"
@@ -1914,5 +1954,13 @@ onBeforeRouteLeave((to) => {
         </div>
       </section>
     </div>
+
+    <EndpointTestPanel
+      v-if="testEndpoint"
+      :endpoint="testEndpoint"
+      :app="app"
+      :open="testModalVisible"
+      @close="closeEndpointTest"
+    />
   </template>
 </template>
