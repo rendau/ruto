@@ -54,8 +54,13 @@ func TestAuthorizeTrustedProxyFlow(t *testing.T) {
 			}
 			req.SetRemoteAddr(tt.remoteAddr)
 
+			allowedIps := make([]authModel.AuthMethodIPValidationItem, len(tt.allowedIPs))
+			for i, ip := range tt.allowedIPs {
+				allowedIps[i] = authModel.AuthMethodIPValidationItem{Ip: ip}
+			}
+
 			got := New(&authModel.AuthMethodIPValidation{
-				AllowedIps: tt.allowedIPs,
+				AllowedIps: allowedIps,
 			}, tt.trustedProxyAddresses).Authorize(req)
 
 			require.Equal(t, tt.want, got)

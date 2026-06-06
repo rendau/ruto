@@ -33,8 +33,13 @@ type AuthMethodBasicUser struct {
 }
 
 type AuthMethodAPIKey struct {
-	Header string   `json:"header"`
-	Keys   []string `json:"keys"`
+	Header string                 `json:"header"`
+	Keys   []AuthMethodAPIKeyItem `json:"keys"`
+}
+
+type AuthMethodAPIKeyItem struct {
+	Name string `json:"name"`
+	Key  string `json:"key"`
 }
 
 type AuthMethodJWT struct {
@@ -43,7 +48,12 @@ type AuthMethodJWT struct {
 }
 
 type AuthMethodIPValidation struct {
-	AllowedIps []string `json:"allowed_ips"`
+	AllowedIps []AuthMethodIPValidationItem `json:"allowed_ips"`
+}
+
+type AuthMethodIPValidationItem struct {
+	Name string `json:"name"`
+	Ip   string `json:"ip"`
 }
 
 func (m *Auth) CloneMethods() []*AuthMethod {
@@ -113,7 +123,7 @@ func (m *AuthMethodAPIKey) Clone() *AuthMethodAPIKey {
 
 	return &AuthMethodAPIKey{
 		Header: m.Header,
-		Keys:   append([]string(nil), m.Keys...),
+		Keys:   append([]AuthMethodAPIKeyItem(nil), m.Keys...),
 	}
 }
 
@@ -134,6 +144,6 @@ func (m *AuthMethodIPValidation) Clone() *AuthMethodIPValidation {
 	}
 
 	return &AuthMethodIPValidation{
-		AllowedIps: append([]string(nil), m.AllowedIps...),
+		AllowedIps: append([]AuthMethodIPValidationItem(nil), m.AllowedIps...),
 	}
 }

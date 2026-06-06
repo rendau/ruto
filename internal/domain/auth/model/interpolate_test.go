@@ -33,7 +33,7 @@ func TestAuth_Interpolate(t *testing.T) {
 			{
 				APIKey: &AuthMethodAPIKey{
 					Header: "{{header}}",
-					Keys:   []string{"{{key}}", "fixed-key"},
+					Keys:   []AuthMethodAPIKeyItem{{Name: "primary", Key: "{{key}}"}, {Name: "static", Key: "fixed-key"}},
 				},
 				JWT: &AuthMethodJWT{
 					Roles: []string{"{{role}}", "user"},
@@ -46,7 +46,7 @@ func TestAuth_Interpolate(t *testing.T) {
 			},
 			{
 				IPValidation: &AuthMethodIPValidation{
-					AllowedIps: []string{"{{ip}}", "192.168.1.1"},
+					AllowedIps: []AuthMethodIPValidationItem{{Name: "office", Ip: "{{ip}}"}, {Name: "static", Ip: "192.168.1.1"}},
 				},
 			},
 		},
@@ -60,14 +60,14 @@ func TestAuth_Interpolate(t *testing.T) {
 
 	// Check APIKey
 	assert.Equal(t, "X-API-Key", auth.Methods[1].APIKey.Header)
-	assert.Equal(t, []string{"key123", "fixed-key"}, auth.Methods[1].APIKey.Keys)
+	assert.Equal(t, []AuthMethodAPIKeyItem{{Name: "primary", Key: "key123"}, {Name: "static", Key: "fixed-key"}}, auth.Methods[1].APIKey.Keys)
 	assert.Equal(t, []string{"editor", "user"}, auth.Methods[1].JWT.Roles)
 
 	// Check JWT
 	assert.Equal(t, []string{"editor", "user"}, auth.Methods[2].JWT.Roles)
 
 	// Check IPValidation
-	assert.Equal(t, []string{"127.0.0.1", "192.168.1.1"}, auth.Methods[3].IPValidation.AllowedIps)
+	assert.Equal(t, []AuthMethodIPValidationItem{{Name: "office", Ip: "127.0.0.1"}, {Name: "static", Ip: "192.168.1.1"}}, auth.Methods[3].IPValidation.AllowedIps)
 }
 
 func TestAuthMethod_Interpolate_NilChecks(t *testing.T) {

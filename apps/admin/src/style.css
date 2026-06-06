@@ -1209,6 +1209,24 @@ h3 {
   align-items: center;
 }
 
+.auth-named-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.auth-named-empty {
+  font-size: 12px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .auth-named-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+}
+
 .auth-method-enter-active,
 .auth-method-leave-active {
   transition: opacity 0.16s ease, transform 0.16s ease;
