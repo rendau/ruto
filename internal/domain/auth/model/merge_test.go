@@ -90,7 +90,7 @@ func TestAuthMerge(t *testing.T) {
 					JWT: &AuthMethodJWT{Kid: "kid-1", Roles: []string{"moderator"}},
 					APIKey: &AuthMethodAPIKey{
 						Header: "X-API-Key",
-						Keys:   []string{"k-1"},
+						Keys:   []AuthMethodAPIKeyItem{{Key: "k-1"}},
 					},
 				},
 			},
@@ -208,14 +208,14 @@ func TestAuthMerge(t *testing.T) {
 			Enabled: true,
 			Mode:    "extend",
 			Methods: []*AuthMethod{
-				{APIKey: &AuthMethodAPIKey{Header: "X-Api-Key", Keys: []string{"k1"}}},
+				{APIKey: &AuthMethodAPIKey{Header: "X-Api-Key", Keys: []AuthMethodAPIKeyItem{{Key: "k1"}}}},
 			},
 		}
 		app := Auth{
 			Enabled: true,
 			Mode:    "extend",
 			Methods: []*AuthMethod{
-				{APIKey: &AuthMethodAPIKey{Header: "X-Other-Key", Keys: []string{"k2"}}},
+				{APIKey: &AuthMethodAPIKey{Header: "X-Other-Key", Keys: []AuthMethodAPIKeyItem{{Key: "k2"}}}},
 			},
 		}
 
@@ -225,9 +225,9 @@ func TestAuthMerge(t *testing.T) {
 		require.NotNil(t, final.Methods[0].APIKey)
 		require.NotNil(t, final.Methods[1].APIKey)
 		require.Equal(t, "X-Api-Key", final.Methods[0].APIKey.Header)
-		require.Equal(t, []string{"k1"}, final.Methods[0].APIKey.Keys)
+		require.Equal(t, []AuthMethodAPIKeyItem{{Key: "k1"}}, final.Methods[0].APIKey.Keys)
 		require.Equal(t, "X-Other-Key", final.Methods[1].APIKey.Header)
-		require.Equal(t, []string{"k2"}, final.Methods[1].APIKey.Keys)
+		require.Equal(t, []AuthMethodAPIKeyItem{{Key: "k2"}}, final.Methods[1].APIKey.Keys)
 	})
 
 	t.Run("api key methods merge after normalize sets default header", func(t *testing.T) {
@@ -235,14 +235,14 @@ func TestAuthMerge(t *testing.T) {
 			Enabled: true,
 			Mode:    "extend",
 			Methods: []*AuthMethod{
-				{APIKey: &AuthMethodAPIKey{Header: "", Keys: []string{"k1"}}},
+				{APIKey: &AuthMethodAPIKey{Header: "", Keys: []AuthMethodAPIKeyItem{{Key: "k1"}}}},
 			},
 		}
 		app := Auth{
 			Enabled: true,
 			Mode:    "extend",
 			Methods: []*AuthMethod{
-				{APIKey: &AuthMethodAPIKey{Header: "X-Api-Key", Keys: []string{"k2"}}},
+				{APIKey: &AuthMethodAPIKey{Header: "X-Api-Key", Keys: []AuthMethodAPIKeyItem{{Key: "k2"}}}},
 			},
 		}
 		require.NoError(t, root.Normalize())
@@ -253,7 +253,7 @@ func TestAuthMerge(t *testing.T) {
 		require.Len(t, final.Methods, 1)
 		require.NotNil(t, final.Methods[0].APIKey)
 		require.Equal(t, "X-Api-Key", final.Methods[0].APIKey.Header)
-		require.Equal(t, []string{"k1", "k2"}, final.Methods[0].APIKey.Keys)
+		require.Equal(t, []AuthMethodAPIKeyItem{{Key: "k1"}, {Key: "k2"}}, final.Methods[0].APIKey.Keys)
 	})
 
 	t.Run("ip validation single-type methods merge allowed ips on extend", func(t *testing.T) {
@@ -261,14 +261,14 @@ func TestAuthMerge(t *testing.T) {
 			Enabled: true,
 			Mode:    "extend",
 			Methods: []*AuthMethod{
-				{IPValidation: &AuthMethodIPValidation{AllowedIps: []string{"10.0.0.1"}}},
+				{IPValidation: &AuthMethodIPValidation{AllowedIps: []AuthMethodIPValidationItem{{Ip: "10.0.0.1"}}}},
 			},
 		}
 		app := Auth{
 			Enabled: true,
 			Mode:    "extend",
 			Methods: []*AuthMethod{
-				{IPValidation: &AuthMethodIPValidation{AllowedIps: []string{"10.0.0.2"}}},
+				{IPValidation: &AuthMethodIPValidation{AllowedIps: []AuthMethodIPValidationItem{{Ip: "10.0.0.2"}}}},
 			},
 		}
 
@@ -276,7 +276,7 @@ func TestAuthMerge(t *testing.T) {
 
 		require.Len(t, final.Methods, 1)
 		require.NotNil(t, final.Methods[0].IPValidation)
-		require.Equal(t, []string{"10.0.0.1", "10.0.0.2"}, final.Methods[0].IPValidation.AllowedIps)
+		require.Equal(t, []AuthMethodIPValidationItem{{Ip: "10.0.0.1"}, {Ip: "10.0.0.2"}}, final.Methods[0].IPValidation.AllowedIps)
 	})
 
 	t.Run("single-type methods are not merged with mixed methods", func(t *testing.T) {
@@ -293,7 +293,7 @@ func TestAuthMerge(t *testing.T) {
 			Methods: []*AuthMethod{
 				{
 					Basic:  &AuthMethodBasic{Users: []AuthMethodBasicUser{{Username: "u2", Password: "p2"}}},
-					APIKey: &AuthMethodAPIKey{Keys: []string{"k1"}},
+					APIKey: &AuthMethodAPIKey{Keys: []AuthMethodAPIKeyItem{{Key: "k1"}}},
 				},
 			},
 		}

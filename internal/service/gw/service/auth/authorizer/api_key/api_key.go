@@ -24,7 +24,7 @@ func New(conf *authModel.AuthMethodAPIKey) *Authorizer {
 
 	return &Authorizer{
 		header:        header,
-		allowedKeyMap: lo.SliceToMap(conf.Keys, func(key string) (string, bool) { return key, true }),
+		allowedKeyMap: lo.SliceToMap(conf.Keys, func(item authModel.AuthMethodAPIKeyItem) (string, bool) { return item.Key, true }),
 	}
 }
 
