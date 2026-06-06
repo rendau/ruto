@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Gateway_Heartbeat_FullMethodName = "/ruto_v1.Gateway/Heartbeat"
 	Gateway_List_FullMethodName      = "/ruto_v1.Gateway/List"
+	Gateway_Subscribe_FullMethodName = "/ruto_v1.Gateway/Subscribe"
 )
 
 // GatewayClient is the client API for Gateway service.
@@ -30,6 +31,10 @@ const (
 type GatewayClient interface {
 	Heartbeat(ctx context.Context, in *GatewayHeartbeatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*GatewayListResponse, error)
+	// Subscribe opens a long-lived server stream. The gateway keeps it open and
+	// core pushes notifications (e.g. "check snapshot version now") through it,
+	// making config propagation instant instead of poll-driven.
+	Subscribe(ctx context.Context, in *GatewaySubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GatewayNotification], error)
 }
 
 type gatewayClient struct {
@@ -60,12 +65,35 @@ func (c *gatewayClient) List(ctx context.Context, in *emptypb.Empty, opts ...grp
 	return out, nil
 }
 
+func (c *gatewayClient) Subscribe(ctx context.Context, in *GatewaySubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GatewayNotification], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Gateway_ServiceDesc.Streams[0], Gateway_Subscribe_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[GatewaySubscribeRequest, GatewayNotification]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Gateway_SubscribeClient = grpc.ServerStreamingClient[GatewayNotification]
+
 // GatewayServer is the server API for Gateway service.
 // All implementations must embed UnimplementedGatewayServer
 // for forward compatibility.
 type GatewayServer interface {
 	Heartbeat(context.Context, *GatewayHeartbeatRequest) (*emptypb.Empty, error)
 	List(context.Context, *emptypb.Empty) (*GatewayListResponse, error)
+	// Subscribe opens a long-lived server stream. The gateway keeps it open and
+	// core pushes notifications (e.g. "check snapshot version now") through it,
+	// making config propagation instant instead of poll-driven.
+	Subscribe(*GatewaySubscribeRequest, grpc.ServerStreamingServer[GatewayNotification]) error
 	mustEmbedUnimplementedGatewayServer()
 }
 
@@ -81,6 +109,9 @@ func (UnimplementedGatewayServer) Heartbeat(context.Context, *GatewayHeartbeatRe
 }
 func (UnimplementedGatewayServer) List(context.Context, *emptypb.Empty) (*GatewayListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedGatewayServer) Subscribe(*GatewaySubscribeRequest, grpc.ServerStreamingServer[GatewayNotification]) error {
+	return status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
 func (UnimplementedGatewayServer) mustEmbedUnimplementedGatewayServer() {}
 func (UnimplementedGatewayServer) testEmbeddedByValue()                 {}
@@ -139,6 +170,17 @@ func _Gateway_List_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Gateway_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GatewaySubscribeRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(GatewayServer).Subscribe(m, &grpc.GenericServerStream[GatewaySubscribeRequest, GatewayNotification]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Gateway_SubscribeServer = grpc.ServerStreamingServer[GatewayNotification]
+
 // Gateway_ServiceDesc is the grpc.ServiceDesc for Gateway service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -155,6 +197,12 @@ var Gateway_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Gateway_List_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Subscribe",
+			Handler:       _Gateway_Subscribe_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "ruto_v1/gateway.proto",
 }

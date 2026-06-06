@@ -26,3 +26,7 @@ type AppServiceI interface {
 type EndpointServiceI interface {
 	List(ctx context.Context, pars *endpointModel.ListReq) ([]*endpointModel.Endpoint, int64, error)
 }
+
+type GatewaysNotifierI interface {
+	NotifyAll()
+}
