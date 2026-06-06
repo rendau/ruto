@@ -18,3 +18,9 @@ type CacheI interface {
 	SetJsonObj(key string, value any, ttl time.Duration) error
 	GetJsonObj(key string, dst any) (bool, error)
 }
+
+type GatewaysI interface {
+	Register(gatewayID string, notify func()) int64
+	Unregister(id int64)
+	Done() <-chan struct{}
+}
