@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"errors"
+	"log/slog"
 	"strings"
 
 	jwtv5 "github.com/golang-jwt/jwt/v5"
@@ -63,6 +64,15 @@ func (a *Jwt) Authorize(req *model.AuthRequest) bool {
 	)
 	if err != nil || parsed == nil || !parsed.Valid {
 		return false
+	}
+
+	if userId, firstSeen := markIndefinite(a.requiredKid, claims); firstSeen {
+		slog.Info(
+			"indefinite jwt detected (no exp claim)",
+			"user_id", userId,
+			"kid", a.requiredKid,
+			"payload", map[string]any(claims), // весь payload токена целиком
+		)
 	}
 
 	if len(a.requiredRoleMap) > 0 {
