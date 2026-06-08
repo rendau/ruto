@@ -9,6 +9,7 @@ const props = defineProps<{
   modelValue: Auth;
   jwtKidOptions?: string[];
   variableOptions?: Variable[];
+  hideMode?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -291,6 +292,7 @@ function setJwtRoles(methodIndex: number, value: string) {
         <template #unchecked>Disabled</template>
       </n-switch>
       <n-select
+        v-if="!hideMode"
         class="auth-mode-select"
         :value="localAuth.mode"
         :options="[

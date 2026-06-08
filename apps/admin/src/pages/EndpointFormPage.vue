@@ -446,7 +446,7 @@ onMounted(() => {
       <LoggingEditor v-model="form.logging" />
     </div>
 
-    <div class="actions">
+    <div class="actions" style="margin-top: 0.6rem;">
       <n-button type="primary" attr-type="submit" :loading="saving">
         {{ saving ? "Saving..." : "Save" }}
       </n-button>
