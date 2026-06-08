@@ -223,7 +223,7 @@ onMounted(() => {
       </div>
     </template>
 
-    <div class="actions">
+    <div class="actions" style="margin-top: 0.6rem;">
       <n-button type="primary" attr-type="submit" :loading="saving">{{ saving ? "Saving..." : "Save" }}</n-button>
       <n-button v-if="isEdit" secondary :disabled="saving" @click="changePassword">Change Password</n-button>
       <n-button secondary :disabled="saving" @click="router.push({ name: 'users' })">Cancel</n-button>
