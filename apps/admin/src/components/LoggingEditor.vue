@@ -15,10 +15,10 @@ const local = ref<Logging>(normalizeLogging(props.modelValue));
 const pushingToParent = ref(false);
 
 const levelOptions = [
-  { label: "default (inherit / error)", value: "" },
+  { label: "inherit", value: "" },
   { label: "all", value: "all" },
   { label: "error", value: "error" },
-  { label: "none (don't log)", value: "none" }
+  { label: "don't log", value: "none" }
 ];
 
 const modeOptions = [
