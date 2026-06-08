@@ -17,8 +17,6 @@ var Conf = struct {
 	HttpPort int `env:"HTTP_PORT"`
 	GrpcPort int `env:"GRPC_PORT"`
 
-	LogRequests bool `env:"LOG_REQUESTS" envDefault:"false"`
-
 	CoreGrpcAddress string `env:"CORE_GRPC_ADDRESS"`
 
 	TrustedProxyAddresses []string `env:"TRUSTED_PROXY_ADDRESSES" envSeparator:","`

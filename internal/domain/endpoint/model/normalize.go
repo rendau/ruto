@@ -32,6 +32,10 @@ func (m *Endpoint) Normalize() error {
 		return fmt.Errorf("auth: %w", err)
 	}
 
+	if err := m.Logging.Normalize(); err != nil {
+		return fmt.Errorf("logging: %w", err)
+	}
+
 	if err := m.Variables.Normalize(); err != nil {
 		return fmt.Errorf("variables: %w", err)
 	}

@@ -20,6 +20,9 @@ func (m *Root) Normalize() error {
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
 	}
+	if err := m.Logging.Normalize(); err != nil {
+		return fmt.Errorf("logging: %w", err)
+	}
 	if err := m.Variables.Normalize(); err != nil {
 		return fmt.Errorf("variables: %w", err)
 	}

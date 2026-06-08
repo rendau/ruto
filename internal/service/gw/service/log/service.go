@@ -4,30 +4,32 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/rendau/ruto/internal/constant"
 	domAppModel "github.com/rendau/ruto/internal/domain/app/model"
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
 )
 
 type serveFunc func() ([]any, string, error)
 
 type Service struct {
-	app       *domAppModel.App
-	ep        *domEndpointModel.Endpoint
-	method    string
-	accessLog bool
+	app    *domAppModel.App
+	ep     *domEndpointModel.Endpoint
+	method string
+	level  string
 }
 
 func New(
 	app *domAppModel.App,
 	ep *domEndpointModel.Endpoint,
 	method string,
-	accessLog bool,
+	logging loggingModel.Logging,
 ) *Service {
 	return &Service{
-		app:       app,
-		ep:        ep,
-		method:    method,
-		accessLog: accessLog,
+		app:    app,
+		ep:     ep,
+		method: method,
+		level:  logging.EffectiveLevel(),
 	}
 }
 
@@ -36,7 +38,12 @@ func (s *Service) Serve(f serveFunc) {
 
 	logArgs, status, err := f()
 
-	if !s.accessLog && err == nil {
+	// level "none" logs nothing (not even errors); "error" logs only failed
+	// requests; "all" logs everything.
+	if s.level == constant.LoggingLevelNone {
+		return
+	}
+	if s.level != constant.LoggingLevelAll && err == nil {
 		return
 	}
 

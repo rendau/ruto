@@ -22,17 +22,15 @@ type Service struct {
 	httpServer *localHttp.Service
 	grpcServer *localGrpc.Service
 	coreClient *core_client.Service
-	accessLog  bool
 	ready      atomic.Bool
 }
 
-func New(globalCtx context.Context, httpPort, grpcPort int, configAddress string, accessLog bool) (*Service, error) {
+func New(globalCtx context.Context, httpPort, grpcPort int, configAddress string) (*Service, error) {
 	var err error
 
 	service := &Service{
 		globalCtx:  globalCtx,
 		httpServer: localHttp.New(httpPort),
-		accessLog:  accessLog,
 	}
 	if grpcPort > 0 {
 		service.grpcServer = localGrpc.New(grpcPort)
@@ -84,14 +82,14 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf, s.accessLog)
+	httpHandler, err := handlerHttp.New(conf)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}
 	s.httpServer.SetHandler(httpHandler)
 
 	if s.grpcServer != nil {
-		grpcHandler, grpcErr := handlerGrpc.New(conf, s.accessLog)
+		grpcHandler, grpcErr := handlerGrpc.New(conf)
 		if grpcErr != nil {
 			return fmt.Errorf("handlerGrpc.New: %w", grpcErr)
 		}

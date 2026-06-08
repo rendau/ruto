@@ -29,6 +29,7 @@ import {
   updateApp
 } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
+import { emptyLogging } from "../lib/forms";
 import type { AppGrpcReflectionEndpoint, AppMain, AppSwaggerEndpoint, EndpointMain, EndpointType, RootMain } from "../types/api";
 import { useAppsStore } from "../stores/apps";
 import GrpcInstructionPanel from "../components/GrpcInstructionPanel.vue";
@@ -400,6 +401,7 @@ function buildDefaultEndpointPayload(item: AppSwaggerEndpoint): EndpointMain {
       mode: "extend",
       methods: []
     },
+    logging: { ...emptyLogging },
     type: "http",
     grpc: {
       service: "",
@@ -608,6 +610,7 @@ function buildDefaultGrpcEndpointPayload(item: AppGrpcReflectionEndpoint): Endpo
       mode: "extend",
       methods: []
     },
+    logging: { ...emptyLogging },
     type: "grpc",
     grpc: {
       service: normalized.service,

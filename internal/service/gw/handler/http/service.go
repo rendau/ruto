@@ -16,8 +16,8 @@ type Service struct {
 	h http.Handler
 }
 
-func New(snapshot *rootModel.Root, accessLog bool) (*Service, error) {
-	handler, err := buildHandler(snapshot, accessLog)
+func New(snapshot *rootModel.Root) (*Service, error) {
+	handler, err := buildHandler(snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -31,7 +31,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, finalErr error) {
+func buildHandler(snapshot *rootModel.Root) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)
@@ -70,7 +70,7 @@ func buildHandler(snapshot *rootModel.Root, accessLog bool) (_ http.Handler, fin
 
 			handler := middleware.Chain(proxyHandler,
 				middleware.NewMetrics(app, ep, routePath),
-				middleware.NewRequestLog(app, ep, routePath, accessLog),
+				middleware.NewRequestLog(app, ep, routePath),
 				middleware.NewAuth(ep),
 				middleware.NewBackendRequestParams(ep),
 			)

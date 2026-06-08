@@ -36,7 +36,7 @@ func TestProxy_UnaryCall(t *testing.T) {
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
 
-	svc, err := New(buildSnapshotForBackend(t, backendAddr), false)
+	svc, err := New(buildSnapshotForBackend(t, backendAddr))
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -82,7 +82,7 @@ func TestProxy_BackendHeaders(t *testing.T) {
 	}
 	snapshot.InheritDown()
 
-	svc, err := New(snapshot, false)
+	svc, err := New(snapshot)
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -126,7 +126,7 @@ func TestProxy_BidiStreamingCall(t *testing.T) {
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
 
-	svc, err := New(buildSnapshotForBackend(t, backendAddr), false)
+	svc, err := New(buildSnapshotForBackend(t, backendAddr))
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -173,7 +173,7 @@ func TestProxy_MissingAppMetadata(t *testing.T) {
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
 
-	svc, err := New(buildSnapshotForBackend(t, backendAddr), false)
+	svc, err := New(buildSnapshotForBackend(t, backendAddr))
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -206,7 +206,7 @@ func TestProxy_DuplicateMethodResolvedByAppName(t *testing.T) {
 	backendAddr2, backendStop2 := runBackendTestServiceWithPrefix(t, "backend-2:")
 	defer backendStop2()
 
-	svc, err := New(buildSnapshotForTwoBackends(t, backendAddr1, backendAddr2), false)
+	svc, err := New(buildSnapshotForTwoBackends(t, backendAddr1, backendAddr2))
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -248,7 +248,7 @@ func TestReflection_ListServicesFilteredByRegisteredEndpoints(t *testing.T) {
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
 
-	svc, err := New(buildSnapshotForBackend(t, backendAddr), false)
+	svc, err := New(buildSnapshotForBackend(t, backendAddr))
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -284,7 +284,7 @@ func TestReflection_FileContainingRegisteredSymbolProxiedToBackend(t *testing.T)
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
 
-	svc, err := New(buildSnapshotForBackend(t, backendAddr), false)
+	svc, err := New(buildSnapshotForBackend(t, backendAddr))
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -319,7 +319,7 @@ func TestReflection_FileDescriptorMethodsFilteredByRegisteredEndpoints(t *testin
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
 
-	svc, err := New(buildSnapshotForBackendUnaryOnly(t, backendAddr), false)
+	svc, err := New(buildSnapshotForBackendUnaryOnly(t, backendAddr))
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -355,7 +355,7 @@ func TestReflection_FileContainingUnregisteredMethodRejected(t *testing.T) {
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
 
-	svc, err := New(buildSnapshotForBackendUnaryOnly(t, backendAddr), false)
+	svc, err := New(buildSnapshotForBackendUnaryOnly(t, backendAddr))
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -389,7 +389,7 @@ func TestReflection_FileContainingUnregisteredSymbolRejected(t *testing.T) {
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
 
-	svc, err := New(buildSnapshotForBackend(t, backendAddr), false)
+	svc, err := New(buildSnapshotForBackend(t, backendAddr))
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)

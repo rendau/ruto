@@ -29,11 +29,11 @@ type Service struct {
 	transparentHandle gogrpc.StreamHandler
 }
 
-func New(snapshot *domRootModel.Root, accessLog bool) (*Service, error) {
+func New(snapshot *domRootModel.Root) (*Service, error) {
 	service := &Service{}
 	service.transparentHandle = proxy.TransparentHandler(service.director)
 
-	routes, err := service.buildRoutes(snapshot, accessLog)
+	routes, err := service.buildRoutes(snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("build routes: %w", err)
 	}
@@ -43,7 +43,7 @@ func New(snapshot *domRootModel.Root, accessLog bool) (*Service, error) {
 	return service, nil
 }
 
-func (s *Service) buildRoutes(snapshot *domRootModel.Root, accessLog bool) (map[string]*route, error) {
+func (s *Service) buildRoutes(snapshot *domRootModel.Root) (map[string]*route, error) {
 	routes := make(map[string]*route)
 
 	for _, app := range snapshot.ActiveApps() {
@@ -78,7 +78,7 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root, accessLog bool) (map[
 			}
 
 			authService := serviceAuth.New(ep)
-			logService := serviceLog.New(app, ep, "GRPC "+routeName, accessLog)
+			logService := serviceLog.New(app, ep, "GRPC "+routeName, ep.Logging)
 			metricsService := serviceMetrics.New(app, ep, "GRPC "+routeName)
 
 			rt.handler = chain(s.transparentHandle,
