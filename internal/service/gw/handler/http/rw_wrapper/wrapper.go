@@ -12,6 +12,7 @@ type Wrapper struct {
 	http.ResponseWriter
 	statusCode int
 	bodyCap    *BodyCapture
+	expected   bool
 }
 
 func New(w http.ResponseWriter) *Wrapper {
@@ -50,6 +51,17 @@ func (w *Wrapper) GetStatusCode() int {
 func (w *Wrapper) StatusCodeIsHttpOk() bool {
 	statusCode := w.GetStatusCode()
 	return statusCode >= 200 && statusCode < 300
+}
+
+// MarkExpected flags the response as a non-2xx that the gateway itself
+// produced as expected behavior (e.g. an auth 401), letting the logging layer
+// decide separately whether such responses should be logged.
+func (w *Wrapper) MarkExpected() {
+	w.expected = true
+}
+
+func (w *Wrapper) IsExpected() bool {
+	return w.expected
 }
 
 func (w *Wrapper) GetStatusCodeErr() error {

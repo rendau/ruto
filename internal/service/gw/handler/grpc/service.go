@@ -78,7 +78,7 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root) (map[string]*route, e
 			}
 
 			authService := serviceAuth.New(ep)
-			logService := serviceLog.New(app, ep, "GRPC "+routeName, ep.Logging)
+			logService := serviceLog.New(app, ep, "GRPC "+routeName, ep.Logging, snapshot.LogOwnResponseErrors)
 			metricsService := serviceMetrics.New(app, ep, "GRPC "+routeName)
 
 			rt.handler = chain(s.transparentHandle,

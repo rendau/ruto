@@ -10,12 +10,13 @@ import (
 )
 
 type Root struct {
-	BaseUrl   string               `json:"base_url"`
-	Cors      RootCors             `json:"cors"`
-	Jwt       []RootJwt            `json:"jwt"`
-	Auth      authModel.Auth       `json:"auth"`
-	Logging   loggingModel.Logging `json:"logging"`
-	Variables varsModel.Vars       `json:"variables"`
+	BaseUrl              string               `json:"base_url"`
+	Cors                 RootCors             `json:"cors"`
+	Jwt                  []RootJwt            `json:"jwt"`
+	Auth                 authModel.Auth       `json:"auth"`
+	Logging              loggingModel.Logging `json:"logging"`
+	LogOwnResponseErrors bool                 `json:"log_own_response_errors"` // log error responses the gateway returns itself (e.g. auth 401)
+	Variables            varsModel.Vars       `json:"variables"`
 
 	Apps []*appModel.App `json:"apps"` // not stored in db
 }

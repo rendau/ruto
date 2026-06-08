@@ -31,6 +31,7 @@ const form = ref<RootMain>({
   jwt: [],
   auth: { ...emptyAuth },
   logging: { ...emptyLogging },
+  log_own_response_errors: false,
   variables: []
 });
 
@@ -177,6 +178,16 @@ onMounted(() => {
       <LoggingEditor v-if="canEdit" v-model="form.logging" />
       <LoggingCard v-else :logging="form.logging" title="" />
     </div>
+    <label class="field">
+      <span>Log own response errors</span>
+      <n-space align="center">
+        <n-switch v-model:value="form.log_own_response_errors" :disabled="!canEdit">
+          <template #checked>Enabled</template>
+          <template #unchecked>Disabled</template>
+        </n-switch>
+        <span class="muted">When off, error responses the gateway returns itself (e.g. auth 401) are not logged at any level.</span>
+      </n-space>
+    </label>
 
     <div v-if="canEdit" class="actions">
       <n-button type="primary" attr-type="submit" :loading="saving">

@@ -126,6 +126,7 @@ export interface RootMain {
   jwt: RootJwt[];
   auth: Auth;
   logging: Logging;
+  log_own_response_errors: boolean;
   variables: Variable[];
 }
 

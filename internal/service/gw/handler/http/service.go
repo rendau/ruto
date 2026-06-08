@@ -70,7 +70,7 @@ func buildHandler(snapshot *rootModel.Root) (_ http.Handler, finalErr error) {
 
 			handler := middleware.Chain(proxyHandler,
 				middleware.NewMetrics(app, ep, routePath),
-				middleware.NewRequestLog(app, ep, routePath),
+				middleware.NewRequestLog(app, ep, routePath, snapshot.LogOwnResponseErrors),
 				middleware.NewAuth(ep),
 				middleware.NewBackendRequestParams(ep),
 			)
