@@ -5,15 +5,17 @@ import (
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
+	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
 type Root struct {
-	BaseUrl   string         `json:"base_url"`
-	Cors      RootCors       `json:"cors"`
-	Jwt       []RootJwt      `json:"jwt"`
-	Auth      authModel.Auth `json:"auth"`
-	Variables varsModel.Vars `json:"variables"`
+	BaseUrl   string               `json:"base_url"`
+	Cors      RootCors             `json:"cors"`
+	Jwt       []RootJwt            `json:"jwt"`
+	Auth      authModel.Auth       `json:"auth"`
+	Logging   loggingModel.Logging `json:"logging"`
+	Variables varsModel.Vars       `json:"variables"`
 
 	Apps []*appModel.App `json:"apps"` // not stored in db
 }

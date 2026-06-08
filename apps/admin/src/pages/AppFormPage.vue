@@ -13,9 +13,10 @@ import {
   updateApp
 } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
+import LoggingEditor from "../components/LoggingEditor.vue";
 import VariableEditor from "../components/VariableEditor.vue";
 import VariableInput from "../components/VariableInput.vue";
-import { hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, normalizeVariables, recordToKeyValueLines } from "../lib/forms";
+import { emptyLogging, hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, normalizeLogging, normalizeVariables, recordToKeyValueLines } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { AppMain, Variable } from "../types/api";
 import { useAppsStore } from "../stores/apps";
@@ -59,6 +60,7 @@ const form = ref<AppMain>({
     mode: "extend",
     methods: []
   },
+  logging: { ...emptyLogging },
   variables: []
 });
 const includeInMetrics = computed({
@@ -88,6 +90,7 @@ async function load() {
         query_params: item.backend.query_params || {}
       },
       auth: normalizeAuth(item.auth),
+      logging: normalizeLogging(item.logging),
       variables: item.variables || []
     };
     headersText.value = recordToKeyValueLines(form.value.backend.headers);
@@ -335,6 +338,10 @@ onBeforeUnmount(() => {
     <div class="field">
       <span>Auth</span>
       <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
+    </div>
+    <div class="field">
+      <span>Request logging</span>
+      <LoggingEditor v-model="form.logging" />
     </div>
 
     <div class="actions">

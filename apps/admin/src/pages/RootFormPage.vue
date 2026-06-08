@@ -2,9 +2,11 @@
 import { computed, onMounted, ref, watch } from "vue";
 import AuthEditor from "../components/AuthEditor.vue";
 import AuthCard from "../components/AuthCard.vue";
+import LoggingEditor from "../components/LoggingEditor.vue";
+import LoggingCard from "../components/LoggingCard.vue";
 import VariableEditor from "../components/VariableEditor.vue";
 import { getRoot, getRootInterpolate, getRootJwtKidsByUrls, setRoot } from "../lib/api";
-import { arrayToLines, emptyAuth, hasDuplicateVariableKeys, linesToArray, normalizeAuth, normalizeVariables } from "../lib/forms";
+import { arrayToLines, emptyAuth, emptyLogging, hasDuplicateVariableKeys, linesToArray, normalizeAuth, normalizeLogging, normalizeVariables } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import { useAuthStore } from "../stores/auth";
 import type { RootMain, Variable } from "../types/api";
@@ -28,6 +30,7 @@ const form = ref<RootMain>({
   },
   jwt: [],
   auth: { ...emptyAuth },
+  logging: { ...emptyLogging },
   variables: []
 });
 
@@ -50,6 +53,7 @@ async function load() {
     form.value = {
       ...root,
       auth: normalizeAuth(root.auth),
+      logging: normalizeLogging(root.logging),
       variables: root.variables || []
     };
     jwtKidOptions.value = kidsRep.kids || [];
@@ -165,6 +169,13 @@ onMounted(() => {
       <span>Auth</span>
       <AuthEditor v-if="canEdit" v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
       <AuthCard v-else :auth="form.auth" title="" />
+    </div>
+
+    <h3 class="section-title">Logging</h3>
+    <div class="field">
+      <span>Request logging</span>
+      <LoggingEditor v-if="canEdit" v-model="form.logging" />
+      <LoggingCard v-else :logging="form.logging" title="" />
     </div>
 
     <div v-if="canEdit" class="actions">

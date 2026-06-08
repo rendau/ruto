@@ -198,7 +198,7 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot, false)
+	service, err := New(snapshot)
 	require.NoError(t, err)
 
 	rec := performRequest(service, http.MethodGet, "/account/profile?inbound=ok&shared=inbound", http.Header{
@@ -586,7 +586,7 @@ func newTestService(
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot, false)
+	service, err := New(snapshot)
 	require.NoError(t, err)
 	return service
 }

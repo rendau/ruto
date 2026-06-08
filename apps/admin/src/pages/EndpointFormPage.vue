@@ -13,9 +13,10 @@ import {
   updateEndpoint
 } from "../lib/api";
 import AuthEditor from "../components/AuthEditor.vue";
+import LoggingEditor from "../components/LoggingEditor.vue";
 import VariableEditor from "../components/VariableEditor.vue";
 import VariableInput from "../components/VariableInput.vue";
-import { hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, normalizeVariables, recordToKeyValueLines } from "../lib/forms";
+import { emptyLogging, hasDuplicateVariableKeys, keyValueLinesToRecord, normalizeAuth, normalizeLogging, normalizeVariables, recordToKeyValueLines } from "../lib/forms";
 import { notifyError, notifySuccess } from "../lib/notify";
 import type { EndpointMain, EndpointType, Variable } from "../types/api";
 
@@ -72,6 +73,7 @@ const form = ref<EndpointMain>({
     mode: "extend",
     methods: []
   },
+  logging: { ...emptyLogging },
   type: "http",
   grpc: {
     service: "",
@@ -111,6 +113,7 @@ function normalizeLoadedEndpoint(item: EndpointMain): EndpointMain {
       query_params: item.backend?.query_params || {}
     },
     auth: normalizeAuth(item.auth),
+    logging: normalizeLogging(item.logging),
     grpc: {
       service: item.grpc?.service || "",
       method: item.grpc?.method || "",
@@ -221,6 +224,7 @@ function buildPayload(): EndpointMain {
       query_params: keyValueLinesToRecord(queryParamsText.value)
     },
     auth: normalizeAuth(form.value.auth),
+    logging: normalizeLogging(form.value.logging),
     grpc: {
       service: form.value.grpc?.service || "",
       method: form.value.grpc?.method || "",
@@ -435,6 +439,11 @@ onMounted(() => {
     <div class="field">
       <span>Auth</span>
       <AuthEditor v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
+    </div>
+
+    <div class="field">
+      <span>Request logging</span>
+      <LoggingEditor v-model="form.logging" />
     </div>
 
     <div class="actions">

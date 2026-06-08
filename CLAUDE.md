@@ -54,5 +54,6 @@ Env: copy `config/core.env.example` → `.env.core` and `config/gateway.env.exam
 
 - Edit only `api/proto/ruto_v1/*.proto`, then `make generate-proto`. Never hand-edit `pkg/proto/ruto_v1/*` (generated).
 - Go 1.26+: use `new(value)` for literal pointers (`new(true)`) instead of temp-var `&tmp`.
+- All struct methods MUST use pointer receivers (`func (m *T) ...`), even read-only/pure ones — never mix value and pointer receivers on a type.
 - Don't add redundant `TrimSpace`/nil checks on already-normalized domain entities; normalization happens once in `Normalize()`.
 - In `internal/app/*`, packages are aliased with a `P` suffix (`usecaseAppP`, `handlerGrpcP`) to disambiguate.

@@ -34,6 +34,7 @@ import type {
 } from "../types/api";
 import { API_BASE_URL } from "./config";
 import { clearSession, getToken, renewTokenOnce, setCredentials, setToken } from "./auth-session";
+import { normalizeLogging } from "./forms";
 
 export class ApiError extends Error {
   code: string;
@@ -121,6 +122,7 @@ function normalizeRoot(value: RootMain): RootMain {
       mode: "extend",
       methods: []
     },
+    logging: normalizeLogging(value?.logging),
     variables: variablesToArray((value as RootMain & { variables?: Variable[] | Record<string, string> }).variables)
   };
 }
@@ -144,6 +146,7 @@ function normalizeApp(value: AppMain): AppMain {
       mode: "extend",
       methods: []
     },
+    logging: normalizeLogging(value?.logging),
     variables: variablesToArray((value as AppMain & { variables?: Variable[] | Record<string, string> }).variables)
   };
 }
@@ -174,6 +177,7 @@ function normalizeEndpoint(value: EndpointMain): EndpointMain {
       mode: "extend",
       methods: []
     },
+    logging: normalizeLogging(value?.logging),
     type: value?.type === "grpc" ? "grpc" : "http",
     grpc: {
       service: value?.grpc?.service || "",
@@ -201,6 +205,7 @@ function serializeRoot(value: RootMain): RootMain {
       mode: "extend",
       methods: []
     },
+    logging: normalizeLogging(value?.logging),
     variables: variablesToMap(value?.variables) as unknown as Variable[]
   };
 }

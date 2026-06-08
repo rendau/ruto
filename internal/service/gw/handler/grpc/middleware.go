@@ -8,11 +8,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/rendau/ruto/internal/constant"
 	domAppModel "github.com/rendau/ruto/internal/domain/app/model"
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	serviceAuth "github.com/rendau/ruto/internal/service/gw/service/auth"
 	serviceAuthModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
+	"github.com/rendau/ruto/internal/service/gw/service/logmask"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"
 )
 
@@ -55,16 +57,30 @@ func newRequestLogMiddleware(
 		return func(next gogrpc.StreamHandler) gogrpc.StreamHandler { return next }
 	}
 
+	if ep.Logging.EffectiveLevel() == constant.LoggingLevelNone {
+		return func(next gogrpc.StreamHandler) gogrpc.StreamHandler { return next }
+	}
+
+	logHeaders := ep.Logging.Headers
+	sensitive := logmask.BuildSensitiveKeySet(ep)
+
 	return func(next gogrpc.StreamHandler) gogrpc.StreamHandler {
 		return func(srv any, stream gogrpc.ServerStream) (err error) {
 			service.Serve(func() ([]any, string, error) {
-				err = next(srv, stream)
-				return []any{
+				fields := []any{
 					"app_name", app.Name,
 					"grpc_service", ep.Grpc.Service,
 					"grpc_method", ep.Grpc.Method,
 					"grpc_path", ep.Grpc.Path,
-				}, statusLabelFromError(err), err
+				}
+				if logHeaders {
+					md := metadataFromContext(stream.Context())
+					fields = append(fields, "metadata", logmask.MaskValues(md, sensitive))
+				}
+
+				err = next(srv, stream)
+
+				return fields, statusLabelFromError(err), err
 			})
 			return err
 		}

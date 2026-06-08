@@ -11,15 +11,33 @@ var statusCodeErr = errors.New("status code error")
 type Wrapper struct {
 	http.ResponseWriter
 	statusCode int
+	bodyCap    *BodyCapture
 }
 
 func New(w http.ResponseWriter) *Wrapper {
 	return &Wrapper{ResponseWriter: w}
 }
 
+// CaptureBody enables capturing up to limit bytes of the response body for
+// logging.
+func (w *Wrapper) CaptureBody(limit int) {
+	w.bodyCap = NewBodyCapture(limit)
+}
+
 func (w *Wrapper) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *Wrapper) Write(p []byte) (int, error) {
+	if w.bodyCap != nil {
+		w.bodyCap.Write(p)
+	}
+	return w.ResponseWriter.Write(p)
+}
+
+func (w *Wrapper) GetCapturedBody() string {
+	return w.bodyCap.String()
 }
 
 func (w *Wrapper) GetStatusCode() int {

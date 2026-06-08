@@ -8,6 +8,7 @@ import type {
   AuthMethodIpValidation,
   AuthMethodIpValidationItem,
   AuthMethodJwt,
+  Logging,
   Variable
 } from "../types/api";
 
@@ -16,6 +17,36 @@ export const emptyAuth: Auth = {
   mode: "extend",
   methods: []
 };
+
+export const emptyLogging: Logging = {
+  mode: "extend",
+  level: "",
+  headers: false,
+  query_params: false,
+  req_body: false,
+  resp_body: false,
+  req_body_limit: 0,
+  resp_body_limit: 0
+};
+
+export function normalizeLogging(value?: Logging | null): Logging {
+  if (!value) {
+    return { ...emptyLogging };
+  }
+
+  const level = value.level === "all" || value.level === "error" || value.level === "none" ? value.level : "";
+
+  return {
+    mode: value.mode === "replace" ? "replace" : "extend",
+    level,
+    headers: !!value.headers,
+    query_params: !!value.query_params,
+    req_body: !!value.req_body,
+    resp_body: !!value.resp_body,
+    req_body_limit: Math.max(0, Math.trunc(value.req_body_limit || 0)),
+    resp_body_limit: Math.max(0, Math.trunc(value.resp_body_limit || 0))
+  };
+}
 
 export function createEmptyAuthMethod(type: "basic" | "api_key" | "jwt" | "ip_validation"): AuthMethod {
   const result: AuthMethod = {};

@@ -65,6 +65,17 @@ export interface AuthMethodIpValidationItem {
   ip: string;
 }
 
+export interface Logging {
+  mode: string;
+  level: string;
+  headers: boolean;
+  query_params: boolean;
+  req_body: boolean;
+  resp_body: boolean;
+  req_body_limit: number;
+  resp_body_limit: number;
+}
+
 export interface Variable {
   key: string;
   value: string;
@@ -114,6 +125,7 @@ export interface RootMain {
   cors: RootCors;
   jwt: RootJwt[];
   auth: Auth;
+  logging: Logging;
   variables: Variable[];
 }
 
@@ -141,6 +153,7 @@ export interface AppMain {
   name: string;
   backend: AppBackend;
   auth: Auth;
+  logging: Logging;
   variables: Variable[];
 }
 
@@ -208,6 +221,7 @@ export interface EndpointMain {
   http: EndpointHttp;
   backend: EndpointBackend;
   auth: Auth;
+  logging: Logging;
   type: EndpointType;
   grpc: EndpointGrpc;
   variables: Variable[];
