@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useDialog } from "naive-ui";
 import { ArrowBackOutline, BanOutline, CopyOutline, CreateOutline, EyeOutline, FlashOutline, GitNetworkOutline, TrashOutline } from "@vicons/ionicons5";
 import AuthCard from "../components/AuthCard.vue";
+import LoggingCard from "../components/LoggingCard.vue";
 import EndpointTestPanel from "../components/EndpointTestPanel.vue";
 import { deleteEndpoint, getApp, getEndpoint, getEndpointInherited, getEndpointInterpolate, getRoot, updateEndpoint } from "../lib/api";
 import { notifyError, notifySuccess } from "../lib/notify";
@@ -494,6 +495,7 @@ onMounted(() => {
         </div>
       </div>
       <AuthCard :auth="endpoint?.auth" />
+      <LoggingCard :logging="endpoint?.logging" />
     </section>
 
     <section class="panel endpoint-card">
@@ -538,6 +540,7 @@ onMounted(() => {
               </div>
             </div>
             <AuthCard :auth="endpointInherited?.auth" />
+            <LoggingCard :logging="endpointInherited?.logging" />
           </template>
           <p v-else class="muted">Inherited values unavailable.</p>
         </n-collapse-item>
@@ -587,6 +590,7 @@ onMounted(() => {
             </div>
           </div>
           <AuthCard :auth="endpointInterpolated?.auth" />
+          <LoggingCard :logging="endpointInterpolated?.logging" />
         </section>
         <p v-else class="muted">Interpolated values unavailable.</p>
       </div>

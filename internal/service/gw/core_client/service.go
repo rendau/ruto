@@ -2,7 +2,9 @@ package core_client
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"runtime"
 	"strings"
@@ -180,7 +182,9 @@ func (s *Service) trigger() {
 func (s *Service) subscribeWorker() {
 	for s.globalCtx.Err() == nil {
 		if err := s.subscribeOnce(); err != nil && s.globalCtx.Err() == nil {
-			slog.Warn("core-client: notification stream ended", "error", err)
+			if !errors.Is(err, io.EOF) {
+				slog.Warn("core-client: notification stream ended", "error", err)
+			}
 		}
 
 		select {

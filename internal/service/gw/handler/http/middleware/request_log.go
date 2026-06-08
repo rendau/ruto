@@ -15,6 +15,7 @@ func NewRequestLog(
 	app *domAppModel.App,
 	ep *domEndpointModel.Endpoint,
 	routePath string,
+	logOwnResponseErrors bool,
 ) Middleware {
 	if ep.Http.Method != "" {
 		routePath = ep.Http.Method + " " + routePath
@@ -25,12 +26,12 @@ func NewRequestLog(
 		return func(next http.Handler) http.Handler { return next }
 	}
 
-	service := log.New(app, ep, routePath, lg)
+	service := log.New(app, ep, routePath, lg, logOwnResponseErrors)
 	sensitive := logmask.BuildSensitiveKeySet(ep)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			service.Serve(func() ([]any, string, error) {
+			service.Serve(func() ([]any, string, error, bool) {
 				var reqBody *rw_wrapper.BodyCapture
 				if lg.ReqBody && r.Body != nil {
 					reqBody = rw_wrapper.NewBodyCapture(lg.ReqBodyLimitOrDefault())
@@ -63,7 +64,7 @@ func NewRequestLog(
 					fields = append(fields, "resp_body", rw.GetCapturedBody())
 				}
 
-				return fields, rw.GetStatusCodeStr(), rw.GetStatusCodeErr()
+				return fields, rw.GetStatusCodeStr(), rw.GetStatusCodeErr(), rw.IsExpected()
 			})
 		})
 	}

@@ -20,6 +20,23 @@ import (
 
 type middleware func(gogrpc.StreamHandler) gogrpc.StreamHandler
 
+// errAuthReject is a sentinel matched via errors.Is to recognize the gateway's
+// own auth rejection (vs an Unauthenticated returned by a backend).
+var errAuthReject = errors.New("gateway auth reject")
+
+// authRejectError is the gateway's own auth rejection. It carries a proper gRPC
+// Unauthenticated status for the client while remaining detectable via
+// errors.Is(err, errAuthReject) in the logging layer.
+type authRejectError struct{}
+
+func (authRejectError) Error() string { return "unauthorized" }
+
+func (authRejectError) GRPCStatus() *status.Status {
+	return status.New(codes.Unauthenticated, "unauthorized")
+}
+
+func (authRejectError) Is(target error) bool { return target == errAuthReject }
+
 func chain(h gogrpc.StreamHandler, middlewares ...middleware) gogrpc.StreamHandler {
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		h = middlewares[i](h)
@@ -40,7 +57,7 @@ func newAuthMiddleware(service *serviceAuth.Service) middleware {
 			authReq.SetHttpHeader(headersFromMetadata(md))
 			authReq.SetRemoteAddr(remoteAddrFromContext(stream.Context()))
 			if !service.Check(authReq) {
-				return status.Error(codes.Unauthenticated, "unauthorized")
+				return authRejectError{}
 			}
 
 			return next(srv, stream)
@@ -66,7 +83,7 @@ func newRequestLogMiddleware(
 
 	return func(next gogrpc.StreamHandler) gogrpc.StreamHandler {
 		return func(srv any, stream gogrpc.ServerStream) (err error) {
-			service.Serve(func() ([]any, string, error) {
+			service.Serve(func() ([]any, string, error, bool) {
 				fields := []any{
 					"app_name", app.Name,
 					"grpc_service", ep.Grpc.Service,
@@ -80,7 +97,7 @@ func newRequestLogMiddleware(
 
 				err = next(srv, stream)
 
-				return fields, statusLabelFromError(err), err
+				return fields, statusLabelFromError(err), err, errors.Is(err, errAuthReject)
 			})
 			return err
 		}

@@ -10,13 +10,14 @@ import (
 	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
 )
 
-type serveFunc func() ([]any, string, error)
+type serveFunc func() ([]any, string, error, bool)
 
 type Service struct {
-	app    *domAppModel.App
-	ep     *domEndpointModel.Endpoint
-	method string
-	level  string
+	app                  *domAppModel.App
+	ep                   *domEndpointModel.Endpoint
+	method               string
+	level                string
+	logOwnResponseErrors bool
 }
 
 func New(
@@ -24,25 +25,32 @@ func New(
 	ep *domEndpointModel.Endpoint,
 	method string,
 	logging loggingModel.Logging,
+	logOwnResponseErrors bool,
 ) *Service {
 	return &Service{
-		app:    app,
-		ep:     ep,
-		method: method,
-		level:  logging.EffectiveLevel(),
+		app:                  app,
+		ep:                   ep,
+		method:               method,
+		level:                logging.EffectiveLevel(),
+		logOwnResponseErrors: logOwnResponseErrors,
 	}
 }
 
 func (s *Service) Serve(f serveFunc) {
 	startAt := time.Now()
 
-	logArgs, status, err := f()
+	logArgs, status, err, expected := f()
 
 	// level "none" logs nothing (not even errors); "error" logs only failed
 	// requests; "all" logs everything.
 	if s.level == constant.LoggingLevelNone {
 		return
 	}
+
+	if expected && !s.logOwnResponseErrors {
+		return
+	}
+
 	if s.level != constant.LoggingLevelAll && err == nil {
 		return
 	}

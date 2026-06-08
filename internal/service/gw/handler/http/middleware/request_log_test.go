@@ -12,6 +12,7 @@ import (
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/rw_wrapper"
 )
 
 func captureLogs(t *testing.T, f func()) string {
@@ -27,8 +28,12 @@ func captureLogs(t *testing.T, f func()) string {
 }
 
 func runRequestLog(ep *domEndpointModel.Endpoint, backend http.HandlerFunc, req *http.Request) {
+	runRequestLogWithOwnResponseErrors(ep, backend, req, false)
+}
+
+func runRequestLogWithOwnResponseErrors(ep *domEndpointModel.Endpoint, backend http.HandlerFunc, req *http.Request, logOwnResponseErrors bool) {
 	app := &domAppModel.App{Name: "test-app"}
-	handler := NewRequestLog(app, ep, "/path")(backend)
+	handler := NewRequestLog(app, ep, "/path", logOwnResponseErrors)(backend)
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 }
 
@@ -120,5 +125,38 @@ func TestRequestLogLevelErrorLogsFailure(t *testing.T) {
 	out := captureLogs(t, func() { runRequestLog(ep, backend, req) })
 	if !strings.Contains(out, "500") {
 		t.Fatalf("level=error must log failed request, got: %s", out)
+	}
+}
+
+// expectedBackend mimics the auth middleware: it marks the response as the
+// gateway's own expected non-2xx and writes a 401.
+func expectedBackend(w http.ResponseWriter, _ *http.Request) {
+	if rw, ok := w.(*rw_wrapper.Wrapper); ok {
+		rw.MarkExpected()
+	}
+	w.WriteHeader(http.StatusUnauthorized)
+}
+
+func TestRequestLogOwnResponseErrorsDisabledSkipsOwn401(t *testing.T) {
+	ep := &domEndpointModel.Endpoint{
+		Logging: loggingModel.Logging{Level: "all"},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/path", nil)
+
+	out := captureLogs(t, func() { runRequestLogWithOwnResponseErrors(ep, expectedBackend, req, false) })
+	if strings.TrimSpace(out) != "" {
+		t.Fatalf("disabled log_own_response_errors must skip own 401 even at level=all, got: %s", out)
+	}
+}
+
+func TestRequestLogOwnResponseErrorsEnabledLogsOwn401(t *testing.T) {
+	ep := &domEndpointModel.Endpoint{
+		Logging: loggingModel.Logging{Level: "error"},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/path", nil)
+
+	out := captureLogs(t, func() { runRequestLogWithOwnResponseErrors(ep, expectedBackend, req, true) })
+	if !strings.Contains(out, "401") {
+		t.Fatalf("enabled log_own_response_errors must log own 401 at level=error, got: %s", out)
 	}
 }

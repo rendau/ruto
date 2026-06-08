@@ -123,6 +123,7 @@ function normalizeRoot(value: RootMain): RootMain {
       methods: []
     },
     logging: normalizeLogging(value?.logging),
+    log_own_response_errors: Boolean(value?.log_own_response_errors),
     variables: variablesToArray((value as RootMain & { variables?: Variable[] | Record<string, string> }).variables)
   };
 }
@@ -206,6 +207,7 @@ function serializeRoot(value: RootMain): RootMain {
       methods: []
     },
     logging: normalizeLogging(value?.logging),
+    log_own_response_errors: Boolean(value?.log_own_response_errors),
     variables: variablesToMap(value?.variables) as unknown as Variable[]
   };
 }

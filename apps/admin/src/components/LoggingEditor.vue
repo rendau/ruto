@@ -5,6 +5,7 @@ import type { Logging } from "../types/api";
 
 const props = defineProps<{
   modelValue: Logging;
+  hideMode?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -15,10 +16,10 @@ const local = ref<Logging>(normalizeLogging(props.modelValue));
 const pushingToParent = ref(false);
 
 const levelOptions = [
-  { label: "default (inherit / error)", value: "" },
+  { label: "inherit", value: "" },
   { label: "all", value: "all" },
   { label: "error", value: "error" },
-  { label: "none (don't log)", value: "none" }
+  { label: "don't log", value: "none" }
 ];
 
 const modeOptions = [
@@ -59,7 +60,7 @@ function setLimit(field: "req_body_limit" | "resp_body_limit", value: number | n
 <template>
   <div class="logging-editor">
     <div class="logging-head">
-      <label class="logging-field">
+      <label v-if="!hideMode" class="logging-field">
         <span>Mode</span>
         <n-select
           :value="local.mode"
@@ -115,12 +116,23 @@ function setLimit(field: "req_body_limit" | "resp_body_limit", value: number | n
 
 <style scoped>
 .logging-editor {
+  border: 1px solid #425c7f;
+  border-radius: 8px;
+  background: #1e2d44;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.logging-head,
+.logging-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #2c405d;
+}
+
 .logging-limits {
   display: flex;
   flex-wrap: wrap;
@@ -154,5 +166,20 @@ function setLimit(field: "req_body_limit" | "resp_body_limit", value: number | n
 .logging-hint {
   margin: 0;
   font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .logging-editor {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .logging-head {
+    flex-direction: column;
+  }
+
+  .logging-field {
+    min-width: 0;
+  }
 }
 </style>

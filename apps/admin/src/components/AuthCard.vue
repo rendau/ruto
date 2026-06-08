@@ -13,6 +13,7 @@ type AuthIcon = {
 const props = withDefaults(defineProps<{
   auth?: Auth | null;
   title?: string;
+  hideMode?: boolean;
 }>(), {
   title: "Auth"
 });
@@ -20,6 +21,9 @@ const props = withDefaults(defineProps<{
 const authSummary = computed(() => {
   if (!props.auth?.enabled) {
     return "Public access (auth disabled)";
+  }
+  if (props.hideMode) {
+    return "Auth enabled";
   }
   const mode = (props.auth.mode || "extend").toLowerCase() === "replace" ? "replace" : "extend";
   return `Auth enabled, mode: ${mode}`;

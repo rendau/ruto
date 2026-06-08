@@ -5,12 +5,16 @@ import type { Logging } from "../types/api";
 const props = withDefaults(defineProps<{
   logging?: Logging | null;
   title?: string;
+  hideMode?: boolean;
 }>(), {
   title: "Logging"
 });
 
 const summary = computed(() => {
   const level = props.logging?.level || "default (error)";
+  if (props.hideMode) {
+    return level === "none" ? "level: none (logging disabled)" : `level: ${level}`;
+  }
   const mode = (props.logging?.mode || "extend").toLowerCase() === "replace" ? "replace" : "extend";
   if (level === "none") {
     return `level: none (logging disabled), mode: ${mode}`;

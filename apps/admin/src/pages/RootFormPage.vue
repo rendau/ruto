@@ -31,6 +31,7 @@ const form = ref<RootMain>({
   jwt: [],
   auth: { ...emptyAuth },
   logging: { ...emptyLogging },
+  log_own_response_errors: false,
   variables: []
 });
 
@@ -167,18 +168,28 @@ onMounted(() => {
     <h3 class="section-title">Auth</h3>
     <div class="field">
       <span>Auth</span>
-      <AuthEditor v-if="canEdit" v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" />
-      <AuthCard v-else :auth="form.auth" title="" />
+      <AuthEditor v-if="canEdit" v-model="form.auth" :jwt-kid-options="jwtKidOptions" :variable-options="effectiveVariables" hide-mode />
+      <AuthCard v-else :auth="form.auth" title="" hide-mode />
     </div>
 
     <h3 class="section-title">Logging</h3>
     <div class="field">
       <span>Request logging</span>
-      <LoggingEditor v-if="canEdit" v-model="form.logging" />
-      <LoggingCard v-else :logging="form.logging" title="" />
+      <LoggingEditor v-if="canEdit" v-model="form.logging" hide-mode />
+      <LoggingCard v-else :logging="form.logging" title="" hide-mode />
     </div>
+    <label class="field">
+      <span>Log own response errors</span>
+      <n-space align="center">
+        <n-switch v-model:value="form.log_own_response_errors" :disabled="!canEdit">
+          <template #checked>Enabled</template>
+          <template #unchecked>Disabled</template>
+        </n-switch>
+        <span class="muted">When off, error responses the gateway returns itself (e.g. auth 401) are not logged at any level.</span>
+      </n-space>
+    </label>
 
-    <div v-if="canEdit" class="actions">
+    <div v-if="canEdit" class="actions" style="margin-top: 0.6rem;">
       <n-button type="primary" attr-type="submit" :loading="saving">
         {{ saving ? "Saving..." : "Save Root" }}
       </n-button>

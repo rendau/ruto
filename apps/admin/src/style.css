@@ -133,6 +133,10 @@ select {
 }
 
 .variable-editor {
+  border: 1px solid #425c7f;
+  border-radius: 8px;
+  background: #1e2d44;
+  padding: 12px;
   display: grid;
   gap: 8px;
 }
@@ -162,6 +166,11 @@ select {
 }
 
 @media (max-width: 720px) {
+  .variable-editor {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
   .variable-editor-head {
     display: none;
   }
