@@ -11,7 +11,7 @@ const props = withDefaults(defineProps<{
 });
 
 const summary = computed(() => {
-  const level = props.logging?.level || "default (error)";
+  const level = props.logging?.level || "inherit";
   if (props.hideMode) {
     return level === "none" ? "level: none (logging disabled)" : `level: ${level}`;
   }
