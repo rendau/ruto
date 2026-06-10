@@ -4,6 +4,7 @@ import { onBeforeRouteLeave, RouterLink, useRoute, useRouter, type RouteLocation
 import { useDialog } from "naive-ui";
 import {
   AddOutline,
+  CopyOutline,
   CreateOutline,
   DocumentTextOutline,
   FlashOutline,
@@ -79,6 +80,38 @@ const grpcInstructionOpen = ref(false);
 const root = ref<RootMain | null>(null);
 const testEndpoint = ref<EndpointMain | null>(null);
 const testModalVisible = ref(false);
+
+function cleanPathPart(part: string): string {
+  return (part || "").trim().replace(/^\/+|\/+$/g, "");
+}
+
+function joinUrl(baseUrl: string, path: string): string {
+  const base = (baseUrl || "").trim().replace(/\/+$/g, "");
+  if (!base) {
+    return "";
+  }
+  const cleanedPath = cleanPathPart(path);
+  return cleanedPath ? `${base}/${cleanedPath}` : base;
+}
+
+const appPublicUrl = computed(() => {
+  if (!app.value) {
+    return "";
+  }
+  return joinUrl(root.value?.base_url || "", app.value.path_prefix);
+});
+
+async function copyPublicUrl() {
+  if (!appPublicUrl.value) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(appPublicUrl.value);
+    notifySuccess("Public URL copied");
+  } catch {
+    notifyError("Unable to copy public url");
+  }
+}
 
 type EndpointAuthIcon = {
   key: "ip_validation" | "jwt" | "basic" | "api_key";
@@ -1389,6 +1422,21 @@ onBeforeRouteLeave((to) => {
       <div>
         <span class="label">Path Prefix</span>
         <strong>{{ app.path_prefix }}</strong>
+      </div>
+      <div>
+        <span class="label">Public URL</span>
+        <button
+          v-if="appPublicUrl"
+          class="endpoint-copy-link"
+          type="button"
+          title="Copy Public URL"
+          aria-label="Copy Public URL"
+          @click="copyPublicUrl"
+        >
+          <span class="endpoint-copy-value">{{ appPublicUrl }}</span>
+          <n-icon class="endpoint-copy-icon" :component="CopyOutline" aria-hidden="true" />
+        </button>
+        <strong v-else>—</strong>
       </div>
       <div>
         <span class="label">Backend</span>
