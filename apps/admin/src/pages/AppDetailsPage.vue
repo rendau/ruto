@@ -1446,10 +1446,6 @@ onBeforeRouteLeave((to) => {
         <span class="label">gRPC URL</span>
         <strong>{{ app.backend.grpc_url || "disabled" }}</strong>
       </div>
-      <div>
-        <span class="label">Status</span>
-        <strong>{{ app.active ? "active" : "inactive" }}</strong>
-      </div>
     </section>
 
     <div v-if="protocolOptions.length > 1" class="app-protocol-card">
