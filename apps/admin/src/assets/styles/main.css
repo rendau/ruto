@@ -1,0 +1,134 @@
+:root {
+  /* Brand palette — keep in sync with src/theme.ts */
+  --c-bg: #0b0e15;
+  --c-bg-soft: #0f131c;
+  --c-surface: #141a25;
+  --c-surface-2: #19202d;
+  --c-surface-3: #202938;
+  --c-border: #242d3d;
+  --c-border-strong: #313c52;
+  --c-code-bg: #0d1119;
+
+  --c-primary: #5b82f0;
+  --c-primary-hover: #7397f6;
+  --c-primary-soft: rgba(91, 130, 240, 0.14);
+  --c-teal: #22d3c5;
+
+  --c-text: #e7edf6;
+  --c-text-2: #aab6c8;
+  --c-text-3: #7c889b;
+
+  --c-success: #43c98b;
+  --c-warning: #e8b23a;
+  --c-error: #ef6f72;
+
+  --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
+
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  color-scheme: dark;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---- Scrollbars ---------------------------------------------------------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 134, 158, 0.35) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(120, 134, 158, 0.32);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 134, 158, 0.5);
+  background-clip: content-box;
+}
+
+/* ---- Utilities ----------------------------------------------------------- */
+
+.muted {
+  color: var(--c-text-3);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text-3);
+}
+
+.field-error {
+  color: var(--c-error);
+  font-size: 12px;
+}
+
+.danger-icon-button:hover {
+  border-color: var(--c-error);
+}
+
+/* ---- Page transition ----------------------------------------------------- */
+
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active,
+  .page-leave-active {
+    transition: none;
+  }
+}

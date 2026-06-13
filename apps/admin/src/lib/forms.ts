@@ -1,54 +1,7 @@
-import type {
-  Auth,
-  AuthMethod,
-  AuthMethodApiKey,
-  AuthMethodApiKeyItem,
-  AuthMethodBasic,
-  AuthMethodBasicUser,
-  AuthMethodIpValidation,
-  AuthMethodIpValidationItem,
-  AuthMethodJwt,
-  Logging,
-  Variable
-} from "../types/api";
+import { emptyAuth, normalizeAuth } from "@/api/normalize";
+import type { Auth, AuthMethod, AuthMethodType, Variable } from "@/api/types";
 
-export const emptyAuth: Auth = {
-  enabled: false,
-  mode: "extend",
-  methods: []
-};
-
-export const emptyLogging: Logging = {
-  mode: "extend",
-  level: "",
-  headers: false,
-  query_params: false,
-  req_body: false,
-  resp_body: false,
-  req_body_limit: 0,
-  resp_body_limit: 0
-};
-
-export function normalizeLogging(value?: Logging | null): Logging {
-  if (!value) {
-    return { ...emptyLogging };
-  }
-
-  const level = value.level === "all" || value.level === "error" || value.level === "none" ? value.level : "";
-
-  return {
-    mode: value.mode === "replace" ? "replace" : "extend",
-    level,
-    headers: !!value.headers,
-    query_params: !!value.query_params,
-    req_body: !!value.req_body,
-    resp_body: !!value.resp_body,
-    req_body_limit: Math.max(0, Math.trunc(value.req_body_limit || 0)),
-    resp_body_limit: Math.max(0, Math.trunc(value.resp_body_limit || 0))
-  };
-}
-
-export function createEmptyAuthMethod(type: "basic" | "api_key" | "jwt" | "ip_validation"): AuthMethod {
+export function createEmptyAuthMethod(type: AuthMethodType): AuthMethod {
   const result: AuthMethod = {};
   if (type === "basic") {
     result.basic = { users: [{ username: "", password: "" }] };
@@ -62,101 +15,11 @@ export function createEmptyAuthMethod(type: "basic" | "api_key" | "jwt" | "ip_va
   return result;
 }
 
-function normalizeApiKeyItem(value: AuthMethodApiKeyItem): AuthMethodApiKeyItem {
-  return { name: value?.name || "", key: value?.key || "" };
-}
-
-function normalizeIpItem(value: AuthMethodIpValidationItem): AuthMethodIpValidationItem {
-  return { name: value?.name || "", ip: value?.ip || "" };
-}
-
-function cloneBasicUser(value: AuthMethodBasicUser): AuthMethodBasicUser {
-  return {
-    username: value.username || "",
-    password: value.password || ""
-  };
-}
-
-function cloneBasic(value?: AuthMethodBasic): AuthMethodBasic | undefined {
-  if (!value) {
-    return undefined;
-  }
-  return {
-    users: (value.users || []).map(cloneBasicUser)
-  };
-}
-
-function cloneApiKey(value?: AuthMethodApiKey): AuthMethodApiKey | undefined {
-  if (!value) {
-    return undefined;
-  }
-  return {
-    header: value.header || "",
-    keys: (value.keys || []).map(normalizeApiKeyItem)
-  };
-}
-
-function cloneJwt(value?: AuthMethodJwt): AuthMethodJwt | undefined {
-  if (!value) {
-    return undefined;
-  }
-  return {
-    kid: value.kid || "",
-    roles: [...(value.roles || [])]
-  };
-}
-
-function cloneIpValidation(value?: AuthMethodIpValidation): AuthMethodIpValidation | undefined {
-  if (!value) {
-    return undefined;
-  }
-  return {
-    allowed_ips: (value.allowed_ips || []).map(normalizeIpItem)
-  };
-}
-
-export function cloneAuthMethod(value?: AuthMethod): AuthMethod {
-  return {
-    basic: cloneBasic(value?.basic),
-    api_key: cloneApiKey(value?.api_key),
-    jwt: cloneJwt(value?.jwt),
-    ip_validation: cloneIpValidation(value?.ip_validation)
-  };
-}
-
-export function normalizeAuth(value?: Auth | null): Auth {
-  if (!value) {
-    return { ...emptyAuth };
-  }
-
-  return {
-    enabled: !!value.enabled,
-    mode: value.mode === "replace" ? "replace" : "extend",
-    methods: (value.methods || []).map((method) => cloneAuthMethod(method))
-  };
-}
-
-export function generateSecret(length = 32): string {
-  const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  let result = "";
-  for (let i = 0; i < length; i += 1) {
-    result += charset[bytes[i] % charset.length];
-  }
-  return result;
-}
-
-export function prettyJson(value: unknown): string {
-  return JSON.stringify(value, null, 2);
-}
-
 export function parseAuthFromJson(value: string): Auth {
   if (!value.trim()) {
-    return { ...emptyAuth };
+    return emptyAuth();
   }
-  const parsed = JSON.parse(value) as Auth;
-  return normalizeAuth(parsed);
+  return normalizeAuth(JSON.parse(value) as Auth);
 }
 
 export function linesToArray(value: string): string[] {
@@ -168,6 +31,29 @@ export function linesToArray(value: string): string[] {
 
 export function arrayToLines(value?: string[]): string {
   return (value || []).join("\n");
+}
+
+function splitKeyValue(line: string): { key: string; value: string } | null {
+  const trimmed = line.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const colonIndex = trimmed.indexOf(":");
+  const equalsIndex = trimmed.indexOf("=");
+  let separatorIndex: number;
+  if (colonIndex >= 0 && equalsIndex >= 0) {
+    separatorIndex = Math.min(colonIndex, equalsIndex);
+  } else {
+    separatorIndex = Math.max(colonIndex, equalsIndex);
+  }
+  if (separatorIndex < 0) {
+    return { key: trimmed, value: "" };
+  }
+  const key = trimmed.slice(0, separatorIndex).trim();
+  if (!key) {
+    return null;
+  }
+  return { key, value: trimmed.slice(separatorIndex + 1).trim() };
 }
 
 export function recordToKeyValueLines(value?: Record<string, string> | null): string {
@@ -182,27 +68,10 @@ export function recordToKeyValueLines(value?: Record<string, string> | null): st
 export function keyValueLinesToRecord(value: string): Record<string, string> {
   const result: Record<string, string> = {};
   for (const line of value.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      continue;
+    const parsed = splitKeyValue(line);
+    if (parsed) {
+      result[parsed.key] = parsed.value;
     }
-    const colonIndex = trimmed.indexOf(":");
-    const equalsIndex = trimmed.indexOf("=");
-    let separatorIndex = -1;
-    if (colonIndex >= 0 && equalsIndex >= 0) {
-      separatorIndex = Math.min(colonIndex, equalsIndex);
-    } else {
-      separatorIndex = Math.max(colonIndex, equalsIndex);
-    }
-    if (separatorIndex < 0) {
-      result[trimmed] = "";
-      continue;
-    }
-    const key = trimmed.slice(0, separatorIndex).trim();
-    if (!key) {
-      continue;
-    }
-    result[key] = trimmed.slice(separatorIndex + 1).trim();
   }
   return result;
 }
@@ -214,54 +83,19 @@ export function variablesToKeyValueLines(value?: Variable[] | null): string {
 export function keyValueLinesToVariables(value: string): Variable[] {
   const result: Variable[] = [];
   for (const line of value.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      continue;
+    const parsed = splitKeyValue(line);
+    if (parsed) {
+      result.push(parsed);
     }
-    const colonIndex = trimmed.indexOf(":");
-    const equalsIndex = trimmed.indexOf("=");
-    let separatorIndex = -1;
-    if (colonIndex >= 0 && equalsIndex >= 0) {
-      separatorIndex = Math.min(colonIndex, equalsIndex);
-    } else {
-      separatorIndex = Math.max(colonIndex, equalsIndex);
-    }
-    if (separatorIndex < 0) {
-      result.push({ key: trimmed, value: "" });
-      continue;
-    }
-    const key = trimmed.slice(0, separatorIndex).trim();
-    if (!key) {
-      continue;
-    }
-    result.push({ key, value: trimmed.slice(separatorIndex + 1).trim() });
   }
   return result;
-}
-
-export function normalizeVariables(value?: Variable[] | Record<string, string> | null): Variable[] {
-  if (!value) {
-    return [];
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => ({
-      key: item?.key || "",
-      value: item?.value || ""
-    }));
-  }
-  return Object.entries(value).map(([key, itemValue]) => ({
-    key,
-    value: itemValue || ""
-  }));
 }
 
 export function hasDuplicateVariableKeys(value?: Variable[] | null): boolean {
   const seen = new Set<string>();
   for (const item of value || []) {
     const key = (item.key || "").trim();
-    if (!key) {
-      continue;
-    }
+    if (!key) continue;
     if (seen.has(key)) {
       return true;
     }

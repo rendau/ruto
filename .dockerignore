@@ -1,6 +1,14 @@
 .git
 .github
-node_modules
+
+# Node / admin SPA build artifacts (rebuilt inside the image)
+**/node_modules
+apps/admin/dist
+
+# Previous admin implementation kept for reference only
+apps/admin-prev
+
+# Local env files (templates are kept below)
 **/.env
 **/.env.local
 **/.env.*.local
