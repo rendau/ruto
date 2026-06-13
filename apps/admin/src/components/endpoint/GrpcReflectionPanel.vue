@@ -87,7 +87,7 @@ watch(
   <NModal
     :show="show"
     preset="card"
-    title="gRPC reflection"
+    title="gRPC"
     class="reflection-modal"
     :bordered="false"
     @update:show="(value: boolean) => emit('update:show', value)"
@@ -107,17 +107,23 @@ watch(
       </div>
 
       <div v-if="unregistered.length" class="reflection__list">
-        <label v-for="endpoint in unregistered" :key="endpoint.path" class="reflection__row">
+        <div
+          v-for="endpoint in unregistered"
+          :key="endpoint.path"
+          class="reflection__row"
+          @click="toggle(endpoint.path)"
+        >
           <NCheckbox
+            class="reflection__check"
             :checked="selected.has(endpoint.path)"
-            @update:checked="() => toggle(endpoint.path)"
+            :focusable="false"
           />
           <MethodBadge grpc method="grpc" />
           <div class="reflection__info">
             <code class="reflection__path">{{ endpoint.path }}</code>
             <span class="muted reflection__svc">{{ endpoint.service }} · {{ endpoint.method }}</span>
           </div>
-        </label>
+        </div>
       </div>
       <NEmpty
         v-else-if="!loading"
@@ -181,6 +187,11 @@ watch(
   border-radius: 8px;
   background: var(--c-surface);
   cursor: pointer;
+}
+
+.reflection__check {
+  /* The whole row toggles selection; the checkbox is purely visual. */
+  pointer-events: none;
 }
 
 .reflection__info {

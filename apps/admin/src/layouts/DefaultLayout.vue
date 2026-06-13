@@ -222,7 +222,21 @@ onBeforeUnmount(() => {
         :class="{ 'sider--mobile-open': mobileSidebarOpen }"
         :style="{ width: `${sidebarWidth}px` }"
       >
-        <AppNavSidebar @navigate="uiStore.closeMobileSidebar()" />
+        <nav class="mobile-nav">
+          <RouterLink
+            v-for="link in navLinks"
+            :key="link.name"
+            :to="{ name: link.name }"
+            class="mobile-nav__link"
+            :class="{ 'mobile-nav__link--active': activeNav === link.name }"
+            @click="uiStore.closeMobileSidebar()"
+          >
+            {{ link.label }}
+          </RouterLink>
+        </nav>
+        <div class="sider__apps">
+          <AppNavSidebar @navigate="uiStore.closeMobileSidebar()" />
+        </div>
       </aside>
       <button
         class="resize-handle"
@@ -398,11 +412,48 @@ onBeforeUnmount(() => {
 }
 
 .sider {
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
   height: 100%;
   background: var(--c-bg-soft);
   border-right: 1px solid var(--c-border);
   overflow: hidden;
+}
+
+.sider__apps {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Primary navigation, surfaced inside the drawer on mobile only. */
+.mobile-nav {
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.mobile-nav__link {
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--c-text-2);
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.mobile-nav__link:hover {
+  color: var(--c-text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mobile-nav__link--active {
+  color: var(--c-text);
+  background: var(--c-primary-soft);
 }
 
 .resize-handle {
@@ -442,6 +493,10 @@ onBeforeUnmount(() => {
 
   .topbar__nav {
     display: none;
+  }
+
+  .mobile-nav {
+    display: flex;
   }
 
   .snapshot-chip {

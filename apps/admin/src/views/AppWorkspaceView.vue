@@ -18,7 +18,6 @@ import {
   CreateOutline,
   FlashOutline,
   LockClosedOutline,
-  RefreshOutline,
   SearchOutline,
   TerminalOutline,
   TrashOutline
@@ -421,25 +420,14 @@ onBeforeUnmount(() => {
                   tertiary
                   @click="showSwagger = true"
                 >
-                  Swagger sync
+                  Swagger
                 </NButton>
                 <NButton v-if="hasGrpc" size="small" tertiary @click="showGrpcReflection = true">
-                  gRPC reflection
+                  gRPC
                 </NButton>
                 <NButton size="small" type="primary" @click="openCreate">
                   <template #icon><NIcon :component="AddOutline" /></template>
-                  New endpoint
-                </NButton>
-                <NButton
-                  size="small"
-                  quaternary
-                  circle
-                  :loading="loadingEndpoints"
-                  title="Refresh endpoints"
-                  aria-label="Refresh endpoints"
-                  @click="loadEndpoints"
-                >
-                  <template #icon><NIcon :component="RefreshOutline" /></template>
+                  Endpoint
                 </NButton>
               </div>
             </template>

@@ -184,7 +184,8 @@ onMounted(load);
     </div>
 
     <NSpin :show="loading">
-      <div class="kpi-grid">
+      <div class="dash-body">
+        <div class="kpi-grid">
         <div v-for="kpi in kpis" :key="kpi.key" class="kpi">
           <div class="kpi__top">
             <span class="kpi__label">{{ kpi.label }}</span>
@@ -251,6 +252,7 @@ onMounted(load);
         />
         <p v-else class="muted">No gateways are currently connected.</p>
       </SectionCard>
+      </div>
     </NSpin>
   </PageContainer>
 </template>
@@ -273,6 +275,12 @@ onMounted(load);
 .page-head__sub {
   margin: 3px 0 0;
   font-size: 13px;
+}
+
+.dash-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .kpi-grid {

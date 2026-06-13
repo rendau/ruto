@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { NInput } from "naive-ui";
+import VariableInput from "./VariableInput.vue";
 import { keyValueLinesToRecord, recordToKeyValueLines } from "@/lib/forms";
+import type { Variable } from "@/api/types";
 
 const props = withDefaults(
-  defineProps<{ modelValue: Record<string, string>; placeholder?: string; rows?: number }>(),
-  { placeholder: "Header-Name: value", rows: 3 }
+  defineProps<{
+    modelValue: Record<string, string>;
+    placeholder?: string;
+    rows?: number;
+    variables?: Variable[];
+  }>(),
+  { placeholder: "Header-Name: value", rows: 3, variables: () => [] }
 );
 
 const emit = defineEmits<{ "update:modelValue": [value: Record<string, string>] }>();
@@ -33,11 +39,12 @@ function onInput(value: string): void {
 </script>
 
 <template>
-  <NInput
-    :value="text"
+  <VariableInput
     type="textarea"
+    :model-value="text"
+    :variables="variables"
     :placeholder="placeholder"
     :autosize="{ minRows: rows, maxRows: 10 }"
-    @update:value="onInput"
+    @update:model-value="onInput"
   />
 </template>

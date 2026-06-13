@@ -178,11 +178,19 @@ async function detectSwagger(): Promise<void> {
             <div class="stacked">
               <label class="field">
                 <span class="field__label">Headers (one per line, "Name: value")</span>
-                <KeyValueTextarea v-model="model.backend.headers" placeholder="X-Internal: 1" />
+                <KeyValueTextarea
+                  v-model="model.backend.headers"
+                  :variables="authVariables"
+                  placeholder="X-Internal: 1"
+                />
               </label>
               <label class="field">
                 <span class="field__label">Query params (one per line, "name: value")</span>
-                <KeyValueTextarea v-model="model.backend.query_params" placeholder="env: prod" />
+                <KeyValueTextarea
+                  v-model="model.backend.query_params"
+                  :variables="authVariables"
+                  placeholder="env: prod"
+                />
               </label>
             </div>
           </NCollapseItem>

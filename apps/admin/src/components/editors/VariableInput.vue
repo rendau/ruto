@@ -76,18 +76,18 @@ const suggestions = computed(() => {
     .slice(0, 8);
 });
 
+// Coordinates are viewport-relative (the popup is teleported to <body> and
+// positioned with `fixed`) so it is never clipped by drawer/collapse overflow.
 function updatePopupPosition(): void {
   if (!trigger.value.active) return;
-  const root = rootRef.value;
   const el = getInputElement();
-  if (!root || !el) return;
+  if (!el) return;
   const index = el.selectionStart ?? 0;
   const coords = getCaretCoordinates(el, index);
-  const rootRect = root.getBoundingClientRect();
   const inputRect = el.getBoundingClientRect();
   popupPosition.value = {
-    top: inputRect.top - rootRect.top + coords.top + coords.height + 8,
-    left: inputRect.left - rootRect.left + coords.left
+    top: inputRect.top + coords.top - el.scrollTop + coords.height + 6,
+    left: inputRect.left + coords.left - el.scrollLeft
   };
 }
 
@@ -170,10 +170,12 @@ watch(
 
 onMounted(() => {
   window.addEventListener("resize", updatePopupPosition);
+  window.addEventListener("scroll", updatePopupPosition, true);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", updatePopupPosition);
+  window.removeEventListener("scroll", updatePopupPosition, true);
 });
 </script>
 
@@ -192,25 +194,27 @@ onBeforeUnmount(() => {
       @focus="onFocus"
       @blur="onBlur"
     />
-    <div
-      v-if="hasFocus && suggestions.length > 0"
-      class="variable-suggest"
-      role="listbox"
-      :style="{ top: `${popupPosition.top}px`, left: `${popupPosition.left}px` }"
-    >
-      <button
-        v-for="(item, index) in suggestions"
-        :key="item.key"
-        class="variable-suggest__item"
-        :class="{ 'variable-suggest__item--active': index === activeIndex }"
-        type="button"
-        @mouseenter="activeIndex = index"
-        @mousedown.prevent="insertVariable(item.key)"
+    <Teleport to="body">
+      <div
+        v-if="hasFocus && suggestions.length > 0"
+        class="variable-suggest"
+        role="listbox"
+        :style="{ top: `${popupPosition.top}px`, left: `${popupPosition.left}px` }"
       >
-        <span class="variable-suggest__key mono">{{ item.key }}</span>
-        <span class="variable-suggest__value">{{ item.value }}</span>
-      </button>
-    </div>
+        <button
+          v-for="(item, index) in suggestions"
+          :key="item.key"
+          class="variable-suggest__item"
+          :class="{ 'variable-suggest__item--active': index === activeIndex }"
+          type="button"
+          @mouseenter="activeIndex = index"
+          @mousedown.prevent="insertVariable(item.key)"
+        >
+          <span class="variable-suggest__key mono">{{ item.key }}</span>
+          <span class="variable-suggest__value">{{ item.value }}</span>
+        </button>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -221,8 +225,8 @@ onBeforeUnmount(() => {
 }
 
 .variable-suggest {
-  position: absolute;
-  z-index: 60;
+  position: fixed;
+  z-index: 5000;
   min-width: 200px;
   max-width: min(360px, calc(100vw - 24px));
   max-height: 260px;

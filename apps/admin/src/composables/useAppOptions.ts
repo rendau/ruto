@@ -6,5 +6,5 @@ export const useAppOptions = createOptionsLookup<AppMain>({
   list: () => listApps().then((rep) => rep.results ?? []),
   get: getApp,
   idOf: (app) => app.id,
-  labelOf: (app) => (app.name && app.name !== app.id ? `${app.name} · ${app.id}` : app.id)
+  labelOf: (app) => app.name?.trim() || app.id
 });

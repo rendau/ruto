@@ -210,11 +210,19 @@ function close(): void {
               </label>
               <label class="field">
                 <span class="field__label">Headers (one per line, "Name: value")</span>
-                <KeyValueTextarea v-model="model.backend.headers" placeholder="X-Scope: read" />
+                <KeyValueTextarea
+                  v-model="model.backend.headers"
+                  :variables="authVariables"
+                  placeholder="X-Scope: read"
+                />
               </label>
               <label class="field">
                 <span class="field__label">Query params (one per line, "name: value")</span>
-                <KeyValueTextarea v-model="model.backend.query_params" placeholder="expand: true" />
+                <KeyValueTextarea
+                  v-model="model.backend.query_params"
+                  :variables="authVariables"
+                  placeholder="expand: true"
+                />
               </label>
             </div>
           </NCollapseItem>

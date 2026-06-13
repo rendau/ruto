@@ -3,6 +3,7 @@ import { NDrawer, NDrawerContent, NSpin, NTag } from "naive-ui";
 import { getUser } from "@/api/usr";
 import { useDrawerResource } from "@/composables/useDrawerResource";
 import { useIsMobile } from "@/composables/useIsMobile";
+import { useAppOptions } from "@/composables/useAppOptions";
 import StatusTag from "@/components/common/StatusTag.vue";
 import DefList from "@/components/common/DefList.vue";
 import DefRow from "@/components/common/DefRow.vue";
@@ -12,11 +13,19 @@ const props = defineProps<{ show: boolean; userId: number | null }>();
 const emit = defineEmits<{ "update:show": [value: boolean] }>();
 
 const isMobile = useIsMobile();
+const appOptions = useAppOptions();
 
 const { loading, item } = useDrawerResource<UsrMain, number>({
   show: () => props.show,
   id: () => props.userId,
   fetch: getUser,
+  onLoaded: (user) => {
+    if (user.is_admin || user.all_apps || !user.app_ids.length) return;
+    void appOptions.search();
+    for (const id of user.app_ids) {
+      void appOptions.ensure(id);
+    }
+  },
   onError: () => emit("update:show", false)
 });
 </script>
@@ -47,7 +56,9 @@ const { loading, item } = useDrawerResource<UsrMain, number>({
           <DefRow label="Access">
             <span v-if="item.is_admin || item.all_apps">All applications</span>
             <div v-else-if="item.app_ids.length" class="access-list">
-              <NTag v-for="id in item.app_ids" :key="id" size="small" :bordered="false">{{ id }}</NTag>
+              <NTag v-for="id in item.app_ids" :key="id" size="small" :bordered="false">
+                {{ appOptions.nameOf(id) }}
+              </NTag>
             </div>
             <span v-else class="muted">No applications</span>
           </DefRow>

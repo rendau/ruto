@@ -87,24 +87,26 @@ const { loading, item, reload } = useDrawerResource<EndpointMain, string>({
   onError: () => emit("update:show", false)
 });
 
-const effective = computed(() => inherited.value ?? item.value);
+// The "Effective" tab shows the fully inherited endpoint; toggling "Interpolate"
+// swaps in the variant with variables resolved (lazily fetched on first use).
+const effective = computed<EndpointMain | null>(() => {
+  if (showInterpolated.value) {
+    return interpolated.value ?? inherited.value ?? item.value;
+  }
+  return inherited.value ?? item.value;
+});
 
-const hasBackendExtras = computed(() => {
-  const backend = item.value?.backend;
+function hasBackendExtras(ep: EndpointMain | null): boolean {
+  const backend = ep?.backend;
   return Boolean(
     backend &&
       (Object.keys(backend.headers || {}).length || Object.keys(backend.query_params || {}).length)
   );
-});
-
-function toItems(record: Record<string, string>): Variable[] {
-  return variablesToArray(record);
 }
 
-const resolvedVariables = computed(() => {
-  const source = showInterpolated.value ? interpolated.value : effective.value;
-  return source?.variables ?? [];
-});
+function toItems(record: Record<string, string> | undefined): Variable[] {
+  return variablesToArray(record);
+}
 
 const publicUrl = computed(() => {
   const endpoint = item.value;
@@ -204,27 +206,29 @@ function remove(): void {
             </DefRow>
           </DefList>
 
-          <section v-if="hasBackendExtras" class="detail__section">
-            <span class="section-label">Backend extras</span>
-            <div class="detail__cols">
-              <div>
-                <span class="muted detail__minilabel">Headers</span>
-                <KeyValueGrid :items="toItems(item.backend.headers)" empty-text="No headers" />
-              </div>
-              <div>
-                <span class="muted detail__minilabel">Query params</span>
-                <KeyValueGrid
-                  :items="toItems(item.backend.query_params)"
-                  empty-text="No query params"
-                />
-              </div>
-            </div>
-          </section>
-
           <section class="detail__section">
             <NTabs type="segment" size="small" animated>
               <NTabPane name="configured" tab="Configured">
                 <div class="detail__stack">
+                  <div v-if="hasBackendExtras(item)">
+                    <span class="section-label">Backend extras</span>
+                    <div class="detail__cols">
+                      <div>
+                        <span class="muted detail__minilabel">Headers</span>
+                        <KeyValueGrid
+                          :items="toItems(item.backend.headers)"
+                          empty-text="No headers"
+                        />
+                      </div>
+                      <div>
+                        <span class="muted detail__minilabel">Query params</span>
+                        <KeyValueGrid
+                          :items="toItems(item.backend.query_params)"
+                          empty-text="No query params"
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <div>
                     <span class="section-label">Authentication</span>
                     <AuthSummary :auth="item.auth" />
@@ -233,24 +237,48 @@ function remove(): void {
                     <span class="section-label">Logging</span>
                     <LoggingSummary :logging="item.logging" />
                   </div>
+                  <div>
+                    <span class="section-label">Variables</span>
+                    <KeyValueGrid :items="item.variables" empty-text="No variables" />
+                  </div>
                 </div>
               </NTabPane>
               <NTabPane name="effective" tab="Effective">
                 <div v-if="effective" class="detail__stack">
+                  <div class="detail__vars-head">
+                    <span class="muted detail__hint">Inherited from app &amp; root</span>
+                    <SwitchField v-model="showInterpolated" label="Interpolate" />
+                  </div>
+                  <div v-if="hasBackendExtras(effective)">
+                    <span class="section-label">Backend extras</span>
+                    <div class="detail__cols">
+                      <div>
+                        <span class="muted detail__minilabel">Headers</span>
+                        <KeyValueGrid
+                          :items="toItems(effective.backend.headers)"
+                          empty-text="No headers"
+                        />
+                      </div>
+                      <div>
+                        <span class="muted detail__minilabel">Query params</span>
+                        <KeyValueGrid
+                          :items="toItems(effective.backend.query_params)"
+                          empty-text="No query params"
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <div>
-                    <span class="section-label">Authentication (inherited)</span>
+                    <span class="section-label">Authentication</span>
                     <AuthSummary :auth="effective.auth" />
                   </div>
                   <div>
-                    <span class="section-label">Logging (inherited)</span>
+                    <span class="section-label">Logging</span>
                     <LoggingSummary :logging="effective.logging" />
                   </div>
                   <div>
-                    <div class="detail__vars-head">
-                      <span class="section-label">Variables</span>
-                      <SwitchField v-model="showInterpolated" label="Resolved" />
-                    </div>
-                    <KeyValueGrid :items="resolvedVariables" empty-text="No variables" />
+                    <span class="section-label">Variables</span>
+                    <KeyValueGrid :items="effective.variables" empty-text="No variables" />
                   </div>
                 </div>
               </NTabPane>
@@ -362,6 +390,10 @@ function remove(): void {
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+}
+
+.detail__hint {
+  font-size: 12px;
 }
 
 .detail__footer {

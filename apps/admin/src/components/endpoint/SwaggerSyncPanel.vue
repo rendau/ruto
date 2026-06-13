@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { NAlert, NButton, NCheckbox, NEmpty, NModal, NSpin, useMessage } from "naive-ui";
+import {
+  NAlert,
+  NButton,
+  NCheckbox,
+  NCollapse,
+  NCollapseItem,
+  NEmpty,
+  NModal,
+  NSpin,
+  useMessage
+} from "naive-ui";
 import { getAppSwaggerEndpointsDiff } from "@/api/app";
 import { createEndpoint } from "@/api/endpoint";
 import { apiErrorMessage } from "@/api/http";
@@ -86,7 +96,7 @@ watch(
   <NModal
     :show="show"
     preset="card"
-    title="Swagger sync"
+    title="Swagger"
     class="swagger-modal"
     :bordered="false"
     @update:show="(value: boolean) => emit('update:show', value)"
@@ -103,35 +113,47 @@ watch(
             </div>
           </div>
           <div v-if="unregistered.length" class="swagger__list">
-            <label
+            <div
               v-for="endpoint in unregistered"
               :key="keyOf(endpoint)"
               class="swagger__row"
+              @click="toggle(endpoint)"
             >
               <NCheckbox
+                class="swagger__check"
                 :checked="selected.has(keyOf(endpoint))"
-                @update:checked="() => toggle(endpoint)"
+                :focusable="false"
               />
               <MethodBadge :method="endpoint.method" />
               <code class="swagger__path">{{ endpoint.path }}</code>
-            </label>
+            </div>
           </div>
           <NEmpty v-else size="small" description="Everything is in sync" />
         </section>
 
         <section v-if="registeredInvalid.length" class="swagger__section">
-          <span class="section-label">Registered but missing in swagger</span>
-          <p class="muted swagger__sub">These endpoints are no longer present in the swagger spec</p>
-          <div class="swagger__list">
-            <div
-              v-for="endpoint in registeredInvalid"
-              :key="keyOf(endpoint)"
-              class="swagger__row swagger__row--invalid"
-            >
-              <MethodBadge :method="endpoint.method" />
-              <code class="swagger__path">{{ endpoint.path }}</code>
-            </div>
-          </div>
+          <NCollapse>
+            <NCollapseItem name="invalid">
+              <template #header>
+                <span class="section-label">
+                  Registered but missing in swagger ({{ registeredInvalid.length }})
+                </span>
+              </template>
+              <p class="muted swagger__sub">
+                These endpoints are no longer present in the swagger spec
+              </p>
+              <div class="swagger__list">
+                <div
+                  v-for="endpoint in registeredInvalid"
+                  :key="keyOf(endpoint)"
+                  class="swagger__row swagger__row--invalid"
+                >
+                  <MethodBadge :method="endpoint.method" />
+                  <code class="swagger__path">{{ endpoint.path }}</code>
+                </div>
+              </div>
+            </NCollapseItem>
+          </NCollapse>
         </section>
       </div>
     </NSpin>
@@ -197,6 +219,11 @@ watch(
   border-radius: 8px;
   background: var(--c-surface);
   cursor: pointer;
+}
+
+.swagger__check {
+  /* The whole row toggles selection; the checkbox is purely visual. */
+  pointer-events: none;
 }
 
 .swagger__row--invalid {
