@@ -33,10 +33,10 @@ jobs:
         include:
           - service: core
             image: ruto-core
-            dockerfile: docker/core.Dockerfile
+            dockerfile: docker/Dockerfile.core
           - service: gateway
             image: ruto-gateway
-            dockerfile: docker/gateway.Dockerfile
+            dockerfile: docker/Dockerfile.gateway
     env:
       OWNER: ${{ github.repository_owner }}
       IMAGE: ${{ matrix.image }}
