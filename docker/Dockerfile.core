@@ -4,7 +4,7 @@ WORKDIR /src/apps/admin
 
 RUN npm install -g pnpm@10
 
-COPY apps/admin/package.json apps/admin/pnpm-lock.yaml ./
+COPY apps/admin/package.json apps/admin/pnpm-lock.yaml apps/admin/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY apps/admin ./

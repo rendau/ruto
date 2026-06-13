@@ -1,0 +1,6 @@
+# Not a multi-package workspace — pnpm 10+ reads project settings from here
+# (the package.json "pnpm" field is no longer honored). Used only to approve
+# the build scripts of these dependencies so installs run them without prompting.
+onlyBuiltDependencies:
+  - esbuild
+  - vue-demi
