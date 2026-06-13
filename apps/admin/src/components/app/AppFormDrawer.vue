@@ -13,22 +13,23 @@ import {
   NIcon,
   NInput,
   NInputGroup,
-  NSwitch,
   useMessage,
   type FormItemRule
 } from "naive-ui";
 import { SearchOutline } from "@vicons/ionicons5";
 import { createApp, getAppSwaggerUrlByBackendUrl, updateApp } from "@/api/app";
-import { emptyAuth, emptyLogging } from "@/api/normalize";
 import { apiErrorMessage } from "@/api/http";
+import { emptyApp } from "@/lib/entities";
 import { useAppForm } from "@/composables/useAppForm";
 import { useEntityForm } from "@/composables/useEntityForm";
+import { useIsMobile } from "@/composables/useIsMobile";
 import { useAppsStore } from "@/stores/apps";
 import { useRootStore } from "@/stores/root";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import KeyValueTextarea from "@/components/editors/KeyValueTextarea.vue";
+import SwitchField from "@/components/common/SwitchField.vue";
 import type { AppCreateRep, AppMain } from "@/api/types";
 
 const router = useRouter();
@@ -36,23 +37,34 @@ const message = useMessage();
 const appForm = useAppForm();
 const appsStore = useAppsStore();
 const rootStore = useRootStore();
-
-function emptyApp(): AppMain {
-  return {
-    id: "",
-    active: true,
-    exclude_from_metrics: false,
-    path_prefix: "",
-    name: "",
-    backend: { url: "", swagger_url: "", grpc_url: "", headers: {}, query_params: {} },
-    auth: emptyAuth(),
-    logging: emptyLogging(),
-    variables: []
-  };
-}
+const isMobile = useIsMobile();
 
 const model = reactive<AppMain>(emptyApp());
 const detecting = ref(false);
+const expandedNames = ref<string[]>([]);
+
+function nonDefaultSections(): string[] {
+  const names: string[] = [];
+  if (
+    Object.keys(model.backend.headers).length ||
+    Object.keys(model.backend.query_params).length
+  ) {
+    names.push("backend-extra");
+  }
+  // Default auth = enabled + extend with no methods; expand when it deviates
+  // (disabled, replace mode, or any methods configured).
+  if (!model.auth.enabled || model.auth.mode === "replace" || model.auth.methods.length) {
+    names.push("auth");
+  }
+  const lg = model.logging;
+  if (lg.level !== "" || lg.mode !== "extend" || lg.headers || lg.query_params || lg.req_body || lg.resp_body) {
+    names.push("logging");
+  }
+  if (model.variables.length) {
+    names.push("variables");
+  }
+  return names;
+}
 
 const inheritedVariables = computed(() => rootStore.root?.variables ?? []);
 const authVariables = computed(() => [...inheritedVariables.value, ...model.variables]);
@@ -73,6 +85,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<AppMain, AppCreate
   entity: () => appForm.app.value,
   seed: (app) => {
     Object.assign(model, app ? (JSON.parse(JSON.stringify(app)) as AppMain) : emptyApp());
+    expandedNames.value = nonDefaultSections();
     void rootStore.ensureLoaded();
   },
   create: () => createApp(model),
@@ -110,7 +123,7 @@ async function detectSwagger(): Promise<void> {
 <template>
   <NDrawer
     :show="appForm.show.value"
-    :width="680"
+    :width="isMobile ? '100%' : 680"
     placement="right"
     :auto-focus="false"
     @update:show="(value: boolean) => { if (!value) appForm.close(); }"
@@ -137,10 +150,7 @@ async function detectSwagger(): Promise<void> {
         </NFormItem>
 
         <div class="switch-row">
-          <NSwitch v-model:value="model.active">
-            <template #checked>Active</template>
-            <template #unchecked>Inactive</template>
-          </NSwitch>
+          <SwitchField v-model="model.active" label="Active" />
           <NCheckbox v-model:checked="model.exclude_from_metrics">Exclude from metrics</NCheckbox>
         </div>
 
@@ -163,7 +173,7 @@ async function detectSwagger(): Promise<void> {
           </NFormItem>
         </div>
 
-        <NCollapse class="advanced">
+        <NCollapse v-model:expanded-names="expandedNames" class="advanced">
           <NCollapseItem title="Backend headers & query params" name="backend-extra">
             <div class="stacked">
               <label class="field">
@@ -197,10 +207,12 @@ async function detectSwagger(): Promise<void> {
       </NForm>
 
       <template #footer>
-        <NButton :disabled="submitting" @click="appForm.close()">Cancel</NButton>
-        <NButton type="primary" :loading="submitting" @click="submit">
-          {{ isEdit ? "Save changes" : "Create application" }}
-        </NButton>
+        <div class="form-actions">
+          <NButton :disabled="submitting" @click="appForm.close()">Cancel</NButton>
+          <NButton type="primary" :loading="submitting" @click="submit">
+            {{ isEdit ? "Save changes" : "Create application" }}
+          </NButton>
+        </div>
       </template>
     </NDrawerContent>
   </NDrawer>

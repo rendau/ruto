@@ -1,23 +1,20 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import {
-  NAlert,
-  NDescriptions,
-  NDescriptionsItem,
-  NDrawer,
-  NDrawerContent,
-  NTag
-} from "naive-ui";
+import { NAlert, NDrawer, NDrawerContent, NTag } from "naive-ui";
 import { useSnapshotStore } from "@/stores/snapshot";
+import { useIsMobile } from "@/composables/useIsMobile";
 import { formatUnixAge, formatUnixDateTime } from "@/lib/datetime";
 import { formatBytes } from "@/lib/format";
 import CopyText from "@/components/common/CopyText.vue";
+import DefList from "@/components/common/DefList.vue";
+import DefRow from "@/components/common/DefRow.vue";
 import type { GatewayStateItem } from "@/api/types";
 
 const props = defineProps<{ show: boolean; gateway: GatewayStateItem | null }>();
 const emit = defineEmits<{ "update:show": [value: boolean] }>();
 
 const snapshotStore = useSnapshotStore();
+const isMobile = useIsMobile();
 
 const statusType = computed<"success" | "warning" | "error">(() => {
   if (props.gateway?.status === "online") return "success";
@@ -33,7 +30,7 @@ const upToDate = computed(
 <template>
   <NDrawer
     :show="show"
-    :width="480"
+    :width="isMobile ? '100%' : 480"
     placement="right"
     @update:show="(value: boolean) => emit('update:show', value)"
   >
@@ -48,35 +45,31 @@ const upToDate = computed(
           {{ gateway.last_error }}
         </NAlert>
 
-        <NDescriptions :column="1" label-placement="left" bordered size="small">
-          <NDescriptionsItem label="Host">{{ gateway.host_name || "—" }}</NDescriptionsItem>
-          <NDescriptionsItem label="Applied version">
+        <DefList>
+          <DefRow label="Host">{{ gateway.host_name || "—" }}</DefRow>
+          <DefRow label="Applied version">
             <div class="gw__version">
-              <CopyText :value="gateway.snapshot_version" label="Snapshot version" />
+              <CopyText :value="gateway.snapshot_version" label="Snapshot version" wrap />
               <NTag size="tiny" :bordered="false" :type="upToDate ? 'success' : 'warning'">
                 {{ upToDate ? "current" : "behind" }}
               </NTag>
             </div>
-          </NDescriptionsItem>
-          <NDescriptionsItem label="Target version">
+          </DefRow>
+          <DefRow label="Target version">
             <span class="mono">{{ snapshotStore.version.slice(0, 16) || "—" }}</span>
-          </NDescriptionsItem>
-          <NDescriptionsItem label="Last applied">
+          </DefRow>
+          <DefRow label="Last applied">
             {{ formatUnixDateTime(gateway.last_apply_at_unix) }}
             <span class="muted">({{ formatUnixAge(gateway.last_apply_at_unix) }})</span>
-          </NDescriptionsItem>
-          <NDescriptionsItem label="Last seen">
+          </DefRow>
+          <DefRow label="Last seen">
             {{ formatUnixDateTime(gateway.last_seen_at_unix) }}
             <span class="muted">({{ formatUnixAge(gateway.last_seen_at_unix) }})</span>
-          </NDescriptionsItem>
-          <NDescriptionsItem label="Started">
-            {{ formatUnixDateTime(gateway.started_at_unix) }}
-          </NDescriptionsItem>
-          <NDescriptionsItem label="Memory">
-            {{ formatBytes(gateway.memory_alloc_bytes) }}
-          </NDescriptionsItem>
-          <NDescriptionsItem label="Goroutines">{{ gateway.goroutines_count }}</NDescriptionsItem>
-        </NDescriptions>
+          </DefRow>
+          <DefRow label="Started">{{ formatUnixDateTime(gateway.started_at_unix) }}</DefRow>
+          <DefRow label="Memory">{{ formatBytes(gateway.memory_alloc_bytes) }}</DefRow>
+          <DefRow label="Goroutines">{{ gateway.goroutines_count }}</DefRow>
+        </DefList>
       </div>
     </NDrawerContent>
   </NDrawer>

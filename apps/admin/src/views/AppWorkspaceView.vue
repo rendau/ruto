@@ -41,6 +41,7 @@ import StatusTag from "@/components/common/StatusTag.vue";
 import MethodBadge from "@/components/common/MethodBadge.vue";
 import CopyText from "@/components/common/CopyText.vue";
 import KeyValueGrid from "@/components/common/KeyValueGrid.vue";
+import SwitchField from "@/components/common/SwitchField.vue";
 import AuthSummary from "@/components/display/AuthSummary.vue";
 import LoggingSummary from "@/components/display/LoggingSummary.vue";
 import EndpointFormDrawer from "@/components/endpoint/EndpointFormDrawer.vue";
@@ -332,24 +333,31 @@ onBeforeUnmount(() => {
                 <CopyText :value="publicBase" label="Public base URL" />
               </div>
             </div>
-            <div v-if="canEdit" class="app-head__actions">
-              <NSwitch :value="app.active" :loading="togglingApp" @update:value="toggleApp">
-                <template #checked>Active</template>
-                <template #unchecked>Inactive</template>
-              </NSwitch>
-              <NButton tertiary @click="appForm.open(app)">
+            <div v-if="canEdit || hasGrpc" class="app-head__actions">
+              <label v-if="canEdit" class="switch-field">
+                <NSwitch
+                  :value="app.active"
+                  :loading="togglingApp"
+                  size="small"
+                  @update:value="toggleApp"
+                />
+                <span class="switch-field__label">Active</span>
+              </label>
+              <NButton v-if="canEdit" tertiary @click="appForm.open(app)">
                 <template #icon><NIcon :component="CreateOutline" /></template>
                 Edit
               </NButton>
-              <NButton
-                v-if="hasGrpc"
-                tertiary
-                @click="showGrpcInstruction = true"
-              >
+              <NButton v-if="hasGrpc" tertiary @click="showGrpcInstruction = true">
                 <template #icon><NIcon :component="TerminalOutline" /></template>
                 Connect
               </NButton>
-              <NButton class="danger-icon-button" type="error" tertiary @click="removeApp">
+              <NButton
+                v-if="canEdit"
+                class="danger-icon-button"
+                type="error"
+                tertiary
+                @click="removeApp"
+              >
                 <template #icon><NIcon :component="TrashOutline" /></template>
               </NButton>
             </div>
@@ -397,10 +405,7 @@ onBeforeUnmount(() => {
 
             <SectionCard title="Variables">
               <template #extra>
-                <NSwitch v-model:value="showInterpolatedVars" size="small">
-                  <template #checked>resolved</template>
-                  <template #unchecked>raw</template>
-                </NSwitch>
+                <SwitchField v-model="showInterpolatedVars" label="Resolved" />
               </template>
               <KeyValueGrid :items="previewVariables" empty-text="No variables" />
             </SectionCard>
@@ -411,26 +416,29 @@ onBeforeUnmount(() => {
             <template #extra>
               <div class="ep-toolbar-actions">
                 <NButton
-                  v-if="canEdit && app.backend.swagger_url"
+                  v-if="app.backend.swagger_url"
                   size="small"
                   tertiary
                   @click="showSwagger = true"
                 >
                   Swagger sync
                 </NButton>
-                <NButton
-                  v-if="canEdit && hasGrpc"
-                  size="small"
-                  tertiary
-                  @click="showGrpcReflection = true"
-                >
+                <NButton v-if="hasGrpc" size="small" tertiary @click="showGrpcReflection = true">
                   gRPC reflection
                 </NButton>
-                <NButton v-if="canEdit" size="small" type="primary" @click="openCreate">
+                <NButton size="small" type="primary" @click="openCreate">
                   <template #icon><NIcon :component="AddOutline" /></template>
                   New endpoint
                 </NButton>
-                <NButton size="small" quaternary circle :loading="loadingEndpoints" @click="loadEndpoints">
+                <NButton
+                  size="small"
+                  quaternary
+                  circle
+                  :loading="loadingEndpoints"
+                  title="Refresh endpoints"
+                  aria-label="Refresh endpoints"
+                  @click="loadEndpoints"
+                >
                   <template #icon><NIcon :component="RefreshOutline" /></template>
                 </NButton>
               </div>
@@ -489,52 +497,55 @@ onBeforeUnmount(() => {
                   class="ep-row"
                   @click="openDetail(endpoint)"
                 >
-                  <MethodBadge :method="endpoint.http.method" :grpc="endpoint.type === 'grpc'" />
-                  <code class="ep-row__path">
-                    {{ endpoint.type === "grpc" ? endpoint.grpc.path : endpoint.http.path }}
-                  </code>
-                  <NIcon
-                    v-if="endpoint.auth.enabled"
-                    class="ep-row__lock"
-                    :component="LockClosedOutline"
-                    title="Auth configured"
-                  />
-                  <span v-if="!endpoint.active" class="ep-row__off">off</span>
-                  <span class="ep-row__spacer" />
-                  <span class="ep-row__actions" @click.stop>
-                    <NButton
-                      v-if="endpoint.type === 'http'"
-                      quaternary
-                      circle
-                      size="small"
-                      title="Test"
-                      @click="openTest(endpoint)"
-                    >
-                      <NIcon :component="FlashOutline" />
-                    </NButton>
-                    <NButton
-                      v-if="canEdit"
-                      quaternary
-                      circle
-                      size="small"
-                      title="Edit"
-                      @click="openEdit(endpoint)"
-                    >
-                      <NIcon :component="CreateOutline" />
-                    </NButton>
-                    <NButton
-                      v-if="canEdit"
-                      class="danger-icon-button"
-                      quaternary
-                      circle
-                      size="small"
-                      type="error"
-                      title="Delete"
-                      @click="confirmDeleteEndpoint(endpoint)"
-                    >
-                      <NIcon :component="TrashOutline" />
-                    </NButton>
-                  </span>
+                  <div class="ep-row__head">
+                    <MethodBadge :method="endpoint.http.method" :grpc="endpoint.type === 'grpc'" />
+                    <code class="ep-row__path">
+                      {{ endpoint.type === "grpc" ? endpoint.grpc.path : endpoint.http.path }}
+                    </code>
+                  </div>
+                  <div class="ep-row__foot">
+                    <span class="ep-row__flags">
+                      <NIcon
+                        v-if="endpoint.auth.enabled"
+                        class="ep-row__lock"
+                        :component="LockClosedOutline"
+                        title="Auth configured"
+                      />
+                      <span v-if="!endpoint.active" class="ep-row__off">off</span>
+                    </span>
+                    <span class="ep-row__actions" @click.stop>
+                      <NButton
+                        v-if="endpoint.type === 'http'"
+                        quaternary
+                        circle
+                        size="small"
+                        title="Test"
+                        @click="openTest(endpoint)"
+                      >
+                        <NIcon :component="FlashOutline" />
+                      </NButton>
+                      <NButton
+                        quaternary
+                        circle
+                        size="small"
+                        title="Edit"
+                        @click="openEdit(endpoint)"
+                      >
+                        <NIcon :component="CreateOutline" />
+                      </NButton>
+                      <NButton
+                        class="danger-icon-button"
+                        quaternary
+                        circle
+                        size="small"
+                        type="error"
+                        title="Delete"
+                        @click="confirmDeleteEndpoint(endpoint)"
+                      >
+                        <NIcon :component="TrashOutline" />
+                      </NButton>
+                    </span>
+                  </div>
                 </button>
               </div>
               <EmptyState
@@ -546,7 +557,7 @@ onBeforeUnmount(() => {
                     : 'No endpoints registered yet.'
                 "
               >
-                <NButton v-if="canEdit && !endpoints.length" type="primary" @click="openCreate">
+                <NButton v-if="!endpoints.length" type="primary" @click="openCreate">
                   Create the first endpoint
                 </NButton>
               </EmptyState>
@@ -729,7 +740,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border: 1px solid var(--c-border);
   border-radius: 9px;
   background: var(--c-surface);
@@ -745,18 +756,37 @@ onBeforeUnmount(() => {
   background: var(--c-surface-2);
 }
 
+.ep-row__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .ep-row__path {
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--c-text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ep-row__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ep-row__flags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ep-row__lock {
   color: var(--c-text-3);
-  flex-shrink: 0;
 }
 
 .ep-row__off {
@@ -769,15 +799,19 @@ onBeforeUnmount(() => {
   border-radius: 999px;
 }
 
-.ep-row__spacer {
-  flex: 1 1 auto;
-}
-
 .ep-row__actions {
   display: flex;
   align-items: center;
   gap: 2px;
-  flex-shrink: 0;
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .ep-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
 }
 
 @media (max-width: 920px) {

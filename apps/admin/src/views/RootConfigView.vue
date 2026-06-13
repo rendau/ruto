@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import {
+  NAlert,
   NButton,
   NCheckbox,
   NDynamicInput,
   NIcon,
   NInput,
   NSpin,
-  NSwitch,
   NTag,
   useMessage
 } from "naive-ui";
@@ -16,9 +16,11 @@ import { getRoot, setRoot } from "@/api/root";
 import { emptyAuth, emptyLogging } from "@/api/normalize";
 import { apiErrorMessage } from "@/api/http";
 import { useRootStore } from "@/stores/root";
+import { useAuthStore } from "@/stores/auth";
 import { arrayToLines, linesToArray } from "@/lib/forms";
 import PageContainer from "@/components/common/PageContainer.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
+import SwitchField from "@/components/common/SwitchField.vue";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
@@ -26,6 +28,8 @@ import type { RootMain } from "@/api/types";
 
 const message = useMessage();
 const rootStore = useRootStore();
+const authStore = useAuthStore();
+const canEdit = computed(() => authStore.isAdmin);
 
 const loading = ref(false);
 const saving = ref(false);
@@ -84,6 +88,7 @@ watch(
 );
 
 async function save(): Promise<void> {
+  if (!canEdit.value) return;
   saving.value = true;
   try {
     const payload: RootMain = {
@@ -117,14 +122,18 @@ onMounted(load);
         <h1 class="page-head__title">Root configuration</h1>
         <p class="page-head__sub muted">Global gateway defaults inherited by every application</p>
       </div>
-      <NButton type="primary" :loading="saving" @click="save">
+      <NButton v-if="canEdit" type="primary" :loading="saving" @click="save">
         <template #icon><NIcon :component="SaveOutline" /></template>
         Save
       </NButton>
     </div>
 
+    <NAlert v-if="!canEdit" type="info" :bordered="false" class="ro-banner">
+      Read-only — administrator rights are required to edit the root configuration.
+    </NAlert>
+
     <NSpin :show="loading">
-      <div class="sections">
+      <div class="sections" :class="{ 'is-locked': !canEdit }">
         <SectionCard title="General">
           <label class="field">
             <span class="field__label">Base URL</span>
@@ -137,10 +146,7 @@ onMounted(load);
 
         <SectionCard title="CORS">
           <div class="cors__switches">
-            <NSwitch v-model:value="model.cors.enabled">
-              <template #checked>CORS enabled</template>
-              <template #unchecked>CORS disabled</template>
-            </NSwitch>
+            <SwitchField v-model="model.cors.enabled" label="CORS enabled" />
             <NCheckbox v-model:checked="model.cors.allow_credentials">Allow credentials</NCheckbox>
           </div>
           <template v-if="model.cors.enabled">
@@ -233,6 +239,7 @@ onMounted(load);
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .page-head__title {

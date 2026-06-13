@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import {
   NButton,
   NForm,
@@ -18,6 +19,7 @@ import SectionCard from "@/components/common/SectionCard.vue";
 import StatusTag from "@/components/common/StatusTag.vue";
 
 const message = useMessage();
+const router = useRouter();
 const authStore = useAuthStore();
 const { profile } = storeToRefs(authStore);
 
@@ -52,6 +54,7 @@ async function save(): Promise<void> {
     });
     model.password = "";
     message.success("Profile updated");
+    router.back();
   } catch (error) {
     message.error(apiErrorMessage(error, "Failed to update profile"));
   } finally {

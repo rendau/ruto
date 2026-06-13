@@ -1,5 +1,11 @@
-import { emptyAuth, emptyLogging } from "@/api/normalize";
-import type { AppMain, EndpointMain } from "@/api/types";
+import { emptyLogging } from "@/api/normalize";
+import type { AppMain, Auth, EndpointMain } from "@/api/types";
+
+// New entities default auth to "enabled + extend" with no methods — i.e. inherit
+// the parent's auth and add nothing. This is the baseline treated as "default".
+export function defaultAuth(): Auth {
+  return { enabled: true, mode: "extend", methods: [] };
+}
 
 export function emptyApp(): AppMain {
   return {
@@ -9,7 +15,7 @@ export function emptyApp(): AppMain {
     path_prefix: "",
     name: "",
     backend: { url: "", swagger_url: "", grpc_url: "", headers: {}, query_params: {} },
-    auth: emptyAuth(),
+    auth: defaultAuth(),
     logging: emptyLogging(),
     variables: []
   };
@@ -25,7 +31,7 @@ export function emptyEndpoint(appId: string): EndpointMain {
     http: { method: "GET", path: "" },
     grpc: { service: "", method: "", path: "" },
     backend: { custom_path: "", headers: {}, query_params: {} },
-    auth: emptyAuth(),
+    auth: defaultAuth(),
     logging: emptyLogging(),
     variables: []
   };

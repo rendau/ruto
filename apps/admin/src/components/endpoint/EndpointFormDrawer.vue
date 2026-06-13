@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive } from "vue";
+import { computed, reactive, ref } from "vue";
 import {
   NButton,
   NCheckbox,
@@ -13,18 +13,19 @@ import {
   NRadioButton,
   NRadioGroup,
   NSelect,
-  NSwitch,
   type FormItemRule
 } from "naive-ui";
 import { createEndpoint, updateEndpoint } from "@/api/endpoint";
-import { emptyAuth, emptyLogging } from "@/api/normalize";
+import { emptyEndpoint } from "@/lib/entities";
 import { useEntityForm } from "@/composables/useEntityForm";
+import { useIsMobile } from "@/composables/useIsMobile";
 import { useRootStore } from "@/stores/root";
 import { HTTP_METHOD_OPTIONS } from "@/constants/enums";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import KeyValueTextarea from "@/components/editors/KeyValueTextarea.vue";
+import SwitchField from "@/components/common/SwitchField.vue";
 import type { AppMain, EndpointCreateRep, EndpointMain, EndpointType } from "@/api/types";
 
 const props = defineProps<{
@@ -37,24 +38,31 @@ const props = defineProps<{
 const emit = defineEmits<{ "update:show": [value: boolean]; saved: [] }>();
 
 const rootStore = useRootStore();
-
-function emptyEndpoint(appId: string): EndpointMain {
-  return {
-    id: "",
-    app_id: appId,
-    active: true,
-    exclude_from_metrics: false,
-    type: "http",
-    http: { method: "GET", path: "" },
-    grpc: { service: "", method: "", path: "" },
-    backend: { custom_path: "", headers: {}, query_params: {} },
-    auth: emptyAuth(),
-    logging: emptyLogging(),
-    variables: []
-  };
-}
+const isMobile = useIsMobile();
 
 const model = reactive<EndpointMain>(emptyEndpoint(""));
+const expandedNames = ref<string[]>([]);
+
+function nonDefaultSections(): string[] {
+  const names: string[] = [];
+  const b = model.backend;
+  if (b.custom_path || Object.keys(b.headers).length || Object.keys(b.query_params).length) {
+    names.push("backend");
+  }
+  // Default auth = enabled + extend with no methods; expand when it deviates
+  // (disabled, replace mode, or any methods configured).
+  if (!model.auth.enabled || model.auth.mode === "replace" || model.auth.methods.length) {
+    names.push("auth");
+  }
+  const lg = model.logging;
+  if (lg.level !== "" || lg.mode !== "extend" || lg.headers || lg.query_params || lg.req_body || lg.resp_body) {
+    names.push("logging");
+  }
+  if (model.variables.length) {
+    names.push("variables");
+  }
+  return names;
+}
 
 const grpcAvailable = computed(
   () => Boolean(props.app?.backend?.grpc_url?.trim()) || model.type === "grpc"
@@ -92,6 +100,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<EndpointMain, Endp
       Object.assign(model, emptyEndpoint(props.app?.id || ""));
       applyPrefill();
     }
+    expandedNames.value = nonDefaultSections();
     void rootStore.ensureLoaded();
   },
   create: () => createEndpoint(model),
@@ -132,7 +141,7 @@ function close(): void {
 <template>
   <NDrawer
     :show="show"
-    :width="680"
+    :width="isMobile ? '100%' : 680"
     placement="right"
     :auto-focus="false"
     @update:show="(value: boolean) => emit('update:show', value)"
@@ -188,14 +197,11 @@ function close(): void {
         </NFormItem>
 
         <div class="switch-row">
-          <NSwitch v-model:value="model.active">
-            <template #checked>Active</template>
-            <template #unchecked>Inactive</template>
-          </NSwitch>
+          <SwitchField v-model="model.active" label="Active" />
           <NCheckbox v-model:checked="model.exclude_from_metrics">Exclude from metrics</NCheckbox>
         </div>
 
-        <NCollapse class="advanced">
+        <NCollapse v-model:expanded-names="expandedNames" class="advanced">
           <NCollapseItem title="Backend overrides" name="backend">
             <div class="stacked">
               <label class="field">
@@ -230,10 +236,12 @@ function close(): void {
       </NForm>
 
       <template #footer>
-        <NButton :disabled="submitting" @click="close">Cancel</NButton>
-        <NButton type="primary" :loading="submitting" @click="submit">
-          {{ isEdit ? "Save changes" : "Create endpoint" }}
-        </NButton>
+        <div class="form-actions">
+          <NButton :disabled="submitting" @click="close">Cancel</NButton>
+          <NButton type="primary" :loading="submitting" @click="submit">
+            {{ isEdit ? "Save changes" : "Create endpoint" }}
+          </NButton>
+        </div>
       </template>
     </NDrawerContent>
   </NDrawer>

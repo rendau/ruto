@@ -44,37 +44,37 @@ const kind = computed(() => {
 }
 
 .method-badge--get {
-  background: rgba(67, 201, 139, 0.15);
-  color: var(--c-success);
+  background: rgba(99, 226, 183, 0.16);
+  color: #63e2b7;
 }
 
 .method-badge--post {
-  background: rgba(91, 130, 240, 0.16);
-  color: var(--c-primary);
+  background: rgba(112, 192, 232, 0.16);
+  color: #70c0e8;
 }
 
 .method-badge--put {
-  background: rgba(232, 178, 58, 0.16);
-  color: var(--c-warning);
+  background: rgba(242, 201, 125, 0.16);
+  color: #f2c97d;
 }
 
 .method-badge--patch {
-  background: rgba(34, 211, 197, 0.14);
-  color: var(--c-teal);
+  background: rgba(201, 164, 244, 0.16);
+  color: #c9a4f4;
 }
 
 .method-badge--delete {
-  background: rgba(239, 111, 114, 0.16);
-  color: var(--c-error);
+  background: rgba(232, 128, 128, 0.16);
+  color: #e88080;
 }
 
 .method-badge--grpc {
-  background: rgba(34, 211, 197, 0.14);
-  color: var(--c-teal);
+  background: rgba(122, 214, 201, 0.16);
+  color: #7ad6c9;
 }
 
 .method-badge--default {
-  background: rgba(124, 136, 155, 0.16);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--c-text-2);
 }
 </style>

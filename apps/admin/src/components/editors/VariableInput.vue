@@ -223,8 +223,8 @@ onBeforeUnmount(() => {
 .variable-suggest {
   position: absolute;
   z-index: 60;
-  min-width: 220px;
-  max-width: 360px;
+  min-width: 200px;
+  max-width: min(360px, calc(100vw - 24px));
   max-height: 260px;
   overflow-y: auto;
   padding: 4px;

@@ -42,7 +42,7 @@ const { copy } = useClipboard();
   border: 1px solid var(--c-border);
   border-radius: 9px;
   background: var(--c-code-bg);
-  color: #d4e4fa;
+  color: var(--c-text);
   font-size: 12.5px;
   line-height: 1.55;
   overflow: auto;

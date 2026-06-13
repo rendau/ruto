@@ -48,6 +48,13 @@ export const useRootStore = defineStore("root", () => {
     root.value = value;
   }
 
+  function reset(): void {
+    root.value = null;
+    loaded.value = false;
+    loading.value = false;
+    jwtKids.value = [];
+  }
+
   return {
     root,
     loading,
@@ -58,6 +65,7 @@ export const useRootStore = defineStore("root", () => {
     refresh: load,
     ensureLoaded,
     loadJwtKids,
-    setRoot
+    setRoot,
+    reset
   };
 });

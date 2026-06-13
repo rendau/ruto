@@ -269,10 +269,12 @@ function jwtKidSelectOptions(currentKid: string) {
 <template>
   <div class="auth-editor">
     <div class="auth-editor__head">
-      <NSwitch :value="localAuth.enabled" @update:value="setEnabled">
-        <template #checked>Auth enabled</template>
-        <template #unchecked>Auth disabled</template>
-      </NSwitch>
+      <label class="field auth-editor__toggle">
+        <span class="field__label">Enabled</span>
+        <div class="auth-editor__toggle-box">
+          <NSwitch :value="localAuth.enabled" @update:value="setEnabled" />
+        </div>
+      </label>
       <label v-if="!hideMode" class="auth-editor__mode">
         <span class="field__label">Mode</span>
         <NSelect
@@ -525,9 +527,20 @@ function jwtKidSelectOptions(currentKid: string) {
 
 .auth-editor__head {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 18px;
   flex-wrap: wrap;
+}
+
+.auth-editor__toggle {
+  align-items: flex-start;
+}
+
+/* Match the adjacent select's control height so the switch is centred against it */
+.auth-editor__toggle-box {
+  display: flex;
+  align-items: center;
+  height: 34px;
 }
 
 .auth-editor__mode {

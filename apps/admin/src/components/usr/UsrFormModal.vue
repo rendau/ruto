@@ -8,12 +8,12 @@ import {
   NInput,
   NModal,
   NSelect,
-  NSwitch,
   type FormRules
 } from "naive-ui";
 import { createUser, updateUser } from "@/api/usr";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useAppOptions } from "@/composables/useAppOptions";
+import SwitchField from "@/components/common/SwitchField.vue";
 import type { UsrCreateRep, UsrMain } from "@/api/types";
 
 const props = defineProps<{ show: boolean; user: UsrMain | null }>();
@@ -131,10 +131,7 @@ function close(): void {
       </NFormItem>
 
       <div class="usr-modal__switches">
-        <NSwitch v-model:value="model.active">
-          <template #checked>Active</template>
-          <template #unchecked>Inactive</template>
-        </NSwitch>
+        <SwitchField v-model="model.active" label="Active" />
         <NCheckbox v-model:checked="model.is_admin">Administrator</NCheckbox>
       </div>
 
@@ -157,10 +154,12 @@ function close(): void {
     </NForm>
 
     <template #footer>
-      <NButton :disabled="submitting" @click="close">Cancel</NButton>
-      <NButton type="primary" :loading="submitting" @click="submit">
-        {{ isEdit ? "Save" : "Create" }}
-      </NButton>
+      <div class="form-actions">
+        <NButton :disabled="submitting" @click="close">Cancel</NButton>
+        <NButton type="primary" :loading="submitting" @click="submit">
+          {{ isEdit ? "Save" : "Create" }}
+        </NButton>
+      </div>
     </template>
   </NModal>
 </template>

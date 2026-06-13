@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import { NAlert, NButton, NCheckbox, NEmpty, NModal, NSpin, useMessage } from "naive-ui";
 import { getAppSwaggerEndpointsDiff } from "@/api/app";
 import { createEndpoint } from "@/api/endpoint";
@@ -19,10 +19,6 @@ const unregistered = ref<AppSwaggerEndpoint[]>([]);
 const registeredInvalid = ref<AppSwaggerEndpoint[]>([]);
 const selected = ref<Set<string>>(new Set());
 const adding = ref(false);
-
-const allSelected = computed(
-  () => unregistered.value.length > 0 && selected.value.size === unregistered.value.length
-);
 
 function keyOf(endpoint: AppSwaggerEndpoint): string {
   return `${endpoint.method} ${endpoint.path}`;
@@ -54,10 +50,6 @@ function toggle(endpoint: AppSwaggerEndpoint): void {
   selected.value = next;
 }
 
-function toggleAll(value: boolean): void {
-  selected.value = value ? new Set(unregistered.value.map(keyOf)) : new Set();
-}
-
 async function addSelected(): Promise<void> {
   const chosen = unregistered.value.filter((endpoint) => selected.value.has(keyOf(endpoint)));
   if (chosen.length === 0) return;
@@ -73,7 +65,7 @@ async function addSelected(): Promise<void> {
     }
     message.success(`Added ${created} endpoint(s)`);
     emit("changed");
-    await load();
+    emit("update:show", false);
   } catch (err) {
     message.error(apiErrorMessage(err, `Added ${created} endpoint(s), then failed`));
     emit("changed");
@@ -109,13 +101,6 @@ watch(
               <span class="section-label">Unregistered</span>
               <p class="muted swagger__sub">In swagger but not registered in ruto</p>
             </div>
-            <NCheckbox
-              v-if="unregistered.length"
-              :checked="allSelected"
-              @update:checked="toggleAll"
-            >
-              Select all
-            </NCheckbox>
           </div>
           <div v-if="unregistered.length" class="swagger__list">
             <label

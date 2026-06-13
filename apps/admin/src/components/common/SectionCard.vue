@@ -28,7 +28,8 @@ defineProps<{ title?: string; description?: string }>();
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: 10px 14px;
+  flex-wrap: wrap;
 }
 
 .section-card__heading {
@@ -36,6 +37,7 @@ defineProps<{ title?: string; description?: string }>();
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .section-card__title {
@@ -50,6 +52,7 @@ defineProps<{ title?: string; description?: string }>();
 }
 
 .section-card__extra {
-  flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 </style>

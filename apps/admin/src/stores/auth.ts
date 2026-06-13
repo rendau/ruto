@@ -7,6 +7,9 @@ import {
   logout as apiLogout,
   updateProfile as apiUpdateProfile
 } from "@/api/usr";
+import { useAppsStore } from "./apps";
+import { useRootStore } from "./root";
+import { useSnapshotStore } from "./snapshot";
 import type { UsrMain } from "@/api/types";
 
 export const useAuthStore = defineStore("auth", () => {
@@ -64,6 +67,10 @@ export const useAuthStore = defineStore("auth", () => {
     token.value = "";
     profile.value = null;
     initialized.value = true;
+    // Clear cached data so the next user starts from a clean slate.
+    useAppsStore().reset();
+    useRootStore().reset();
+    useSnapshotStore().reset();
   }
 
   return {

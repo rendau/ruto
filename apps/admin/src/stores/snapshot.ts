@@ -24,5 +24,9 @@ export const useSnapshotStore = defineStore("snapshot", () => {
     }
   }
 
-  return { version, deploying, loadVersion, deploy };
+  function reset(): void {
+    version.value = "";
+  }
+
+  return { version, deploying, loadVersion, deploy, reset };
 });

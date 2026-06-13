@@ -37,20 +37,16 @@ const profileInitial = computed(() => profileName.value.trim().charAt(0).toUpper
 const navLinks = computed(() => {
   const links = [
     { name: "dashboard", label: "Dashboard" },
-    { name: "apps", label: "Applications" },
-    { name: "gateways", label: "Gateways" }
+    { name: "gateways", label: "Gateways" },
+    { name: "root-config", label: "Root config" }
   ];
   if (authStore.isAdmin) {
     links.push({ name: "users", label: "Users" });
-    links.push({ name: "root-config", label: "Root config" });
   }
   return links;
 });
 
-const activeNav = computed(() => {
-  if (route.name === "app-workspace") return "apps";
-  return route.name;
-});
+const activeNav = computed(() => route.name);
 
 const shortVersion = computed(() => (version.value ? version.value.slice(0, 8) : "—"));
 
@@ -191,12 +187,13 @@ onBeforeUnmount(() => {
           size="small"
           tertiary
           :loading="deploying"
+          aria-label="Deploy"
           @click="deploy"
         >
           <template #icon>
             <NIcon :component="deploying ? SyncOutline : RocketOutline" />
           </template>
-          Deploy
+          <span class="topbar__deploy-label">Deploy</span>
         </NButton>
         <NDropdown
           trigger="click"
@@ -245,9 +242,9 @@ onBeforeUnmount(() => {
       />
 
       <main class="content">
-        <RouterView v-slot="{ Component }">
+        <RouterView v-slot="{ Component, route: currentRoute }">
           <Transition name="page" mode="out-in">
-            <component :is="Component" />
+            <component :is="Component" :key="currentRoute.fullPath" />
           </Transition>
         </RouterView>
       </main>
@@ -376,8 +373,8 @@ onBeforeUnmount(() => {
   width: 26px;
   height: 26px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--c-primary), var(--c-teal));
-  color: #fff;
+  background: linear-gradient(135deg, #63e2b7, #4bb592);
+  color: #0b1f18;
   font-size: 12px;
   font-weight: 700;
 }
@@ -480,7 +477,26 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 560px) {
-  .user-trigger__name {
+  .topbar {
+    padding: 0 12px;
+    gap: 10px;
+  }
+
+  .topbar__left {
+    gap: 10px;
+  }
+
+  .topbar__right {
+    gap: 8px;
+  }
+
+  .user-trigger__name,
+  .topbar__deploy-label {
+    display: none;
+  }
+
+  /* Logo-only brand to save horizontal space */
+  .topbar__brand :deep(.brand__text) {
     display: none;
   }
 }

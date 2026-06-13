@@ -4,16 +4,20 @@ import { CopyOutline } from "@vicons/ionicons5";
 import { useClipboard } from "@/composables/useClipboard";
 
 const props = withDefaults(
-  defineProps<{ value: string; label?: string; placeholder?: string; mono?: boolean }>(),
-  { placeholder: "—", mono: true }
+  defineProps<{ value: string; label?: string; placeholder?: string; mono?: boolean; wrap?: boolean }>(),
+  { placeholder: "—", mono: true, wrap: false }
 );
 
 const { copy } = useClipboard();
 </script>
 
 <template>
-  <span class="copy-text">
-    <span class="copy-text__value" :class="{ mono }" :title="value">
+  <span class="copy-text" :class="{ 'copy-text--wrap': wrap }">
+    <span
+      class="copy-text__value"
+      :class="{ mono, 'copy-text__value--wrap': wrap }"
+      :title="value"
+    >
       {{ value || placeholder }}
     </span>
     <NButton
@@ -44,6 +48,16 @@ const { copy } = useClipboard();
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--c-text);
+}
+
+.copy-text--wrap {
+  align-items: flex-start;
+}
+
+.copy-text__value--wrap {
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .copy-text__btn {

@@ -31,5 +31,11 @@ export const useAppsStore = defineStore("apps", () => {
     return apps.value.find((app) => app.id === id) ?? null;
   }
 
-  return { apps, loading, loaded, count, load, refresh: load, ensureLoaded, getById };
+  function reset(): void {
+    apps.value = [];
+    loaded.value = false;
+    loading.value = false;
+  }
+
+  return { apps, loading, loaded, count, load, refresh: load, ensureLoaded, getById, reset };
 });

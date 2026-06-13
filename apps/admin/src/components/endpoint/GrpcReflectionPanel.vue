@@ -27,10 +27,6 @@ const unregistered = computed(() =>
   results.value.filter((endpoint) => !registeredPaths.value.has(endpoint.path))
 );
 
-const allSelected = computed(
-  () => unregistered.value.length > 0 && selected.value.size === unregistered.value.length
-);
-
 async function load(): Promise<void> {
   loading.value = true;
   error.value = "";
@@ -55,10 +51,6 @@ function toggle(path: string): void {
   selected.value = next;
 }
 
-function toggleAll(value: boolean): void {
-  selected.value = value ? new Set(unregistered.value.map((e) => e.path)) : new Set();
-}
-
 async function addSelected(): Promise<void> {
   const chosen = unregistered.value.filter((endpoint) => selected.value.has(endpoint.path));
   if (chosen.length === 0) return;
@@ -74,7 +66,7 @@ async function addSelected(): Promise<void> {
     }
     message.success(`Added ${created} endpoint(s)`);
     emit("changed");
-    await load();
+    emit("update:show", false);
   } catch (err) {
     message.error(apiErrorMessage(err, `Added ${created} endpoint(s), then failed`));
     emit("changed");
@@ -112,9 +104,6 @@ watch(
             Discovered via reflection but not registered in ruto
           </p>
         </div>
-        <NCheckbox v-if="unregistered.length" :checked="allSelected" @update:checked="toggleAll">
-          Select all
-        </NCheckbox>
       </div>
 
       <div v-if="unregistered.length" class="reflection__list">

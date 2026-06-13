@@ -247,6 +247,7 @@ onMounted(load);
           :data="gateways"
           :bordered="false"
           size="small"
+          :scroll-x="720"
         />
         <p v-else class="muted">No gateways are currently connected.</p>
       </SectionCard>
@@ -260,6 +261,7 @@ onMounted(load);
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .page-head__title {
@@ -325,7 +327,7 @@ onMounted(load);
 .kpi__bar-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--c-primary), var(--c-teal));
+  background: linear-gradient(90deg, #63e2b7, #4bb592);
   transition: width 0.4s ease;
 }
 
@@ -364,7 +366,7 @@ onMounted(load);
 .method-row__fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--c-primary), var(--c-teal));
+  background: linear-gradient(90deg, #63e2b7, #4bb592);
 }
 
 .method-row__count {
@@ -382,6 +384,8 @@ onMounted(load);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .flag__label {

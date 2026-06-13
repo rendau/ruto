@@ -194,8 +194,8 @@ onMounted(async () => {
   transform: translateX(-50%);
   background: radial-gradient(
     circle,
-    rgba(91, 130, 240, 0.18),
-    rgba(34, 211, 197, 0.08) 45%,
+    rgba(99, 226, 183, 0.16),
+    rgba(99, 226, 183, 0.05) 45%,
     transparent 70%
   );
   pointer-events: none;

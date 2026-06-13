@@ -273,6 +273,7 @@ onMounted(fetchUsers);
         :loading="loading"
         :pagination="pagination"
         :bordered="false"
+        :scroll-x="760"
         @update:page="onPageChange"
         @update:page-size="onPageSizeChange"
       />
@@ -289,6 +290,7 @@ onMounted(fetchUsers);
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .page-head__title {

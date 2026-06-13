@@ -142,7 +142,7 @@ onMounted(() => {
 
 .app-item--active {
   background: var(--c-primary-soft);
-  border-color: rgba(91, 130, 240, 0.35);
+  border-color: rgba(99, 226, 183, 0.32);
 }
 
 .app-item__top {

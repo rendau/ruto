@@ -46,7 +46,7 @@ const routes: RouteRecordRaw[] = [
         path: "root",
         name: "root-config",
         component: () => import("@/views/RootConfigView.vue"),
-        meta: { title: "Root configuration", requiresAdmin: true }
+        meta: { title: "Root configuration" }
       },
       {
         path: "users",

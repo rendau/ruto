@@ -160,6 +160,7 @@ onBeforeUnmount(() => {
         :loading="loading"
         :row-props="rowProps"
         :bordered="false"
+        :scroll-x="820"
       />
       <p v-if="!loading && gateways.length === 0" class="muted gw-empty">
         No gateways are currently connected.
@@ -176,6 +177,7 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .page-head__title {

@@ -1,26 +1,26 @@
 :root {
-  /* Brand palette — keep in sync with src/theme.ts */
-  --c-bg: #0b0e15;
-  --c-bg-soft: #0f131c;
-  --c-surface: #141a25;
-  --c-surface-2: #19202d;
-  --c-surface-3: #202938;
-  --c-border: #242d3d;
-  --c-border-strong: #313c52;
-  --c-code-bg: #0d1119;
+  /* Palette — Naive UI default dark scheme (keep in sync with src/theme.ts) */
+  --c-bg: #101014;
+  --c-bg-soft: #18181c;
+  --c-surface: #18181c;
+  --c-surface-2: #202024;
+  --c-surface-3: #2a2a30;
+  --c-border: rgba(255, 255, 255, 0.09);
+  --c-border-strong: rgba(255, 255, 255, 0.16);
+  --c-code-bg: #0e0e12;
 
-  --c-primary: #5b82f0;
-  --c-primary-hover: #7397f6;
-  --c-primary-soft: rgba(91, 130, 240, 0.14);
-  --c-teal: #22d3c5;
+  --c-primary: #63e2b7;
+  --c-primary-hover: #7fe7c4;
+  --c-primary-soft: rgba(99, 226, 183, 0.14);
+  --c-teal: #63e2b7;
 
-  --c-text: #e7edf6;
-  --c-text-2: #aab6c8;
-  --c-text-3: #7c889b;
+  --c-text: rgba(255, 255, 255, 0.9);
+  --c-text-2: rgba(255, 255, 255, 0.72);
+  --c-text-3: rgba(255, 255, 255, 0.46);
 
-  --c-success: #43c98b;
-  --c-warning: #e8b23a;
-  --c-error: #ef6f72;
+  --c-success: #63e2b7;
+  --c-warning: #f2c97d;
+  --c-error: #e88080;
 
   --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
@@ -107,6 +107,34 @@ a {
 
 .danger-icon-button:hover {
   border-color: var(--c-error);
+}
+
+/* Compact label + switch field */
+.switch-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.switch-field__label {
+  font-size: 13.5px;
+  color: var(--c-text-2);
+  user-select: none;
+}
+
+/* Read-only lock for non-editable forms */
+.is-locked {
+  pointer-events: none;
+}
+
+/* Right-aligned action buttons for drawer/modal footers */
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* ---- Page transition ----------------------------------------------------- */

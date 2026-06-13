@@ -1,29 +1,29 @@
 import type { GlobalThemeOverrides } from "naive-ui";
 
-// Single source of truth for the brand palette. Mirrored as CSS custom
-// properties in assets/styles/main.css so plain CSS and Naive UI stay in sync.
+// Color scheme follows Naive UI's built-in dark theme (neutral grays + mint
+// primary) — same look as the kusec reference. We override almost nothing;
+// these tokens are mirrored as CSS custom properties in assets/styles/main.css.
 export const palette = {
-  bg: "#0b0e15",
-  bgSoft: "#0f131c",
-  surface: "#141a25",
-  surface2: "#19202d",
-  surface3: "#202938",
-  border: "#242d3d",
-  borderStrong: "#313c52",
-  codeBg: "#0d1119",
+  bg: "#101014",
+  bgSoft: "#18181c",
+  surface: "#18181c",
+  surface2: "#202024",
+  surface3: "#2a2a30",
+  border: "rgba(255, 255, 255, 0.09)",
+  borderStrong: "rgba(255, 255, 255, 0.16)",
+  codeBg: "#0e0e12",
 
-  primary: "#5b82f0",
-  primaryHover: "#7397f6",
-  primaryPressed: "#4569cf",
-  teal: "#22d3c5",
+  primary: "#63e2b7",
+  primaryHover: "#7fe7c4",
+  primaryPressed: "#5acea7",
 
-  text: "#e7edf6",
-  text2: "#aab6c8",
-  text3: "#7c889b",
+  text: "rgba(255, 255, 255, 0.9)",
+  text2: "rgba(255, 255, 255, 0.72)",
+  text3: "rgba(255, 255, 255, 0.46)",
 
-  success: "#43c98b",
-  warning: "#e8b23a",
-  error: "#ef6f72"
+  success: "#63e2b7",
+  warning: "#f2c97d",
+  error: "#e88080"
 } as const;
 
 const FONT_FAMILY =
@@ -33,77 +33,18 @@ const FONT_FAMILY_MONO =
 
 export const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: palette.primary,
-    primaryColorHover: palette.primaryHover,
-    primaryColorPressed: palette.primaryPressed,
-    primaryColorSuppl: palette.primaryHover,
-    successColor: palette.success,
-    successColorHover: "#5cd49d",
-    successColorPressed: "#37b87b",
-    warningColor: palette.warning,
-    warningColorHover: "#f0c25b",
-    warningColorPressed: "#d49f2c",
-    errorColor: palette.error,
-    errorColorHover: "#f4888a",
-    errorColorPressed: "#d85d60",
-    infoColor: palette.primary,
-
-    borderRadius: "9px",
-    borderRadiusSmall: "6px",
-
+    borderRadius: "8px",
+    borderRadiusSmall: "5px",
     fontFamily: FONT_FAMILY,
     fontFamilyMono: FONT_FAMILY_MONO,
-    fontSize: "14px",
-
-    bodyColor: palette.bg,
-    cardColor: palette.surface,
-    modalColor: "#161d29",
-    popoverColor: palette.surface2,
-    tableColor: palette.surface,
-    tableColorHover: "rgba(91, 130, 240, 0.06)",
-    tableHeaderColor: "#10151e",
-    inputColor: "#10141d",
-    inputColorDisabled: "#11161f",
-    codeColor: palette.codeBg,
-    actionColor: "#10151e",
-    hoverColor: "rgba(91, 130, 240, 0.09)",
-
-    borderColor: palette.border,
-    dividerColor: palette.border,
-
-    textColorBase: palette.text,
-    textColor1: palette.text,
-    textColor2: palette.text2,
-    textColor3: palette.text3,
-    placeholderColor: "#5f6b7e",
-    iconColor: palette.text3,
-
-    scrollbarColor: "rgba(120, 134, 158, 0.35)",
-    scrollbarColorHover: "rgba(120, 134, 158, 0.55)"
+    fontSize: "14px"
   },
   Layout: {
-    color: palette.bg,
     siderColor: palette.bgSoft,
-    headerColor: palette.bgSoft,
-    siderBorderColor: palette.border,
-    headerBorderColor: palette.border
+    headerColor: palette.bgSoft
   },
   Card: {
-    color: palette.surface,
-    borderColor: palette.border,
     titleFontWeight: "600"
-  },
-  Menu: {
-    itemColorActive: "rgba(91, 130, 240, 0.16)",
-    itemColorActiveHover: "rgba(91, 130, 240, 0.22)"
-  },
-  DataTable: {
-    thColor: "#10151e",
-    tdColorHover: "rgba(91, 130, 240, 0.06)",
-    borderColor: palette.border
-  },
-  Drawer: {
-    color: "#11161f"
   },
   Tabs: {
     tabFontWeightActive: "600"

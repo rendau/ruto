@@ -2,8 +2,6 @@
 import { computed, ref, watch } from "vue";
 import {
   NButton,
-  NDescriptions,
-  NDescriptionsItem,
   NDrawer,
   NDrawerContent,
   NIcon,
@@ -29,12 +27,16 @@ import {
 import { apiErrorMessage } from "@/api/http";
 import { useDrawerResource } from "@/composables/useDrawerResource";
 import { useConfirm } from "@/composables/useConfirm";
+import { useIsMobile } from "@/composables/useIsMobile";
 import { useRootStore } from "@/stores/root";
 import { variablesToArray } from "@/api/normalize";
 import { joinPath, joinUrl } from "@/lib/format";
 import MethodBadge from "@/components/common/MethodBadge.vue";
 import StatusTag from "@/components/common/StatusTag.vue";
 import CopyText from "@/components/common/CopyText.vue";
+import DefList from "@/components/common/DefList.vue";
+import DefRow from "@/components/common/DefRow.vue";
+import SwitchField from "@/components/common/SwitchField.vue";
 import KeyValueGrid from "@/components/common/KeyValueGrid.vue";
 import AuthSummary from "@/components/display/AuthSummary.vue";
 import LoggingSummary from "@/components/display/LoggingSummary.vue";
@@ -57,6 +59,7 @@ const emit = defineEmits<{
 const message = useMessage();
 const rootStore = useRootStore();
 const { confirmDelete } = useConfirm();
+const isMobile = useIsMobile();
 
 const inherited = ref<EndpointMain | null>(null);
 const interpolated = ref<EndpointMain | null>(null);
@@ -162,7 +165,7 @@ function remove(): void {
 <template>
   <NDrawer
     :show="show"
-    :width="600"
+    :width="isMobile ? '100%' : 600"
     placement="right"
     @update:show="(value: boolean) => emit('update:show', value)"
   >
@@ -180,26 +183,26 @@ function remove(): void {
             <StatusTag :active="item.active" />
           </div>
 
-          <NDescriptions :column="1" label-placement="left" size="small" bordered>
-            <NDescriptionsItem label="Id">
-              <CopyText :value="item.id" label="Endpoint id" />
-            </NDescriptionsItem>
-            <NDescriptionsItem v-if="item.type === 'grpc'" label="Service">
+          <DefList>
+            <DefRow label="Id">
+              <CopyText :value="item.id" label="Endpoint id" wrap />
+            </DefRow>
+            <DefRow v-if="item.type === 'grpc'" label="Service">
               <span class="mono">{{ item.grpc.service }}</span>
-            </NDescriptionsItem>
-            <NDescriptionsItem v-if="item.type === 'grpc'" label="Method">
+            </DefRow>
+            <DefRow v-if="item.type === 'grpc'" label="Method">
               <span class="mono">{{ item.grpc.method }}</span>
-            </NDescriptionsItem>
-            <NDescriptionsItem v-if="publicUrl" label="Public URL">
-              <CopyText :value="publicUrl" label="Public URL" />
-            </NDescriptionsItem>
-            <NDescriptionsItem v-if="item.backend.custom_path" label="Backend path">
+            </DefRow>
+            <DefRow v-if="publicUrl" label="Public URL">
+              <CopyText :value="publicUrl" label="Public URL" wrap />
+            </DefRow>
+            <DefRow v-if="item.backend.custom_path" label="Backend path">
               <span class="mono">{{ item.backend.custom_path }}</span>
-            </NDescriptionsItem>
-            <NDescriptionsItem label="Metrics">
+            </DefRow>
+            <DefRow label="Metrics">
               {{ item.exclude_from_metrics ? "Excluded" : "Included" }}
-            </NDescriptionsItem>
-          </NDescriptions>
+            </DefRow>
+          </DefList>
 
           <section v-if="hasBackendExtras" class="detail__section">
             <span class="section-label">Backend extras</span>
@@ -245,10 +248,7 @@ function remove(): void {
                   <div>
                     <div class="detail__vars-head">
                       <span class="section-label">Variables</span>
-                      <NSwitch v-model:value="showInterpolated" size="small">
-                        <template #checked>interpolated</template>
-                        <template #unchecked>raw</template>
-                      </NSwitch>
+                      <SwitchField v-model="showInterpolated" label="Resolved" />
                     </div>
                     <KeyValueGrid :items="resolvedVariables" empty-text="No variables" />
                   </div>
@@ -272,15 +272,15 @@ function remove(): void {
             Delete
           </NButton>
           <div class="detail__footer-right">
-            <NSwitch
-              v-if="item"
-              :value="item.active"
-              :loading="toggling"
-              @update:value="toggleActive"
-            >
-              <template #checked>Active</template>
-              <template #unchecked>Inactive</template>
-            </NSwitch>
+            <label v-if="item" class="switch-field">
+              <NSwitch
+                :value="item.active"
+                :loading="toggling"
+                size="small"
+                @update:value="toggleActive"
+              />
+              <span class="switch-field__label">Active</span>
+            </label>
             <NButton
               v-if="item && item.type === 'http'"
               tertiary
@@ -359,6 +359,8 @@ function remove(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 8px;
 }
 
@@ -368,12 +370,14 @@ function remove(): void {
   justify-content: space-between;
   gap: 12px;
   width: 100%;
+  flex-wrap: wrap;
 }
 
 .detail__footer-right {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 520px) {
