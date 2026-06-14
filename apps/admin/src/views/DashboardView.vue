@@ -23,13 +23,16 @@ import { apiErrorMessage } from "@/api/http";
 import { useSnapshotStore } from "@/stores/snapshot";
 import { formatDuration, formatUnixAge } from "@/lib/datetime";
 import { formatBytes } from "@/lib/format";
+import { useIsMobile } from "@/composables/useIsMobile";
 import PageContainer from "@/components/common/PageContainer.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
+import GatewayCard from "@/components/gateway/GatewayCard.vue";
 import type { GatewayStateItem, StatsResponse } from "@/api/types";
 
 const router = useRouter();
 const message = useMessage();
 const snapshotStore = useSnapshotStore();
+const isMobile = useIsMobile();
 
 const stats = ref<StatsResponse | null>(null);
 const gateways = ref<GatewayStateItem[]>([]);
@@ -242,8 +245,18 @@ onMounted(load);
             Manage gateways
           </NButton>
         </template>
+        <div v-if="gateways.length && isMobile" class="dash-gw-cards">
+          <GatewayCard
+            v-for="gw in gateways"
+            :key="gw.gateway_id"
+            :gateway="gw"
+            :current="gw.snapshot_version === snapshotStore.version"
+            behind-text="stale"
+            behind-type="default"
+          />
+        </div>
         <NDataTable
-          v-if="gateways.length"
+          v-else-if="gateways.length"
           :columns="gatewayColumns"
           :data="gateways"
           :bordered="false"
@@ -404,6 +417,12 @@ onMounted(load);
 .flag__value {
   font-size: 13px;
   color: var(--c-text);
+}
+
+.dash-gw-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 :deep(.gw-cell) {

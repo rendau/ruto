@@ -5,6 +5,7 @@ import {
   NDataTable,
   NIcon,
   NInput,
+  NPagination,
   NPopconfirm,
   NTag,
   useMessage,
@@ -21,6 +22,7 @@ import {
 import { deleteUser, listUsers, updateUser } from "@/api/usr";
 import { apiErrorMessage } from "@/api/http";
 import { useAuthStore } from "@/stores/auth";
+import { useIsMobile } from "@/composables/useIsMobile";
 import PageContainer from "@/components/common/PageContainer.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
 import UsrFormModal from "@/components/usr/UsrFormModal.vue";
@@ -29,6 +31,7 @@ import type { UsrMain } from "@/api/types";
 
 const message = useMessage();
 const authStore = useAuthStore();
+const isMobile = useIsMobile();
 
 const rows = ref<UsrMain[]>([]);
 const loading = ref(false);
@@ -266,7 +269,85 @@ onMounted(fetchUsers);
         <template #prefix><NIcon :component="SearchOutline" /></template>
       </NInput>
 
+      <template v-if="isMobile">
+        <div v-if="rows.length" class="usr-cards">
+          <div v-for="user in rows" :key="user.id" class="usr-card">
+            <div class="usr-card__head">
+              <button type="button" class="usr-card__name" @click="openDetail(user)">
+                {{ user.name || user.username }}
+              </button>
+              <NTag
+                size="small"
+                :bordered="false"
+                :type="user.active ? 'success' : 'default'"
+              >
+                {{ user.active ? "Active" : "Inactive" }}
+              </NTag>
+            </div>
+            <div class="usr-card__username mono">{{ user.username }}</div>
+            <div class="usr-card__tags">
+              <NTag size="small" :bordered="false" :type="user.is_admin ? 'success' : 'default'">
+                {{ user.is_admin ? "Administrator" : "User" }}
+              </NTag>
+              <span class="usr-card__access muted">{{ accessLabel(user) }}</span>
+            </div>
+            <div class="usr-card__actions">
+              <NButton quaternary circle size="small" title="Edit" @click="openEdit(user)">
+                <template #icon><NIcon :component="CreateOutline" /></template>
+              </NButton>
+              <NButton
+                quaternary
+                circle
+                size="small"
+                :title="user.active ? 'Deactivate' : 'Activate'"
+                @click="toggleActive(user)"
+              >
+                <template #icon>
+                  <NIcon :component="user.active ? PauseOutline : PlayOutline" />
+                </template>
+              </NButton>
+              <NButton
+                v-if="user.id === selfId"
+                class="danger-icon-button"
+                quaternary
+                circle
+                size="small"
+                type="error"
+                disabled
+                title="You cannot delete yourself"
+              >
+                <template #icon><NIcon :component="TrashOutline" /></template>
+              </NButton>
+              <NPopconfirm v-else @positive-click="removeUser(user)">
+                <template #trigger>
+                  <NButton
+                    class="danger-icon-button"
+                    quaternary
+                    circle
+                    size="small"
+                    type="error"
+                    title="Delete"
+                  >
+                    <template #icon><NIcon :component="TrashOutline" /></template>
+                  </NButton>
+                </template>
+                Delete "{{ user.username }}"?
+              </NPopconfirm>
+            </div>
+          </div>
+        </div>
+        <p v-else-if="!loading" class="muted usr-empty">No users found.</p>
+        <div v-if="pagination.itemCount > pagination.pageSize" class="usr-pager">
+          <NPagination
+            :page="pagination.page"
+            :page-size="pagination.pageSize"
+            :item-count="pagination.itemCount"
+            @update:page="onPageChange"
+          />
+        </div>
+      </template>
       <NDataTable
+        v-else
         remote
         :columns="columns"
         :data="rows"
@@ -313,5 +394,76 @@ onMounted(fetchUsers);
   display: flex;
   justify-content: flex-end;
   gap: 2px;
+}
+
+.usr-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.usr-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--c-border);
+  border-radius: 11px;
+  background: var(--c-surface);
+}
+
+.usr-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.usr-card__name {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--c-primary);
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.usr-card__username {
+  font-size: 12.5px;
+  color: var(--c-text-2);
+  overflow-wrap: anywhere;
+}
+
+.usr-card__tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.usr-card__access {
+  font-size: 12.5px;
+}
+
+.usr-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 2px;
+  border-top: 1px solid var(--c-border);
+  padding-top: 8px;
+}
+
+.usr-empty {
+  padding: 8px 0;
+}
+
+.usr-pager {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
 }
 </style>

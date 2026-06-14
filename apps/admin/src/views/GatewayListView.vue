@@ -7,13 +7,16 @@ import { apiErrorMessage } from "@/api/http";
 import { useSnapshotStore } from "@/stores/snapshot";
 import { formatUnixAge } from "@/lib/datetime";
 import { formatBytes } from "@/lib/format";
+import { useIsMobile } from "@/composables/useIsMobile";
 import PageContainer from "@/components/common/PageContainer.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
+import GatewayCard from "@/components/gateway/GatewayCard.vue";
 import GatewayDetailDrawer from "@/components/gateway/GatewayDetailDrawer.vue";
 import type { GatewayStateItem } from "@/api/types";
 
 const message = useMessage();
 const snapshotStore = useSnapshotStore();
+const isMobile = useIsMobile();
 
 const gateways = ref<GatewayStateItem[]>([]);
 const loading = ref(false);
@@ -154,7 +157,26 @@ onBeforeUnmount(() => {
     </div>
 
     <SectionCard>
+      <div v-if="isMobile" class="gw-cards">
+        <button
+          v-for="gw in gateways"
+          :key="gw.gateway_id"
+          type="button"
+          class="gw-card-button"
+          @click="
+            selected = gw;
+            showDetail = true;
+          "
+        >
+          <GatewayCard
+            :gateway="gw"
+            :current="gw.snapshot_version === snapshotStore.version"
+            show-last-seen
+          />
+        </button>
+      </div>
       <NDataTable
+        v-else
         :columns="columns"
         :data="gateways"
         :loading="loading"
@@ -231,6 +253,38 @@ onBeforeUnmount(() => {
 
 .gw-empty {
   padding: 8px 0;
+}
+
+.gw-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gw-card-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gw-card-button :deep(.gw-card) {
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.gw-card-button:hover :deep(.gw-card),
+.gw-card-button:focus-visible :deep(.gw-card) {
+  border-color: var(--c-border-strong);
+  background: var(--c-surface-2);
+}
+
+.gw-card-button:focus-visible {
+  outline: none;
 }
 
 :deep(.clickable-row) {
