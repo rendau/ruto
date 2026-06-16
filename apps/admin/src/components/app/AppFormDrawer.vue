@@ -69,11 +69,6 @@ function nonDefaultSections(): string[] {
 const inheritedVariables = computed(() => rootStore.root?.variables ?? []);
 const authVariables = computed(() => [...inheritedVariables.value, ...model.variables]);
 
-const idRule: FormItemRule = {
-  required: true,
-  message: "Application id is required",
-  trigger: ["blur", "input"]
-};
 const backendRule: FormItemRule = {
   required: true,
   message: "Backend URL is required",
@@ -130,13 +125,9 @@ async function detectSwagger(): Promise<void> {
   >
     <NDrawerContent :title="isEdit ? 'Edit application' : 'New application'" closable>
       <NForm ref="formRef" :model="model" :disabled="submitting" label-placement="top">
-        <div class="form-grid">
-          <NFormItem label="Application id" path="id" :rule="idRule">
-            <NInput
-              v-model:value="model.id"
-              :disabled="isEdit"
-              placeholder="users-service"
-            />
+        <div class="form-grid" :class="{ 'form-grid--single': !isEdit }">
+          <NFormItem v-if="isEdit" label="Application id" path="id">
+            <NInput v-model:value="model.id" disabled />
           </NFormItem>
           <NFormItem label="Display name" path="name">
             <NInput v-model:value="model.name" placeholder="Users service" />
@@ -231,6 +222,10 @@ async function detectSwagger(): Promise<void> {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+.form-grid--single {
+  grid-template-columns: 1fr;
 }
 
 .switch-row {
