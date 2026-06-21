@@ -21,6 +21,10 @@ import (
 
 const (
 	ScrapeInterval = 10 * time.Minute
+	// ScrapeRetryInterval — укороченный интервал опроса, пока URL-ы заданы, но ни
+	// одного ключа загрузить не удалось (например, JWK-сервер недоступен на старте).
+	// Без этого вся авторизация молчит до следующего ScrapeInterval.
+	ScrapeRetryInterval = 15 * time.Second
 )
 
 var (
@@ -33,6 +37,7 @@ type Service struct {
 	urlStore   atomic.Pointer[[]string]
 	itemStore  atomic.Pointer[map[string]*Item]
 	loadMu     sync.Mutex
+	trigger    chan struct{}
 	httpClient *http.Client
 }
 
@@ -42,6 +47,7 @@ func init() {
 	instance = &Service{
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
+		trigger:   make(chan struct{}, 1),
 		httpClient: &http.Client{
 			Timeout: 5 * time.Second,
 			Transport: &http.Transport{
@@ -66,7 +72,16 @@ func (s *Service) SetUrls(urls []string) {
 	urlsCopy := make([]string, len(urls))
 	copy(urlsCopy, urls)
 	s.urlStore.Store(&urlsCopy)
-	go s.load()
+	s.signal()
+}
+
+// signal будит worker, чтобы он немедленно перезагрузил ключи и пересчитал
+// интервал опроса. Неблокирующий: если сигнал уже в очереди — пропускаем.
+func (s *Service) signal() {
+	select {
+	case s.trigger <- struct{}{}:
+	default:
+	}
 }
 
 func (s *Service) GetPublicKey(kid string) (*rsa.PublicKey, string) {
@@ -89,18 +104,31 @@ func (s *Service) getUrls() []string {
 }
 
 func (s *Service) worker() {
-	// ticker
-	ticker := time.NewTicker(ScrapeInterval)
-	defer ticker.Stop()
-
 	for s.ctx.Err() == nil {
 		s.load()
 
+		interval := ScrapeInterval
+		if s.needFastRetry() {
+			interval = ScrapeRetryInterval
+		}
+
+		timer := time.NewTimer(interval)
 		select {
-		case <-ticker.C:
+		case <-timer.C:
+		case <-s.trigger:
+			timer.Stop()
 		case <-s.ctx.Done():
+			timer.Stop()
+			return
 		}
 	}
+}
+
+// needFastRetry — true, когда опрашивать нужно, но ни одного ключа ещё нет
+// (URL-ы заданы, карта ключей пуста). Типично для первого старта при недоступном
+// JWK-сервере.
+func (s *Service) needFastRetry() bool {
+	return len(s.getUrls()) > 0 && len(s.getItems()) == 0
 }
 
 func (s *Service) setItems(items map[string]*Item) {
