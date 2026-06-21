@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,6 +12,25 @@ import (
 	"github.com/rendau/ruto/internal/errs"
 	swaggerService "github.com/rendau/ruto/internal/service/swagger"
 )
+
+// attemptRecorder потокобезопасно собирает URL-кандидаты: discoverSwaggerURL
+// опрашивает их параллельно из нескольких воркеров.
+type attemptRecorder struct {
+	mu    sync.Mutex
+	items []string
+}
+
+func (r *attemptRecorder) add(item string) {
+	r.mu.Lock()
+	r.items = append(r.items, item)
+	r.mu.Unlock()
+}
+
+func (r *attemptRecorder) snapshot() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]string(nil), r.items...)
+}
 
 func TestUsecase_GetSwaggerURLByBackendURL_NotAuthorized(t *testing.T) {
 
@@ -30,13 +50,13 @@ func TestUsecase_GetSwaggerURLByBackendURL_InvalidBackendURL(t *testing.T) {
 
 func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsSwaggerJSON(t *testing.T) {
 
-	var attempted []string
+	attempted := &attemptRecorder{}
 	uc := New(
 		nil,
 		nil,
 		&testSwaggerService{
 			loadEndpoints: func(_ context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
-				attempted = append(attempted, swaggerURL)
+				attempted.add(swaggerURL)
 				if swaggerURL == "https://example.local/service/docs/swagger.json" {
 					return []swaggerService.Endpoint{
 						{Method: "GET", Path: "/users"},
@@ -51,7 +71,7 @@ func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsSwaggerJSON(t *testing.T) 
 	result, err := uc.GetSwaggerURLByBackendURL(context.Background(), "https://example.local/service")
 	require.NoError(t, err)
 	require.Equal(t, "https://example.local/service/docs/swagger.json", result)
-	require.NotEmpty(t, attempted)
+	require.NotEmpty(t, attempted.snapshot())
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_SkipsEmptyEndpoints(t *testing.T) {
@@ -83,13 +103,13 @@ func TestUsecase_GetSwaggerURLByBackendURL_SkipsEmptyEndpoints(t *testing.T) {
 
 func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerJSON(t *testing.T) {
 
-	var attempted []string
+	attempted := &attemptRecorder{}
 	uc := New(
 		nil,
 		nil,
 		&testSwaggerService{
 			loadEndpoints: func(_ context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
-				attempted = append(attempted, swaggerURL)
+				attempted.add(swaggerURL)
 				if swaggerURL == "https://example.local/service/docs/api.swagger.json" {
 					return []swaggerService.Endpoint{
 						{Method: "GET", Path: "/users"},
@@ -104,18 +124,18 @@ func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerJSON(t *testing.
 	result, err := uc.GetSwaggerURLByBackendURL(context.Background(), "https://example.local/service")
 	require.NoError(t, err)
 	require.Equal(t, "https://example.local/service/docs/api.swagger.json", result)
-	require.NotEmpty(t, attempted)
+	require.NotEmpty(t, attempted.snapshot())
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerYAML(t *testing.T) {
 
-	var attempted []string
+	attempted := &attemptRecorder{}
 	uc := New(
 		nil,
 		nil,
 		&testSwaggerService{
 			loadEndpoints: func(_ context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
-				attempted = append(attempted, swaggerURL)
+				attempted.add(swaggerURL)
 				if swaggerURL == "https://example.local/service/docs/api.swagger.yaml" {
 					return []swaggerService.Endpoint{
 						{Method: "GET", Path: "/users"},
@@ -130,18 +150,16 @@ func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerYAML(t *testing.
 	result, err := uc.GetSwaggerURLByBackendURL(context.Background(), "https://example.local/service")
 	require.NoError(t, err)
 	require.Equal(t, "https://example.local/service/docs/api.swagger.yaml", result)
-	require.NotEmpty(t, attempted)
+	require.NotEmpty(t, attempted.snapshot())
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_FindsOnSystemPort(t *testing.T) {
 
-	var attempted []string
 	uc := New(
 		nil,
 		nil,
 		&testSwaggerService{
 			loadEndpoints: func(_ context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
-				attempted = append(attempted, swaggerURL)
 				if swaggerURL == "https://example.local:3003/doc" {
 					return []swaggerService.Endpoint{
 						{Method: "GET", Path: "/users"},
@@ -156,7 +174,6 @@ func TestUsecase_GetSwaggerURLByBackendURL_FindsOnSystemPort(t *testing.T) {
 	result, err := uc.GetSwaggerURLByBackendURL(context.Background(), "https://example.local:8080/api/v1")
 	require.NoError(t, err)
 	require.Equal(t, "https://example.local:3003/doc", result)
-	require.Contains(t, attempted, "https://example.local:3003/doc")
 }
 
 func TestUsecase_GetSwaggerURLByBackendURL_FindsOnSystemPortHTTPFallback(t *testing.T) {
