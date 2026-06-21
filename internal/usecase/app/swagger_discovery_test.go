@@ -133,6 +133,85 @@ func TestUsecase_GetSwaggerURLByBackendURL_FindsByDocsApiSwaggerYAML(t *testing.
 	require.NotEmpty(t, attempted)
 }
 
+func TestUsecase_GetSwaggerURLByBackendURL_FindsOnSystemPort(t *testing.T) {
+
+	var attempted []string
+	uc := New(
+		nil,
+		nil,
+		&testSwaggerService{
+			loadEndpoints: func(_ context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
+				attempted = append(attempted, swaggerURL)
+				if swaggerURL == "https://example.local:3003/doc" {
+					return []swaggerService.Endpoint{
+						{Method: "GET", Path: "/users"},
+					}, nil
+				}
+				return nil, errors.New("not found")
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+	)
+
+	result, err := uc.GetSwaggerURLByBackendURL(context.Background(), "https://example.local:8080/api/v1")
+	require.NoError(t, err)
+	require.Equal(t, "https://example.local:3003/doc", result)
+	require.Contains(t, attempted, "https://example.local:3003/doc")
+}
+
+func TestUsecase_GetSwaggerURLByBackendURL_FindsOnSystemPortHTTPFallback(t *testing.T) {
+
+	uc := New(
+		nil,
+		nil,
+		&testSwaggerService{
+			loadEndpoints: func(_ context.Context, swaggerURL string) ([]swaggerService.Endpoint, error) {
+				if swaggerURL == "http://example.local:3003/swagger.json" {
+					return []swaggerService.Endpoint{
+						{Method: "GET", Path: "/health"},
+					}, nil
+				}
+				return nil, errors.New("not found")
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+	)
+
+	result, err := uc.GetSwaggerURLByBackendURL(context.Background(), "https://example.local:8080/api/v1")
+	require.NoError(t, err)
+	require.Equal(t, "http://example.local:3003/swagger.json", result)
+}
+
+func TestBuildSwaggerCandidates_IncludesSystemPort(t *testing.T) {
+
+	baseURL, err := normalizeBaseURL("https://example.local:8080/api/v1")
+	require.NoError(t, err)
+
+	candidates := buildSwaggerCandidates(baseURL)
+
+	require.Contains(t, candidates, "https://example.local:3003/doc")
+	require.Contains(t, candidates, "http://example.local:3003/doc")
+	require.Contains(t, candidates, "https://example.local:8080/api/v1/doc")
+}
+
+func TestSystemPortBaseURLs_BackendAlreadyOnSystemPort(t *testing.T) {
+
+	baseURL, err := normalizeBaseURL("http://example.local:3003/api")
+	require.NoError(t, err)
+
+	require.Empty(t, systemPortBaseURLs(baseURL))
+}
+
+func TestSystemPortBaseURLs_NoPort(t *testing.T) {
+
+	baseURL, err := normalizeBaseURL("http://example.local/api")
+	require.NoError(t, err)
+
+	bases := systemPortBaseURLs(baseURL)
+	require.Len(t, bases, 1)
+	require.Equal(t, "http://example.local:3003/", bases[0].String())
+}
+
 func TestUsecase_GetSwaggerURLByBackendURL_NotFound(t *testing.T) {
 
 	uc := New(

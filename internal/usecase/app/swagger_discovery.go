@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"net"
 	"net/url"
 	"path"
 	"strings"
@@ -16,6 +17,11 @@ import (
 
 const swaggerProbeTimeout = time.Second
 const swaggerProbeWorkers = 4
+
+// systemSwaggerPort — порт, на котором backend-сервисы по соглашению отдают
+// системные ручки (включая swagger-документацию). Discovery дополнительно
+// опрашивает тот же хост на этом порту.
+const systemSwaggerPort = "3003"
 
 var errStopSwaggerDiscovery = errors.New("stop swagger discovery")
 
@@ -158,18 +164,57 @@ func buildSwaggerCandidates(baseURL *url.URL) []string {
 	}
 
 	seen := map[string]struct{}{}
-	result := make([]string, 0, 40)
-	for _, prefix := range pathPrefixes(baseURL.Path) {
-		for _, suffix := range suffixes {
-			itemURL := *baseURL
-			itemURL.Path = joinURLPaths(prefix, suffix)
-			item := itemURL.String()
-			if _, ok := seen[item]; ok {
-				continue
+	result := make([]string, 0, 80)
+
+	appendCandidates := func(base *url.URL, prefixes []string) {
+		for _, prefix := range prefixes {
+			for _, suffix := range suffixes {
+				itemURL := *base
+				itemURL.Path = joinURLPaths(prefix, suffix)
+				item := itemURL.String()
+				if _, ok := seen[item]; ok {
+					continue
+				}
+				seen[item] = struct{}{}
+				result = append(result, item)
 			}
-			seen[item] = struct{}{}
-			result = append(result, item)
 		}
+	}
+
+	appendCandidates(baseURL, pathPrefixes(baseURL.Path))
+
+	for _, sysBase := range systemPortBaseURLs(baseURL) {
+		appendCandidates(sysBase, []string{"/"})
+	}
+
+	return result
+}
+
+// systemPortBaseURLs возвращает варианты base URL, указывающие на тот же хост,
+// но на системный порт. Системные ручки не наследуют backend-путь, поэтому
+// опрашиваются только от корня. Если backend уже на системном порту — вариантов
+// нет. https-backend дополнительно пробуется по http, т.к. системный порт обычно
+// отдаётся без TLS.
+func systemPortBaseURLs(baseURL *url.URL) []*url.URL {
+	host := baseURL.Hostname()
+	if host == "" || baseURL.Port() == systemSwaggerPort {
+		return nil
+	}
+
+	hostPort := net.JoinHostPort(host, systemSwaggerPort)
+
+	schemes := []string{baseURL.Scheme}
+	if baseURL.Scheme == "https" {
+		schemes = append(schemes, "http")
+	}
+
+	result := make([]*url.URL, 0, len(schemes))
+	for _, scheme := range schemes {
+		item := *baseURL
+		item.Scheme = scheme
+		item.Host = hostPort
+		item.Path = "/"
+		result = append(result, &item)
 	}
 
 	return result
