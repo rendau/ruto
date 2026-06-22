@@ -28,7 +28,11 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 		result["all_apps"] = *m.AllApps
 	}
 	if m.UpdateAppIds {
-		result["app_ids"] = m.AppIds
+		appIds := m.AppIds
+		if appIds == nil {
+			appIds = []string{}
+		}
+		result["app_ids"] = appIds
 	}
 	if m.Name != nil {
 		result["name"] = *m.Name
