@@ -89,7 +89,7 @@ func New(
 			grpc.WithKeepaliveParams(
 				keepalive.ClientParameters{
 					Time:                10 * time.Second,
-					Timeout:             1 * time.Second,
+					Timeout:             2 * time.Second,
 					PermitWithoutStream: true,
 				},
 			),
