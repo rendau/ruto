@@ -28,6 +28,7 @@ import { apiErrorMessage } from "@/api/http";
 import { useDrawerResource } from "@/composables/useDrawerResource";
 import { useConfirm } from "@/composables/useConfirm";
 import { useIsMobile } from "@/composables/useIsMobile";
+import { useAuthStore } from "@/stores/auth";
 import { useRootStore } from "@/stores/root";
 import { variablesToArray } from "@/api/normalize";
 import { joinPath, joinUrl } from "@/lib/format";
@@ -58,8 +59,13 @@ const emit = defineEmits<{
 
 const message = useMessage();
 const rootStore = useRootStore();
+const authStore = useAuthStore();
 const { confirmDelete } = useConfirm();
 const isMobile = useIsMobile();
+
+// Managing endpoints (edit/delete/toggle/test/connect) is allowed only for apps
+// the user owns; for others the drawer is a read-only view.
+const canManage = computed(() => authStore.canManageApp(props.app?.id ?? ""));
 
 const inherited = ref<EndpointMain | null>(null);
 const interpolated = ref<EndpointMain | null>(null);
@@ -288,7 +294,10 @@ function remove(): void {
       </NSpin>
 
       <template #footer>
-        <div class="detail__footer">
+        <div v-if="!canManage" class="detail__footer detail__footer--readonly">
+          <span class="muted">Read-only — you don't manage this application.</span>
+        </div>
+        <div v-else class="detail__footer">
           <NButton
             class="danger-icon-button"
             type="error"
@@ -403,6 +412,11 @@ function remove(): void {
   gap: 12px;
   width: 100%;
   flex-wrap: wrap;
+}
+
+.detail__footer--readonly {
+  justify-content: flex-start;
+  font-size: 13px;
 }
 
 .detail__footer-right {

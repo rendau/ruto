@@ -30,6 +30,14 @@ func (s *testSessionService) CtxIsAdmin(_ context.Context) bool {
 	return s.session.IsAdmin()
 }
 
+func (s *testSessionService) CtxHasFullAppAccess(_ context.Context) bool {
+	return s.session.IsAdmin() || (s.session.IsAuthorized() && s.session.AllApps)
+}
+
+func (s *testSessionService) CtxGetAppIds(_ context.Context) []string {
+	return s.session.AppIds
+}
+
 type testEndpointService struct {
 	get func(ctx context.Context, id string, errNE bool) (*endpointModel.Endpoint, bool, error)
 }
@@ -70,6 +78,88 @@ func (s *testRootService) Get(ctx context.Context) (*rootModel.Root, error) {
 	return s.get(ctx)
 }
 
+func TestUsecase_EndpointGet_RedactsForViewer(t *testing.T) {
+	uc := New(
+		&testEndpointService{
+			get: func(_ context.Context, _ string, _ bool) (*endpointModel.Endpoint, bool, error) {
+				return &endpointModel.Endpoint{
+					Id:        "ep-1",
+					AppId:     "app-1",
+					Variables: varsModel.Vars{"secret": "secret-val"},
+				}, true, nil
+			},
+		},
+		// authorized non-owner
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+	)
+
+	item, err := uc.Get(context.Background(), "ep-1")
+	require.NoError(t, err)
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Variables["secret"])
+}
+
+func TestUsecase_EndpointGet_FullForOwner(t *testing.T) {
+	uc := New(
+		&testEndpointService{
+			get: func(_ context.Context, _ string, _ bool) (*endpointModel.Endpoint, bool, error) {
+				return &endpointModel.Endpoint{
+					Id:        "ep-1",
+					AppId:     "app-1",
+					Variables: varsModel.Vars{"secret": "secret-val"},
+				}, true, nil
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AppIds: []string{"app-1"}}},
+	)
+
+	item, err := uc.Get(context.Background(), "ep-1")
+	require.NoError(t, err)
+	require.Equal(t, "secret-val", item.Variables["secret"])
+}
+
+func TestUsecase_EndpointDelete_ForeignApp_NoPermission(t *testing.T) {
+	uc := New(
+		&testEndpointService{
+			get: func(_ context.Context, _ string, _ bool) (*endpointModel.Endpoint, bool, error) {
+				return &endpointModel.Endpoint{Id: "ep-1", AppId: "app-1"}, true, nil
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+	)
+
+	err := uc.Delete(context.Background(), "ep-1")
+	require.ErrorIs(t, err, errs.NoPermission)
+}
+
+func TestUsecase_TestRequest_ForeignApp_NoPermission(t *testing.T) {
+	uc := New(
+		&testEndpointService{
+			get: func(_ context.Context, _ string, _ bool) (*endpointModel.Endpoint, bool, error) {
+				return &endpointModel.Endpoint{
+					Id:    "ep-1",
+					AppId: "app-1",
+					Type:  endpointModel.TypeHTTP,
+					Http:  endpointModel.Http{Method: "GET", Path: "users"},
+				}, true, nil
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testRootService{
+			get: func(_ context.Context) (*rootModel.Root, error) {
+				return &rootModel.Root{}, nil
+			},
+		},
+		&testAppService{
+			get: func(_ context.Context, _ string, _ bool) (*appModel.App, bool, error) {
+				return &appModel.App{Id: "app-1", Backend: appModel.Backend{Url: "https://backend.local"}}, true, nil
+			},
+		},
+	)
+
+	_, err := uc.TestRequest(context.Background(), "ep-1", nil, nil, "")
+	require.ErrorIs(t, err, errs.NoPermission)
+}
+
 func TestUsecase_EndpointInterpolate_NotAuthorized(t *testing.T) {
 	uc := New(nil, &testSessionService{session: &sessionModel.Session{Id: 0}})
 
@@ -100,7 +190,7 @@ func TestUsecase_EndpointInherited(t *testing.T) {
 				}, true, nil
 			},
 		},
-		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AppIds: []string{"app-1"}}},
 		&testRootService{
 			get: func(_ context.Context) (*rootModel.Root, error) {
 				return &rootModel.Root{
@@ -168,7 +258,7 @@ func TestUsecase_EndpointInterpolate(t *testing.T) {
 				}, true, nil
 			},
 		},
-		&testSessionService{session: &sessionModel.Session{Id: 1}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AppIds: []string{"app-1"}}},
 		&testRootService{
 			get: func(_ context.Context) (*rootModel.Root, error) {
 				return &rootModel.Root{

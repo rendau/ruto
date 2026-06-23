@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
+
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	"github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
@@ -61,6 +63,15 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Endpo
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
 	}
 
+	// Any authorized user may view all endpoints; secrets of endpoints whose app
+	// the user can't manage are masked.
+	items = lo.Map(items, func(item *model.Endpoint, _ int) *model.Endpoint {
+		if u.canManage(ctx, item.AppId) {
+			return item
+		}
+		return item.Redacted()
+	})
+
 	return items, tCount, err
 }
 
@@ -71,6 +82,9 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Endpoint) (string, erro
 
 	err := u.validateEdit(obj, true)
 	if err != nil {
+		return "", err
+	}
+	if err = u.requireAppAccess(ctx, obj.AppId); err != nil {
 		return "", err
 	}
 
@@ -92,6 +106,10 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Endpoint, error) {
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
 
+	if result != nil && !u.canManage(ctx, result.AppId) {
+		result = result.Redacted()
+	}
+
 	return result, nil
 }
 
@@ -111,9 +129,24 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Endpoint) er
 	if id == "" {
 		return errs.IdRequired
 	}
-	err := u.validateEdit(obj, false)
+
+	current, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return fmt.Errorf("svc.Get: %w", err)
+	}
+	if err = u.requireAppAccess(ctx, current.AppId); err != nil {
+		return err
+	}
+
+	err = u.validateEdit(obj, false)
 	if err != nil {
 		return err
+	}
+	// Moving an endpoint to a different app requires access to the target app too.
+	if obj.AppId != current.AppId {
+		if err = u.requireAppAccess(ctx, obj.AppId); err != nil {
+			return err
+		}
 	}
 
 	err = u.svc.Update(ctx, id, obj)
@@ -132,7 +165,16 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 	if id == "" {
 		return errs.IdRequired
 	}
-	err := u.svc.Delete(ctx, id)
+
+	current, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return fmt.Errorf("svc.Get: %w", err)
+	}
+	if err = u.requireAppAccess(ctx, current.AppId); err != nil {
+		return err
+	}
+
+	err = u.svc.Delete(ctx, id)
 	if err != nil {
 		return fmt.Errorf("svc.Delete: %w", err)
 	}
@@ -168,7 +210,28 @@ func (u *Usecase) getInherited(
 		return nil, err
 	}
 
+	if !u.canManage(ctx, epObj.AppId) {
+		epObj = epObj.Redacted()
+	}
+
 	return epObj, nil
+}
+
+func (u *Usecase) requireAppAccess(ctx context.Context, appId string) error {
+	if u.canManage(ctx, appId) {
+		return nil
+	}
+	return errs.NoPermission
+}
+
+// canManage reports whether the current session may modify endpoints of the app
+// (and see their secrets): full app access (admin/all_apps) or the app is in the
+// user's app_ids.
+func (u *Usecase) canManage(ctx context.Context, appId string) bool {
+	if u.sessionSvc.CtxHasFullAppAccess(ctx) {
+		return true
+	}
+	return lo.Contains(u.sessionSvc.CtxGetAppIds(ctx), appId)
 }
 
 // resolveInherited loads the endpoint together with its parent app and root,

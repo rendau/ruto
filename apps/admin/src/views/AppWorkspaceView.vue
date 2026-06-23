@@ -61,7 +61,9 @@ const appForm = useAppForm();
 const { confirmDelete } = useConfirm();
 
 const appId = computed(() => (typeof route.params.id === "string" ? route.params.id : ""));
-const canEdit = computed(() => authStore.isAdmin);
+// Owners (and full-access users) may manage the app; everyone else gets a
+// read-only view with secrets masked by the backend.
+const canEdit = computed(() => authStore.canManageApp(appId.value));
 
 const app = ref<AppMain | null>(null);
 const endpoints = ref<EndpointMain[]>([]);
@@ -309,7 +311,7 @@ onBeforeUnmount(() => {
       v-if="!appId"
       description="Select an application from the sidebar to view its configuration and endpoints."
     >
-      <NButton v-if="canEdit" type="primary" @click="appForm.open(null)">
+      <NButton v-if="authStore.isAdmin" type="primary" @click="appForm.open(null)">
         <template #icon><NIcon :component="AddOutline" /></template>
         New application
       </NButton>
@@ -325,6 +327,9 @@ onBeforeUnmount(() => {
                 <h1 class="app-head__title">{{ app.name || app.id }}</h1>
                 <StatusTag :active="app.active" />
                 <NTag v-if="hasGrpc" size="small" :bordered="false" class="grpc-tag">gRPC</NTag>
+                <NTag v-if="!canEdit" size="small" :bordered="false" class="readonly-tag">
+                  Read-only
+                </NTag>
               </div>
               <div class="app-head__meta">
                 <span class="mono app-head__id">{{ app.id }}</span>
@@ -415,17 +420,22 @@ onBeforeUnmount(() => {
             <template #extra>
               <div class="ep-toolbar-actions">
                 <NButton
-                  v-if="app.backend.swagger_url"
+                  v-if="canEdit && app.backend.swagger_url"
                   size="small"
                   tertiary
                   @click="showSwagger = true"
                 >
                   Swagger
                 </NButton>
-                <NButton v-if="hasGrpc" size="small" tertiary @click="showGrpcReflection = true">
+                <NButton
+                  v-if="canEdit && hasGrpc"
+                  size="small"
+                  tertiary
+                  @click="showGrpcReflection = true"
+                >
                   gRPC
                 </NButton>
-                <NButton size="small" type="primary" @click="openCreate">
+                <NButton v-if="canEdit" size="small" type="primary" @click="openCreate">
                   <template #icon><NIcon :component="AddOutline" /></template>
                   Endpoint
                 </NButton>
@@ -501,7 +511,7 @@ onBeforeUnmount(() => {
                       />
                       <span v-if="!endpoint.active" class="ep-row__off">off</span>
                     </span>
-                    <span class="ep-row__actions" @click.stop>
+                    <span v-if="canEdit" class="ep-row__actions" @click.stop>
                       <NButton
                         v-if="endpoint.type === 'http'"
                         quaternary
@@ -545,7 +555,7 @@ onBeforeUnmount(() => {
                     : 'No endpoints registered yet.'
                 "
               >
-                <NButton v-if="!endpoints.length" type="primary" @click="openCreate">
+                <NButton v-if="canEdit && !endpoints.length" type="primary" @click="openCreate">
                   Create the first endpoint
                 </NButton>
               </EmptyState>
@@ -629,6 +639,11 @@ onBeforeUnmount(() => {
 .grpc-tag {
   color: var(--c-teal);
   background: rgba(34, 211, 197, 0.14);
+}
+
+.readonly-tag {
+  color: var(--c-text-3);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .app-head__meta {

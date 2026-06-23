@@ -46,15 +46,20 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.App, 
 	if pars == nil {
 		pars = &model.ListReq{}
 	}
-	if !u.sessionSvc.CtxHasFullAppAccess(ctx) {
-		ids := u.sessionSvc.CtxGetAppIds(ctx)
-		pars.IdsIn = &ids
-	}
 
 	items, tCount, err := u.svc.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
 	}
+
+	// Any authorized user may view all apps; secrets of apps the user can't
+	// manage are masked.
+	items = lo.Map(items, func(item *model.App, _ int) *model.App {
+		if u.canManage(ctx, item.Id) {
+			return item
+		}
+		return item.Redacted()
+	})
 
 	return items, tCount, err
 }
@@ -84,13 +89,16 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.App, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
-	if err := u.requireAppAccess(ctx, id); err != nil {
-		return nil, err
-	}
 
 	result, _, err := u.svc.Get(ctx, id, true)
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
+	}
+
+	// Any authorized user may view any app; secrets are masked unless the user
+	// can manage it.
+	if !u.canManage(ctx, id) {
+		result = result.Redacted()
 	}
 
 	return result, nil
@@ -118,9 +126,6 @@ func (u *Usecase) getInherited(
 	if id == "" {
 		return nil, errs.IdRequired
 	}
-	if err := u.requireAppAccess(ctx, id); err != nil {
-		return nil, err
-	}
 
 	appObj, _, err := u.svc.Get(ctx, id, true)
 	if err != nil {
@@ -144,6 +149,10 @@ func (u *Usecase) getInherited(
 
 	if withInterpolate {
 		rootObj.Interpolate()
+	}
+
+	if !u.canManage(ctx, id) {
+		appObj = appObj.Redacted()
 	}
 
 	return appObj, nil
@@ -274,13 +283,19 @@ func (u *Usecase) GetGrpcReflectionEndpoints(ctx context.Context, id string) ([]
 }
 
 func (u *Usecase) requireAppAccess(ctx context.Context, id string) error {
-	if u.sessionSvc.CtxHasFullAppAccess(ctx) {
-		return nil
-	}
-	if lo.Contains(u.sessionSvc.CtxGetAppIds(ctx), id) {
+	if u.canManage(ctx, id) {
 		return nil
 	}
 	return errs.NoPermission
+}
+
+// canManage reports whether the current session may modify the app (and see its
+// secrets): full app access (admin/all_apps) or the app is in the user's app_ids.
+func (u *Usecase) canManage(ctx context.Context, id string) bool {
+	if u.sessionSvc.CtxHasFullAppAccess(ctx) {
+		return true
+	}
+	return lo.Contains(u.sessionSvc.CtxGetAppIds(ctx), id)
 }
 
 func (u *Usecase) validateEdit(ctx context.Context, obj *model.App, selfID string) error {

@@ -21,6 +21,8 @@ type SessionServiceI interface {
 	FromContext(ctx context.Context) *sessionModel.Session
 	CtxIsAuthorized(ctx context.Context) bool
 	CtxIsAdmin(ctx context.Context) bool
+	CtxHasFullAppAccess(ctx context.Context) bool
+	CtxGetAppIds(ctx context.Context) []string
 }
 
 type RootServiceI interface {

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
@@ -330,6 +331,82 @@ func TestUsecase_GetSwaggerEndpointsDiff_PathVariableNamesIgnored(t *testing.T) 
 	require.NoError(t, err)
 	require.Empty(t, rep.Unregistered)
 	require.Empty(t, rep.RegisteredInvalid)
+}
+
+func appWithSecrets(id string) *appModel.App {
+	return &appModel.App{
+		Id:   id,
+		Name: "App " + id,
+		Backend: appModel.Backend{
+			Url:     "https://backend.local",
+			Headers: varsModel.Vars{"Authorization": "Bearer real"},
+		},
+		Auth: authModel.Auth{
+			Methods: []*authModel.AuthMethod{
+				{APIKey: &authModel.AuthMethodAPIKey{Header: "X-Key", Keys: []authModel.AuthMethodAPIKeyItem{{Name: "n", Key: "real-key"}}}},
+			},
+		},
+		Variables: varsModel.Vars{"secret": "secret-val"},
+	}
+}
+
+func TestUsecase_Get_RedactsForViewer(t *testing.T) {
+	uc := New(
+		&testAppService{
+			get: func(_ context.Context, id string, _ bool) (*appModel.App, bool, error) {
+				return appWithSecrets(id), true, nil
+			},
+		},
+		nil, nil,
+		// authorized, but not an owner of app-b and not full-access
+		&testSessionService{session: &sessionModel.Session{Id: 1, AppIds: []string{"app-a"}}},
+	)
+
+	item, err := uc.Get(context.Background(), "app-b")
+	require.NoError(t, err)
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Variables["secret"])
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Backend.Headers["Authorization"])
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Auth.Methods[0].APIKey.Keys[0].Key)
+	// backend url and key name stay visible
+	require.Equal(t, "https://backend.local", item.Backend.Url)
+	require.Equal(t, "n", item.Auth.Methods[0].APIKey.Keys[0].Name)
+}
+
+func TestUsecase_Get_FullForOwner(t *testing.T) {
+	uc := New(
+		&testAppService{
+			get: func(_ context.Context, id string, _ bool) (*appModel.App, bool, error) {
+				return appWithSecrets(id), true, nil
+			},
+		},
+		nil, nil,
+		&testSessionService{session: &sessionModel.Session{Id: 1, AppIds: []string{"app-b"}}},
+	)
+
+	item, err := uc.Get(context.Background(), "app-b")
+	require.NoError(t, err)
+	require.Equal(t, "secret-val", item.Variables["secret"])
+	require.Equal(t, "real-key", item.Auth.Methods[0].APIKey.Keys[0].Key)
+}
+
+func TestUsecase_List_RedactsForeignAppsOnly(t *testing.T) {
+	uc := New(
+		&testEditAppService{
+			list: func(_ context.Context, _ *appModel.ListReq) ([]*appModel.App, int64, error) {
+				return []*appModel.App{appWithSecrets("app-a"), appWithSecrets("app-b")}, 2, nil
+			},
+		},
+		nil, nil,
+		&testSessionService{session: &sessionModel.Session{Id: 1, AppIds: []string{"app-a"}}},
+	)
+
+	items, _, err := uc.List(context.Background(), &appModel.ListReq{})
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+	// owned app keeps secrets
+	require.Equal(t, "secret-val", items[0].Variables["secret"])
+	// foreign app is masked
+	require.Equal(t, varsModel.RedactedPlaceholder, items[1].Variables["secret"])
 }
 
 func TestUsecase_Create_DuplicateAppName(t *testing.T) {

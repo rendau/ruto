@@ -19,15 +19,24 @@ const { apps, loading } = storeToRefs(appsStore);
 const appForm = useAppForm();
 
 const search = ref("");
+const scope = ref<"mine" | "all">("mine");
 
 const currentId = computed(() => (typeof route.params.id === "string" ? route.params.id : null));
 
+// Users with full app access manage every app, so "mine" == "all" for them and
+// the scope filter is hidden.
+const showScopeFilter = computed(() => !authStore.hasFullAppAccess);
+
 const filtered = computed<AppMain[]>(() => {
+  let list = apps.value;
+  if (showScopeFilter.value && scope.value === "mine") {
+    list = list.filter((app) => authStore.canManageApp(app.id));
+  }
   const query = search.value.trim().toLowerCase();
   if (!query) {
-    return apps.value;
+    return list;
   }
-  return apps.value.filter((app) =>
+  return list.filter((app) =>
     [app.name, app.id, app.path_prefix, app.backend?.url].join(" ").toLowerCase().includes(query)
   );
 });
@@ -61,6 +70,25 @@ onMounted(() => {
       <NInput v-model:value="search" size="small" placeholder="Search applications" clearable>
         <template #prefix><NIcon :component="SearchOutline" /></template>
       </NInput>
+    </div>
+
+    <div v-if="showScopeFilter" class="app-nav__scope">
+      <button
+        type="button"
+        class="scope-btn"
+        :class="{ 'scope-btn--active': scope === 'mine' }"
+        @click="scope = 'mine'"
+      >
+        My apps
+      </button>
+      <button
+        type="button"
+        class="scope-btn"
+        :class="{ 'scope-btn--active': scope === 'all' }"
+        @click="scope = 'all'"
+      >
+        All apps
+      </button>
     </div>
 
     <NScrollbar class="app-nav__list">
@@ -110,6 +138,39 @@ onMounted(() => {
 
 .app-nav__search {
   padding: 0 12px 10px;
+}
+
+.app-nav__scope {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 10px;
+}
+
+.scope-btn {
+  flex: 1 1 0;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--c-text-3);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.scope-btn:hover {
+  color: var(--c-text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.scope-btn--active {
+  color: var(--c-text);
+  background: var(--c-primary-soft);
+  border-color: rgba(99, 226, 183, 0.32);
 }
 
 .app-nav__list {

@@ -20,6 +20,16 @@ export const useAuthStore = defineStore("auth", () => {
 
   const isAuthenticated = computed(() => Boolean(token.value) && Boolean(profile.value));
   const isAdmin = computed(() => Boolean(profile.value?.is_admin));
+  // Full app access: admins and users flagged with all_apps may manage every app.
+  const hasFullAppAccess = computed(() => Boolean(profile.value?.is_admin || profile.value?.all_apps));
+  const ownAppIds = computed(() => profile.value?.app_ids ?? []);
+
+  // canManageApp reports whether the current user may edit/test the given app.
+  // Other apps remain visible but read-only.
+  function canManageApp(appId: string): boolean {
+    if (!appId) return false;
+    return hasFullAppAccess.value || ownAppIds.value.includes(appId);
+  }
 
   function syncToken(): void {
     token.value = getToken();
@@ -80,6 +90,9 @@ export const useAuthStore = defineStore("auth", () => {
     loading,
     isAuthenticated,
     isAdmin,
+    hasFullAppAccess,
+    ownAppIds,
+    canManageApp,
     initialize,
     login,
     refreshProfile,

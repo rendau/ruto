@@ -53,6 +53,12 @@ func (u *Usecase) TestRequest(
 		return nil, err
 	}
 
+	// Test requests hit the real backend, so they are restricted to users that
+	// manage the app — viewers of other apps get read-only access only.
+	if err = u.requireAppAccess(ctx, epObj.AppId); err != nil {
+		return nil, err
+	}
+
 	if epObj.Type == model.TypeGRPC {
 		return nil, errs.ErrFull{Err: errs.InvalidRequest, Desc: "grpc endpoints are not testable"}
 	}
