@@ -15,6 +15,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
@@ -42,6 +43,10 @@ func NewGrpcServer(name string, sessionSvc *sessionService.Service, register fun
 	server := grpc.NewServer(
 		grpc.MaxSendMsgSize(math.MaxUint32),
 		grpc.MaxRecvMsgSize(math.MaxUint32),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second,
+			PermitWithoutStream: true,
+		}),
 		grpc.ChainUnaryInterceptor(interceptors...),
 	)
 

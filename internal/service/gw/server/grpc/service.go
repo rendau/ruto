@@ -9,6 +9,7 @@ import (
 	"time"
 
 	gogrpc "google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	reflectionv1 "google.golang.org/grpc/reflection/grpc_reflection_v1"
 )
 
@@ -23,6 +24,10 @@ func New(port int) *Service {
 	handlerWr := newHandlerWrapper()
 	server := gogrpc.NewServer(
 		gogrpc.UnknownServiceHandler(handlerWr.Handle),
+		gogrpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second,
+			PermitWithoutStream: true,
+		}),
 	)
 	reflectionv1.RegisterServerReflectionServer(server, handlerWr)
 
