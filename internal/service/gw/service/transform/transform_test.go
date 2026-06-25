@@ -8,14 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mustNew(t *testing.T, script string) *Transformer {
+func mustNew(t *testing.T, script string) *RequestTransformer {
 	t.Helper()
-	tr, err := New(script, 4)
+	tr, err := NewRequest(script, 4)
 	require.NoError(t, err)
 	return tr
 }
 
-func transform(t *testing.T, tr *Transformer, in *Request) (*Result, error) {
+func transform(t *testing.T, tr *RequestTransformer, in *Request) (*Result, error) {
 	t.Helper()
 	return tr.Transform(context.Background(), in)
 }
@@ -34,7 +34,6 @@ func TestPassthroughWhenFieldsOmitted(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Nil(t, res.Method, "method omitted -> nil")
-	require.Nil(t, res.Path, "path omitted -> nil")
 	require.Nil(t, res.Params, "params omitted -> nil")
 	require.False(t, res.BodySet, "body omitted -> not set")
 
@@ -87,15 +86,14 @@ func TestEmptyArrayStaysArray(t *testing.T) {
 	require.JSONEq(t, `{"items":[]}`, string(res.Body))
 }
 
-func TestMethodAndPathOverride(t *testing.T) {
-	tr := mustNew(t, `return { method: "PUT", path: "v2/handle" };`)
+func TestMethodOverride(t *testing.T) {
+	// Path is readable but not overridable.
+	tr := mustNew(t, `return { method: "PUT", echo_path: req.path };`)
 
 	res, err := transform(t, tr, &Request{Method: "POST", Path: "/orders"})
 	require.NoError(t, err)
 	require.NotNil(t, res.Method)
 	require.Equal(t, "PUT", *res.Method)
-	require.NotNil(t, res.Path)
-	require.Equal(t, "v2/handle", *res.Path)
 }
 
 func TestInvalidReturnIsError(t *testing.T) {
@@ -139,7 +137,7 @@ func TestNonJSONBodyParsesToUndefined(t *testing.T) {
 // pool: runtimes are reused across goroutines, so correctness here means the
 // pool serializes access safely (run with -race).
 func TestBoundedPoolConcurrency(t *testing.T) {
-	tr, err := New(`return { headers: { "X-Echo": req.vars["id"] } };`, 2)
+	tr, err := NewRequest(`return { headers: { "X-Echo": req.vars["id"] } };`, 2)
 	require.NoError(t, err)
 
 	const n = 200
@@ -169,11 +167,11 @@ func TestBoundedPoolConcurrency(t *testing.T) {
 }
 
 func TestContextCanceledWhenPoolSaturated(t *testing.T) {
-	tr, err := New(`return {};`, 1)
+	tr, err := NewRequest(`return {};`, 1)
 	require.NoError(t, err)
 
 	// Occupy the only worker slot so acquisition cannot succeed.
-	<-tr.tokens
+	<-tr.r.tokens
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

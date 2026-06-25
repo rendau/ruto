@@ -231,6 +231,8 @@ export interface EndpointGrpc {
 export interface Transform {
   // JavaScript evaluated by the gateway to reshape the request before proxying.
   request: string;
+  // JavaScript evaluated by the gateway to reshape the backend response.
+  response: string;
   // Cap on concurrent script runtimes (memory bound); 0 = inherit the default.
   max_workers: number;
 }

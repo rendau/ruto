@@ -1,19 +1,12 @@
-// Package transform evaluates a per-endpoint JavaScript that reshapes an
-// incoming request before it is proxied to the backend.
+// Package transform evaluates per-endpoint JavaScript that reshapes traffic at
+// the gateway: a request before it is proxied to the backend (see request.go),
+// or a response before it is returned to the client (see response.go).
 //
 // A script is compiled once (when the gateway rebuilds its handlers from a new
-// snapshot) and executed per request on a pooled, non-shared *goja.Runtime.
-//
-// Contract exposed to the script:
-//
-//	in:  req {method, path, headers, params, body, raw_body, vars}
-//	     - headers/params are multi-value: {key: [str, ...]} (like http.Header)
-//	     - req.body is req.raw_body parsed as JSON (undefined if empty/not JSON)
-//	out: return an object with any subset of {method, path, headers, params, body}
-//	     - a field that is absent is left as-is (the gateway proxies it unchanged)
-//	     - body: object -> JSON.stringify; string -> used as-is; null -> empty body
-//	     - headers/params: when returned, replace the whole set (spread req.* to keep);
-//	       each value may be a list or a bare string (coerced to a single-value list)
+// snapshot) and executed per call on a bounded pool of goja runtimes. The pool
+// size (maxWorkers) hard-caps the number of live runtimes — and therefore the
+// memory the script can use under load: at most maxWorkers runtimes exist at
+// once, and calls beyond that wait for a free slot (bounded by their context).
 package transform
 
 import (
@@ -29,74 +22,16 @@ const (
 	defaultTimeout = 100 * time.Millisecond
 
 	// DefaultMaxWorkers caps how many goja runtimes a single script may hold
-	// concurrently when the snapshot does not specify a limit. It bounds memory
-	// at the cost of queueing requests above the cap.
+	// concurrently when the snapshot does not specify a limit.
 	DefaultMaxWorkers = 16
 )
 
-// Request is the normalized incoming request handed to the script as `req`.
-// Headers and Params are multi-value, matching http.Header / url.Values.
-type Request struct {
-	Method  string
-	Path    string
-	Headers map[string][]string
-	Params  map[string][]string
-	Body    []byte
-	Vars    map[string]string
-}
-
-// Result is what the script asked the gateway to send to the backend. A nil
-// pointer / nil map / BodySet=false means "the script did not touch this — keep
-// the incoming value".
-type Result struct {
-	Method  *string
-	Path    *string
-	Headers map[string][]string
-	Params  map[string][]string
-	Body    []byte
-	BodySet bool
-}
-
-// Transformer runs one script on a bounded pool. The pool size (maxWorkers)
-// hard-caps the number of live goja runtimes, and therefore the memory the
-// script can use under load: at most maxWorkers runtimes exist at once, and
-// requests beyond that wait for a free slot (bounded by their context).
-type Transformer struct {
-	prog    *goja.Program
-	timeout time.Duration
-	tokens  chan struct{} // capacity maxWorkers; a token is the right to run
-	free    chan *vm      // capacity maxWorkers; idle runtimes ready for reuse
-}
-
 // vm is a runtime paired with the wrapper function evaluated in it. Runtimes are
-// not safe for concurrent use, so each is borrowed for a single Transform call.
+// not safe for concurrent use, so each is borrowed for a single run.
 type vm struct {
 	rt  *goja.Runtime
 	fn  goja.Callable
 	err error
-}
-
-func New(script string, maxWorkers int) (*Transformer, error) {
-	if maxWorkers <= 0 {
-		maxWorkers = DefaultMaxWorkers
-	}
-
-	prog, err := goja.Compile("transform.js", wrap(script), true)
-	if err != nil {
-		return nil, fmt.Errorf("compile: %w", err)
-	}
-
-	t := &Transformer{
-		prog:    prog,
-		timeout: defaultTimeout,
-		tokens:  make(chan struct{}, maxWorkers),
-		free:    make(chan *vm, maxWorkers),
-	}
-	// Runtimes are created lazily on demand, so an idle endpoint holds none.
-	for range maxWorkers {
-		t.tokens <- struct{}{}
-	}
-	return t, nil
 }
 
 func newVM(prog *goja.Program) *vm {
@@ -112,95 +47,93 @@ func newVM(prog *goja.Program) *vm {
 	return &vm{rt: rt, fn: fn}
 }
 
-func (t *Transformer) Transform(ctx context.Context, in *Request) (_ *Result, finalErr error) {
+// runner compiles one wrapped script and runs it on a bounded pool. It is the
+// shared core behind RequestTransformer and ResponseTransformer.
+type runner struct {
+	prog    *goja.Program
+	timeout time.Duration
+	tokens  chan struct{} // capacity maxWorkers; a token is the right to run
+	free    chan *vm      // capacity maxWorkers; idle runtimes ready for reuse
+}
+
+func newRunner(wrappedSrc string, maxWorkers int) (*runner, error) {
+	if maxWorkers <= 0 {
+		maxWorkers = DefaultMaxWorkers
+	}
+
+	prog, err := goja.Compile("transform.js", wrappedSrc, true)
+	if err != nil {
+		return nil, fmt.Errorf("compile: %w", err)
+	}
+
+	r := &runner{
+		prog:    prog,
+		timeout: defaultTimeout,
+		tokens:  make(chan struct{}, maxWorkers),
+		free:    make(chan *vm, maxWorkers),
+	}
+	// Runtimes are created lazily on demand, so an idle endpoint holds none.
+	for range maxWorkers {
+		r.tokens <- struct{}{}
+	}
+	return r, nil
+}
+
+// run borrows a runtime, builds the input argument, executes the script, and
+// parses its return value — all while holding a single pooled runtime. build and
+// parse must only touch the passed runtime, never escape values from it.
+func (r *runner) run(
+	ctx context.Context,
+	build func(rt *goja.Runtime) goja.Value,
+	parse func(rt *goja.Runtime, out goja.Value),
+) error {
 	// Acquire a worker slot. Above maxWorkers concurrent calls this blocks until
 	// one frees up, applying backpressure instead of allocating more runtimes.
 	select {
-	case <-t.tokens:
+	case <-r.tokens:
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
 	}
-	defer func() { t.tokens <- struct{}{} }()
+	defer func() { r.tokens <- struct{}{} }()
 
-	// Reuse an idle runtime or lazily create one (never exceeds maxWorkers,
-	// since we hold a token).
 	var e *vm
 	select {
-	case e = <-t.free:
+	case e = <-r.free:
 	default:
-		e = newVM(t.prog)
+		e = newVM(r.prog)
 	}
 	if e.err != nil {
-		return nil, e.err
+		return e.err
 	}
 
-	// Only return a healthy runtime to the pool. A runtime that errored (script
-	// throw, timeout interrupt) is dropped so the next call gets a clean one.
-	// This defer runs before the token release above (LIFO), so the runtime is
-	// back in free before another goroutine can claim the slot.
+	// Only a healthy runtime is returned to the pool; one that errored (script
+	// throw, timeout interrupt) is dropped. This defer runs before the token
+	// release above (LIFO), so the runtime is back in free before another
+	// goroutine can claim the slot.
 	keep := false
 	defer func() {
 		if keep {
-			t.free <- e
+			r.free <- e
 		}
 	}()
 
 	rt := e.rt
+	arg := build(rt)
 
-	reqObj := rt.NewObject()
-	_ = reqObj.Set("method", in.Method)
-	_ = reqObj.Set("path", in.Path)
-	_ = reqObj.Set("headers", newStrListObject(rt, in.Headers))
-	_ = reqObj.Set("params", newStrListObject(rt, in.Params))
-	_ = reqObj.Set("vars", newStrObject(rt, in.Vars))
-	_ = reqObj.Set("raw_body", string(in.Body))
-
-	timer := time.AfterFunc(t.timeout, func() { rt.Interrupt("timeout") })
-	v, runErr := e.fn(goja.Undefined(), reqObj)
+	timer := time.AfterFunc(r.timeout, func() { rt.Interrupt("timeout") })
+	out, runErr := e.fn(goja.Undefined(), arg)
 	timer.Stop()
 	rt.ClearInterrupt()
 	if runErr != nil {
-		return nil, fmt.Errorf("run: %w", runErr)
+		return fmt.Errorf("run: %w", runErr)
 	}
 
-	res, err := parseResult(rt, v)
-	if err != nil {
-		return nil, err
-	}
-
+	parse(rt, out)
 	keep = true
-	return res, nil
+	return nil
 }
 
-func parseResult(rt *goja.Runtime, v goja.Value) (*Result, error) {
-	res := &Result{}
-	if v == nil || goja.IsUndefined(v) || goja.IsNull(v) {
-		return res, nil
-	}
-
-	obj := v.ToObject(rt)
-
-	if mv := obj.Get("method"); present(mv) {
-		s := mv.String()
-		res.Method = &s
-	}
-	if pv := obj.Get("path"); present(pv) {
-		s := pv.String()
-		res.Path = &s
-	}
-	if hv := obj.Get("headers"); present(hv) {
-		res.Headers = exportStrListMap(hv)
-	}
-	if pv := obj.Get("params"); present(pv) {
-		res.Params = exportStrListMap(pv)
-	}
-	if bsv := obj.Get("body_set"); bsv != nil && bsv.ToBoolean() {
-		res.BodySet = true
-		res.Body = []byte(obj.Get("body").String())
-	}
-
-	return res, nil
-}
+// --- shared goja helpers ---
 
 func present(v goja.Value) bool {
 	return v != nil && !goja.IsUndefined(v) && !goja.IsNull(v)
@@ -249,15 +182,9 @@ func newStrListObject(rt *goja.Runtime, m map[string][]string) *goja.Object {
 	return o
 }
 
-// wrap embeds the user script in a function that parses the body, runs the
-// script, and normalizes its return value into the shape parseResult expects.
-// Bad return values (non-object, non-object headers/params) throw here, which
-// surfaces as a run error — so the gateway fails the request without calling the
-// backend.
-func wrap(script string) string {
-	return `(function (req) {
-  "use strict";
-
+// strlistmapJS coerces a returned headers/params object into {key: [string,...]}.
+// Shared verbatim by the request and response wrappers.
+const strlistmapJS = `
   function __strlistmap(v, name) {
     if (v === null || v === undefined) return {};
     if (typeof v !== "object") throw new Error(name + " must be an object");
@@ -272,44 +199,27 @@ func wrap(script string) string {
           return (x === null || x === undefined) ? "" : String(x);
         });
       } else {
-        // scalar -> single-value list, for ergonomics
         out[k] = [String(val)];
       }
     }
     return out;
   }
+`
 
-  req.body = (function () {
-    try {
-      return (req.raw_body && req.raw_body.length) ? JSON.parse(req.raw_body) : undefined;
-    } catch (e) {
-      return undefined;
-    }
-  })();
-
-  var out = (function (req) {
-` + script + `
-  })(req);
-
-  if (out === undefined || out === null) return {};
-  if (typeof out !== "object") throw new Error("script must return an object");
-
-  var res = {};
-  if ("method" in out) res.method = String(out.method);
-  if ("path" in out) res.path = String(out.path);
-  if ("headers" in out) res.headers = __strlistmap(out.headers, "headers");
-  if ("params" in out) res.params = __strlistmap(out.params, "params");
-  if ("body" in out) {
-    var b = out.body;
-    if (b === undefined || b === null) {
-      res.body = "";
-    } else if (typeof b === "string") {
-      res.body = b;
+// bodyOutJS normalizes a returned body into res.body (string) + res.body_set.
+// outVar is the result object name, srcExpr the JS expression for out.body.
+func bodyOutJS(resVar, srcExpr string) string {
+	return `
+  {
+    var __b = ` + srcExpr + `;
+    if (__b === undefined || __b === null) {
+      ` + resVar + `.body = "";
+    } else if (typeof __b === "string") {
+      ` + resVar + `.body = __b;
     } else {
-      res.body = JSON.stringify(b);
+      ` + resVar + `.body = JSON.stringify(__b);
     }
-    res.body_set = true;
+    ` + resVar + `.body_set = true;
   }
-  return res;
-})`
+`
 }

@@ -41,32 +41,52 @@ function patch(part: Partial<Transform>): void {
   local.value = { ...local.value, ...part };
 }
 
-const SCRIPT_PLACEHOLDER = `// req: { method, path, headers, params, body, raw_body, vars }
-// return any subset of { method, path, headers, params, body }
+const REQUEST_PLACEHOLDER = `// req: { method, path, headers, params, body, raw_body, vars }
+// return any subset of { method, headers, params, body }
 return {
   body: { ...req.body, source: "gateway" },
   headers: { ...req.headers, "X-Tenant": [req.vars.tenant] }
 };`;
 
-const INPUT_FIELDS = [
-  { name: "req.method", desc: "HTTP method, e.g. \"POST\"." },
-  { name: "req.path", desc: "Request path, e.g. \"/users/42\"." },
-  { name: "req.headers", desc: "Multi-value headers: { name: [values] }." },
-  { name: "req.params", desc: "Multi-value query params: { name: [values] }." },
-  { name: "req.body", desc: "Parsed JSON body, or undefined if empty / not JSON." },
-  { name: "req.raw_body", desc: "Raw request body as a string." },
-  { name: "req.vars", desc: "Endpoint variables: { name: value } (strings)." }
-];
+const RESPONSE_PLACEHOLDER = `// res: { status, headers, body, raw_body, vars }
+// return any subset of { status, headers, body }
+if (res.status === 404) return { status: 200, body: { items: [] } };
+return { body: res.body.data };`;
 
-const OUTPUT_FIELDS = [
-  { name: "method", desc: "String — overrides the request method." },
-  { name: "path", desc: "String — overrides the request path." },
-  { name: "headers", desc: "Object — replaces ALL headers (spread req.headers to keep). A value may be a list or a bare string." },
-  { name: "params", desc: "Object — replaces ALL query params (same value rules as headers)." },
-  { name: "body", desc: "Object → JSON-encoded; string → sent as-is; null → empty body." }
-];
+interface Field {
+  name: string;
+  desc: string;
+}
+interface Contract {
+  key: string;
+  title: string;
+  note: string;
+  inputs: Field[];
+  outputs: Field[];
+  example: string;
+}
 
-const EXAMPLE_CODE = `// Wrap the incoming JSON in the backend's envelope,
+const CONTRACTS: Contract[] = [
+  {
+    key: "request",
+    title: "Request transform — req → backend",
+    note: "Runs after authentication, last before proxying to the backend.",
+    inputs: [
+      { name: "req.method", desc: "HTTP method, e.g. \"POST\"." },
+      { name: "req.path", desc: "Request path, e.g. \"/users/42\"." },
+      { name: "req.headers", desc: "Multi-value headers: { name: [values] }." },
+      { name: "req.params", desc: "Multi-value query params: { name: [values] }." },
+      { name: "req.body", desc: "Parsed JSON body, or undefined if empty / not JSON." },
+      { name: "req.raw_body", desc: "Raw request body as a string." },
+      { name: "req.vars", desc: "Endpoint variables: { name: value } (strings)." }
+    ],
+    outputs: [
+      { name: "method", desc: "String — overrides the request method." },
+      { name: "headers", desc: "Object — replaces ALL headers (spread req.headers to keep). Value may be a list or a bare string." },
+      { name: "params", desc: "Object — replaces ALL query params (same value rules)." },
+      { name: "body", desc: "Object → JSON-encoded; string → sent as-is; null → empty body." }
+    ],
+    example: `// Wrap the incoming JSON in the backend's envelope,
 // add a header, and drop an internal one.
 const headers = { ...req.headers };
 delete headers["X-Internal"];
@@ -75,35 +95,66 @@ return {
   headers: { ...headers, "X-Tenant": [req.vars.tenant] },
   body: {
     source: "gateway",
-    received_at: req.vars.now,
     payload: req.body,        // parsed JSON body (undefined if not JSON)
   },
-};`;
+};`
+  },
+  {
+    key: "response",
+    title: "Response transform — backend → client",
+    note: "Runs on the backend response (after the request reached the backend) before it is returned to the client.",
+    inputs: [
+      { name: "res.status", desc: "Backend HTTP status code, e.g. 200." },
+      { name: "res.headers", desc: "Multi-value headers: { name: [values] }." },
+      { name: "res.body", desc: "Parsed JSON body, or undefined if empty / not JSON." },
+      { name: "res.raw_body", desc: "Raw response body as a string." },
+      { name: "res.vars", desc: "Endpoint variables: { name: value } (strings)." }
+    ],
+    outputs: [
+      { name: "status", desc: "Number — overrides the response status code." },
+      { name: "headers", desc: "Object — replaces ALL headers (spread res.headers to keep). Value may be a list or a bare string." },
+      { name: "body", desc: "Object → JSON-encoded; string → sent as-is; null → empty body." }
+    ],
+    example: `// Unwrap the backend envelope, and turn a 404 into an empty list.
+if (res.status === 404) {
+  return { status: 200, body: { items: [] } };
+}
+return {
+  headers: { ...res.headers, "X-Served-By": ["gateway"] },
+  body: res.body.data,
+};`
+  }
+];
 
 // Full reference as markdown — copied as a single block to hand to an AI agent.
 const DOC_MARKDOWN = [
-  "# ruto gateway — request transform script",
+  "# ruto gateway — endpoint transform scripts",
   "",
-  "Per-endpoint JavaScript evaluated by the gateway (goja) to reshape the incoming",
-  "HTTP request before it is proxied to the backend. The script body runs with a",
-  "`req` object in scope and must `return` an object describing the outgoing request.",
-  "",
-  "## Input: `req`",
-  ...INPUT_FIELDS.map((f) => `- \`${f.name}\` — ${f.desc}`),
-  "",
-  "## Output: return an object with any subset of these fields",
-  ...OUTPUT_FIELDS.map((f) => `- \`${f.name}\` — ${f.desc}`),
-  "",
-  "## Rules",
-  "- A field that is not returned is proxied unchanged.",
-  "- Returning a non-object, or throwing an error, fails the request without calling the backend.",
-  "- The script runs after authentication, last before proxying.",
-  "- `req.vars` are resolved at request time; the script source itself is not interpolated.",
-  "",
-  "## Example",
-  "```js",
-  EXAMPLE_CODE,
-  "```",
+  "Per-endpoint JavaScript evaluated by the gateway (goja). The script body runs",
+  "with an input object in scope and must `return` an object describing the result.",
+  "A field that is not returned is passed through unchanged. Returning a non-object,",
+  "or throwing, fails the call (request transform: backend is not called; response",
+  "transform: the client gets a 502). `headers`/`params` are multi-value",
+  "`{ name: [values] }`; a returned object REPLACES the whole set (spread the input",
+  "to keep existing entries). A returned `body` object is JSON-encoded, a string is",
+  "sent as-is, null means empty. `vars` are resolved at request time; the script",
+  "source itself is not interpolated.",
+  ...CONTRACTS.flatMap((c) => [
+    "",
+    `## ${c.title}`,
+    c.note,
+    "",
+    "Input:",
+    ...c.inputs.map((f) => `- \`${f.name}\` — ${f.desc}`),
+    "",
+    "Output (return any subset):",
+    ...c.outputs.map((f) => `- \`${f.name}\` — ${f.desc}`),
+    "",
+    "Example:",
+    "```js",
+    c.example,
+    "```"
+  ]),
   ""
 ].join("\n");
 </script>
@@ -112,7 +163,7 @@ const DOC_MARKDOWN = [
   <div class="transform-editor">
     <label class="field">
       <span class="field__head">
-        <span class="field__label">Request script (JavaScript)</span>
+        <span class="field__label">Request script — JavaScript (req → backend)</span>
         <NButton size="tiny" quaternary @click="showDoc = true">
           <template #icon><NIcon :component="HelpCircleOutline" /></template>
           Docs
@@ -122,10 +173,29 @@ const DOC_MARKDOWN = [
         type="textarea"
         class="transform-editor__code"
         :value="local.request"
-        :placeholder="SCRIPT_PLACEHOLDER"
-        :autosize="{ minRows: 8, maxRows: 24 }"
+        :placeholder="REQUEST_PLACEHOLDER"
+        :autosize="{ minRows: 7, maxRows: 22 }"
         spellcheck="false"
         @update:value="(value: string) => patch({ request: value })"
+      />
+    </label>
+
+    <label class="field">
+      <span class="field__head">
+        <span class="field__label">Response script — JavaScript (backend → client)</span>
+        <NButton size="tiny" quaternary @click="showDoc = true">
+          <template #icon><NIcon :component="HelpCircleOutline" /></template>
+          Docs
+        </NButton>
+      </span>
+      <NInput
+        type="textarea"
+        class="transform-editor__code"
+        :value="local.response"
+        :placeholder="RESPONSE_PLACEHOLDER"
+        :autosize="{ minRows: 7, maxRows: 22 }"
+        spellcheck="false"
+        @update:value="(value: string) => patch({ response: value })"
       />
     </label>
 
@@ -140,15 +210,16 @@ const DOC_MARKDOWN = [
     </label>
 
     <p class="transform-editor__hint muted">
-      Runs after auth, last before proxying. Omitted return fields are proxied unchanged.
-      Throwing fails the request without calling the backend.
+      Request runs after auth, last before proxying; response runs on the backend reply
+      before the client sees it. Omitted return fields pass through unchanged; throwing
+      fails the call without a backend round-trip (request) or with a 502 (response).
       <NButton text size="tiny" type="primary" @click="showDoc = true">Open reference</NButton>
     </p>
 
     <NModal
       :show="showDoc"
       preset="card"
-      title="Request transform reference"
+      title="Transform scripts reference"
       class="transform-doc"
       :bordered="false"
       @update:show="(value: boolean) => (showDoc = value)"
@@ -161,34 +232,34 @@ const DOC_MARKDOWN = [
       </template>
 
       <div class="doc">
-        <section class="doc__section">
-          <span class="section-label">Input — <code>req</code></span>
+        <section v-for="c in CONTRACTS" :key="c.key" class="doc__contract">
+          <h4 class="doc__title">{{ c.title }}</h4>
+          <p class="doc__note muted">{{ c.note }}</p>
+
+          <span class="section-label">Input</span>
           <dl class="doc__list">
-            <template v-for="f in INPUT_FIELDS" :key="f.name">
+            <template v-for="f in c.inputs" :key="f.name">
               <dt><code>{{ f.name }}</code></dt>
               <dd>{{ f.desc }}</dd>
             </template>
           </dl>
-        </section>
 
-        <section class="doc__section">
           <span class="section-label">Output — <code>return</code> any subset</span>
           <dl class="doc__list">
-            <template v-for="f in OUTPUT_FIELDS" :key="f.name">
+            <template v-for="f in c.outputs" :key="f.name">
               <dt><code>{{ f.name }}</code></dt>
               <dd>{{ f.desc }}</dd>
             </template>
           </dl>
-          <p class="doc__note muted">
-            A field that is not returned is proxied unchanged. Returning a non-object,
-            or throwing, fails the request without calling the backend.
-          </p>
+
+          <span class="section-label">Example</span>
+          <JsonBlock :content="c.example" max-height="260px" />
         </section>
 
-        <section class="doc__section">
-          <span class="section-label">Example</span>
-          <JsonBlock :content="EXAMPLE_CODE" max-height="320px" />
-        </section>
+        <p class="doc__note muted">
+          A field that is not returned passes through unchanged. Returning a non-object,
+          or throwing, fails the call without sending a partial result.
+        </p>
       </div>
     </NModal>
   </div>
@@ -246,24 +317,31 @@ const DOC_MARKDOWN = [
 .doc {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 22px;
 }
 
-.doc__section {
+.doc__contract {
   display: flex;
   flex-direction: column;
   gap: 9px;
 }
 
-.doc__list {
-  display: grid;
-  grid-template-columns: minmax(120px, max-content) 1fr;
-  gap: 6px 14px;
+.doc__title {
   margin: 0;
+  font-size: 14px;
+  font-weight: 700;
 }
 
-.doc__list dt {
-  font-family: var(--font-mono);
+.doc__contract + .doc__contract {
+  padding-top: 18px;
+  border-top: 1px solid var(--c-border);
+}
+
+.doc__list {
+  display: grid;
+  grid-template-columns: minmax(110px, max-content) 1fr;
+  gap: 6px 14px;
+  margin: 0;
 }
 
 .doc__list dt code {

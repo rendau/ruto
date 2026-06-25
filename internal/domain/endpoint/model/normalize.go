@@ -47,6 +47,7 @@ func (m *Endpoint) Normalize() error {
 
 func (m *Transform) Normalize() {
 	m.Request = strings.TrimSpace(m.Request)
+	m.Response = strings.TrimSpace(m.Response)
 	if m.MaxWorkers < 0 {
 		m.MaxWorkers = 0
 	}

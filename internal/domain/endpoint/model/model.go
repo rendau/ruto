@@ -30,10 +30,12 @@ type Endpoint struct {
 }
 
 // Transform holds optional scripts (JavaScript, evaluated by the gateway) that
-// reshape a request before it is proxied to the backend.
+// reshape a request before it is proxied to the backend, and/or the response
+// before it is returned to the client.
 type Transform struct {
-	Request string `json:"request"`
-	// MaxWorkers caps concurrent goja runtimes for this script (memory bound).
+	Request  string `json:"request"`
+	Response string `json:"response"`
+	// MaxWorkers caps concurrent goja runtimes per script (memory bound).
 	// 0 falls back to the Root-level default, then the engine default.
 	MaxWorkers int `json:"max_workers"`
 }

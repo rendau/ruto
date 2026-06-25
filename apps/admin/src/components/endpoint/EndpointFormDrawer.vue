@@ -62,7 +62,7 @@ function nonDefaultSections(): string[] {
   if (model.variables.length) {
     names.push("variables");
   }
-  if (model.transform.request || model.transform.max_workers) {
+  if (model.transform.request || model.transform.response || model.transform.max_workers) {
     names.push("transform");
   }
   return names;
@@ -244,7 +244,7 @@ function close(): void {
           <NCollapseItem title="Variables" name="variables">
             <VariableEditor v-model="model.variables" :available-variables="inheritedVariables" />
           </NCollapseItem>
-          <NCollapseItem title="Request transform" name="transform">
+          <NCollapseItem title="Transform (request &amp; response)" name="transform">
             <TransformEditor v-model="model.transform" />
           </NCollapseItem>
         </NCollapse>

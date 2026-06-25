@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/rw_wrapper"
@@ -29,7 +28,7 @@ func NewRequestTransform(ep *endpointModel.Endpoint, defaultMaxWorkers int) Midd
 		maxWorkers = defaultMaxWorkers
 	}
 
-	transformer, err := transform.New(script, maxWorkers)
+	transformer, err := transform.NewRequest(script, maxWorkers)
 	if err != nil {
 		// A script that does not compile breaks only this endpoint; the rest of
 		// the snapshot keeps working. Fail its requests instead of silently
@@ -83,15 +82,6 @@ func NewRequestTransform(ep *endpointModel.Endpoint, defaultMaxWorkers int) Midd
 func applyTransform(r *http.Request, res *transform.Result, origBody []byte) {
 	if res.Method != nil {
 		r.Method = *res.Method
-	}
-
-	if res.Path != nil {
-		p := *res.Path
-		if !strings.HasPrefix(p, "/") {
-			p = "/" + p
-		}
-		r.URL.Path = p
-		r.URL.RawPath = ""
 	}
 
 	if res.Headers != nil {

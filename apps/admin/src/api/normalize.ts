@@ -53,7 +53,7 @@ export function normalizeLogging(value?: Logging | null): Logging {
 }
 
 export function emptyTransform(): Transform {
-  return { request: "", max_workers: 0 };
+  return { request: "", response: "", max_workers: 0 };
 }
 
 export function normalizeRootTransform(value?: RootTransform | null): RootTransform {
@@ -66,6 +66,7 @@ export function normalizeTransform(value?: Transform | null): Transform {
   }
   return {
     request: typeof value.request === "string" ? value.request : "",
+    response: typeof value.response === "string" ? value.response : "",
     max_workers: Math.max(0, Math.trunc(Number(value.max_workers) || 0))
   };
 }
