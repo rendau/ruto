@@ -23,6 +23,7 @@ import { useRootStore } from "@/stores/root";
 import { HTTP_METHOD_OPTIONS } from "@/constants/enums";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
+import TransformEditor from "@/components/editors/TransformEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import KeyValueTextarea from "@/components/editors/KeyValueTextarea.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
@@ -60,6 +61,9 @@ function nonDefaultSections(): string[] {
   }
   if (model.variables.length) {
     names.push("variables");
+  }
+  if (model.transform.request || model.transform.max_workers) {
+    names.push("transform");
   }
   return names;
 }
@@ -239,6 +243,9 @@ function close(): void {
           </NCollapseItem>
           <NCollapseItem title="Variables" name="variables">
             <VariableEditor v-model="model.variables" :available-variables="inheritedVariables" />
+          </NCollapseItem>
+          <NCollapseItem title="Request transform" name="transform">
+            <TransformEditor v-model="model.transform" />
           </NCollapseItem>
         </NCollapse>
       </NForm>

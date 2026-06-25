@@ -7,6 +7,7 @@ import {
   NDynamicInput,
   NIcon,
   NInput,
+  NInputNumber,
   NSpin,
   NTag,
   useMessage
@@ -49,7 +50,8 @@ function emptyRoot(): RootMain {
     auth: emptyAuth(),
     logging: emptyLogging(),
     log_own_response_errors: false,
-    variables: []
+    variables: [],
+    transform: { max_workers: 0 }
   };
 }
 
@@ -142,6 +144,17 @@ onMounted(load);
           <NCheckbox v-model:checked="model.log_own_response_errors" class="general__check">
             Log gateway's own response errors
           </NCheckbox>
+          <label class="field general__workers">
+            <span class="field__label">
+              Transform max workers (default cap on concurrent runtimes per endpoint script; 0 = engine default)
+            </span>
+            <NInputNumber
+              :value="model.transform.max_workers"
+              :min="0"
+              :step="1"
+              @update:value="(value: number | null) => (model.transform.max_workers = Math.max(0, Math.trunc(value || 0)))"
+            />
+          </label>
         </SectionCard>
 
         <SectionCard title="CORS">
@@ -272,6 +285,11 @@ onMounted(load);
 
 .general__check {
   margin-top: 14px;
+}
+
+.general__workers {
+  margin-top: 16px;
+  max-width: 360px;
 }
 
 .cors__switches {

@@ -12,6 +12,8 @@ import type {
   EndpointMain,
   Logging,
   RootMain,
+  RootTransform,
+  Transform,
   Variable
 } from "./types";
 
@@ -47,6 +49,24 @@ export function normalizeLogging(value?: Logging | null): Logging {
     resp_body: !!value.resp_body,
     req_body_limit: Math.max(0, Math.trunc(value.req_body_limit || 0)),
     resp_body_limit: Math.max(0, Math.trunc(value.resp_body_limit || 0))
+  };
+}
+
+export function emptyTransform(): Transform {
+  return { request: "", max_workers: 0 };
+}
+
+export function normalizeRootTransform(value?: RootTransform | null): RootTransform {
+  return { max_workers: Math.max(0, Math.trunc(Number(value?.max_workers) || 0)) };
+}
+
+export function normalizeTransform(value?: Transform | null): Transform {
+  if (!value) {
+    return emptyTransform();
+  }
+  return {
+    request: typeof value.request === "string" ? value.request : "",
+    max_workers: Math.max(0, Math.trunc(Number(value.max_workers) || 0))
   };
 }
 
@@ -154,7 +174,8 @@ export function normalizeRoot(value: RootMain): RootMain {
     auth: normalizeAuth(value?.auth),
     logging: normalizeLogging(value?.logging),
     log_own_response_errors: Boolean(value?.log_own_response_errors),
-    variables: variablesToArray(raw.variables)
+    variables: variablesToArray(raw.variables),
+    transform: normalizeRootTransform(value?.transform)
   };
 }
 
@@ -207,7 +228,8 @@ export function normalizeEndpoint(value: EndpointMain): EndpointMain {
     },
     auth: normalizeAuth(value?.auth),
     logging: normalizeLogging(value?.logging),
-    variables: variablesToArray(raw.variables)
+    variables: variablesToArray(raw.variables),
+    transform: normalizeTransform(value?.transform)
   };
 }
 

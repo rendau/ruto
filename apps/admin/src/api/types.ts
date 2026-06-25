@@ -109,6 +109,12 @@ export interface RootJwt {
   jwk_url: string;
 }
 
+export interface RootTransform {
+  // Default cap on concurrent runtimes per endpoint transform script.
+  // 0 = use the engine default.
+  max_workers: number;
+}
+
 export interface RootMain {
   base_url: string;
   cors: RootCors;
@@ -117,6 +123,7 @@ export interface RootMain {
   logging: Logging;
   log_own_response_errors: boolean;
   variables: Variable[];
+  transform: RootTransform;
 }
 
 export interface RootJwtKidsReq {
@@ -221,6 +228,13 @@ export interface EndpointGrpc {
   path: string;
 }
 
+export interface Transform {
+  // JavaScript evaluated by the gateway to reshape the request before proxying.
+  request: string;
+  // Cap on concurrent script runtimes (memory bound); 0 = inherit the default.
+  max_workers: number;
+}
+
 export interface EndpointMain {
   id: string;
   app_id: string;
@@ -233,6 +247,7 @@ export interface EndpointMain {
   auth: Auth;
   logging: Logging;
   variables: Variable[];
+  transform: Transform;
 }
 
 export interface EndpointListRep {
