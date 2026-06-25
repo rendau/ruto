@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { NButton, NIcon, NInput, NInputNumber, NModal } from "naive-ui";
 import { CopyOutline, HelpCircleOutline } from "@vicons/ionicons5";
 import { normalizeTransform } from "@/api/normalize";
@@ -14,7 +14,7 @@ const { copy } = useClipboard();
 
 const local = ref<Transform>(normalizeTransform(props.modelValue));
 const pushingToParent = ref(false);
-const showDoc = ref(false);
+const docKey = ref<string | null>(null);
 
 watch(
   () => props.modelValue,
@@ -126,37 +126,42 @@ return {
   }
 ];
 
-// Full reference as markdown — copied as a single block to hand to an AI agent.
-const DOC_MARKDOWN = [
-  "# ruto gateway — endpoint transform scripts",
-  "",
-  "Per-endpoint JavaScript evaluated by the gateway (goja). The script body runs",
-  "with an input object in scope and must `return` an object describing the result.",
-  "A field that is not returned is passed through unchanged. Returning a non-object,",
-  "or throwing, fails the call (request transform: backend is not called; response",
-  "transform: the client gets a 502). `headers`/`params` are multi-value",
-  "`{ name: [values] }`; a returned object REPLACES the whole set (spread the input",
-  "to keep existing entries). A returned `body` object is JSON-encoded, a string is",
-  "sent as-is, null means empty. `vars` are resolved at request time; the script",
-  "source itself is not interpolated.",
-  ...CONTRACTS.flatMap((c) => [
+const activeContract = computed(() => CONTRACTS.find((c) => c.key === docKey.value) ?? null);
+
+// Self-contained markdown for one contract — copied as a single block to hand to
+// an AI agent.
+function contractMarkdown(c: Contract): string {
+  const failNote =
+    c.key === "request"
+      ? "fails the request without calling the backend"
+      : "fails the response with a 502 (the backend reply was already consumed)";
+  return [
+    `# ruto gateway — ${c.title}`,
     "",
-    `## ${c.title}`,
     c.note,
     "",
-    "Input:",
+    "Per-endpoint JavaScript evaluated by the gateway (goja). The script body runs",
+    "with the input object below in scope and must `return` an object describing the",
+    `result. A field that is not returned is passed through unchanged. Returning a`,
+    `non-object, or throwing, ${failNote}. \`headers\`/\`params\` are multi-value`,
+    "`{ name: [values] }`; a returned object REPLACES the whole set (spread the input",
+    "to keep existing entries). A returned `body` object is JSON-encoded, a string is",
+    "sent as-is, null means empty. `vars` are resolved at request time; the script",
+    "source itself is not interpolated.",
+    "",
+    "## Input",
     ...c.inputs.map((f) => `- \`${f.name}\` — ${f.desc}`),
     "",
-    "Output (return any subset):",
+    "## Output (return any subset)",
     ...c.outputs.map((f) => `- \`${f.name}\` — ${f.desc}`),
     "",
-    "Example:",
+    "## Example",
     "```js",
     c.example,
-    "```"
-  ]),
-  ""
-].join("\n");
+    "```",
+    ""
+  ].join("\n");
+}
 </script>
 
 <template>
@@ -164,7 +169,7 @@ const DOC_MARKDOWN = [
     <label class="field">
       <span class="field__head">
         <span class="field__label">Request script — JavaScript (req → backend)</span>
-        <NButton size="tiny" quaternary @click="showDoc = true">
+        <NButton size="tiny" quaternary @click="docKey = 'request'">
           <template #icon><NIcon :component="HelpCircleOutline" /></template>
           Docs
         </NButton>
@@ -183,7 +188,7 @@ const DOC_MARKDOWN = [
     <label class="field">
       <span class="field__head">
         <span class="field__label">Response script — JavaScript (backend → client)</span>
-        <NButton size="tiny" quaternary @click="showDoc = true">
+        <NButton size="tiny" quaternary @click="docKey = 'response'">
           <template #icon><NIcon :component="HelpCircleOutline" /></template>
           Docs
         </NButton>
@@ -213,48 +218,52 @@ const DOC_MARKDOWN = [
       Request runs after auth, last before proxying; response runs on the backend reply
       before the client sees it. Omitted return fields pass through unchanged; throwing
       fails the call without a backend round-trip (request) or with a 502 (response).
-      <NButton text size="tiny" type="primary" @click="showDoc = true">Open reference</NButton>
+      <NButton text size="tiny" type="primary" @click="docKey = 'request'">Request reference</NButton>
+      ·
+      <NButton text size="tiny" type="primary" @click="docKey = 'response'">Response reference</NButton>
     </p>
 
     <NModal
-      :show="showDoc"
+      :show="activeContract !== null"
       preset="card"
-      title="Transform scripts reference"
+      :title="activeContract?.title ?? ''"
       class="transform-doc"
       :bordered="false"
-      @update:show="(value: boolean) => (showDoc = value)"
+      @update:show="(value: boolean) => { if (!value) docKey = null; }"
     >
       <template #header-extra>
-        <NButton size="small" secondary @click="copy(DOC_MARKDOWN, 'Documentation copied')">
+        <NButton
+          v-if="activeContract"
+          size="small"
+          secondary
+          @click="copy(contractMarkdown(activeContract), 'Documentation copied')"
+        >
           <template #icon><NIcon :component="CopyOutline" /></template>
           Copy for AI
         </NButton>
       </template>
 
-      <div class="doc">
-        <section v-for="c in CONTRACTS" :key="c.key" class="doc__contract">
-          <h4 class="doc__title">{{ c.title }}</h4>
-          <p class="doc__note muted">{{ c.note }}</p>
+      <div v-if="activeContract" class="doc">
+        <p class="doc__note muted">{{ activeContract.note }}</p>
 
-          <span class="section-label">Input</span>
-          <dl class="doc__list">
-            <template v-for="f in c.inputs" :key="f.name">
-              <dt><code>{{ f.name }}</code></dt>
-              <dd>{{ f.desc }}</dd>
-            </template>
-          </dl>
+        <span class="section-label">Input</span>
+        <dl class="doc__list">
+          <template v-for="f in activeContract.inputs" :key="f.name">
+            <dt><code>{{ f.name }}</code></dt>
+            <dd>{{ f.desc }}</dd>
+          </template>
+        </dl>
 
-          <span class="section-label">Output — <code>return</code> any subset</span>
-          <dl class="doc__list">
-            <template v-for="f in c.outputs" :key="f.name">
-              <dt><code>{{ f.name }}</code></dt>
-              <dd>{{ f.desc }}</dd>
-            </template>
-          </dl>
+        <span class="section-label">Output — <code>return</code> any subset</span>
+        <dl class="doc__list">
+          <template v-for="f in activeContract.outputs" :key="f.name">
+            <dt><code>{{ f.name }}</code></dt>
+            <dd>{{ f.desc }}</dd>
+          </template>
+        </dl>
 
-          <span class="section-label">Example</span>
-          <JsonBlock :content="c.example" max-height="260px" />
-        </section>
+        <span class="section-label">Example</span>
+        <JsonBlock :content="activeContract.example" max-height="280px" />
 
         <p class="doc__note muted">
           A field that is not returned passes through unchanged. Returning a non-object,
@@ -317,24 +326,7 @@ const DOC_MARKDOWN = [
 .doc {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-}
-
-.doc__contract {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.doc__title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.doc__contract + .doc__contract {
-  padding-top: 18px;
-  border-top: 1px solid var(--c-border);
+  gap: 10px;
 }
 
 .doc__list {
