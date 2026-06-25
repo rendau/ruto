@@ -22,6 +22,8 @@ func NewAdminSPAHandler() http.Handler {
 	indexPath := filepath.Join(distPath, "index.html")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "max-age=3600")
+
 		requestPath := strings.TrimPrefix(filepath.Clean("/"+r.URL.Path), "/")
 
 		if requestPath == "." {

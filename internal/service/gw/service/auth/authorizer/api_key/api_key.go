@@ -14,7 +14,10 @@ type Authorizer struct {
 	allowedKeyMap map[string]bool
 }
 
-const defaultAPIKeyHeader = "x-api-key"
+const (
+	defaultAPIKeyHeader = "x-api-key"
+	bearerPrefix        = "bearer "
+)
 
 func New(conf *authModel.AuthMethodAPIKey) *Authorizer {
 	header := strings.ToLower(strings.TrimSpace(conf.Header))
@@ -38,5 +41,22 @@ func (a *Authorizer) Authorize(req *model.AuthRequest) bool {
 		return false
 	}
 
-	return a.allowedKeyMap[apiKey]
+	if a.allowedKeyMap[apiKey] {
+		return true
+	}
+
+	if stripped := stripBearer(apiKey); stripped != apiKey {
+		return a.allowedKeyMap[stripped]
+	}
+
+	return false
+}
+
+func stripBearer(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) >= len(bearerPrefix) && strings.EqualFold(trimmed[:len(bearerPrefix)], bearerPrefix) {
+		return strings.TrimSpace(trimmed[len(bearerPrefix):])
+	}
+
+	return value
 }
