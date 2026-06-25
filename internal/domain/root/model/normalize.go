@@ -26,6 +26,9 @@ func (m *Root) Normalize() error {
 	if err := m.Variables.Normalize(); err != nil {
 		return fmt.Errorf("variables: %w", err)
 	}
+	if m.Transform.MaxWorkers < 0 {
+		m.Transform.MaxWorkers = 0
+	}
 	for i := range m.Apps {
 		if err := m.Apps[i].Normalize(); err != nil {
 			return fmt.Errorf("apps[%d]: %w", i, err)

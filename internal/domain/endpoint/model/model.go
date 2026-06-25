@@ -26,6 +26,16 @@ type Endpoint struct {
 	Auth               authModel.Auth       `json:"auth"`
 	Logging            loggingModel.Logging `json:"logging"`
 	Variables          varsModel.Vars       `json:"variables"`
+	Transform          Transform            `json:"transform"`
+}
+
+// Transform holds optional scripts (JavaScript, evaluated by the gateway) that
+// reshape a request before it is proxied to the backend.
+type Transform struct {
+	Request string `json:"request"`
+	// MaxWorkers caps concurrent goja runtimes for this script (memory bound).
+	// 0 falls back to the Root-level default, then the engine default.
+	MaxWorkers int `json:"max_workers"`
 }
 
 type Http struct {

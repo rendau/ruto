@@ -40,7 +40,16 @@ func (m *Endpoint) Normalize() error {
 		return fmt.Errorf("variables: %w", err)
 	}
 
+	m.Transform.Normalize()
+
 	return nil
+}
+
+func (m *Transform) Normalize() {
+	m.Request = strings.TrimSpace(m.Request)
+	if m.MaxWorkers < 0 {
+		m.MaxWorkers = 0
+	}
 }
 
 func (m *Http) Normalize() error {

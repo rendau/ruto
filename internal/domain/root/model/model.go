@@ -17,8 +17,16 @@ type Root struct {
 	Logging              loggingModel.Logging `json:"logging"`
 	LogOwnResponseErrors bool                 `json:"log_own_response_errors"` // log error responses the gateway returns itself (e.g. auth 401)
 	Variables            varsModel.Vars       `json:"variables"`
+	Transform            RootTransform        `json:"transform"`
 
 	Apps []*appModel.App `json:"apps"` // not stored in db
+}
+
+// RootTransform holds gateway-wide defaults for endpoint transform scripts.
+type RootTransform struct {
+	// MaxWorkers is the default cap on concurrent goja runtimes per endpoint
+	// script. 0 means use the engine default.
+	MaxWorkers int `json:"max_workers"`
 }
 
 type RootCors struct {

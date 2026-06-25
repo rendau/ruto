@@ -73,6 +73,7 @@ func buildHandler(snapshot *rootModel.Root) (_ http.Handler, finalErr error) {
 				middleware.NewRequestLog(app, ep, routePath, snapshot.LogOwnResponseErrors),
 				middleware.NewAuth(ep),
 				middleware.NewBackendRequestParams(ep),
+				middleware.NewRequestTransform(ep, snapshot.Transform.MaxWorkers),
 			)
 
 			if ep.Http.Method == "*" {
