@@ -104,9 +104,12 @@ const previewVariables = computed(() => {
   return source?.variables ?? [];
 });
 
+const endpointPath = (endpoint: EndpointMain): string =>
+  endpoint.type === "grpc" ? endpoint.grpc.path : endpoint.http.path;
+
 const filteredEndpoints = computed(() => {
   const search = filters.search.trim().toLowerCase();
-  return endpoints.value.filter((endpoint) => {
+  const filtered = endpoints.value.filter((endpoint) => {
     if (endpoint.type !== protocol.value) return false;
     if (filters.status === "active" && !endpoint.active) return false;
     if (filters.status === "inactive" && endpoint.active) return false;
@@ -130,6 +133,9 @@ const filteredEndpoints = computed(() => {
     }
     return true;
   });
+  return filtered.sort((a, b) =>
+    endpointPath(a).localeCompare(endpointPath(b), undefined, { numeric: true })
+  );
 });
 
 const statusOptions = [
