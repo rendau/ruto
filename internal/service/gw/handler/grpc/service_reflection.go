@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"io"
 	"strings"
 
@@ -61,7 +62,7 @@ func (s *Service) ServerReflectionInfo(stream reflectionv1.ServerReflection_Serv
 
 	for {
 		req, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {

@@ -51,8 +51,7 @@ func (t *ResponseTransformer) Transform(ctx context.Context, in *Response) (*Res
 			}
 			obj := out.ToObject(rt)
 			if sv := obj.Get("status"); present(sv) {
-				n := int(sv.ToInteger())
-				res.Status = &n
+				res.Status = new(int(sv.ToInteger()))
 			}
 			if hv := obj.Get("headers"); present(hv) {
 				res.Headers = exportStrListMap(hv)

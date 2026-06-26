@@ -1,3 +1,3 @@
 ALTER TABLE usr
-    DROP COLUMN all_apps,
-    DROP COLUMN app_ids;
+    DROP COLUMN all_apps CASCADE,
+    DROP COLUMN app_ids CASCADE;

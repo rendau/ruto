@@ -58,8 +58,7 @@ func (t *RequestTransformer) Transform(ctx context.Context, in *Request) (*Resul
 			}
 			obj := out.ToObject(rt)
 			if mv := obj.Get("method"); present(mv) {
-				s := mv.String()
-				res.Method = &s
+				res.Method = new(mv.String())
 			}
 			if hv := obj.Get("headers"); present(hv) {
 				res.Headers = exportStrListMap(hv)

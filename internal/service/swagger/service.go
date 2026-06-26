@@ -81,8 +81,8 @@ func IsDialError(err error) bool {
 		return false
 	}
 
-	var opErr *net.OpError
-	if !errors.As(err, &opErr) {
+	opErr, ok := errors.AsType[*net.OpError](err)
+	if !ok {
 		return false
 	}
 

@@ -53,7 +53,7 @@ Env: copy `config/core.env.example` → `.env.core` and `config/gateway.env.exam
 ## Gotchas
 
 - Edit only `api/proto/ruto_v1/*.proto`, then `make generate-proto`. Never hand-edit `pkg/proto/ruto_v1/*` (generated).
-- Go 1.26+: use `new(value)` for literal pointers (`new(true)`) instead of temp-var `&tmp`.
+- Go 1.26+: take pointers to a value/literal/**expression** with `new(expr)` (e.g. `new(int(sv.ToInteger()))`) — never introduce a temp var just to take its address (`tmp := expr; &tmp`), and never use `lo.ToPtr(...)`. Applies project-wide. Exception: when the expression also returns an `error` (`v, err := f()`), the var is needed for error handling, so `&v` is fine.
 - All struct methods MUST use pointer receivers (`func (m *T) ...`), even read-only/pure ones — never mix value and pointer receivers on a type.
 - Comment functions/code blocks only when logically necessary — to explain a non-obvious "why" (invariant, subtle nuance, rationale). Don't comment self-evident code or restate what it already says.
 - Don't add redundant `TrimSpace`/nil checks on already-normalized domain entities; normalization happens once in `Normalize()`.

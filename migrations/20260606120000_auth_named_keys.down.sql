@@ -60,6 +60,6 @@ UPDATE root     SET data = jsonb_set(data, '{auth}', auth_named_keys_down(data->
 UPDATE app      SET data = jsonb_set(data, '{auth}', auth_named_keys_down(data->'auth')) WHERE jsonb_typeof(data->'auth') = 'object';
 UPDATE endpoint SET data = jsonb_set(data, '{auth}', auth_named_keys_down(data->'auth')) WHERE jsonb_typeof(data->'auth') = 'object';
 
-DROP FUNCTION auth_named_keys_down(jsonb);
+DROP FUNCTION auth_named_keys_down(jsonb) CASCADE;
 
 DELETE FROM snapshot;

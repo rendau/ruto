@@ -14,7 +14,7 @@
 - `Service` принимает `repoDb RepoDbI` через конструктор `New`
 - `Create` сбрасывает `ModifiedAt = nil` — DB-default (напр. `DEFAULT NOW()`) устанавливает значение
 - **`Create` возвращает id новой записи** (`(idType, error)`) — правило для всех сущностей с id; тип id как у PK (`int64`/`string`)
-- `Update` принимает `id string` и устанавливает `ModifiedAt = lo.ToPtr(time.Now())`
+- `Update` принимает `id string` и устанавливает `ModifiedAt = new(time.Now())`
 - `Get` с `errNE=true` возвращает `errs.ObjectNotFound` если не найдено
 - Все ошибки оборачиваются: `fmt.Errorf("repoDb.<Method>: %w", err)`
 
@@ -94,7 +94,7 @@ func (s *Service) Create(ctx context.Context, obj *model.Edit) (string, error) {
 }
 
 func (s *Service) Update(ctx context.Context, id string, obj *model.Edit) error {
-    obj.ModifiedAt = lo.ToPtr(time.Now())
+    obj.ModifiedAt = new(time.Now())
 
     if err := s.repoDb.Update(ctx, id, obj); err != nil {
         return fmt.Errorf("repoDb.Update: %w", err)

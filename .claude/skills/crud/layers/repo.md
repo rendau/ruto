@@ -10,6 +10,7 @@
 | `custom.go` | `getConditions`, `allowedSortFields`, кастомные запросы |
 | `model/select.go` | модель чтения (value-типы) + `EncodeSelect` |
 | `model/upsert.go` | модель записи (pointer-типы) + `DecodeUpsert` |
+| `model/children.go` | вложенные модели jsonb-полей + их `encode/decode` (jsonb, подход 1 — см. ниже) |
 
 > DTOs (`EncodeSelect`, `DecodeUpsert`) живут в своих файлах — отдельного `dto.go` нет.
 
@@ -128,6 +129,104 @@ func DecodeUpsert(v *domainModel.Edit) *Upsert {
     }
 }
 ```
+
+---
+
+## jsonb-поля — два подхода (спроси перед реализацией)
+
+jsonb-колонки (вложенные структуры/массивы) можно мапить двумя способами. Какой подойдёт —
+зависит от проекта и сущности, поэтому **перед реализацией спроси у пользователя, какой подход
+использовать** (по умолчанию ориентируйся на то, как уже сделано у соседних сущностей проекта).
+Доменная `Main`/`Edit` в обоих случаях оперируют обычными Go-структурами/срезами **без json-тегов**.
+
+| Подход | Когда | Чтение/запись |
+|---|---|---|
+| 1. Структурный (`children.go`) | mobone/pgx умеет сканить jsonb прямо в структуру | `&m.Field` в ColumnMap, без ручного marshal |
+| 2. Байтовый (`[]byte`) | нужен полный контроль над (де)сериализацией | `[]byte` + `json.Unmarshal`/`json.Marshal` |
+
+---
+
+### Подход 1 — model/children.go (структурный)
+
+repo-копию вложенного типа (ту же структуру, но с json-тегами) держим **в отдельном файле
+`children.go`** рядом с `select.go`/`upsert.go` — не объявляем эти типы в `select.go`/`upsert.go`.
+
+- mobone/pgx читает и пишет jsonb напрямую в repo-структуру: в `ListColumnMap` отдаём `&m.Field`,
+  в `CreateColumnMap` — саму структуру/слайс (без ручного `json.Marshal`/`Unmarshal`).
+- У каждой вложенной модели — свои `encode<Name>` / `decode<Name>` в этом же `children.go`.
+- Для **слайсовых** jsonb-полей делай одиночные конвертеры с сигнатурой `func(v X, _ int) Y`,
+  чтобы вызывать их прямо через `lo.Map` / `lo.FilterMap` в `EncodeSelect`/`DecodeUpsert`.
+- Для **одиночных** jsonb-полей — обычные nil-safe `encode`/`decode`.
+- В `select.go`/`upsert.go` остаются только вызовы, без объявления типов и ручных циклов.
+
+```go
+// model/children.go
+package model
+
+import (
+    "github.com/samber/lo"
+
+    domainModel "github.com/<module>/internal/domain/<entity>/model"
+)
+
+// item — repo-копия domainModel.Item с json-тегами для (де)сериализации jsonb-массива.
+type item struct {
+    ProductId string `json:"product_id"`
+    Title     string `json:"title"`
+}
+
+func encodeItem(v item, _ int) *domainModel.Item {
+    return &domainModel.Item{ProductId: v.ProductId, Title: v.Title}
+}
+
+func decodeItem(v *domainModel.Item, _ int) item {
+    return item{ProductId: v.ProductId, Title: v.Title}
+}
+```
+
+Использование в `EncodeSelect`/`DecodeUpsert`: `lo.Map(v.Items, encodeItem)` и
+`lo.Map(v.Items, decodeItem)`. В `CreateColumnMap` проверку заполнения слайса делай через
+`len(m.Field) > 0` (а не `!= nil`: `lo.Map` возвращает непустой пустой слайс).
+
+---
+
+### Подход 2 — байтовый (ручная (де)сериализация)
+
+Колонку читаем как `[]byte`, а repo-локальную DTO с json-тегами и (де)сериализацию держим
+рядом с `select.go`/`upsert.go`. Подходит, когда нужен полный контроль над форматом хранения.
+
+```go
+// model/select.go (или отдельный model/json.go)
+
+// repo-локальная DTO: только она знает про формат хранения
+type metaJSON struct {
+    Color string   `json:"color"`
+    Tags  []string `json:"tags"`
+}
+
+type Select struct {
+    Id   string
+    Meta []byte // jsonb-колонка читаем как []byte
+}
+
+func (m *Select) ListColumnMap() map[string]any {
+    return map[string]any{"id": &m.Id, "meta": &m.Meta}
+}
+
+func EncodeSelect(v *Select, _ int) *domainModel.Main {
+    out := &domainModel.Main{Id: v.Id}
+    if len(v.Meta) > 0 {
+        var meta metaJSON
+        _ = json.Unmarshal(v.Meta, &meta)
+        out.Color = meta.Color // доменные поля — без тегов
+        out.Tags = meta.Tags
+    }
+    return out
+}
+```
+
+При записи `DecodeUpsert` симметрично собирает `metaJSON`, делает `json.Marshal` и кладёт `[]byte`
+(или `string`) в `CreateColumnMap` под ключ колонки.
 
 ---
 
