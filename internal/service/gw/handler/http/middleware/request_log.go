@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/rendau/ruto/internal/constant"
 	domAppModel "github.com/rendau/ruto/internal/domain/app/model"
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/proxyerr"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/rw_wrapper"
 	"github.com/rendau/ruto/internal/service/gw/service/log"
 	"github.com/rendau/ruto/internal/service/gw/service/logmask"
@@ -43,6 +45,8 @@ func NewRequestLog(
 					rw.CaptureBody(lg.RespBodyLimitOrDefault())
 				}
 
+				r = r.WithContext(proxyerr.WithHolder(r.Context()))
+
 				next.ServeHTTP(rw, r)
 
 				// method and path are always logged.
@@ -64,7 +68,12 @@ func NewRequestLog(
 					fields = append(fields, "resp_body", rw.GetCapturedBody())
 				}
 
-				return fields, rw.GetStatusCodeStr(), rw.GetStatusCodeErr(), rw.IsExpected()
+				statusErr := rw.GetStatusCodeErr()
+				if reason := proxyerr.Get(r.Context()); reason != "" {
+					statusErr = errors.New(reason)
+				}
+
+				return fields, rw.GetStatusCodeStr(), statusErr, rw.IsExpected()
 			})
 		})
 	}

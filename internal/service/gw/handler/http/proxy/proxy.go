@@ -1,15 +1,20 @@
 package proxy
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"syscall"
 	"time"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/proxyerr"
 )
 
 func NewTransport() *http.Transport {
@@ -67,10 +72,45 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 			if r.Context().Err() != nil {
 				return
 			}
-			slog.Error("proxy error "+r.Method+" "+r.URL.Path, "error", err, "app_name", app.Name)
+			reason := classifyProxyError(err)
+			proxyerr.Set(r.Context(), reason)
+			slog.Error("proxy error "+r.Method+" "+r.URL.Path,
+				"reason", reason,
+				"error", err.Error(),
+				"app_name", app.Name,
+			)
 			w.WriteHeader(http.StatusBadGateway)
 		},
 	}
 
 	return proxy
+}
+
+// classifyProxyError turns a transport-level proxy error into a short,
+// human-readable cause for the logs (e.g. "backend closed connection")
+// instead of a bare 502 / "status code error".
+func classifyProxyError(err error) string {
+	switch {
+	case err == nil:
+		return ""
+	case errors.Is(err, context.Canceled):
+		return "client canceled request"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "backend response timeout"
+	case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+		return "backend closed connection"
+	case errors.Is(err, syscall.ECONNREFUSED):
+		return "backend connection refused"
+	case errors.Is(err, syscall.ECONNRESET):
+		return "backend reset connection"
+	}
+
+	if _, ok := errors.AsType[*net.DNSError](err); ok {
+		return "backend host not resolved"
+	}
+	if netErr, ok := errors.AsType[net.Error](err); ok && netErr.Timeout() {
+		return "backend connect timeout"
+	}
+
+	return "backend request failed"
 }
