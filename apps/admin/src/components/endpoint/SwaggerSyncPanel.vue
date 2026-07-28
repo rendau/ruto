@@ -7,12 +7,15 @@ import {
   NCollapse,
   NCollapseItem,
   NEmpty,
+  NIcon,
   NModal,
+  NPopconfirm,
   NSpin,
   useMessage
 } from "naive-ui";
+import { TrashOutline } from "@vicons/ionicons5";
 import { getAppSwaggerEndpointsDiff } from "@/api/app";
-import { createEndpoint } from "@/api/endpoint";
+import { createEndpoint, deleteEndpoint } from "@/api/endpoint";
 import { apiErrorMessage } from "@/api/http";
 import { emptyEndpoint } from "@/lib/entities";
 import MethodBadge from "@/components/common/MethodBadge.vue";
@@ -29,9 +32,24 @@ const unregistered = ref<AppSwaggerEndpoint[]>([]);
 const registeredInvalid = ref<AppSwaggerEndpoint[]>([]);
 const selected = ref<Set<string>>(new Set());
 const adding = ref(false);
+const deletingKey = ref("");
 
 function keyOf(endpoint: AppSwaggerEndpoint): string {
   return `${endpoint.method} ${endpoint.path}`;
+}
+
+// The diff returns endpoints normalized (upper-cased method, single leading slash),
+// so registered endpoints must be normalized the same way to be matched back by id.
+function normalizedKeyOf(method: string, path: string): string {
+  const p = path.trim().replace(/^\/+|\/+$/g, "");
+  return `${method.trim().toUpperCase()} /${p}`;
+}
+
+function findRegisteredEndpoint(endpoint: AppSwaggerEndpoint): EndpointMain | undefined {
+  const key = keyOf(endpoint);
+  return props.endpoints.find(
+    (item) => item.type === "http" && normalizedKeyOf(item.http.method, item.http.path) === key
+  );
 }
 
 async function load(): Promise<void> {
@@ -81,6 +99,27 @@ async function addSelected(): Promise<void> {
     emit("changed");
   } finally {
     adding.value = false;
+  }
+}
+
+async function removeRegisteredInvalid(endpoint: AppSwaggerEndpoint): Promise<void> {
+  const registered = findRegisteredEndpoint(endpoint);
+  if (!registered) {
+    message.error("Endpoint not found, refresh the list");
+    return;
+  }
+  deletingKey.value = keyOf(endpoint);
+  try {
+    await deleteEndpoint(registered.id);
+    registeredInvalid.value = registeredInvalid.value.filter(
+      (item) => keyOf(item) !== keyOf(endpoint)
+    );
+    message.success("Endpoint deleted");
+    emit("changed");
+  } catch (err) {
+    message.error(apiErrorMessage(err, "Failed to delete endpoint"));
+  } finally {
+    deletingKey.value = "";
   }
 }
 
@@ -150,6 +189,22 @@ watch(
                 >
                   <MethodBadge :method="endpoint.method" />
                   <code class="swagger__path">{{ endpoint.path }}</code>
+                  <NPopconfirm @positive-click="removeRegisteredInvalid(endpoint)">
+                    <template #trigger>
+                      <NButton
+                        class="danger-icon-button swagger__delete"
+                        quaternary
+                        circle
+                        size="small"
+                        type="error"
+                        title="Delete"
+                        :loading="deletingKey === keyOf(endpoint)"
+                      >
+                        <NIcon :component="TrashOutline" />
+                      </NButton>
+                    </template>
+                    Delete endpoint "{{ endpoint.method }} {{ endpoint.path }}"?
+                  </NPopconfirm>
                 </div>
               </div>
             </NCollapseItem>
@@ -230,6 +285,11 @@ watch(
   cursor: default;
   border-color: rgba(232, 178, 58, 0.3);
   background: rgba(232, 178, 58, 0.06);
+}
+
+.swagger__delete {
+  margin-left: auto;
+  flex: none;
 }
 
 .swagger__path {
