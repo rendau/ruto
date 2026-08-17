@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"runtime"
+	"runtime/metrics"
 	"strings"
 	"sync"
 	"time"
@@ -26,7 +27,13 @@ const (
 	// Snapshot version checks are NOT periodic — they are driven by push
 	// notifications over the Subscribe stream plus an initial check on
 	// (re)connect, so there is no separate polling interval.
-	HeartbeatInterval = 10 * time.Second
+	HeartbeatInterval = 30 * time.Second
+
+	// heartbeatTimeout bounds a single Heartbeat RPC. It is generous on purpose:
+	// the heartbeat is pure telemetry, so a slow core (or its cache backend) must
+	// not produce warning noise as long as the report eventually lands well
+	// within the interval.
+	heartbeatTimeout = 15 * time.Second
 
 	// subscribeReconnectDelay is how long to wait before re-opening the
 	// notification stream to core after it drops.
@@ -319,11 +326,8 @@ func (s *Service) sendHeartbeat() error {
 		lastError = lastError[:512]
 	}
 
-	ctx, cancel := context.WithTimeout(s.globalCtx, 3*time.Second)
+	ctx, cancel := context.WithTimeout(s.globalCtx, heartbeatTimeout)
 	defer cancel()
-
-	memStats := runtime.MemStats{}
-	runtime.ReadMemStats(&memStats)
 
 	_, err := s.gatewayClient.Heartbeat(ctx, &ruto_v1.GatewayHeartbeatRequest{
 		GatewayId:        s.identity.GatewayID,
@@ -332,7 +336,7 @@ func (s *Service) sendHeartbeat() error {
 		LastApplyAtUnix:  lastApplyAt,
 		StartedAtUnix:    s.startedAtUnix,
 		LastError:        lastError,
-		MemoryAllocBytes: memStats.Alloc,
+		MemoryAllocBytes: heapAllocBytes(),
 		GoroutinesCount:  uint32(runtime.NumGoroutine()),
 	})
 	if err != nil && s.globalCtx.Err() == nil {
@@ -340,6 +344,22 @@ func (s *Service) sendHeartbeat() error {
 	}
 
 	return nil
+}
+
+// heapAllocBytes reports live heap bytes, the equivalent of MemStats.Alloc.
+// runtime/metrics is used instead of runtime.ReadMemStats because the latter
+// stops the world on every call; the tradeoff is that per-P allocator caches
+// may not be flushed yet, so the value can lag slightly — irrelevant for
+// telemetry.
+func heapAllocBytes() uint64 {
+	samples := []metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}}
+	metrics.Read(samples)
+
+	if samples[0].Value.Kind() != metrics.KindUint64 {
+		return 0
+	}
+
+	return samples[0].Value.Uint64()
 }
 
 func decodeConfig(rep *ruto_v1.SnapshotResponse) (*rootModel.Root, error) {

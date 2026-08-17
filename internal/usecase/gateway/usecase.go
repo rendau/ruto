@@ -16,10 +16,13 @@ type Usecase struct {
 	gateways   GatewaysI
 }
 
+// Status thresholds are tied to the gateway's heartbeat interval (30s): online
+// tolerates one missed beat, stale a few more, after which the gateway is
+// considered gone.
 const (
 	itemTTL         = 10 * time.Minute
-	statusOnlineTTL = 20 * time.Second
-	statusStaleTTL  = time.Minute
+	statusOnlineTTL = 70 * time.Second
+	statusStaleTTL  = 3 * time.Minute
 )
 
 func New(sessionSvc SessionServiceI, cache CacheI, gateways GatewaysI) *Usecase {

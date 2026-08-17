@@ -9,6 +9,18 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// Timeouts are deliberately tight: the cache is auxiliary, so a stalled Redis
+// must fail fast instead of holding up the callers. opTimeout caps a whole
+// operation including retries, which the go-redis per-call timeouts alone do
+// not do.
+const (
+	dialTimeout   = 2 * time.Second
+	socketTimeout = 2 * time.Second
+	opTimeout     = 3 * time.Second
+	scanTimeout   = 5 * time.Second
+	maxRetries    = 1
+)
+
 type Redis struct {
 	client *redis.Client
 }
@@ -16,15 +28,23 @@ type Redis struct {
 func New(url string, db int, psw string) *Redis {
 	return &Redis{
 		client: redis.NewClient(&redis.Options{
-			Addr:     url,
-			Password: psw,
-			DB:       db,
+			Addr:         url,
+			Password:     psw,
+			DB:           db,
+			DialTimeout:  dialTimeout,
+			ReadTimeout:  socketTimeout,
+			WriteTimeout: socketTimeout,
+			PoolTimeout:  socketTimeout,
+			MaxRetries:   maxRetries,
 		}),
 	}
 }
 
 func (o *Redis) Set(key string, value []byte, ttl time.Duration) error {
-	err := o.client.Set(context.Background(), key, value, ttl).Err()
+	ctx, cancel := context.WithTimeout(context.Background(), opTimeout)
+	defer cancel()
+
+	err := o.client.Set(ctx, key, value, ttl).Err()
 	if err != nil {
 		return fmt.Errorf("client.Set: %w", err)
 	}
@@ -32,7 +52,10 @@ func (o *Redis) Set(key string, value []byte, ttl time.Duration) error {
 }
 
 func (o *Redis) Get(key string) ([]byte, bool, error) {
-	data, err := o.client.Get(context.Background(), key).Bytes()
+	ctx, cancel := context.WithTimeout(context.Background(), opTimeout)
+	defer cancel()
+
+	data, err := o.client.Get(ctx, key).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return nil, false, nil
@@ -44,7 +67,10 @@ func (o *Redis) Get(key string) ([]byte, bool, error) {
 }
 
 func (o *Redis) ListKeys(prefix string) ([]string, error) {
-	ctx := context.Background()
+	// One budget for the whole cursor walk, not per SCAN call.
+	ctx, cancel := context.WithTimeout(context.Background(), scanTimeout)
+	defer cancel()
+
 	pattern := prefix + "*"
 	cursor := uint64(0)
 	result := make([]string, 0, 64)
@@ -73,7 +99,10 @@ func (o *Redis) ListKeys(prefix string) ([]string, error) {
 }
 
 func (o *Redis) Del(key string) error {
-	err := o.client.Del(context.Background(), key).Err()
+	ctx, cancel := context.WithTimeout(context.Background(), opTimeout)
+	defer cancel()
+
+	err := o.client.Del(ctx, key).Err()
 	if err != nil {
 		return fmt.Errorf("client.Del: %w", err)
 	}
