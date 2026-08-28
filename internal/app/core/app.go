@@ -16,6 +16,7 @@ import (
 
 	"github.com/rendau/ruto/internal/app/common"
 	configCore "github.com/rendau/ruto/internal/config/core"
+	"github.com/rendau/ruto/internal/constant"
 	domainAppRepoDbP "github.com/rendau/ruto/internal/domain/app/repo/db"
 	domainAppServiceP "github.com/rendau/ruto/internal/domain/app/service"
 	domainEndpointRepoDbP "github.com/rendau/ruto/internal/domain/endpoint/repo/db"
@@ -33,10 +34,14 @@ import (
 	cacheRepoRedisP "github.com/rendau/ruto/internal/service/cache/repo/redis"
 	cacheServiceP "github.com/rendau/ruto/internal/service/cache/service"
 	gatewaysServiceP "github.com/rendau/ruto/internal/service/gateways"
+	serviceLogstoreGraylogP "github.com/rendau/ruto/internal/service/logstore/graylog"
+	serviceLogstoreLokiP "github.com/rendau/ruto/internal/service/logstore/loki"
+	servicePrometheusP "github.com/rendau/ruto/internal/service/prometheus/service"
 	serviceSwaggerP "github.com/rendau/ruto/internal/service/swagger"
 	usecaseAppP "github.com/rendau/ruto/internal/usecase/app"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 	usecaseGatewayP "github.com/rendau/ruto/internal/usecase/gateway"
+	usecaseMonitoringP "github.com/rendau/ruto/internal/usecase/monitoring"
 	usecaseRootP "github.com/rendau/ruto/internal/usecase/root"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
 	usecaseStatsP "github.com/rendau/ruto/internal/usecase/stats"
@@ -144,6 +149,42 @@ func (a *App) Init() error {
 	usecaseGateway := usecaseGatewayP.New(sessionService, cacheService.NewChildInstance("gateway:"), gatewaysService)
 	handlerGrpcGateway := handlerGrpcP.NewGateway(usecaseGateway)
 
+	// monitoring
+	var monitoringPromSvc usecaseMonitoringP.PrometheusServiceI
+	if configCore.Conf.PrometheusURL != "" {
+		monitoringPromSvc = servicePrometheusP.New(configCore.Conf.PrometheusURL, 15*time.Second)
+	}
+	var monitoringLogSvc usecaseMonitoringP.LogStoreServiceI
+	monitoringLogsProvider := ""
+	switch {
+	case configCore.Conf.LokiURL != "":
+		monitoringLogSvc = serviceLogstoreLokiP.New(
+			configCore.Conf.LokiURL,
+			configCore.Conf.LokiSelector,
+			configCore.Conf.LokiOrgID,
+			15*time.Second,
+		)
+		monitoringLogsProvider = "loki"
+	case configCore.Conf.GraylogURL != "":
+		monitoringLogSvc = serviceLogstoreGraylogP.New(
+			configCore.Conf.GraylogURL,
+			configCore.Conf.GraylogAPIToken,
+			configCore.Conf.GraylogStreamID,
+			configCore.Conf.GraylogQuery,
+			15*time.Second,
+		)
+		monitoringLogsProvider = "graylog"
+	}
+	usecaseMonitoring := usecaseMonitoringP.New(
+		monitoringPromSvc,
+		monitoringLogSvc,
+		domainEndpointService,
+		sessionService,
+		configCore.Conf.MetricsNamespace+"_"+constant.ServiceName+"_",
+		monitoringLogsProvider,
+	)
+	handlerGrpcMonitoring := handlerGrpcP.NewMonitoring(usecaseMonitoring)
+
 	// grpc-server
 	a.grpcServer = NewGrpcServer("core", sessionService, func(server *grpc.Server) {
 		ruto_v1.RegisterRootServer(server, handlerGrpcRoot)
@@ -153,6 +194,7 @@ func (a *App) Init() error {
 		ruto_v1.RegisterStatsServer(server, handlerGrpcStats)
 		ruto_v1.RegisterUsrServer(server, handlerGrpcUsr)
 		ruto_v1.RegisterGatewayServer(server, handlerGrpcGateway)
+		ruto_v1.RegisterMonitoringServer(server, handlerGrpcMonitoring)
 	})
 
 	// grpc-gateway
@@ -172,6 +214,7 @@ func (a *App) Init() error {
 			ruto_v1.RegisterUsrHandler,
 			ruto_v1.RegisterMigrateHandler,
 			ruto_v1.RegisterGatewayHandler,
+			ruto_v1.RegisterMonitoringHandler,
 		}
 		for _, registerHandler := range handlers {
 			if registerErr := registerHandler(context.Background(), mux, conn); registerErr != nil {

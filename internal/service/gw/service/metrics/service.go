@@ -11,10 +11,12 @@ import (
 )
 
 const (
-	metricsLabelApp      = "app"
-	metricsLabelProtocol = "protocol"
-	metricsLabelMethod   = "method"
-	metricsLabelStatus   = "status"
+	metricsLabelApp        = "app"
+	metricsLabelAppId      = "app_id"
+	metricsLabelEndpointId = "endpoint_id"
+	metricsLabelProtocol   = "protocol"
+	metricsLabelMethod     = "method"
+	metricsLabelStatus     = "status"
 
 	metricsProtocolHTTP = "http"
 	metricsProtocolGRPC = "grpc"
@@ -30,6 +32,8 @@ var (
 			Help: "Total number of gateway requests.",
 		}, []string{
 			metricsLabelApp,
+			metricsLabelAppId,
+			metricsLabelEndpointId,
 			metricsLabelProtocol,
 			metricsLabelMethod,
 			metricsLabelStatus,
@@ -48,10 +52,15 @@ var (
 				0.02,
 				0.1,
 				0.5,
+				1,
 				2,
+				5,
+				10,
 			},
 		}, []string{
 			metricsLabelApp,
+			metricsLabelAppId,
+			metricsLabelEndpointId,
 			metricsLabelProtocol,
 			metricsLabelMethod,
 		})
@@ -94,6 +103,8 @@ func (s *Service) Serve(f serveFunc) {
 
 	httpRequestsTotal.WithLabelValues(
 		s.app.Name,
+		s.app.Id,
+		s.ep.Id,
 		s.protocol,
 		s.method,
 		status,
@@ -101,6 +112,8 @@ func (s *Service) Serve(f serveFunc) {
 
 	httpRequestDurationSeconds.WithLabelValues(
 		s.app.Name,
+		s.app.Id,
+		s.ep.Id,
 		s.protocol,
 		s.method,
 	).Observe(time.Since(startAt).Seconds())

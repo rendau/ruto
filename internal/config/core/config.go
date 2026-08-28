@@ -27,6 +27,19 @@ var Conf = struct {
 	RedisPassword string `env:"REDIS_PASSWORD"`
 
 	AppSwaggerDiscoveryOnStart bool `env:"APP_SWAGGER_DISCOVERY_ON_START" envDefault:"false"`
+
+	// monitoring: external Prometheus / log-store the admin charts are read from
+	PrometheusURL    string `env:"PROMETHEUS_URL"`
+	MetricsNamespace string `env:"METRICS_NAMESPACE" envDefault:"company"`
+
+	LokiURL      string `env:"LOKI_URL"`
+	LokiSelector string `env:"LOKI_SELECTOR" envDefault:"{app=\"ruto-gateway\"}"`
+	LokiOrgID    string `env:"LOKI_ORG_ID"`
+
+	GraylogURL      string `env:"GRAYLOG_URL"`
+	GraylogAPIToken string `env:"GRAYLOG_API_TOKEN"`
+	GraylogStreamID string `env:"GRAYLOG_STREAM_ID"`
+	GraylogQuery    string `env:"GRAYLOG_QUERY"`
 }{}
 
 func init() {

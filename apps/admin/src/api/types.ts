@@ -388,3 +388,45 @@ export interface GatewayStateItem {
 export interface GatewayStateListRep {
   results: GatewayStateItem[];
 }
+
+export interface MonitoringStatus {
+  metrics_enabled: boolean;
+  logs_enabled: boolean;
+  logs_provider: string;
+}
+
+export interface MonitoringValuePoint {
+  ts: number;
+  value: number;
+}
+
+export interface MonitoringSeriesPoint {
+  ts: number;
+  rps: number;
+  duration_avg_seconds: number;
+  error_rate: number;
+}
+
+export interface MonitoringSeries {
+  step_seconds: number;
+  points: MonitoringSeriesPoint[];
+}
+
+export interface MonitoringEndpointRps {
+  endpoint_id: string;
+  points: MonitoringValuePoint[];
+}
+
+export interface MonitoringEndpointsRps {
+  step_seconds: number;
+  results: MonitoringEndpointRps[];
+}
+
+export interface MonitoringLogEntry {
+  ts_ms: number;
+  status: string;
+  duration: string;
+  error: string;
+  message: string;
+  raw: string;
+}

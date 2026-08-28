@@ -21,6 +21,7 @@ This repo has rich docs — read them before non-trivial work:
 - `docs/code-style.md` — conventions.
 - `docs/onboarding.md` — local setup and recipes for common changes.
 - `docs/gateway-grpc.md` — connecting to the gateway over gRPC.
+- `docs/monitoring.md` — admin traffic charts & logs (Prometheus / Loki / Graylog integration).
 
 ## Commands
 

@@ -57,6 +57,8 @@ func (s *Service) Serve(f serveFunc) {
 
 	logArgs = append(logArgs,
 		"app_name", s.app.Name,
+		"app_id", s.app.Id,
+		"endpoint_id", s.ep.Id,
 		"method", s.method,
 		"status", status,
 		"duration", time.Since(startAt).String(),

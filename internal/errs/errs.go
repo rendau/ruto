@@ -23,6 +23,9 @@ const (
 	PasswordRequired = Err("password_required")
 
 	IdRequired = Err("id_required")
+
+	MetricsNotConfigured = Err("metrics_not_configured")
+	LogsNotConfigured    = Err("logs_not_configured")
 )
 
 type ErrFull struct {

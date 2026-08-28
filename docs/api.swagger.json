@@ -15,6 +15,9 @@
       "name": "Gateway"
     },
     {
+      "name": "Monitoring"
+    },
+    {
       "name": "Root"
     },
     {
@@ -735,6 +738,189 @@
         },
         "tags": [
           "Gateway"
+        ]
+      }
+    },
+    "/monitoring/app/{id}/endpoints-rps": {
+      "get": {
+        "operationId": "Monitoring_AppEndpointsRps",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1MonitoringEndpointsRpsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "range_seconds",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/monitoring/app/{id}/metrics": {
+      "get": {
+        "operationId": "Monitoring_AppMetrics",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1MonitoringSeriesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "range_seconds",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/monitoring/endpoint/{id}/logs": {
+      "get": {
+        "operationId": "Monitoring_EndpointLogs",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1MonitoringLogsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "range_seconds",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "only_errors",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/monitoring/endpoint/{id}/metrics": {
+      "get": {
+        "operationId": "Monitoring_EndpointMetrics",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1MonitoringSeriesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "range_seconds",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "Monitoring"
+        ]
+      }
+    },
+    "/monitoring/status": {
+      "get": {
+        "operationId": "Monitoring_GetStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1MonitoringStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Monitoring"
         ]
       }
     },
@@ -1602,6 +1788,137 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "ruto_v1MonitoringEndpointRps": {
+      "type": "object",
+      "properties": {
+        "endpoint_id": {
+          "type": "string"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1MonitoringValuePoint"
+          }
+        }
+      }
+    },
+    "ruto_v1MonitoringEndpointsRpsResponse": {
+      "type": "object",
+      "properties": {
+        "step_seconds": {
+          "type": "string",
+          "format": "int64"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1MonitoringEndpointRps"
+          }
+        }
+      }
+    },
+    "ruto_v1MonitoringLogEntry": {
+      "type": "object",
+      "properties": {
+        "ts_ms": {
+          "type": "string",
+          "format": "int64"
+        },
+        "status": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "raw": {
+          "type": "string"
+        }
+      }
+    },
+    "ruto_v1MonitoringLogsResponse": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1MonitoringLogEntry"
+          }
+        }
+      }
+    },
+    "ruto_v1MonitoringSeriesPoint": {
+      "type": "object",
+      "properties": {
+        "ts": {
+          "type": "string",
+          "format": "int64"
+        },
+        "rps": {
+          "type": "number",
+          "format": "double"
+        },
+        "duration_avg_seconds": {
+          "type": "number",
+          "format": "double"
+        },
+        "error_rate": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "ruto_v1MonitoringSeriesResponse": {
+      "type": "object",
+      "properties": {
+        "step_seconds": {
+          "type": "string",
+          "format": "int64"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1MonitoringSeriesPoint"
+          }
+        }
+      }
+    },
+    "ruto_v1MonitoringStatusResponse": {
+      "type": "object",
+      "properties": {
+        "metrics_enabled": {
+          "type": "boolean"
+        },
+        "logs_enabled": {
+          "type": "boolean"
+        },
+        "logs_provider": {
+          "type": "string"
+        }
+      }
+    },
+    "ruto_v1MonitoringValuePoint": {
+      "type": "object",
+      "properties": {
+        "ts": {
+          "type": "string",
+          "format": "int64"
+        },
+        "value": {
+          "type": "number",
+          "format": "double"
         }
       }
     },

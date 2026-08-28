@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/ruto_v1";
+
+service Monitoring {
+  rpc GetStatus(google.protobuf.Empty) returns (MonitoringStatusResponse) {
+    option (google.api.http) = { get: "/monitoring/status" };
+  };
+  rpc AppMetrics(MonitoringMetricsRequest) returns (MonitoringSeriesResponse) {
+    option (google.api.http) = { get: "/monitoring/app/{id}/metrics" };
+  };
+  rpc EndpointMetrics(MonitoringMetricsRequest) returns (MonitoringSeriesResponse) {
+    option (google.api.http) = { get: "/monitoring/endpoint/{id}/metrics" };
+  };
+  rpc AppEndpointsRps(MonitoringMetricsRequest) returns (MonitoringEndpointsRpsResponse) {
+    option (google.api.http) = { get: "/monitoring/app/{id}/endpoints-rps" };
+  };
+  rpc EndpointLogs(MonitoringLogsRequest) returns (MonitoringLogsResponse) {
+    option (google.api.http) = { get: "/monitoring/endpoint/{id}/logs" };
+  };
+}
+
+message MonitoringStatusResponse {
+  bool metrics_enabled = 1;
+  bool logs_enabled = 2;
+  string logs_provider = 3;
+}
+
+message MonitoringMetricsRequest {
+  string id = 1;
+  int64 range_seconds = 2;
+}
+
+message MonitoringSeriesResponse {
+  int64 step_seconds = 1;
+  repeated MonitoringSeriesPoint points = 2;
+}
+
+message MonitoringSeriesPoint {
+  int64 ts = 1;
+  double rps = 2;
+  double duration_avg_seconds = 3;
+  double error_rate = 4;
+}
+
+message MonitoringEndpointsRpsResponse {
+  int64 step_seconds = 1;
+  repeated MonitoringEndpointRps results = 2;
+}
+
+message MonitoringEndpointRps {
+  string endpoint_id = 1;
+  repeated MonitoringValuePoint points = 2;
+}
+
+message MonitoringValuePoint {
+  int64 ts = 1;
+  double value = 2;
+}
+
+message MonitoringLogsRequest {
+  string id = 1;
+  int64 range_seconds = 2;
+  bool only_errors = 3;
+  int64 limit = 4;
+}
+
+message MonitoringLogsResponse {
+  repeated MonitoringLogEntry results = 1;
+}
+
+message MonitoringLogEntry {
+  int64 ts_ms = 1;
+  string status = 2;
+  string duration = 3;
+  string error = 4;
+  string message = 5;
+  string raw = 6;
+}

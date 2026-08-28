@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import {
   NButton,
   NDrawer,
@@ -25,6 +25,7 @@ import {
   updateEndpoint
 } from "@/api/endpoint";
 import { apiErrorMessage } from "@/api/http";
+import { getMonitoringStatus } from "@/api/monitoring";
 import { useDrawerResource } from "@/composables/useDrawerResource";
 import { useConfirm } from "@/composables/useConfirm";
 import { useIsMobile } from "@/composables/useIsMobile";
@@ -41,7 +42,9 @@ import SwitchField from "@/components/common/SwitchField.vue";
 import KeyValueGrid from "@/components/common/KeyValueGrid.vue";
 import AuthSummary from "@/components/display/AuthSummary.vue";
 import LoggingSummary from "@/components/display/LoggingSummary.vue";
-import type { AppMain, EndpointMain, Variable } from "@/api/types";
+import TrafficPanel from "@/components/monitoring/TrafficPanel.vue";
+import EndpointLogsPanel from "@/components/monitoring/EndpointLogsPanel.vue";
+import type { AppMain, EndpointMain, MonitoringStatus, Variable } from "@/api/types";
 
 const props = defineProps<{
   show: boolean;
@@ -66,6 +69,16 @@ const isMobile = useIsMobile();
 // Managing endpoints (edit/delete/toggle/test/connect) is allowed only for apps
 // the user owns; for others the drawer is a read-only view.
 const canManage = computed(() => authStore.canManageApp(props.app?.id ?? ""));
+
+const monitoringStatus = ref<MonitoringStatus | null>(null);
+
+onMounted(async () => {
+  try {
+    monitoringStatus.value = await getMonitoringStatus();
+  } catch {
+    monitoringStatus.value = null;
+  }
+});
 
 const inherited = ref<EndpointMain | null>(null);
 const interpolated = ref<EndpointMain | null>(null);
@@ -92,6 +105,20 @@ const { loading, item, reload } = useDrawerResource<EndpointMain, string>({
   },
   onError: () => emit("update:show", false)
 });
+
+const metricsAvailable = computed(
+  () =>
+    Boolean(monitoringStatus.value?.metrics_enabled) &&
+    Boolean(item.value) &&
+    !item.value?.exclude_from_metrics &&
+    !props.app?.exclude_from_metrics
+);
+// Logs may include request/response payloads, so the backend only serves them
+// to users who manage the app.
+const logsAvailable = computed(
+  () => Boolean(monitoringStatus.value?.logs_enabled) && canManage.value
+);
+const showTrafficTab = computed(() => metricsAvailable.value || logsAvailable.value);
 
 // The "Effective" tab shows the fully inherited endpoint; toggling "Interpolate"
 // swaps in the variant with variables resolved (lazily fetched on first use).
@@ -285,6 +312,18 @@ function remove(): void {
                   <div>
                     <span class="section-label">Variables</span>
                     <KeyValueGrid :items="effective.variables" empty-text="No variables" />
+                  </div>
+                </div>
+              </NTabPane>
+              <NTabPane v-if="showTrafficTab" name="traffic" tab="Traffic">
+                <div class="detail__stack">
+                  <div v-if="metricsAvailable">
+                    <span class="section-label">Traffic</span>
+                    <TrafficPanel kind="endpoint" :id="item.id" />
+                  </div>
+                  <div v-if="logsAvailable">
+                    <span class="section-label">Recent requests</span>
+                    <EndpointLogsPanel :endpoint-id="item.id" />
                   </div>
                 </div>
               </NTabPane>

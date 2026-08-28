@@ -24,6 +24,7 @@ import {
 } from "@vicons/ionicons5";
 import { deleteApp, getApp, getAppInterpolate, updateApp } from "@/api/app";
 import { listEndpoints } from "@/api/endpoint";
+import { getAppEndpointsRps, getMonitoringStatus } from "@/api/monitoring";
 import { apiErrorMessage } from "@/api/http";
 import { variablesToArray } from "@/api/normalize";
 import { useAppsStore } from "@/stores/apps";
@@ -49,7 +50,9 @@ import EndpointTestPanel from "@/components/endpoint/EndpointTestPanel.vue";
 import SwaggerSyncPanel from "@/components/endpoint/SwaggerSyncPanel.vue";
 import GrpcReflectionPanel from "@/components/endpoint/GrpcReflectionPanel.vue";
 import GrpcInstructionPanel from "@/components/endpoint/GrpcInstructionPanel.vue";
-import type { AppMain, EndpointMain } from "@/api/types";
+import TrafficPanel from "@/components/monitoring/TrafficPanel.vue";
+import SparklineChart from "@/components/monitoring/SparklineChart.vue";
+import type { AppMain, EndpointMain, MonitoringStatus, MonitoringValuePoint } from "@/api/types";
 
 const route = useRoute();
 const router = useRouter();
@@ -73,6 +76,16 @@ const togglingApp = ref(false);
 
 const interpolatedApp = ref<AppMain | null>(null);
 const showInterpolatedVars = ref(false);
+
+const monitoringStatus = ref<MonitoringStatus | null>(null);
+const endpointsRps = ref<Record<string, MonitoringValuePoint[]>>({});
+
+const appMetricsAvailable = computed(
+  () =>
+    Boolean(monitoringStatus.value?.metrics_enabled) &&
+    Boolean(app.value) &&
+    !app.value?.exclude_from_metrics
+);
 
 const protocol = ref<"http" | "grpc">("http");
 const filters = reactive({ search: "", method: null as string | null, status: "all", auth: "all" });
@@ -187,9 +200,39 @@ async function loadEndpoints(): Promise<void> {
   }
 }
 
+// One range query for the whole app: the per-row sparklines in the endpoint
+// list all come from this single response.
+async function loadEndpointsRps(): Promise<void> {
+  if (!appId.value || !monitoringStatus.value?.metrics_enabled) {
+    endpointsRps.value = {};
+    return;
+  }
+  try {
+    const rep = await getAppEndpointsRps(appId.value, 3600);
+    endpointsRps.value = Object.fromEntries(
+      (rep.results ?? []).map((item) => [item.endpoint_id, item.points])
+    );
+  } catch {
+    endpointsRps.value = {};
+  }
+}
+
+function endpointRps(id: string): number | null {
+  const points = endpointsRps.value[id];
+  const last = points?.[points.length - 1];
+  return last ? last.value : null;
+}
+
+function formatRowRps(value: number): string {
+  if (value >= 100) return value.toFixed(0);
+  if (value >= 10) return value.toFixed(1);
+  return value.toFixed(2);
+}
+
 async function loadAll(): Promise<void> {
   await Promise.all([loadApp(), loadEndpoints()]);
   void rootStore.ensureLoaded();
+  void loadEndpointsRps();
 }
 
 watch(showInterpolatedVars, async (value) => {
@@ -301,9 +344,15 @@ watch(showGrpcTab, (value) => {
   }
 });
 
-onMounted(() => {
+onMounted(async () => {
   void loadAll();
   window.addEventListener("app:saved", onAppSaved);
+  try {
+    monitoringStatus.value = await getMonitoringStatus();
+  } catch {
+    monitoringStatus.value = null;
+  }
+  void loadEndpointsRps();
 });
 
 onBeforeUnmount(() => {
@@ -421,6 +470,11 @@ onBeforeUnmount(() => {
             </SectionCard>
           </div>
 
+          <!-- Traffic -->
+          <SectionCard v-if="appMetricsAvailable" title="Traffic">
+            <TrafficPanel kind="app" :id="app.id" />
+          </SectionCard>
+
           <!-- Endpoints -->
           <SectionCard title="Endpoints" :description="`${endpoints.length} total`">
             <template #extra>
@@ -506,6 +560,20 @@ onBeforeUnmount(() => {
                     <code class="ep-row__path">
                       {{ endpoint.type === "grpc" ? endpoint.grpc.path : endpoint.http.path }}
                     </code>
+                  </div>
+                  <div v-if="appMetricsAvailable" class="ep-row__spark" title="RPS, last hour">
+                    <template v-if="endpointsRps[endpoint.id]?.length">
+                      <div class="ep-row__spark-chart">
+                        <SparklineChart
+                          :points="endpointsRps[endpoint.id] ?? []"
+                          color="var(--c-primary)"
+                          :height="22"
+                          :format-value="formatRowRps"
+                        />
+                      </div>
+                      <span class="ep-row__rps mono">{{ formatRowRps(endpointRps(endpoint.id) ?? 0) }}</span>
+                    </template>
+                    <span v-else class="ep-row__rps ep-row__rps--empty mono">—</span>
                   </div>
                   <div class="ep-row__foot">
                     <span class="ep-row__flags">
@@ -786,6 +854,30 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.ep-row__spark {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 132px;
+  flex-shrink: 0;
+}
+
+.ep-row__spark-chart {
+  width: 86px;
+}
+
+.ep-row__rps {
+  font-size: 11.5px;
+  color: var(--c-text-2);
+  min-width: 36px;
+  text-align: right;
+}
+
+.ep-row__rps--empty {
+  color: var(--c-text-3);
 }
 
 .ep-row__flags {
