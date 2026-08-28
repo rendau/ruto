@@ -30,6 +30,11 @@ func New(baseURL, apiToken, streamID, baseQuery string, timeout time.Duration) *
 		timeout = 15 * time.Second
 	}
 
+	// tolerate scheme-less urls like "graylog.logging:9000"
+	if !strings.Contains(baseURL, "://") {
+		baseURL = "http://" + baseURL
+	}
+
 	return &Service{
 		baseURL:   strings.TrimRight(baseURL, "/"),
 		apiToken:  apiToken,

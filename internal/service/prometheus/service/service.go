@@ -30,6 +30,11 @@ func New(baseURL string, timeout time.Duration) *Service {
 		timeout = 15 * time.Second
 	}
 
+	// tolerate scheme-less urls like "prometheus.monitoring:9090"
+	if !strings.Contains(baseURL, "://") {
+		baseURL = "http://" + baseURL
+	}
+
 	return &Service{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		httpClient: &http.Client{

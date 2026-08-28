@@ -30,6 +30,11 @@ func New(baseURL, selector, orgID string, timeout time.Duration) *Service {
 		timeout = 15 * time.Second
 	}
 
+	// tolerate scheme-less urls like "loki.monitoring:3100"
+	if !strings.Contains(baseURL, "://") {
+		baseURL = "http://" + baseURL
+	}
+
 	return &Service{
 		baseURL:  strings.TrimRight(baseURL, "/"),
 		selector: selector,
