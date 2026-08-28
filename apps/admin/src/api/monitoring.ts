@@ -7,8 +7,14 @@ import type {
   MonitoringStatus
 } from "./types";
 
-// grpc-gateway serializes int64 as JSON strings — normalize to numbers here so
-// the charts never do string arithmetic.
+// grpc-gateway serializes int64 as JSON strings (and non-finite doubles as
+// "NaN"/"Infinity") — normalize everything to finite numbers here so the
+// charts never do string arithmetic or draw NaN paths.
+
+function num(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
 
 let statusPromise: Promise<MonitoringStatus> | null = null;
 
@@ -53,10 +59,10 @@ export async function getAppEndpointsRps(
     })
   );
   return {
-    step_seconds: Number(rep.step_seconds),
+    step_seconds: num(rep.step_seconds),
     results: (rep.results ?? []).map((item) => ({
       endpoint_id: item.endpoint_id,
-      points: (item.points ?? []).map((p) => ({ ts: Number(p.ts), value: Number(p.value) }))
+      points: (item.points ?? []).map((p) => ({ ts: num(p.ts), value: num(p.value) }))
     }))
   };
 }
@@ -72,17 +78,17 @@ export async function getEndpointLogs(
       limit: options.limit ?? 50
     })
   );
-  return (rep.results ?? []).map((entry) => ({ ...entry, ts_ms: Number(entry.ts_ms) }));
+  return (rep.results ?? []).map((entry) => ({ ...entry, ts_ms: num(entry.ts_ms) }));
 }
 
 function normalizeSeries(rep: MonitoringSeries): MonitoringSeries {
   return {
-    step_seconds: Number(rep.step_seconds),
+    step_seconds: num(rep.step_seconds),
     points: (rep.points ?? []).map((p) => ({
-      ts: Number(p.ts),
-      rps: Number(p.rps),
-      duration_avg_seconds: Number(p.duration_avg_seconds),
-      error_rate: Number(p.error_rate)
+      ts: num(p.ts),
+      rps: num(p.rps),
+      duration_avg_seconds: num(p.duration_avg_seconds),
+      error_rate: num(p.error_rate)
     }))
   };
 }

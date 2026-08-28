@@ -2,6 +2,7 @@ package model
 
 import (
 	"encoding/json"
+	"math"
 	"strconv"
 
 	"github.com/samber/lo"
@@ -46,6 +47,12 @@ func decodePoint(v [2]json.RawMessage, _ int) (prometheusModel.Point, bool) {
 
 	value, err := strconv.ParseFloat(valueStr, 64)
 	if err != nil {
+		return prometheusModel.Point{}, false
+	}
+
+	// prometheus yields NaN for 0/0 divisions (e.g. avg duration with no
+	// traffic) — drop such points instead of leaking non-finite values to JSON
+	if math.IsNaN(value) || math.IsInf(value, 0) {
 		return prometheusModel.Point{}, false
 	}
 
