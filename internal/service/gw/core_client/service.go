@@ -12,7 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/goccy/go-json"
+	"encoding/json"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"

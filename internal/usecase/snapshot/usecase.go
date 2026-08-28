@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/goccy/go-json"
+	"encoding/json"
+
 	"github.com/samber/lo"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"

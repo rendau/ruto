@@ -9,7 +9,8 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"github.com/goccy/go-json"
+	"encoding/json"
+
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rs/cors"
 	"google.golang.org/grpc/codes"

@@ -1,7 +1,8 @@
 package dto
 
 import (
-	"github.com/goccy/go-json"
+	"encoding/json"
+
 	"google.golang.org/protobuf/types/known/structpb"
 
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
