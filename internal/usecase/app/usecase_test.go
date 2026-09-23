@@ -333,6 +333,40 @@ func TestUsecase_GetSwaggerEndpointsDiff_PathVariableNamesIgnored(t *testing.T) 
 	require.Empty(t, rep.RegisteredInvalid)
 }
 
+func TestUsecase_GetSwaggerEndpointsDiff_ReadOnlyUser(t *testing.T) {
+
+	uc := New(
+		&testAppService{
+			get: func(_ context.Context, _ string, _ bool) (*appModel.App, bool, error) {
+				return &appModel.App{
+					Id: "app-id",
+					Backend: appModel.Backend{
+						SwaggerUrl: "https://example.local/swagger.json",
+					},
+				}, true, nil
+			},
+		},
+		&testEndpointService{
+			list: func(_ context.Context, _ *endpointModel.ListReq) ([]*endpointModel.Endpoint, int64, error) {
+				return []*endpointModel.Endpoint{
+					{Http: endpointModel.Http{Method: "DELETE", Path: "ghost"}},
+				}, 1, nil
+			},
+		},
+		&testSwaggerService{
+			loadEndpoints: func(_ context.Context, _ string) ([]swaggerService.Endpoint, error) {
+				return []swaggerService.Endpoint{{Method: "GET", Path: "/users"}}, nil
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 1, AppIds: []string{"other-app"}}},
+	)
+
+	rep, err := uc.GetSwaggerEndpointsDiff(context.Background(), "app-id")
+	require.NoError(t, err)
+	require.Equal(t, []SwaggerEndpoint{{Method: "GET", Path: "/users"}}, rep.Unregistered)
+	require.Equal(t, []SwaggerEndpoint{{Method: "DELETE", Path: "/ghost"}}, rep.RegisteredInvalid)
+}
+
 func appWithSecrets(id string) *appModel.App {
 	return &appModel.App{
 		Id:   id,

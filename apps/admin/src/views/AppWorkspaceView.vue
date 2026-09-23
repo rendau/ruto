@@ -480,7 +480,7 @@ onBeforeUnmount(() => {
             <template #extra>
               <div class="ep-toolbar-actions">
                 <NButton
-                  v-if="canEdit && app.backend.swagger_url"
+                  v-if="app.backend.swagger_url"
                   size="small"
                   tertiary
                   @click="showSwagger = true"
@@ -669,6 +669,7 @@ onBeforeUnmount(() => {
       v-model:show="showSwagger"
       :app="app"
       :endpoints="endpoints"
+      :readonly="!canEdit"
       @changed="loadEndpoints"
     />
     <GrpcReflectionPanel

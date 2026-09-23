@@ -209,9 +209,8 @@ func (u *Usecase) GetSwaggerEndpointsDiff(ctx context.Context, id string) (*Swag
 	if id == "" {
 		return nil, errs.IdRequired
 	}
-	if err := u.requireAppAccess(ctx, id); err != nil {
-		return nil, err
-	}
+	// Read-only: any authorized user may view the diff, as it exposes only
+	// methods and paths, not secrets.
 
 	appObj, _, err := u.svc.Get(ctx, id, true)
 	if err != nil {

@@ -21,7 +21,14 @@ import { emptyEndpoint } from "@/lib/entities";
 import MethodBadge from "@/components/common/MethodBadge.vue";
 import type { AppMain, AppSwaggerEndpoint, EndpointMain } from "@/api/types";
 
-const props = defineProps<{ show: boolean; app: AppMain; endpoints: EndpointMain[] }>();
+// readonly shows the diff only: no selection, adding or deleting (for users
+// who can view the app but not manage it).
+const props = defineProps<{
+  show: boolean;
+  app: AppMain;
+  endpoints: EndpointMain[];
+  readonly?: boolean;
+}>();
 const emit = defineEmits<{ "update:show": [value: boolean]; changed: [] }>();
 
 const message = useMessage();
@@ -68,6 +75,7 @@ async function load(): Promise<void> {
 }
 
 function toggle(endpoint: AppSwaggerEndpoint): void {
+  if (props.readonly) return;
   const key = keyOf(endpoint);
   const next = new Set(selected.value);
   if (next.has(key)) {
@@ -156,9 +164,11 @@ watch(
               v-for="endpoint in unregistered"
               :key="keyOf(endpoint)"
               class="swagger__row"
+              :class="{ 'swagger__row--readonly': readonly }"
               @click="toggle(endpoint)"
             >
               <NCheckbox
+                v-if="!readonly"
                 class="swagger__check"
                 :checked="selected.has(keyOf(endpoint))"
                 :focusable="false"
@@ -189,7 +199,10 @@ watch(
                 >
                   <MethodBadge :method="endpoint.method" />
                   <code class="swagger__path">{{ endpoint.path }}</code>
-                  <NPopconfirm @positive-click="removeRegisteredInvalid(endpoint)">
+                  <NPopconfirm
+                    v-if="!readonly"
+                    @positive-click="removeRegisteredInvalid(endpoint)"
+                  >
                     <template #trigger>
                       <NButton
                         class="danger-icon-button swagger__delete"
@@ -217,6 +230,7 @@ watch(
       <div class="swagger__footer">
         <NButton tertiary :loading="loading" @click="load">Refresh</NButton>
         <NButton
+          v-if="!readonly"
           type="primary"
           :disabled="selected.size === 0"
           :loading="adding"
@@ -274,6 +288,10 @@ watch(
   border-radius: 8px;
   background: var(--c-surface);
   cursor: pointer;
+}
+
+.swagger__row--readonly {
+  cursor: default;
 }
 
 .swagger__check {
