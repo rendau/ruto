@@ -15,6 +15,7 @@ import {
 } from "naive-ui";
 import {
   AddOutline,
+  ClipboardOutline,
   CreateOutline,
   FlashOutline,
   LockClosedOutline,
@@ -50,6 +51,7 @@ import EndpointTestPanel from "@/components/endpoint/EndpointTestPanel.vue";
 import SwaggerSyncPanel from "@/components/endpoint/SwaggerSyncPanel.vue";
 import GrpcReflectionPanel from "@/components/endpoint/GrpcReflectionPanel.vue";
 import GrpcInstructionPanel from "@/components/endpoint/GrpcInstructionPanel.vue";
+import EndpointImportPanel from "@/components/endpoint/EndpointImportPanel.vue";
 import TrafficPanel from "@/components/monitoring/TrafficPanel.vue";
 import SparklineChart from "@/components/monitoring/SparklineChart.vue";
 import type { AppMain, EndpointMain, MonitoringStatus, MonitoringValuePoint } from "@/api/types";
@@ -102,6 +104,7 @@ const testEndpoint = ref<EndpointMain | null>(null);
 const showSwagger = ref(false);
 const showGrpcReflection = ref(false);
 const showGrpcInstruction = ref(false);
+const showImport = ref(false);
 
 const hasGrpc = computed(() => Boolean(app.value?.backend?.grpc_url?.trim()));
 const showGrpcTab = computed(() => hasGrpc.value || endpoints.value.some((e) => e.type === "grpc"));
@@ -495,6 +498,10 @@ onBeforeUnmount(() => {
                 >
                   gRPC
                 </NButton>
+                <NButton v-if="canEdit" size="small" tertiary @click="showImport = true">
+                  <template #icon><NIcon :component="ClipboardOutline" /></template>
+                  Import
+                </NButton>
                 <NButton v-if="canEdit" size="small" type="primary" @click="openCreate">
                   <template #icon><NIcon :component="AddOutline" /></template>
                   Endpoint
@@ -680,6 +687,13 @@ onBeforeUnmount(() => {
       @changed="loadEndpoints"
     />
     <GrpcInstructionPanel v-if="app" v-model:show="showGrpcInstruction" :app="app" />
+    <EndpointImportPanel
+      v-if="app && canEdit"
+      v-model:show="showImport"
+      :app="app"
+      :endpoints="endpoints"
+      @changed="loadEndpoints"
+    />
   </PageContainer>
 </template>
 
