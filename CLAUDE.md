@@ -59,3 +59,15 @@ Env: copy `config/core.env.example` → `.env.core` and `config/gateway.env.exam
 - Comment functions/code blocks only when logically necessary — to explain a non-obvious "why" (invariant, subtle nuance, rationale). Don't comment self-evident code or restate what it already says.
 - Don't add redundant `TrimSpace`/nil checks on already-normalized domain entities; normalization happens once in `Normalize()`.
 - In `internal/app/*`, packages are aliased with a `P` suffix (`usecaseAppP`, `handlerGrpcP`) to disambiguate.
+## Тестовый стенд
+
+Локальный одноразовый стенд для проверки core + админки (значения — только для локального docker-стенда, не боевые):
+
+- **Postgres:** `docker run --rm -d --name ruto-test-pg -e POSTGRES_USER=ruto -e POSTGRES_PASSWORD=ruto -e POSTGRES_DB=ruto -p 55432:5432 postgres:17`
+  - DSN: `postgres://ruto:ruto@localhost:55432/ruto?sslmode=disable`
+- **core:** собирать `go build -o <scratchpad>/stand/core cmd/core/main.go` и запускать **из каталога вне репозитория** (чтобы не подхватился `.env.core`), положив рядом симлинк `migrations` → `<repo>/migrations`:
+  `PG_DSN=<dsn> ADMIN_JWT_SECRET=ruto-local-test-stand-secret HTTP_PORT=9090 HTTP_CORS=true GRPC_PORT=5050 SYSTEM_PORT=3003 ./core`
+  - HTTP `:9090` (REST `/api/*`), gRPC `:5050`, system `:3003`.
+- **admin (vite):** `VITE_API_BASE_URL=http://localhost:9090/api VITE_HOST=localhost VITE_PORT=5173 pnpm --dir apps/admin dev` → `http://localhost:5173`
+- **Первый администратор** (БД пустая — создаётся на экране логина): name `Test Admin`, username `admin`, password `ruto-test-admin`.
+- После проверок: остановить vite и core, `docker stop ruto-test-pg`.
