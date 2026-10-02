@@ -1,18 +1,25 @@
 <script setup lang="ts">
-import { computed, reactive } from "vue";
+import { computed, h, reactive, ref } from "vue";
 import {
   NButton,
   NCheckbox,
   NForm,
   NFormItem,
+  NIcon,
   NInput,
+  NInputGroup,
   NModal,
   NSelect,
+  useDialog,
+  type FormItemInst,
   type FormRules
 } from "naive-ui";
+import { DiceOutline } from "@vicons/ionicons5";
 import { createUser, updateUser } from "@/api/usr";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useAppOptions } from "@/composables/useAppOptions";
+import { useClipboard } from "@/composables/useClipboard";
+import { generatePassword } from "@/lib/password";
 import SwitchField from "@/components/common/SwitchField.vue";
 import type { UsrCreateRep, UsrMain } from "@/api/types";
 
@@ -20,6 +27,12 @@ const props = defineProps<{ show: boolean; user: UsrMain | null }>();
 const emit = defineEmits<{ "update:show": [value: boolean]; saved: [] }>();
 
 const appOptions = useAppOptions();
+const { copy } = useClipboard();
+const dialog = useDialog();
+
+const passwordItemRef = ref<FormItemInst | null>(null);
+// A generated password is shown in clear text: the admin has to see what they hand over.
+const passwordRevealed = ref(false);
 
 interface FormModel {
   name: string;
@@ -48,6 +61,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<UsrMain, UsrCreate
     model.name = user?.name ?? "";
     model.username = user?.username ?? "";
     model.password = "";
+    passwordRevealed.value = false;
     model.active = user?.active ?? true;
     model.is_admin = user?.is_admin ?? false;
     model.all_apps = user?.all_apps ?? true;
@@ -83,6 +97,9 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<UsrMain, UsrCreate
   messages: { created: "User created", updated: "User updated" },
   onSaved: () => {
     emit("saved");
+    if (model.password) {
+      void copyCredentials();
+    }
     close();
   }
 });
@@ -99,6 +116,37 @@ const rules = computed<FormRules>(() => ({
         { min: 6, message: "At least 6 characters", trigger: ["blur", "input"] }
       ]
 }));
+
+const submitLabel = computed(
+  () => `${isEdit.value ? "Save" : "Create"}${model.password ? " & copy" : ""}`
+);
+
+function fillGeneratedPassword(): void {
+  model.password = generatePassword();
+  passwordRevealed.value = true;
+  passwordItemRef.value?.restoreValidation();
+}
+
+async function copyCredentials(): Promise<void> {
+  const text = [
+    window.location.origin,
+    `Username: ${model.username.trim()}`,
+    `Password: ${model.password}`
+  ].join("\n");
+  if (await copy(text, "Link, username and password copied")) return;
+  // The form is already closed and the saved password can't be read back,
+  // so without the clipboard this dialog is the only place left to take it from.
+  dialog.warning({
+    title: "Copy the credentials manually",
+    content: () =>
+      h(
+        "pre",
+        { class: "mono", style: "margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all" },
+        text
+      ),
+    positiveText: "Done"
+  });
+}
 
 function close(): void {
   emit("update:show", false);
@@ -119,15 +167,31 @@ function close(): void {
         <NInput v-model:value="model.name" placeholder="Jane Doe" />
       </NFormItem>
       <NFormItem label="Username" path="username">
-        <NInput v-model:value="model.username" :disabled="isEdit" placeholder="jane" />
-      </NFormItem>
-      <NFormItem :label="isEdit ? 'New password (leave empty to keep)' : 'Password'" path="password">
         <NInput
-          v-model:value="model.password"
-          type="password"
-          show-password-on="click"
-          :placeholder="isEdit ? 'Unchanged' : 'Choose a password'"
+          v-model:value="model.username"
+          :disabled="isEdit"
+          :input-props="{ autocomplete: 'off' }"
+          placeholder="jane"
         />
+      </NFormItem>
+      <NFormItem
+        ref="passwordItemRef"
+        :label="isEdit ? 'New password (leave empty to keep)' : 'Password'"
+        path="password"
+      >
+        <NInputGroup>
+          <NInput
+            v-model:value="model.password"
+            :type="passwordRevealed ? 'text' : 'password'"
+            show-password-on="click"
+            :input-props="{ autocomplete: 'new-password' }"
+            :placeholder="isEdit ? 'Unchanged' : 'Choose a password'"
+          />
+          <NButton tertiary :disabled="submitting" @click="fillGeneratedPassword">
+            <template #icon><NIcon :component="DiceOutline" /></template>
+            Generate
+          </NButton>
+        </NInputGroup>
       </NFormItem>
 
       <div class="usr-modal__switches">
@@ -156,8 +220,13 @@ function close(): void {
     <template #footer>
       <div class="form-actions">
         <NButton :disabled="submitting" @click="close">Cancel</NButton>
-        <NButton type="primary" :loading="submitting" @click="submit">
-          {{ isEdit ? "Save" : "Create" }}
+        <NButton
+          type="primary"
+          :loading="submitting"
+          :title="model.password ? 'Also copies link, username and password' : undefined"
+          @click="submit"
+        >
+          {{ submitLabel }}
         </NButton>
       </div>
     </template>
