@@ -1,9 +1,17 @@
 package db
 
 import (
+	"errors"
 	"strings"
 
+	"github.com/jackc/pgx/v5/pgconn"
+
 	domainModel "github.com/rendau/ruto/internal/domain/usr/model"
+)
+
+const (
+	pgUniqueViolationCode = "23505"
+	usernameUniqueIndex   = "usr_username_uidx"
 )
 
 var (
@@ -33,4 +41,9 @@ func (r *Repo) getConditions(pars *domainModel.ListReq) (map[string]any, map[str
 	}
 
 	return conditions, conditionExps
+}
+
+func isUsernameConflict(err error) bool {
+	pgErr, ok := errors.AsType[*pgconn.PgError](err)
+	return ok && pgErr.Code == pgUniqueViolationCode && pgErr.ConstraintName == usernameUniqueIndex
 }

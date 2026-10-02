@@ -2,12 +2,21 @@ package usr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/rendau/ruto/internal/domain/usr/model"
 	"github.com/rendau/ruto/internal/errs"
 )
+
+var errUsernameExists = errs.ErrFull{
+	Err:  errs.UsernameExists,
+	Desc: "username is already taken",
+	Fields: map[string]string{
+		"username": "already exists",
+	},
+}
 
 type Usecase struct {
 	svc        ServiceI
@@ -166,6 +175,9 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 
 	newId, err := u.svc.Create(ctx, obj)
 	if err != nil {
+		if errors.Is(err, errs.UsernameExists) {
+			return 0, errUsernameExists
+		}
 		return 0, fmt.Errorf("svc.Create: %w", err)
 	}
 
@@ -186,6 +198,9 @@ func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Edit) error {
 	}
 
 	if err := u.svc.Update(ctx, id, obj); err != nil {
+		if errors.Is(err, errs.UsernameExists) {
+			return errUsernameExists
+		}
 		return fmt.Errorf("svc.Update: %w", err)
 	}
 

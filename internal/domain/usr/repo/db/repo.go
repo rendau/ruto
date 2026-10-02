@@ -12,6 +12,7 @@ import (
 	commonRepoPg "github.com/rendau/ruto/internal/domain/common/repo/pg"
 	domainModel "github.com/rendau/ruto/internal/domain/usr/model"
 	repoModel "github.com/rendau/ruto/internal/domain/usr/repo/db/model"
+	"github.com/rendau/ruto/internal/errs"
 )
 
 type Repo struct {
@@ -106,6 +107,9 @@ func (r *Repo) Create(ctx context.Context, obj *domainModel.Edit) (int64, error)
 
 	err := r.ModelStore.Create(ctx, m)
 	if err != nil {
+		if isUsernameConflict(err) {
+			return 0, errs.UsernameExists
+		}
 		return 0, fmt.Errorf("ModelStore.Create: %w", err)
 	}
 
@@ -118,6 +122,9 @@ func (r *Repo) Update(ctx context.Context, id int64, obj *domainModel.Edit) erro
 
 	err := r.ModelStore.Update(ctx, m)
 	if err != nil {
+		if isUsernameConflict(err) {
+			return errs.UsernameExists
+		}
 		return fmt.Errorf("ModelStore.Update: %w", err)
 	}
 

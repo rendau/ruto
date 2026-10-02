@@ -21,6 +21,7 @@ const (
 	NameRequired     = Err("name_required")
 	UsernameRequired = Err("username_required")
 	PasswordRequired = Err("password_required")
+	UsernameExists   = Err("username_exists")
 
 	IdRequired = Err("id_required")
 
