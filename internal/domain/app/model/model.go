@@ -16,6 +16,7 @@ type App struct {
 	Id                 string               `json:"id"`
 	Active             bool                 `json:"active"`
 	ExcludeFromMetrics bool                 `json:"exclude_from_metrics"`
+	AllowWildcard      bool                 `json:"allow_wildcard"` // endpoints may use a trailing '*' in http.path
 	PathPrefix         string               `json:"path_prefix"`
 	Name               string               `json:"name"`
 	Backend            Backend              `json:"backend"`

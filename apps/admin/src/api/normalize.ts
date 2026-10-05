@@ -186,6 +186,7 @@ export function normalizeApp(value: AppMain): AppMain {
     id: value?.id || "",
     active: Boolean(value?.active),
     exclude_from_metrics: Boolean(value?.exclude_from_metrics),
+    allow_wildcard: Boolean(value?.allow_wildcard),
     path_prefix: value?.path_prefix || "",
     name: value?.name || "",
     backend: {

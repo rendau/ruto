@@ -27,6 +27,10 @@ func (m *Endpoint) Normalize() error {
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
 	}
+	// custom_path replaces the whole backend path, so the wildcard tail would be lost.
+	if m.Http.HasWildcard() && m.Backend.CustomPath != "" {
+		return fmt.Errorf("backend: custom_path: not allowed with wildcard path")
+	}
 
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
@@ -60,11 +64,17 @@ func (m *Http) Normalize() error {
 	}
 
 	m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
-	if strings.Contains(m.Path, "*") {
-		return fmt.Errorf("path: wildcard '*' is not allowed")
+	// The router accepts '*' only as the whole last segment and panics otherwise.
+	if strings.Contains(m.Path, "*") && m.Path != "*" &&
+		(!strings.HasSuffix(m.Path, "/*") || strings.Count(m.Path, "*") != 1) {
+		return fmt.Errorf("path: wildcard '*' is allowed only as the last segment")
 	}
 
 	return nil
+}
+
+func (m *Http) HasWildcard() bool {
+	return strings.HasSuffix(m.Path, "*")
 }
 
 func (m *Grpc) Normalize() error {

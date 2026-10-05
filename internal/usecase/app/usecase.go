@@ -76,6 +76,9 @@ func (u *Usecase) Create(ctx context.Context, obj *model.App) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if obj.AllowWildcard && !u.sessionSvc.CtxIsAdmin(ctx) {
+		return "", errs.NoPermission
+	}
 
 	newId, err := u.svc.Create(ctx, obj)
 	if err != nil {
@@ -173,6 +176,9 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.App) error {
 	if err != nil {
 		return err
 	}
+	if err = u.validateAllowWildcardChange(ctx, id, obj); err != nil {
+		return err
+	}
 
 	err = u.svc.Update(ctx, id, obj)
 	if err != nil {
@@ -235,7 +241,8 @@ func (u *Usecase) GetSwaggerEndpointsDiff(ctx context.Context, id string) (*Swag
 	}
 	filteredEndpoints := make([]*endpointModel.Endpoint, 0, len(endpoints))
 	for _, endpoint := range endpoints {
-		if endpoint == nil || endpoint.Type == endpointModel.TypeGRPC {
+		// Wildcard endpoints never match a single swagger path, so they are not "invalid".
+		if endpoint == nil || endpoint.Type == endpointModel.TypeGRPC || endpoint.Http.HasWildcard() {
 			continue
 		}
 		filteredEndpoints = append(filteredEndpoints, endpoint)
@@ -295,6 +302,40 @@ func (u *Usecase) canManage(ctx context.Context, id string) bool {
 		return true
 	}
 	return lo.Contains(u.sessionSvc.CtxGetAppIds(ctx), id)
+}
+
+// validateAllowWildcardChange lets only admins toggle allow_wildcard, and refuses
+// to turn it off while wildcard endpoints exist: such an app would fail
+// normalization and block the snapshot for every app.
+func (u *Usecase) validateAllowWildcardChange(ctx context.Context, id string, obj *model.App) error {
+	current, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return fmt.Errorf("svc.Get: %w", err)
+	}
+	if obj.AllowWildcard == current.AllowWildcard {
+		return nil
+	}
+	if !u.sessionSvc.CtxIsAdmin(ctx) {
+		return errs.NoPermission
+	}
+	if obj.AllowWildcard {
+		return nil
+	}
+
+	endpoints, _, err := u.endpointSvc.List(ctx, &endpointModel.ListReq{
+		AppId: &id,
+	})
+	if err != nil {
+		return fmt.Errorf("endpointSvc.List: %w", err)
+	}
+	wildcardPaths := lo.FilterMap(endpoints, func(ep *endpointModel.Endpoint, _ int) (string, bool) {
+		return ep.Http.Method + " /" + ep.Http.Path, ep.Type != endpointModel.TypeGRPC && ep.Http.HasWildcard()
+	})
+	if len(wildcardPaths) > 0 {
+		return fmt.Errorf("allow_wildcard: app has wildcard endpoints: %s", strings.Join(wildcardPaths, ", "))
+	}
+
+	return nil
 }
 
 func (u *Usecase) validateEdit(ctx context.Context, obj *model.App, selfID string) error {

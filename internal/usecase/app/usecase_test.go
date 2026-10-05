@@ -65,6 +65,7 @@ func (s *testAppService) Delete(_ context.Context, _ string) error {
 }
 
 type testEditAppService struct {
+	get    func(ctx context.Context, id string, errNE bool) (*appModel.App, bool, error)
 	list   func(ctx context.Context, pars *appModel.ListReq) ([]*appModel.App, int64, error)
 	create func(ctx context.Context, obj *appModel.App) (string, error)
 	update func(ctx context.Context, id string, obj *appModel.App) error
@@ -74,8 +75,11 @@ func (s *testEditAppService) List(ctx context.Context, pars *appModel.ListReq) (
 	return s.list(ctx, pars)
 }
 
-func (s *testEditAppService) Get(_ context.Context, _ string, _ bool) (*appModel.App, bool, error) {
-	panic("unexpected call")
+func (s *testEditAppService) Get(ctx context.Context, id string, errNE bool) (*appModel.App, bool, error) {
+	if s.get == nil {
+		return &appModel.App{Id: id}, true, nil
+	}
+	return s.get(ctx, id, errNE)
 }
 
 func (s *testEditAppService) Create(ctx context.Context, obj *appModel.App) (string, error) {
@@ -520,4 +524,112 @@ func TestUsecase_Update_SameAppNameForSelfAllowed(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.True(t, updateCalled)
+}
+
+func newAllowWildcardUsecase(
+	session *sessionModel.Session,
+	currentAllow bool,
+	endpoints []*endpointModel.Endpoint,
+	updateCalled *bool,
+) *Usecase {
+	return New(
+		&testEditAppService{
+			get: func(_ context.Context, id string, _ bool) (*appModel.App, bool, error) {
+				return &appModel.App{Id: id, AllowWildcard: currentAllow}, true, nil
+			},
+			list: func(_ context.Context, _ *appModel.ListReq) ([]*appModel.App, int64, error) {
+				return nil, 0, nil
+			},
+			create: func(_ context.Context, _ *appModel.App) (string, error) {
+				*updateCalled = true
+				return "new-id", nil
+			},
+			update: func(_ context.Context, _ string, _ *appModel.App) error {
+				*updateCalled = true
+				return nil
+			},
+		},
+		&testEndpointService{
+			list: func(_ context.Context, pars *endpointModel.ListReq) ([]*endpointModel.Endpoint, int64, error) {
+				return endpoints, int64(len(endpoints)), nil
+			},
+		},
+		nil,
+		&testSessionService{session: session},
+	)
+}
+
+func allowWildcardApp(allow bool) *appModel.App {
+	return &appModel.App{
+		Active:        true,
+		PathPrefix:    "/account",
+		Name:          "account",
+		AllowWildcard: allow,
+		Backend:       appModel.Backend{Url: "https://example.local"},
+	}
+}
+
+func TestUsecase_AllowWildcard_OnlyAdminToggles(t *testing.T) {
+	admin := &sessionModel.Session{Id: 1, Admin: true}
+	allApps := &sessionModel.Session{Id: 2, AllApps: true}
+
+	tests := []struct {
+		name         string
+		session      *sessionModel.Session
+		currentAllow bool
+		newAllow     bool
+		wantErr      error
+	}{
+		{name: "admin enables", session: admin, newAllow: true},
+		{name: "admin disables", session: admin, currentAllow: true},
+		{name: "non-admin can't enable", session: allApps, newAllow: true, wantErr: errs.NoPermission},
+		{name: "non-admin can't disable", session: allApps, currentAllow: true, wantErr: errs.NoPermission},
+		{name: "non-admin saves app with unchanged flag", session: allApps, currentAllow: true, newAllow: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			updateCalled := false
+			uc := newAllowWildcardUsecase(tt.session, tt.currentAllow, nil, &updateCalled)
+
+			err := uc.Update(context.Background(), "app-1", allowWildcardApp(tt.newAllow))
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				require.False(t, updateCalled)
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, updateCalled)
+		})
+	}
+}
+
+func TestUsecase_AllowWildcard_CreateOnlyByAdmin(t *testing.T) {
+	called := false
+	uc := newAllowWildcardUsecase(&sessionModel.Session{Id: 2, AllApps: true}, false, nil, &called)
+	_, err := uc.Create(context.Background(), allowWildcardApp(true))
+	require.ErrorIs(t, err, errs.NoPermission)
+	require.False(t, called)
+
+	uc = newAllowWildcardUsecase(&sessionModel.Session{Id: 1, Admin: true}, false, nil, &called)
+	_, err = uc.Create(context.Background(), allowWildcardApp(true))
+	require.NoError(t, err)
+	require.True(t, called)
+}
+
+func TestUsecase_AllowWildcard_CantDisableWithWildcardEndpoints(t *testing.T) {
+	updateCalled := false
+	uc := newAllowWildcardUsecase(
+		&sessionModel.Session{Id: 1, Admin: true},
+		true,
+		[]*endpointModel.Endpoint{
+			{Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: "GET", Path: "profile"}},
+			{Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: "GET", Path: "docs/*"}},
+		},
+		&updateCalled,
+	)
+
+	err := uc.Update(context.Background(), "app-1", allowWildcardApp(false))
+	require.EqualError(t, err, "allow_wildcard: app has wildcard endpoints: GET /docs/*")
+	require.False(t, updateCalled)
 }

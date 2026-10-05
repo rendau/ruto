@@ -18,6 +18,8 @@ const props = defineProps<{
 const emit = defineEmits<{ "update:show": [value: boolean] }>();
 
 const PATH_PARAM_PATTERN = /\{([^/{}]+)\}/g;
+// The trailing wildcard is sent as the "*" path param: a free path tail.
+const WILDCARD_PARAM = "*";
 const METHODS_WITH_BODY = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 const pathParams = ref<Variable[]>([]);
@@ -45,6 +47,7 @@ const pathTokens = computed(() => {
       names.push(name);
     }
   }
+  if (pathTemplate.value.endsWith(WILDCARD_PARAM)) names.push(WILDCARD_PARAM);
   return names;
 });
 
@@ -56,12 +59,17 @@ const pathParamMap = computed(() => {
   return map;
 });
 
-const resolvedPath = computed(() =>
-  pathTemplate.value.replace(PATH_PARAM_PATTERN, (token, name: string) => {
+const resolvedPath = computed(() => {
+  let template = pathTemplate.value;
+  const tail = (pathParamMap.value.get(WILDCARD_PARAM) || "").replace(/^\/+/, "");
+  if (tail && template.endsWith(WILDCARD_PARAM)) {
+    template = template.slice(0, -WILDCARD_PARAM.length) + tail;
+  }
+  return template.replace(PATH_PARAM_PATTERN, (token, name: string) => {
     const value = pathParamMap.value.get(name);
     return value ? encodeURIComponent(value) : token;
-  })
-);
+  });
+});
 
 const previewUrl = computed(() =>
   props.app ? joinUrl(props.app.backend.url, resolvedPath.value) : resolvedPath.value
@@ -133,7 +141,7 @@ watch(
             <code class="test__path-name">{{ item.key }}</code>
             <NInput
               :value="item.value"
-              :placeholder="`value for {${item.key}}`"
+              :placeholder="item.key === WILDCARD_PARAM ? 'path tail, e.g. a/b.json' : `value for {${item.key}}`"
               @update:value="(value: string) => (item.value = value)"
             />
           </div>

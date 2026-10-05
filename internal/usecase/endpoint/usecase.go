@@ -80,7 +80,7 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Endpoint) (string, erro
 		return "", errs.NotAuthorized
 	}
 
-	err := u.validateEdit(obj, true)
+	err := u.validateEdit(ctx, obj)
 	if err != nil {
 		return "", err
 	}
@@ -138,7 +138,7 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Endpoint) er
 		return err
 	}
 
-	err = u.validateEdit(obj, false)
+	err = u.validateEdit(ctx, obj)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (u *Usecase) validateEdit(obj *model.Endpoint, forCreate bool) error {
+func (u *Usecase) validateEdit(ctx context.Context, obj *model.Endpoint) error {
 	obj.AppId = strings.TrimSpace(obj.AppId)
 	if obj.AppId == "" {
 		return fmt.Errorf("app_id: empty")
@@ -190,6 +190,19 @@ func (u *Usecase) validateEdit(obj *model.Endpoint, forCreate bool) error {
 
 	if err := obj.Normalize(); err != nil {
 		return fmt.Errorf("normalize: %w", err)
+	}
+
+	if obj.Http.HasWildcard() {
+		if u.appSvc == nil {
+			return fmt.Errorf("appSvc: nil")
+		}
+		appObj, _, err := u.appSvc.Get(ctx, obj.AppId, true)
+		if err != nil {
+			return fmt.Errorf("appSvc.Get: %w", err)
+		}
+		if !appObj.AllowWildcard {
+			return fmt.Errorf("http: path: wildcard '*' is not allowed for this app")
+		}
 	}
 
 	return nil

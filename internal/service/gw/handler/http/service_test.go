@@ -130,6 +130,75 @@ func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
 	}
 }
 
+func TestService_HTTPWildcardPath(t *testing.T) {
+	var backendPaths []string
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		backendPaths = append(backendPaths, r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer backend.Close()
+
+	snapshot := rootModel.NewEmpty()
+	snapshot.Apps = []*appModel.App{
+		{
+			Active:        true,
+			PathPrefix:    "/account",
+			Name:          "account",
+			AllowWildcard: true,
+			Backend:       appModel.Backend{Url: backend.URL},
+			Endpoints: []*endpointModel.Endpoint{
+				{
+					Active: true,
+					Type:   endpointModel.TypeHTTP,
+					Http:   endpointModel.Http{Method: http.MethodGet, Path: "docs/*"},
+				},
+				{
+					Active:  true,
+					Type:    endpointModel.TypeHTTP,
+					Http:    endpointModel.Http{Method: http.MethodGet, Path: "docs/list"},
+					Backend: endpointModel.Backend{CustomPath: "internal/list"},
+				},
+			},
+		},
+	}
+	require.NoError(t, snapshot.Normalize())
+	snapshot.InheritDown()
+	snapshot.Interpolate()
+
+	service, err := New(snapshot)
+	require.NoError(t, err)
+
+	tests := []struct {
+		requestPath     string
+		wantCode        int
+		wantBackendPath string
+	}{
+		{requestPath: "/account/docs/a", wantCode: http.StatusOK, wantBackendPath: "/docs/a"},
+		{requestPath: "/account/docs/a/b/c.json", wantCode: http.StatusOK, wantBackendPath: "/docs/a/b/c.json"},
+		{requestPath: "/account/docs/", wantCode: http.StatusOK, wantBackendPath: "/docs/"},
+		// an exact route wins over the wildcard
+		{requestPath: "/account/docs/list", wantCode: http.StatusOK, wantBackendPath: "/internal/list"},
+		// the wildcard needs the trailing slash: the bare parent path is a different route
+		{requestPath: "/account/docs", wantCode: http.StatusNotFound},
+		{requestPath: "/account/other/a", wantCode: http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.requestPath, func(t *testing.T) {
+			backendPaths = nil
+
+			rec := performRequest(service, http.MethodGet, tt.requestPath, nil)
+
+			require.Equal(t, tt.wantCode, rec.Code)
+			if tt.wantBackendPath == "" {
+				require.Empty(t, backendPaths)
+				return
+			}
+			require.Equal(t, []string{tt.wantBackendPath}, backendPaths)
+		})
+	}
+}
+
 func TestService_HTTPBackendRequestParams(t *testing.T) {
 	backendHit := false
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

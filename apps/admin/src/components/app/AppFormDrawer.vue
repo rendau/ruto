@@ -24,6 +24,7 @@ import { useAppForm } from "@/composables/useAppForm";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useIsMobile } from "@/composables/useIsMobile";
 import { useAppsStore } from "@/stores/apps";
+import { useAuthStore } from "@/stores/auth";
 import { useRootStore } from "@/stores/root";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
@@ -36,6 +37,7 @@ const router = useRouter();
 const message = useMessage();
 const appForm = useAppForm();
 const appsStore = useAppsStore();
+const authStore = useAuthStore();
 const rootStore = useRootStore();
 const isMobile = useIsMobile();
 
@@ -143,6 +145,13 @@ async function detectSwagger(): Promise<void> {
         <div class="switch-row">
           <SwitchField v-model="model.active" label="Active" />
           <NCheckbox v-model:checked="model.exclude_from_metrics">Exclude from metrics</NCheckbox>
+          <NCheckbox
+            v-model:checked="model.allow_wildcard"
+            :disabled="!authStore.isAdmin"
+            :title="authStore.isAdmin ? 'Endpoints may end their path with /*' : 'Only an administrator can change this'"
+          >
+            Allow wildcard paths
+          </NCheckbox>
         </div>
 
         <h4 class="form-section">Backend</h4>

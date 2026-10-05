@@ -18,6 +18,7 @@ import { ClipboardOutline } from "@vicons/ionicons5";
 import { createEndpoint } from "@/api/endpoint";
 import { apiErrorMessage } from "@/api/http";
 import { emptyEndpoint } from "@/lib/entities";
+import { wildcardPathError } from "@/lib/endpointPath";
 import {
   endpointMatchKey,
   IMPORT_FORMAT_LABELS,
@@ -102,9 +103,11 @@ const rows = computed<Row[]>(() => {
 
     let status: RowStatus = "new";
     let reason = "";
-    if (endpoint.type === "http" && endpoint.path.includes("*")) {
+    const wildcardError =
+      endpoint.type === "http" ? wildcardPathError(endpoint.path, props.app.allow_wildcard) : "";
+    if (wildcardError) {
       status = "invalid";
-      reason = "wildcard '*' is not allowed";
+      reason = wildcardError;
     } else if (registeredKeys.value.has(key)) {
       status = "exists";
       reason = "already registered";

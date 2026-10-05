@@ -37,6 +37,9 @@ func (m *App) Normalize() error {
 		if err := m.Endpoints[i].Normalize(); err != nil {
 			return fmt.Errorf("endpoints[%d]: %w", i, err)
 		}
+		if !m.AllowWildcard && m.Endpoints[i].Http.HasWildcard() {
+			return fmt.Errorf("endpoints[%d]: http: path: wildcard '*' is not allowed for this app", i)
+		}
 	}
 	return nil
 }

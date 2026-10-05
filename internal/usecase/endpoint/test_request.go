@@ -23,6 +23,8 @@ const testRequestMaxBodySize = 1 << 20 // 1 MiB
 // does not match double-brace {{var}} interpolation tokens.
 var pathParamPattern = regexp.MustCompile(`\{([^/{}]+)}`)
 
+const wildcardParam = "*"
+
 type TestRequestResult struct {
 	RequestURL    string
 	RequestMethod string
@@ -138,10 +140,14 @@ func (u *Usecase) TestRequest(
 
 // substitutePathParams replaces {name} tokens with their (path-escaped) value.
 // Tokens without a provided value are left untouched so a forgotten fill stays
-// visible in the resulting URL.
+// visible in the resulting URL. A trailing wildcard is replaced by the "*"
+// param as is - it is a path tail and may hold several segments.
 func substitutePathParams(template string, params varsModel.Vars) string {
 	if len(params) == 0 {
 		return template
+	}
+	if tail, ok := params[wildcardParam]; ok && strings.HasSuffix(template, wildcardParam) {
+		template = strings.TrimSuffix(template, wildcardParam) + strings.TrimLeft(tail, "/")
 	}
 	return pathParamPattern.ReplaceAllStringFunc(template, func(token string) string {
 		name := token[1 : len(token)-1]

@@ -2,6 +2,10 @@ package model
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 )
 
 func TestAppNormalize_RejectWildcardInPathPrefix(t *testing.T) {
@@ -156,4 +160,21 @@ func TestAppNormalize_BackendRequestParams_Valid(t *testing.T) {
 	if item.Backend.QueryParams["tenant"] != "acme" {
 		t.Fatalf("query param normalize failed: %#v", item.Backend.QueryParams)
 	}
+}
+
+func TestAppNormalize_WildcardEndpointNeedsAllowWildcard(t *testing.T) {
+	newApp := func(allow bool) *App {
+		return &App{
+			PathPrefix:    "account",
+			AllowWildcard: allow,
+			Backend:       Backend{Url: "http://example.local/svc"},
+			Endpoints: []*endpointModel.Endpoint{
+				{Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: "GET", Path: "profile"}},
+				{Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: "GET", Path: "docs/*"}},
+			},
+		}
+	}
+
+	require.EqualError(t, newApp(false).Normalize(), "endpoints[1]: http: path: wildcard '*' is not allowed for this app")
+	require.NoError(t, newApp(true).Normalize())
 }

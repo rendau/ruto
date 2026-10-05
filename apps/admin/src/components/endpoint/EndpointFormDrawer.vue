@@ -17,6 +17,7 @@ import {
 } from "naive-ui";
 import { createEndpoint, updateEndpoint } from "@/api/endpoint";
 import { emptyEndpoint } from "@/lib/entities";
+import { hasWildcard, wildcardPathError } from "@/lib/endpointPath";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useIsMobile } from "@/composables/useIsMobile";
 import { useRootStore } from "@/stores/root";
@@ -80,8 +81,17 @@ const authVariables = computed(() => [...inheritedVariables.value, ...model.vari
 
 const httpPathRule = computed<FormItemRule>(() => ({
   required: model.type === "http",
-  message: "Path is required",
-  trigger: ["blur", "input"]
+  trigger: ["blur", "input"],
+  validator: (_rule, value: string) => {
+    if (model.type !== "http") return true;
+    if (!value?.trim()) return new Error("Path is required");
+    const wildcardError = wildcardPathError(value, Boolean(props.app?.allow_wildcard));
+    if (wildcardError) return new Error(wildcardError);
+    if (hasWildcard(value) && model.backend.custom_path.trim()) {
+      return new Error("wildcard path can't be combined with a custom backend path");
+    }
+    return true;
+  }
 }));
 const grpcServiceRule = computed<FormItemRule>(() => ({
   required: model.type === "grpc",
@@ -169,7 +179,10 @@ function close(): void {
               <NSelect v-model:value="model.http.method" :options="HTTP_METHOD_OPTIONS" />
             </NFormItem>
             <NFormItem label="Path" path="http.path" :rule="httpPathRule">
-              <NInput v-model:value="model.http.path" placeholder="/users/{id}" />
+              <NInput
+                v-model:value="model.http.path"
+                :placeholder="app?.allow_wildcard ? '/users/{id} or /files/*' : '/users/{id}'"
+              />
             </NFormItem>
           </div>
         </template>

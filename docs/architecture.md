@@ -64,6 +64,8 @@ internal/service/gw/
 
 Сборка роутера — `gw/handler/http/service.go:buildHandler`: для каждого активного App берётся `PathPrefix`, для каждого активного HTTP-endpoint строится путь `path_prefix[/http.path]`, оборачивается в цепочку middleware и регистрируется в chi (метод `*` → любой метод). Сверху навешивается CORS из `Root.Cors`.
 
+**Wildcard в пути.** По умолчанию `*` в `http.path` запрещена. Если у App включён `allow_wildcard` (менять флаг может только администратор), endpoint может заканчиваться на `/*` (или быть просто `*`): `docs/*` ловит `/<prefix>/docs/` и всё глубже, но не сам `/<prefix>/docs`; хвост пути уходит на backend как есть. Точный маршрут (`docs/list`) выигрывает у wildcard. Ограничения: `*` только последним сегментом, нельзя вместе с `backend.custom_path`, нельзя снять `allow_wildcard`, пока в App есть wildcard-endpoint'ы (иначе `Normalize()` снапшота упадёт и обновления встанут для всех App). В метриках и логах такой endpoint — один маршрут (`GET /<prefix>/docs/*`), реальный путь виден только в логах.
+
 ## Поток gRPC-запроса через gateway
 
 Маршрут выбирается по двум значениям из вызова: metadata-заголовку **`x-ruto-app-name`** и полному пути метода `/package.Service/Method`. Подробности и примеры клиентов — в [gateway-grpc.md](gateway-grpc.md).

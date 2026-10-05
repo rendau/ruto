@@ -12,6 +12,7 @@ export function emptyApp(): AppMain {
     id: "",
     active: true,
     exclude_from_metrics: false,
+    allow_wildcard: false,
     path_prefix: "",
     name: "",
     backend: { url: "", swagger_url: "", grpc_url: "", headers: {}, query_params: {} },

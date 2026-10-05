@@ -1,6 +1,10 @@
 package model
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestEndpointNormalize_AllowEmptyPath(t *testing.T) {
 	item := &Endpoint{
@@ -45,24 +49,42 @@ func TestEndpointNormalize_SlashPathToEmpty(t *testing.T) {
 	}
 }
 
-func TestEndpointNormalize_RejectWildcardInPath(t *testing.T) {
-	item := &Endpoint{
-		Type: TypeHTTP,
-		Http: Http{
-			Method: "GET",
-			Path:   "doc/*",
-		},
-		Backend: Backend{
-			CustomPath: "",
-		},
+func TestEndpointNormalize_WildcardPath(t *testing.T) {
+	tests := []struct {
+		path       string
+		customPath string
+		wantErr    string
+		wantHas    bool
+	}{
+		{path: "doc/*", wantHas: true},
+		{path: "/doc/*/", wantHas: true},
+		{path: "*", wantHas: true},
+		{path: "doc/{id}/*", wantHas: true},
+		{path: "doc"},
+		{path: "doc/*/edit", wantErr: "http: path: wildcard '*' is allowed only as the last segment"},
+		{path: "doc/a*", wantErr: "http: path: wildcard '*' is allowed only as the last segment"},
+		{path: "doc/**", wantErr: "http: path: wildcard '*' is allowed only as the last segment"},
+		{path: "*/*", wantErr: "http: path: wildcard '*' is allowed only as the last segment"},
+		{path: "doc/{id:[0-9]*}", wantErr: "http: path: wildcard '*' is allowed only as the last segment"},
+		{path: "doc/*", customPath: "internal/doc", wantErr: "backend: custom_path: not allowed with wildcard path"},
 	}
 
-	err := item.Normalize()
-	if err == nil {
-		t.Fatalf("Normalize() expected error, got nil")
-	}
-	if err.Error() != "http: path: wildcard '*' is not allowed" {
-		t.Fatalf("unexpected error: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			item := &Endpoint{
+				Type:    TypeHTTP,
+				Http:    Http{Method: "GET", Path: tt.path},
+				Backend: Backend{CustomPath: tt.customPath},
+			}
+
+			err := item.Normalize()
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.wantHas, item.Http.HasWildcard())
+		})
 	}
 }
 

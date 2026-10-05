@@ -21,8 +21,8 @@ func (s *testBackfillAppService) List(ctx context.Context, pars *appModel.ListRe
 	return s.list(ctx, pars)
 }
 
-func (s *testBackfillAppService) Get(_ context.Context, _ string, _ bool) (*appModel.App, bool, error) {
-	panic("unexpected call")
+func (s *testBackfillAppService) Get(_ context.Context, id string, _ bool) (*appModel.App, bool, error) {
+	return &appModel.App{Id: id}, true, nil
 }
 
 func (s *testBackfillAppService) Create(_ context.Context, _ *appModel.App) (string, error) {

@@ -152,6 +152,7 @@ export interface AppMain {
   id: string;
   active: boolean;
   exclude_from_metrics: boolean;
+  allow_wildcard: boolean;
   path_prefix: string;
   name: string;
   backend: AppBackend;
