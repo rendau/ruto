@@ -23,6 +23,8 @@ import (
 	domainEndpointServiceP "github.com/rendau/ruto/internal/domain/endpoint/service"
 	domainRootRepoDbP "github.com/rendau/ruto/internal/domain/root/repo/db"
 	domainRootServiceP "github.com/rendau/ruto/internal/domain/root/service"
+	domainSeenPathRepoDbP "github.com/rendau/ruto/internal/domain/seenpath/repo/db"
+	domainSeenPathServiceP "github.com/rendau/ruto/internal/domain/seenpath/service"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	domainSessionServiceP "github.com/rendau/ruto/internal/domain/session/service"
 	domainSnapshotRepoDbP "github.com/rendau/ruto/internal/domain/snapshot/repo/db"
@@ -43,6 +45,7 @@ import (
 	usecaseGatewayP "github.com/rendau/ruto/internal/usecase/gateway"
 	usecaseMonitoringP "github.com/rendau/ruto/internal/usecase/monitoring"
 	usecaseRootP "github.com/rendau/ruto/internal/usecase/root"
+	usecaseSeenPathP "github.com/rendau/ruto/internal/usecase/seenpath"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
 	usecaseStatsP "github.com/rendau/ruto/internal/usecase/stats"
 	usecaseUsrP "github.com/rendau/ruto/internal/usecase/usr"
@@ -145,8 +148,14 @@ func (a *App) Init() error {
 	usecaseStats := usecaseStatsP.New(domainRootService, domainAppService, domainEndpointService, domainUsrService, time.Now())
 	handlerGrpcStats := handlerGrpcP.NewStats(usecaseStats)
 
+	// seen path
+	domainSeenPathRepoDb := domainSeenPathRepoDbP.New(a.pgpool)
+	domainSeenPathService := domainSeenPathServiceP.New(domainSeenPathRepoDb)
+	usecaseSeenPath := usecaseSeenPathP.New(domainSeenPathService, sessionService)
+	handlerGrpcSeenPath := handlerGrpcP.NewSeenPath(usecaseSeenPath)
+
 	// gateway
-	usecaseGateway := usecaseGatewayP.New(sessionService, cacheService.NewChildInstance("gateway:"), gatewaysService)
+	usecaseGateway := usecaseGatewayP.New(sessionService, cacheService.NewChildInstance("gateway:"), gatewaysService, usecaseSeenPath)
 	handlerGrpcGateway := handlerGrpcP.NewGateway(usecaseGateway)
 
 	// monitoring
@@ -195,6 +204,7 @@ func (a *App) Init() error {
 		ruto_v1.RegisterUsrServer(server, handlerGrpcUsr)
 		ruto_v1.RegisterGatewayServer(server, handlerGrpcGateway)
 		ruto_v1.RegisterMonitoringServer(server, handlerGrpcMonitoring)
+		ruto_v1.RegisterSeenPathServer(server, handlerGrpcSeenPath)
 	})
 
 	// grpc-gateway
@@ -215,6 +225,7 @@ func (a *App) Init() error {
 			ruto_v1.RegisterMigrateHandler,
 			ruto_v1.RegisterGatewayHandler,
 			ruto_v1.RegisterMonitoringHandler,
+			ruto_v1.RegisterSeenPathHandler,
 		}
 		for _, registerHandler := range handlers {
 			if registerErr := registerHandler(context.Background(), mux, conn); registerErr != nil {

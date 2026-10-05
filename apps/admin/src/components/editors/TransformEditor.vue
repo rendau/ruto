@@ -43,6 +43,7 @@ function patch(part: Partial<Transform>): void {
 
 const REQUEST_PLACEHOLDER = `// req: { method, path, headers, params, body, raw_body, vars }
 // return any subset of { method, headers, params, body }
+// or { response: { status, headers, body } } to answer without calling the backend
 return {
   body: { ...req.body, source: "gateway" },
   headers: { ...req.headers, "X-Tenant": [req.vars.tenant] }
@@ -84,7 +85,8 @@ const CONTRACTS: Contract[] = [
       { name: "method", desc: "String — overrides the request method." },
       { name: "headers", desc: "Object — replaces ALL headers (spread req.headers to keep). Value may be a list or a bare string." },
       { name: "params", desc: "Object — replaces ALL query params (same value rules)." },
-      { name: "body", desc: "Object → JSON-encoded; string → sent as-is; null → empty body." }
+      { name: "body", desc: "Object → JSON-encoded; string → sent as-is; null → empty body." },
+      { name: "response", desc: "Object { status, headers, body } — answer the client right away, the backend is NOT called (static content, redirects). status defaults to 200." }
     ],
     example: `// Wrap the incoming JSON in the backend's envelope,
 // add a header, and drop an internal one.

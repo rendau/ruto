@@ -14,12 +14,14 @@ import (
 
 	"encoding/json"
 
+	"github.com/samber/lo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	"github.com/rendau/ruto/internal/service/gw/service/seen"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
 
@@ -327,6 +329,8 @@ func (s *Service) sendHeartbeat() error {
 		lastError = lastError[:512]
 	}
 
+	seenItems := seen.Ins().Drain()
+
 	ctx, cancel := context.WithTimeout(s.globalCtx, heartbeatTimeout)
 	defer cancel()
 
@@ -339,12 +343,30 @@ func (s *Service) sendHeartbeat() error {
 		LastError:        lastError,
 		MemoryAllocBytes: heapAllocBytes(),
 		GoroutinesCount:  uint32(runtime.NumGoroutine()),
+		SeenPaths:        lo.Map(seenItems, encodeSeenPath),
 	})
-	if err != nil && s.globalCtx.Err() == nil {
-		return fmt.Errorf("gatewayClient.Heartbeat: %w", err)
+	if err != nil {
+		// Not delivered: keep the counters for the next heartbeat.
+		seen.Ins().Restore(seenItems)
+		if s.globalCtx.Err() == nil {
+			return fmt.Errorf("gatewayClient.Heartbeat: %w", err)
+		}
 	}
 
 	return nil
+}
+
+func encodeSeenPath(v *seen.Item, _ int) *ruto_v1.GatewaySeenPath {
+	return &ruto_v1.GatewaySeenPath{
+		AppId:          v.AppId,
+		EndpointId:     v.EndpointId,
+		Method:         v.Method,
+		Path:           v.Path,
+		Hits:           v.Hits,
+		HitsNotFound:   v.HitsNotFound,
+		LastSeenAtUnix: v.LastSeenAt.Unix(),
+		Sample:         v.Sample,
+	}
 }
 
 // heapAllocBytes reports live heap bytes, the equivalent of MemStats.Alloc.

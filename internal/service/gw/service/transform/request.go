@@ -27,6 +27,16 @@ type Result struct {
 	Params  map[string][]string
 	Body    []byte
 	BodySet bool
+
+	// Response, when set, is sent to the client as is and the backend is not
+	// called at all (static content, redirects, early rejects).
+	Response *DirectResponse
+}
+
+type DirectResponse struct {
+	Status  int
+	Headers map[string][]string
+	Body    []byte
 }
 
 type RequestTransformer struct{ r *runner }
@@ -57,6 +67,15 @@ func (t *RequestTransformer) Transform(ctx context.Context, in *Request) (*Resul
 				return
 			}
 			obj := out.ToObject(rt)
+			if rv := obj.Get("response"); present(rv) {
+				robj := rv.ToObject(rt)
+				res.Response = &DirectResponse{
+					Status:  int(robj.Get("status").ToInteger()),
+					Headers: exportStrListMap(robj.Get("headers")),
+					Body:    []byte(robj.Get("body").String()),
+				}
+				return
+			}
 			if mv := obj.Get("method"); present(mv) {
 				res.Method = new(mv.String())
 			}
@@ -102,6 +121,18 @@ func wrapRequest(script string) string {
   if (typeof out !== "object") throw new Error("script must return an object");
 
   var res = {};
+  if ("response" in out && out.response !== null && out.response !== undefined) {
+    var r = out.response;
+    if (typeof r !== "object") throw new Error("response must be an object");
+    var status = ("status" in r) ? Number(r.status) : 200;
+    if (!(status >= 100 && status <= 599) || status !== Math.floor(status)) {
+      throw new Error("response.status must be an http status code");
+    }
+    var direct = { status: status, headers: __strlistmap(r.headers, "response.headers") };
+    ` + bodyOutJS("direct", "r.body") + `
+    res.response = direct;
+    return res;
+  }
   if ("method" in out) res.method = String(out.method);
   if ("headers" in out) res.headers = __strlistmap(out.headers, "headers");
   if ("params" in out) res.params = __strlistmap(out.params, "params");

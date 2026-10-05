@@ -431,3 +431,21 @@ export interface MonitoringLogEntry {
   message: string;
   raw: string;
 }
+
+// ---- Seen paths (what wildcard endpoints actually serve) --------------------
+
+export interface SeenPathMain {
+  app_id: string;
+  endpoint_id: string;
+  method: string;
+  path: string;
+  hits: number;
+  hits_not_found: number;
+  first_seen_at_unix: string | number;
+  last_seen_at_unix: string | number;
+  sample: string;
+}
+
+export interface SeenPathListRep {
+  results: SeenPathMain[];
+}

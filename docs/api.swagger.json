@@ -21,6 +21,9 @@
       "name": "Root"
     },
     {
+      "name": "SeenPath"
+    },
+    {
       "name": "Snapshot"
     },
     {
@@ -1043,6 +1046,65 @@
         ]
       }
     },
+    "/seen_path": {
+      "get": {
+        "operationId": "SeenPath_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1SeenPathListRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SeenPath"
+        ]
+      },
+      "delete": {
+        "operationId": "SeenPath_Clear",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SeenPath"
+        ]
+      }
+    },
     "/snapshot": {
       "get": {
         "operationId": "Snapshot_Get",
@@ -1723,6 +1785,38 @@
         }
       }
     },
+    "ruto_v1GatewaySeenPath": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string"
+        },
+        "endpoint_id": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "hits": {
+          "type": "string",
+          "format": "int64"
+        },
+        "hits_not_found": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last_seen_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "sample": {
+          "type": "string"
+        }
+      }
+    },
     "ruto_v1GatewayStateItem": {
       "type": "object",
       "properties": {
@@ -1958,6 +2052,54 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "ruto_v1SeenPathListRep": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1SeenPathMain"
+          }
+        }
+      }
+    },
+    "ruto_v1SeenPathMain": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string"
+        },
+        "endpoint_id": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "hits": {
+          "type": "string",
+          "format": "int64"
+        },
+        "hits_not_found": {
+          "type": "string",
+          "format": "int64"
+        },
+        "first_seen_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last_seen_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "sample": {
+          "type": "string"
         }
       }
     },

@@ -13,6 +13,7 @@ import (
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
+	"github.com/rendau/ruto/internal/service/gw/service/seen"
 )
 
 func TestService_HTTPRouteMatchingAndProxying(t *testing.T) {
@@ -197,6 +198,94 @@ func TestService_HTTPWildcardPath(t *testing.T) {
 			require.Equal(t, []string{tt.wantBackendPath}, backendPaths)
 		})
 	}
+}
+
+func TestService_HTTPRequestScriptDirectResponse(t *testing.T) {
+	backendHit := false
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		backendHit = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer backend.Close()
+
+	service := newTestService(t, backend.URL, true, &endpointModel.Endpoint{
+		Active: true,
+		Type:   endpointModel.TypeHTTP,
+		Http:   endpointModel.Http{Method: http.MethodGet, Path: "verify.html"},
+		Transform: endpointModel.Transform{
+			Request: `return { response: { status: 200, headers: { "Content-Type": "text/html" }, body: "verification: " + req.path } };`,
+		},
+	}, nil)
+
+	rec := performRequest(service, http.MethodGet, "/account/verify.html", nil)
+
+	require.False(t, backendHit)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "text/html", rec.Header().Get("Content-Type"))
+	require.Equal(t, "verification: /account/verify.html", rec.Body.String())
+}
+
+func TestService_HTTPWildcardSeenPaths(t *testing.T) {
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/docs/missing" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer backend.Close()
+
+	snapshot := rootModel.NewEmpty()
+	snapshot.Apps = []*appModel.App{
+		{
+			Id:            "app-seen",
+			Active:        true,
+			PathPrefix:    "/account",
+			Name:          "account",
+			AllowWildcard: true,
+			Backend:       appModel.Backend{Url: backend.URL},
+			Endpoints: []*endpointModel.Endpoint{
+				{
+					Id:     "ep-wild",
+					Active: true,
+					Type:   endpointModel.TypeHTTP,
+					Http:   endpointModel.Http{Method: "*", Path: "docs/*"},
+				},
+				{
+					Id:     "ep-exact",
+					Active: true,
+					Type:   endpointModel.TypeHTTP,
+					Http:   endpointModel.Http{Method: http.MethodGet, Path: "docs/list"},
+				},
+			},
+		},
+	}
+	require.NoError(t, snapshot.Normalize())
+	snapshot.InheritDown()
+	snapshot.Interpolate()
+
+	service, err := New(snapshot)
+	require.NoError(t, err)
+
+	seen.Ins().Drain()
+	performRequest(service, http.MethodGet, "/account/docs/15", nil)
+	performRequest(service, http.MethodGet, "/account/docs/16?x=1", nil)
+	performRequest(service, http.MethodPost, "/account/docs/16", nil)
+	performRequest(service, http.MethodGet, "/account/docs/missing", nil)
+	performRequest(service, http.MethodGet, "/account/docs/list", nil)
+
+	got := make(map[string]*seen.Item)
+	for _, item := range seen.Ins().Drain() {
+		require.Equal(t, "app-seen", item.AppId)
+		require.Equal(t, "ep-wild", item.EndpointId, "exact endpoints are not recorded")
+		got[item.Method+" "+item.Path] = item
+	}
+
+	require.Len(t, got, 3)
+	require.EqualValues(t, 2, got["GET docs/{id}"].Hits)
+	require.EqualValues(t, 0, got["GET docs/{id}"].HitsNotFound)
+	require.EqualValues(t, 1, got["POST docs/{id}"].Hits)
+	require.EqualValues(t, 1, got["GET docs/missing"].HitsNotFound)
 }
 
 func TestService_HTTPBackendRequestParams(t *testing.T) {

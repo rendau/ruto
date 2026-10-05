@@ -37,6 +37,19 @@ message GatewayHeartbeatRequest {
   string last_error = 9;
   uint64 memory_alloc_bytes = 10;
   uint32 goroutines_count = 11;
+  // requests served by wildcard endpoints since the previous heartbeat
+  repeated GatewaySeenPath seen_paths = 12;
+}
+
+message GatewaySeenPath {
+  string app_id = 1;
+  string endpoint_id = 2;
+  string method = 3;
+  string path = 4;
+  int64 hits = 5;
+  int64 hits_not_found = 6;
+  int64 last_seen_at_unix = 7;
+  string sample = 8;
 }
 
 message GatewayListResponse {

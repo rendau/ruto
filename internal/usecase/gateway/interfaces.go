@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	seenPathModel "github.com/rendau/ruto/internal/domain/seenpath/model"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 )
 
@@ -17,6 +18,10 @@ type CacheI interface {
 	ListKeys() ([]string, error)
 	SetJsonObj(key string, value any, ttl time.Duration) error
 	GetJsonObj(key string, dst any) (bool, error)
+}
+
+type SeenPathsI interface {
+	Report(ctx context.Context, items []*seenPathModel.SeenPath) error
 }
 
 type GatewaysI interface {

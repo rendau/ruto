@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/ruto_v1";
+
+// SeenPath reports which concrete paths were served by wildcard endpoints.
+service SeenPath {
+  rpc List(SeenPathListReq) returns (SeenPathListRep) {
+    option (google.api.http) = { get: "/seen_path" };
+  };
+  rpc Clear(SeenPathClearReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/seen_path" };
+  };
+}
+
+message SeenPathListReq {
+  string app_id = 1;
+}
+
+message SeenPathListRep {
+  repeated SeenPathMain results = 1;
+}
+
+message SeenPathClearReq {
+  string app_id = 1;
+}
+
+message SeenPathMain {
+  string app_id = 1;
+  string endpoint_id = 2;
+  string method = 3;
+  string path = 4;
+  int64 hits = 5;
+  int64 hits_not_found = 6;
+  int64 first_seen_at_unix = 7;
+  int64 last_seen_at_unix = 8;
+  string sample = 9;
+}

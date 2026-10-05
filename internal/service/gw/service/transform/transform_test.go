@@ -179,3 +179,48 @@ func TestContextCanceledWhenPoolSaturated(t *testing.T) {
 	_, err = tr.Transform(ctx, &Request{})
 	require.ErrorIs(t, err, context.Canceled, "saturated pool must yield to context, not block forever")
 }
+
+func TestDirectResponse(t *testing.T) {
+	tr := mustNew(t, `
+		if (req.path.endsWith("/old")) {
+			return { response: { status: 301, headers: { Location: "https://example.com" + req.path } } };
+		}
+		return { response: { headers: { "Content-Type": "text/plain" }, body: "google-site-verification: abc" } };
+	`)
+
+	res, err := transform(t, tr, &Request{Path: "/files/old"})
+	require.NoError(t, err)
+	require.NotNil(t, res.Response)
+	require.Equal(t, 301, res.Response.Status)
+	require.Equal(t, []string{"https://example.com/files/old"}, res.Response.Headers["Location"])
+	require.Empty(t, res.Response.Body)
+
+	res, err = transform(t, tr, &Request{Path: "/files/verify.html"})
+	require.NoError(t, err)
+	require.NotNil(t, res.Response)
+	require.Equal(t, 200, res.Response.Status, "status defaults to 200")
+	require.Equal(t, []string{"text/plain"}, res.Response.Headers["Content-Type"])
+	require.Equal(t, "google-site-verification: abc", string(res.Response.Body))
+}
+
+func TestDirectResponse_ObjectBodyAndNoResponse(t *testing.T) {
+	tr := mustNew(t, `
+		if (req.params.direct) return { response: { body: { ok: true } } };
+		return { response: null, method: "PUT" };
+	`)
+
+	res, err := transform(t, tr, &Request{Params: map[string][]string{"direct": {"1"}}})
+	require.NoError(t, err)
+	require.Equal(t, `{"ok":true}`, string(res.Response.Body))
+
+	res, err = transform(t, tr, &Request{})
+	require.NoError(t, err)
+	require.Nil(t, res.Response, "null response -> proxy as usual")
+	require.Equal(t, "PUT", *res.Method)
+}
+
+func TestDirectResponse_InvalidStatus(t *testing.T) {
+	tr := mustNew(t, `return { response: { status: 99 } };`)
+	_, err := transform(t, tr, &Request{})
+	require.Error(t, err)
+}

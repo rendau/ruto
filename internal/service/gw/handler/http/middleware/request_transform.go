@@ -72,11 +72,35 @@ func NewRequestTransform(ep *endpointModel.Endpoint, defaultMaxWorkers int) Midd
 				return
 			}
 
+			if res.Response != nil {
+				writeDirectResponse(w, res.Response)
+				return
+			}
+
 			applyTransform(r, res, body)
 
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// writeDirectResponse answers the client with what the script returned, without
+// calling the backend.
+func writeDirectResponse(w http.ResponseWriter, res *transform.DirectResponse) {
+	if rw, ok := w.(*rw_wrapper.Wrapper); ok && (res.Status < 200 || res.Status >= 300) {
+		rw.MarkExpected()
+	}
+
+	dst := w.Header()
+	for k, vs := range res.Headers {
+		for _, v := range vs {
+			dst.Add(k, v)
+		}
+	}
+	dst.Set("Content-Length", strconv.Itoa(len(res.Body)))
+
+	w.WriteHeader(res.Status)
+	_, _ = w.Write(res.Body)
 }
 
 func applyTransform(r *http.Request, res *transform.Result, origBody []byte) {

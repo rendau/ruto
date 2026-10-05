@@ -49,6 +49,7 @@ import EndpointFormDrawer from "@/components/endpoint/EndpointFormDrawer.vue";
 import EndpointDetailDrawer from "@/components/endpoint/EndpointDetailDrawer.vue";
 import EndpointTestPanel from "@/components/endpoint/EndpointTestPanel.vue";
 import SwaggerSyncPanel from "@/components/endpoint/SwaggerSyncPanel.vue";
+import SeenPathsPanel from "@/components/endpoint/SeenPathsPanel.vue";
 import GrpcReflectionPanel from "@/components/endpoint/GrpcReflectionPanel.vue";
 import GrpcInstructionPanel from "@/components/endpoint/GrpcInstructionPanel.vue";
 import EndpointImportPanel from "@/components/endpoint/EndpointImportPanel.vue";
@@ -102,10 +103,14 @@ const detailId = ref<string | null>(null);
 const showTest = ref(false);
 const testEndpoint = ref<EndpointMain | null>(null);
 const showSwagger = ref(false);
+const showSeenPaths = ref(false);
 const showGrpcReflection = ref(false);
 const showGrpcInstruction = ref(false);
 const showImport = ref(false);
 
+const hasWildcardEndpoint = computed(() =>
+  endpoints.value.some((item) => item.type === "http" && item.http.path.includes("*"))
+);
 const hasGrpc = computed(() => Boolean(app.value?.backend?.grpc_url?.trim()));
 const showGrpcTab = computed(() => hasGrpc.value || endpoints.value.some((e) => e.type === "grpc"));
 
@@ -289,6 +294,12 @@ function removeApp(): void {
 function openCreate(): void {
   editingEndpoint.value = null;
   formPrefill.value = protocol.value === "grpc" ? { type: "grpc" } : { type: "http" };
+  showForm.value = true;
+}
+
+function openCreateFromSeenPath(prefill: Partial<EndpointMain>): void {
+  editingEndpoint.value = null;
+  formPrefill.value = prefill;
   showForm.value = true;
 }
 
@@ -491,6 +502,14 @@ onBeforeUnmount(() => {
                   Swagger
                 </NButton>
                 <NButton
+                  v-if="hasWildcardEndpoint || app.allow_wildcard"
+                  size="small"
+                  tertiary
+                  @click="showSeenPaths = true"
+                >
+                  Seen paths
+                </NButton>
+                <NButton
                   v-if="canEdit && hasGrpc"
                   size="small"
                   tertiary
@@ -678,6 +697,14 @@ onBeforeUnmount(() => {
       :endpoints="endpoints"
       :readonly="!canEdit"
       @changed="loadEndpoints"
+    />
+    <SeenPathsPanel
+      v-if="app"
+      v-model:show="showSeenPaths"
+      :app="app"
+      :endpoints="endpoints"
+      :readonly="!canEdit"
+      @create="openCreateFromSeenPath"
     />
     <GrpcReflectionPanel
       v-if="app"

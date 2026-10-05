@@ -21,6 +21,7 @@ func DecodeGatewayHeartbeatReq(v *ruto_v1.GatewayHeartbeatRequest) *usecase.Hear
 		LastError:        v.LastError,
 		MemoryAllocBytes: v.MemoryAllocBytes,
 		GoroutinesCount:  v.GoroutinesCount,
+		SeenPaths:        lo.Map(v.SeenPaths, DecodeGatewaySeenPath),
 	}
 }
 
