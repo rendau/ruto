@@ -108,12 +108,9 @@ onMounted(async () => {
     <div class="login__glow" aria-hidden="true" />
     <NCard class="login__card">
       <div class="login__brand">
-        <BrandLogo :size="36" :show-text="false" />
-        <div>
-          <div class="login__title">Ruto Admin</div>
-          <div class="login__subtitle muted">
-            {{ bootstrapAvailable ? "Create the first administrator" : "API gateway control plane" }}
-          </div>
+        <BrandLogo :size="34" />
+        <div class="login__subtitle muted">
+          {{ bootstrapAvailable ? "Create the first administrator" : "API gateway control plane" }}
         </div>
       </div>
 
@@ -210,14 +207,10 @@ onMounted(async () => {
 
 .login__brand {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   margin-bottom: 22px;
-}
-
-.login__title {
-  font-size: 19px;
-  font-weight: 700;
 }
 
 .login__subtitle {
