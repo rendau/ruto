@@ -189,6 +189,7 @@ export function normalizeApp(value: AppMain): AppMain {
     allow_wildcard: Boolean(value?.allow_wildcard),
     path_prefix: value?.path_prefix || "",
     name: value?.name || "",
+    group: value?.group || "",
     backend: {
       url: value?.backend?.url || "",
       swagger_url: value?.backend?.swagger_url || "",

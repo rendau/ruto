@@ -394,6 +394,9 @@ onBeforeUnmount(() => {
             <div class="app-head__main">
               <div class="app-head__title-row">
                 <h1 class="app-head__title">{{ app.name || app.id }}</h1>
+                <NTag v-if="app.group" size="small" :bordered="false" class="group-tag">
+                  {{ app.group }}
+                </NTag>
                 <StatusTag :active="app.active" />
                 <NTag v-if="hasGrpc" size="small" :bordered="false" class="grpc-tag">gRPC</NTag>
                 <NTag v-if="!canEdit" size="small" :bordered="false" class="readonly-tag">
@@ -750,6 +753,11 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
+}
+
+.group-tag {
+  color: var(--c-text-2);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .grpc-tag {

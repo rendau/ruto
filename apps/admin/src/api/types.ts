@@ -155,6 +155,7 @@ export interface AppMain {
   allow_wildcard: boolean;
   path_prefix: string;
   name: string;
+  group: string;
   backend: AppBackend;
   auth: Auth;
   logging: Logging;

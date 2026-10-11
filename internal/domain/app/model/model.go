@@ -19,6 +19,7 @@ type App struct {
 	AllowWildcard      bool                 `json:"allow_wildcard"` // endpoints may use a trailing '*' in http.path
 	PathPrefix         string               `json:"path_prefix"`
 	Name               string               `json:"name"`
+	Group              string               `json:"group"` // free-form label used by the admin to group apps visually
 	Backend            Backend              `json:"backend"`
 	Auth               authModel.Auth       `json:"auth"`
 	Logging            loggingModel.Logging `json:"logging"`

@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import {
+  NAutoComplete,
   NButton,
   NCheckbox,
   NCollapse,
@@ -68,6 +69,13 @@ function nonDefaultSections(): string[] {
   return names;
 }
 
+const groupOptions = computed(() => {
+  const query = model.group.trim().toLowerCase();
+  return appsStore.groups
+    .filter((name) => !query || name.toLowerCase().includes(query))
+    .map((name) => ({ label: name, value: name }));
+});
+
 const inheritedVariables = computed(() => rootStore.root?.variables ?? []);
 const authVariables = computed(() => [...inheritedVariables.value, ...model.variables]);
 
@@ -84,6 +92,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<AppMain, AppCreate
     Object.assign(model, app ? (JSON.parse(JSON.stringify(app)) as AppMain) : emptyApp());
     expandedNames.value = nonDefaultSections();
     void rootStore.ensureLoaded();
+    void appsStore.ensureLoaded();
   },
   create: () => createApp(model),
   update: () => updateApp(model),
@@ -136,11 +145,22 @@ async function detectSwagger(): Promise<void> {
           </NFormItem>
         </div>
 
-        <NFormItem label="Path prefix" path="path_prefix">
-          <NInput v-model:value="model.path_prefix" placeholder="/users">
-            <template #prefix><span class="muted mono">prefix</span></template>
-          </NInput>
-        </NFormItem>
+        <div class="form-grid">
+          <NFormItem label="Path prefix" path="path_prefix">
+            <NInput v-model:value="model.path_prefix" placeholder="/users">
+              <template #prefix><span class="muted mono">prefix</span></template>
+            </NInput>
+          </NFormItem>
+          <NFormItem label="Group" path="group">
+            <NAutoComplete
+              v-model:value="model.group"
+              :options="groupOptions"
+              placeholder="Optional, e.g. Billing"
+              clearable
+              :get-show="() => true"
+            />
+          </NFormItem>
+        </div>
 
         <div class="switch-row">
           <SwitchField v-model="model.active" label="Active" />

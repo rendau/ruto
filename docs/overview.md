@@ -26,7 +26,7 @@
 | Термин | Смысл |
 | --- | --- |
 | **Root** | Корневая конфигурация: общий auth, CORS, JWT (JWK URLs), глобальные переменные. Хранится как одна строка `root` (jsonb). |
-| **App** | Приложение/backend: `path_prefix`, backend URL, gRPC-порт, свой auth, переменные, набор endpoint'ов. |
+| **App** | Приложение/backend: `path_prefix`, backend URL, gRPC-порт, свой auth, переменные, набор endpoint'ов. Необязательное поле `group` — произвольная текстовая метка, по которой админка группирует приложения в боковой панели (на маршрутизацию не влияет). |
 | **Endpoint** | Конкретный маршрут внутри App: HTTP (метод + путь) или gRPC (service/method/path), auth, переопределение backend-пути и заголовков. Путь может заканчиваться на `/*`, если у App включён `allow_wildcard`. |
 | **Snapshot** | Денормализованный, «запечённый» слепок `root + apps + endpoints` с хэшем-версией. Именно его потребляет `gateway`. |
 | **Auth** | Набор методов проверки: `basic`, `api_key`, `jwt`, `ip_validation`. Наследуется Root → App → Endpoint в режиме `extend`/`replace`. |

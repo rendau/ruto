@@ -15,6 +15,7 @@ export function emptyApp(): AppMain {
     allow_wildcard: false,
     path_prefix: "",
     name: "",
+    group: "",
     backend: { url: "", swagger_url: "", grpc_url: "", headers: {}, query_params: {} },
     auth: defaultAuth(),
     logging: emptyLogging(),

@@ -13,6 +13,7 @@ var (
 )
 
 func (m *App) Normalize() error {
+	m.Group = strings.TrimSpace(m.Group)
 	m.PathPrefix = strings.Trim(strings.TrimSpace(m.PathPrefix), "/")
 	if m.PathPrefix == "" {
 		return fmt.Errorf("path_prefix: empty")

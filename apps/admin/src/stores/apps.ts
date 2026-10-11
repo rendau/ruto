@@ -10,6 +10,13 @@ export const useAppsStore = defineStore("apps", () => {
 
   const count = computed(() => apps.value.length);
 
+  // Distinct group names across all apps, for the group picker in the app form.
+  const groups = computed(() =>
+    Array.from(new Set(apps.value.map((app) => app.group.trim()).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b)
+    )
+  );
+
   async function load(): Promise<void> {
     loading.value = true;
     try {
@@ -37,5 +44,5 @@ export const useAppsStore = defineStore("apps", () => {
     loading.value = false;
   }
 
-  return { apps, loading, loaded, count, load, refresh: load, ensureLoaded, getById, reset };
+  return { apps, loading, loaded, count, groups, load, refresh: load, ensureLoaded, getById, reset };
 });
