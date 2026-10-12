@@ -77,6 +77,50 @@ func TestWorker_RecoversViaSignalAfterServerUnavailable(t *testing.T) {
 	}, time.Second, 20*time.Millisecond, "keys must load promptly after recovery, without waiting for ScrapeInterval")
 }
 
+func TestLoad_KeepsKeysOfFailedUrl(t *testing.T) {
+	kidA, kidB := "kid-a", "kid-b"
+	setA, setB := newTestItemSet(t, kidA), newTestItemSet(t, kidB)
+
+	var bDown atomic.Bool
+	srvA := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(setA)
+	}))
+	defer srvA.Close()
+	srvB := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if bDown.Load() {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(setB)
+	}))
+	defer srvB.Close()
+
+	s := newTestService()
+	defer s.ctxCancel()
+	s.urlStore.Store(&[]string{srvA.URL, srvB.URL})
+
+	s.load()
+	require.Len(t, s.getItems(), 2)
+	require.False(t, s.needFastRetry())
+
+	bDown.Store(true)
+	s.load()
+	pubKey, _ := s.GetPublicKey(kidB)
+	require.NotNil(t, pubKey, "keys of a failed url must survive")
+	require.True(t, s.needFastRetry(), "failed url must be retried soon")
+
+	// URL убрали из конфига — его ключи уходят, даже если он недоступен.
+	s.urlStore.Store(&[]string{srvA.URL})
+	s.load()
+	pubKey, _ = s.GetPublicKey(kidB)
+	require.Nil(t, pubKey)
+	require.False(t, s.needFastRetry())
+
+	s.urlStore.Store(&[]string{})
+	s.load()
+	require.Empty(t, s.getItems(), "no urls left — no keys left")
+}
+
 func newTestItemSet(t *testing.T, kid string) ItemSet {
 	t.Helper()
 

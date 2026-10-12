@@ -22,8 +22,8 @@ import (
 const (
 	ScrapeInterval = 10 * time.Minute
 	// ScrapeRetryInterval — укороченный интервал опроса, пока URL-ы заданы, но ни
-	// одного ключа загрузить не удалось (например, JWK-сервер недоступен на старте).
-	// Без этого вся авторизация молчит до следующего ScrapeInterval.
+	// одного ключа нет либо последний опрос какого-то URL-а упал. Без этого
+	// авторизация молчит (или живёт на устаревших ключах) до следующего ScrapeInterval.
 	ScrapeRetryInterval = 15 * time.Second
 )
 
@@ -37,6 +37,8 @@ type Service struct {
 	urlStore   atomic.Pointer[[]string]
 	itemStore  atomic.Pointer[map[string]*Item]
 	loadMu     sync.Mutex
+	urlItems   map[string][]*Item // под loadMu: ключи последнего удачного опроса по каждому URL
+	loadFailed atomic.Bool
 	trigger    chan struct{}
 	httpClient *http.Client
 }
@@ -56,7 +58,9 @@ func init() {
 				}).DialContext,
 				TLSHandshakeTimeout: 2 * time.Second,
 				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-				MaxIdleConnsPerHost: 2,
+				// Опрос раз в ScrapeInterval: сервер закроет простаивающее соединение
+				// раньше, чем оно понадобится снова, поэтому держать его незачем.
+				DisableKeepAlives: true,
 			},
 		},
 	}
@@ -124,11 +128,11 @@ func (s *Service) worker() {
 	}
 }
 
-// needFastRetry — true, когда опрашивать нужно, но ни одного ключа ещё нет
-// (URL-ы заданы, карта ключей пуста). Типично для первого старта при недоступном
-// JWK-сервере.
+// needFastRetry — true, когда опрашивать нужно, но ключей ещё нет (типично для
+// первого старта при недоступном JWK-сервере) либо последний опрос какого-то
+// URL-а упал.
 func (s *Service) needFastRetry() bool {
-	return len(s.getUrls()) > 0 && len(s.getItems()) == 0
+	return len(s.getUrls()) > 0 && (len(s.getItems()) == 0 || s.loadFailed.Load())
 }
 
 func (s *Service) setItems(items map[string]*Item) {
@@ -155,14 +159,19 @@ func (s *Service) load() {
 
 	urls := s.getUrls()
 	if len(urls) == 0 {
+		s.urlItems = nil
+		s.loadFailed.Store(false)
+		s.setItems(nil)
 		return
 	}
 
 	var (
-		err     error
-		itemSet *ItemSet
-		item    *Item
-		result  = make(map[string]*Item, len(urls)*2)
+		err      error
+		itemSet  *ItemSet
+		item     *Item
+		failed   bool
+		urlItems = make(map[string][]*Item, len(urls))
+		result   = make(map[string]*Item, len(urls)*2)
 	)
 
 	for _, uri := range urls {
@@ -172,18 +181,22 @@ func (s *Service) load() {
 
 		itemSet, err = s.loadForUri(ctx, uri)
 		if err != nil {
-			if ctx.Err() == nil {
-				slog.Error(
-					"jwk-scrapper: loadForUri failed",
-					"error", fmt.Errorf("loadForUri: %w", err),
-					"uri", uri,
-				)
+			if ctx.Err() != nil {
+				return
+			}
+			slog.Error(
+				"jwk-scrapper: loadForUri failed",
+				"error", fmt.Errorf("loadForUri: %w", err),
+				"uri", uri,
+			)
+			// Разовый сбой опроса не должен отзывать рабочие ключи: оставляем
+			// прежние ключи этого URL-а до удачного повтора.
+			failed = true
+			urlItems[uri] = s.urlItems[uri]
+			for _, item = range urlItems[uri] {
+				result[item.Kid] = item
 			}
 			continue
-		}
-
-		if ctx.Err() != nil {
-			return
 		}
 
 		for _, item = range itemSet.Keys {
@@ -200,12 +213,13 @@ func (s *Service) load() {
 				)
 				continue
 			}
+			urlItems[uri] = append(urlItems[uri], item)
 			result[item.Kid] = item
 		}
 	}
 
-	// slog.Debug("JWK items loaded", "key_count", len(result))
-
+	s.urlItems = urlItems
+	s.loadFailed.Store(failed)
 	s.setItems(result)
 }
 
