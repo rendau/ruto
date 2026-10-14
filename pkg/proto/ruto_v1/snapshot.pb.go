@@ -120,11 +120,11 @@ const file_ruto_v1_snapshot_proto_rawDesc = "" +
 	"\x10SnapshotResponse\x12+\n" +
 	"\x04data\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x04data\"+\n" +
 	"\x0fSnapshotVersion\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\tR\aversion2\x86\x02\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion2\xf3\x01\n" +
 	"\bSnapshot\x12Y\n" +
 	"\n" +
-	"GetVersion\x12\x16.google.protobuf.Empty\x1a\x18.ruto_v1.SnapshotVersion\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/snapshot/version\x12K\n" +
-	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x19.ruto_v1.SnapshotResponse\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/snapshot\x12R\n" +
+	"GetVersion\x12\x16.google.protobuf.Empty\x1a\x18.ruto_v1.SnapshotVersion\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/snapshot/version\x128\n" +
+	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x19.ruto_v1.SnapshotResponse\x12R\n" +
 	"\x06Deploy\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x18\x82\xd3\xe4\x93\x02\x12\"\x10/snapshot/deployB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 

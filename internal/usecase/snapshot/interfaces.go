@@ -9,6 +9,10 @@ import (
 	snapshotModel "github.com/rendau/ruto/internal/domain/snapshot/model"
 )
 
+type SessionServiceI interface {
+	CtxIsAuthorized(ctx context.Context) bool
+}
+
 type ServiceI interface {
 	GetVersion(ctx context.Context) (string, error)
 	Get(ctx context.Context) (*snapshotModel.Snapshot, error)

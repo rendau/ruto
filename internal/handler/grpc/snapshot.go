@@ -41,8 +41,8 @@ func (h *Snapshot) Get(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.Snapshot
 }
 
 func (h *Snapshot) Deploy(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
-	if err := h.usecase.Refresh(ctx); err != nil {
-		return nil, fmt.Errorf("usecase.Refresh: %w", err)
+	if err := h.usecase.Deploy(ctx); err != nil {
+		return nil, fmt.Errorf("usecase.Deploy: %w", err)
 	}
 	return &emptypb.Empty{}, nil
 }

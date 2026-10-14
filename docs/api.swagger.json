@@ -1377,28 +1377,6 @@
         ]
       }
     },
-    "/snapshot": {
-      "get": {
-        "operationId": "Snapshot_Get",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/ruto_v1SnapshotResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "tags": [
-          "Snapshot"
-        ]
-      }
-    },
     "/snapshot/deploy": {
       "post": {
         "operationId": "Snapshot_Deploy",

@@ -152,7 +152,7 @@ func (a *App) Init() error {
 	// snapshot
 	domainSnapshotRepoDb := domainSnapshotRepoDbP.New(a.pgpool)
 	domainSnapshotService := domainSnapshotServiceP.New(domainSnapshotRepoDb)
-	usecaseSnapshot := usecaseSnapshotP.New(domainSnapshotService, domainRootService, domainAppService, domainEndpointService, gatewaysService)
+	usecaseSnapshot := usecaseSnapshotP.New(domainSnapshotService, domainRootService, domainAppService, domainEndpointService, gatewaysService, sessionService)
 	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
 
 	// stats

@@ -12,9 +12,10 @@ service Snapshot {
   rpc GetVersion(google.protobuf.Empty) returns (SnapshotVersion) {
     option (google.api.http) = { get: "/snapshot/version" };
   };
-  rpc Get(google.protobuf.Empty) returns (SnapshotResponse) {
-    option (google.api.http) = { get: "/snapshot" };
-  };
+  // Get returns the full config with secrets in plain text. It is meant for
+  // gateways only, so it is gRPC-only (no REST mapping) and must stay off the
+  // public HTTP API.
+  rpc Get(google.protobuf.Empty) returns (SnapshotResponse);
   rpc Deploy(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (google.api.http) = { post: "/snapshot/deploy" };
   };

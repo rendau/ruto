@@ -30,6 +30,9 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SnapshotClient interface {
 	GetVersion(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SnapshotVersion, error)
+	// Get returns the full config with secrets in plain text. It is meant for
+	// gateways only, so it is gRPC-only (no REST mapping) and must stay off the
+	// public HTTP API.
 	Get(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*SnapshotResponse, error)
 	Deploy(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -77,6 +80,9 @@ func (c *snapshotClient) Deploy(ctx context.Context, in *emptypb.Empty, opts ...
 // for forward compatibility.
 type SnapshotServer interface {
 	GetVersion(context.Context, *emptypb.Empty) (*SnapshotVersion, error)
+	// Get returns the full config with secrets in plain text. It is meant for
+	// gateways only, so it is gRPC-only (no REST mapping) and must stay off the
+	// public HTTP API.
 	Get(context.Context, *emptypb.Empty) (*SnapshotResponse, error)
 	Deploy(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedSnapshotServer()

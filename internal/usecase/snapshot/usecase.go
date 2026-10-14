@@ -15,6 +15,7 @@ import (
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	snapshotModel "github.com/rendau/ruto/internal/domain/snapshot/model"
+	"github.com/rendau/ruto/internal/errs"
 )
 
 type Usecase struct {
@@ -23,6 +24,7 @@ type Usecase struct {
 	appSvc      AppServiceI
 	endpointSvc EndpointServiceI
 	gateways    GatewaysNotifierI
+	sessionSvc  SessionServiceI
 }
 
 func New(
@@ -31,6 +33,7 @@ func New(
 	appSvc AppServiceI,
 	endpointSvc EndpointServiceI,
 	gateways GatewaysNotifierI,
+	sessionSvc SessionServiceI,
 ) *Usecase {
 	result := &Usecase{
 		snapshotSvc: snapshotSvc,
@@ -38,6 +41,7 @@ func New(
 		appSvc:      appSvc,
 		endpointSvc: endpointSvc,
 		gateways:    gateways,
+		sessionSvc:  sessionSvc,
 	}
 
 	if err := result.ensure(context.Background()); err != nil {
@@ -61,6 +65,21 @@ func (u *Usecase) Get(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("snapshotSvc.Get: %w", err)
 	}
 	return result.Data, nil
+}
+
+// Deploy publishes the saved config to gateways. Any logged-in user may run
+// it: the button is shown to every user, and it only publishes what editors
+// already saved within their own permissions.
+func (u *Usecase) Deploy(ctx context.Context) error {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return errs.NotAuthorized
+	}
+
+	if err := u.Refresh(ctx); err != nil {
+		return fmt.Errorf("Refresh: %w", err)
+	}
+
+	return nil
 }
 
 func (u *Usecase) Refresh(ctx context.Context) error {
