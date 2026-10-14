@@ -27,6 +27,10 @@ const (
 
 	MetricsNotConfigured = Err("metrics_not_configured")
 	LogsNotConfigured    = Err("logs_not_configured")
+
+	ChangeRequestClosed   = Err("change_request_closed")
+	ChangeRequestOutdated = Err("change_request_outdated")
+	ChangeRequestExpired  = Err("change_request_expired")
 )
 
 type ErrFull struct {

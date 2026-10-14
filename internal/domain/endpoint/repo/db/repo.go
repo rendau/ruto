@@ -24,9 +24,10 @@ func New(con *pgxpool.Pool) *Repo {
 	return &Repo{
 		Base: base,
 		ModelStore: &mobone.ModelStore{
-			Con:       base.Con,
-			QB:        base.QB,
-			TableName: "endpoint",
+			Con:                base.Con,
+			TransactionManager: base.Txm,
+			QB:                 base.QB,
+			TableName:          "endpoint",
 		},
 	}
 }

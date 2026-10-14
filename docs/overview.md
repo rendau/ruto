@@ -57,10 +57,12 @@ internal/
   constant/           константы (имя сервиса, режимы auth, JWT-алгоритмы)
   errs/               sentinel-ошибки (тип Err string) + ErrFull
   domain/             доменный слой: <entity>/{model,service,repo}
-    root, app, endpoint, usr, snapshot, session, auth, vars, common
+    root, app, endpoint, usr, snapshot, session, auth, vars, common,
+    apikey, changerequest, secretref (маскирование секретов для MCP)
   usecase/            прикладной слой: оркестрация + авторизация
-    root, app, endpoint, usr, snapshot, stats, gateway
+    root, app, endpoint, usr, snapshot, stats, gateway, apikey, changerequest
   handler/grpc/       транспорт core: gRPC-хендлеры + dto (encode/decode proto↔domain)
+  handler/mcp/        встроенный MCP-сервер для AI-агентов (см. mcp-server.md)
   service/            вспомогательные сервисы
     cache/            кэш (redis | mem) за общим интерфейсом
     swagger/          парсинг swagger backend'ов

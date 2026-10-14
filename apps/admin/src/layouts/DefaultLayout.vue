@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { computed, h, onBeforeUnmount, onMounted, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
-import { NButton, NDropdown, NIcon, NTag, useMessage, type DropdownOption } from "naive-ui";
+import {
+  NBadge,
+  NButton,
+  NDropdown,
+  NIcon,
+  NTag,
+  useMessage,
+  type DropdownOption
+} from "naive-ui";
 import {
   LogOutOutline,
   MenuOutline,
@@ -13,6 +21,7 @@ import { storeToRefs } from "pinia";
 import { useAuthStore } from "@/stores/auth";
 import { useUiStore, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from "@/stores/ui";
 import { useSnapshotStore } from "@/stores/snapshot";
+import { useChangeRequestsStore } from "@/stores/changeRequests";
 import { useConfirm } from "@/composables/useConfirm";
 import { apiErrorMessage } from "@/api/http";
 import BrandLogo from "@/components/common/BrandLogo.vue";
@@ -25,6 +34,7 @@ const message = useMessage();
 const authStore = useAuthStore();
 const uiStore = useUiStore();
 const snapshotStore = useSnapshotStore();
+const changeRequestsStore = useChangeRequestsStore();
 const { confirmAction } = useConfirm();
 const { sidebarWidth, mobileSidebarOpen } = storeToRefs(uiStore);
 const { version, deploying } = storeToRefs(snapshotStore);
@@ -34,14 +44,25 @@ const profileName = computed(
 );
 const profileInitial = computed(() => profileName.value.trim().charAt(0).toUpperCase() || "U");
 
+interface NavLink {
+  name: string;
+  label: string;
+  badge?: number;
+}
+
 const navLinks = computed(() => {
-  const links = [
+  const links: NavLink[] = [
     { name: "dashboard", label: "Dashboard" },
     { name: "gateways", label: "Gateways" },
     { name: "root-config", label: "Root config" }
   ];
   if (authStore.isAdmin) {
     links.push({ name: "users", label: "Users" });
+    links.push({
+      name: "change-requests",
+      label: "Change requests",
+      badge: changeRequestsStore.pendingCount
+    });
   }
   return links;
 });
@@ -138,6 +159,18 @@ watch(
   () => uiStore.closeMobileSidebar()
 );
 
+watch(
+  () => authStore.isAdmin,
+  (isAdmin) => {
+    if (isAdmin) {
+      changeRequestsStore.startPolling();
+    } else {
+      changeRequestsStore.stopPolling();
+    }
+  },
+  { immediate: true }
+);
+
 onMounted(() => {
   void snapshotStore.loadVersion();
   document.addEventListener("keydown", onEscKey);
@@ -145,6 +178,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopResize();
+  changeRequestsStore.stopPolling();
   document.removeEventListener("keydown", onEscKey);
 });
 </script>
@@ -174,6 +208,14 @@ onBeforeUnmount(() => {
             :class="{ 'nav-link--active': activeNav === link.name }"
           >
             {{ link.label }}
+            <NBadge
+              v-if="link.badge"
+              class="nav-badge"
+              :value="link.badge"
+              :max="99"
+              type="warning"
+              :title="`${link.badge} pending`"
+            />
           </RouterLink>
         </nav>
       </div>
@@ -232,6 +274,14 @@ onBeforeUnmount(() => {
             @click="uiStore.closeMobileSidebar()"
           >
             {{ link.label }}
+            <NBadge
+              v-if="link.badge"
+              class="nav-badge"
+              :value="link.badge"
+              :max="99"
+              type="warning"
+              :title="`${link.badge} pending`"
+            />
           </RouterLink>
         </nav>
         <div class="sider__apps">
@@ -314,7 +364,11 @@ onBeforeUnmount(() => {
 }
 
 .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
+  white-space: nowrap;
   border-radius: 8px;
   font-size: 13.5px;
   font-weight: 500;
@@ -332,6 +386,10 @@ onBeforeUnmount(() => {
 .nav-link--active {
   color: var(--c-text);
   background: var(--c-primary-soft);
+}
+
+.nav-badge {
+  line-height: 1;
 }
 
 .topbar__right {
@@ -437,6 +495,9 @@ onBeforeUnmount(() => {
 }
 
 .mobile-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 9px 12px;
   border-radius: 9px;
   font-size: 14px;

@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/ruto_v1";
+
+// ApiKey manages the caller's keys for the built-in MCP server. Admins only,
+// from an admin login.
+service ApiKey {
+  rpc List(google.protobuf.Empty) returns (ApiKeyListRep) {
+    option (google.api.http) = { get: "/api_key" };
+  };
+  rpc Create(ApiKeyCreateReq) returns (ApiKeyCreateRep) {
+    option (google.api.http) = { post: "/api_key" body: "*" };
+  };
+  rpc Delete(ApiKeyDeleteReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/api_key/{id}" };
+  };
+}
+
+message ApiKeyMain {
+  string id = 1;
+  string name = 2;
+  string key_prefix = 3;
+  int64 created_at_unix = 4;
+  int64 last_used_at_unix = 5; // 0 = never used
+}
+
+message ApiKeyListRep {
+  repeated ApiKeyMain results = 1;
+}
+
+message ApiKeyCreateReq {
+  string name = 1;
+}
+
+message ApiKeyCreateRep {
+  string id = 1;
+  string key = 2; // shown once, not retrievable later
+}
+
+message ApiKeyDeleteReq {
+  string id = 1;
+}

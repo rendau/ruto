@@ -17,11 +17,12 @@ import { apiErrorMessage } from "@/api/http";
 import PageContainer from "@/components/common/PageContainer.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
 import StatusTag from "@/components/common/StatusTag.vue";
+import ApiKeySection from "@/components/apikey/ApiKeySection.vue";
 
 const message = useMessage();
 const router = useRouter();
 const authStore = useAuthStore();
-const { profile } = storeToRefs(authStore);
+const { profile, isAdmin } = storeToRefs(authStore);
 
 const formRef = ref<FormInst | null>(null);
 const saving = ref(false);
@@ -108,6 +109,8 @@ async function save(): Promise<void> {
         <NButton type="primary" :loading="saving" @click="save">Save changes</NButton>
       </NForm>
     </SectionCard>
+
+    <ApiKeySection v-if="isAdmin" />
   </PageContainer>
 </template>
 

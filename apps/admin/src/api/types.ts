@@ -450,3 +450,91 @@ export interface SeenPathMain {
 export interface SeenPathListRep {
   results: SeenPathMain[];
 }
+
+// ---- API keys (built-in MCP server) ----------------------------------------
+
+export interface ApiKeyMain {
+  id: string;
+  name: string;
+  key_prefix: string;
+  created_at_unix: number;
+  // 0 = never used
+  last_used_at_unix: number;
+}
+
+export interface ApiKeyListRep {
+  results: ApiKeyMain[];
+}
+
+export interface ApiKeyCreateRep {
+  id: string;
+  // Shown once, cannot be retrieved later.
+  key: string;
+}
+
+// ---- Change requests (proposed by agents over MCP) -------------------------
+
+export type ChangeRequestStatus =
+  | "pending"
+  | "applied"
+  | "rejected"
+  | "cancelled"
+  | "expired"
+  | "outdated";
+
+export type ChangeRequestOpKind =
+  | "create_app"
+  | "update_app"
+  | "delete_app"
+  | "create_endpoint"
+  | "update_endpoint"
+  | "delete_endpoint"
+  | "update_root";
+
+export interface ChangeRequestMain {
+  id: number;
+  status: ChangeRequestStatus;
+  title: string;
+  description: string;
+  publish: boolean;
+  ops_count: number;
+  created_at_unix: number;
+  api_key_name: string;
+  decided_at_unix: number;
+  comment: string;
+  error: string;
+  published_at_unix: number;
+  publish_error: string;
+}
+
+export interface ChangeRequestListRep {
+  pagination_info: PaginationInfoSt;
+  results: ChangeRequestMain[];
+}
+
+export interface ChangeRequestChange {
+  path: string;
+  before: string;
+  after: string;
+  // before/after are already human-readable descriptions, never the secret itself
+  secret: boolean;
+}
+
+export interface ChangeRequestOp {
+  op: ChangeRequestOpKind;
+  target_kind: string;
+  target_id: string;
+  title: string;
+  app_name: string;
+  changes: ChangeRequestChange[];
+  notes: string[];
+}
+
+export interface ChangeRequestDetail {
+  main: ChangeRequestMain;
+  author_name: string;
+  decided_name: string;
+  outdated: boolean;
+  outdated_reason: string;
+  ops: ChangeRequestOp[];
+}

@@ -8,6 +8,7 @@ import {
   updateProfile as apiUpdateProfile
 } from "@/api/usr";
 import { useAppsStore } from "./apps";
+import { useChangeRequestsStore } from "./changeRequests";
 import { useRootStore } from "./root";
 import { useSnapshotStore } from "./snapshot";
 import type { UsrMain } from "@/api/types";
@@ -81,6 +82,7 @@ export const useAuthStore = defineStore("auth", () => {
     useAppsStore().reset();
     useRootStore().reset();
     useSnapshotStore().reset();
+    useChangeRequestsStore().reset();
   }
 
   return {

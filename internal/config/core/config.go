@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"os"
+	"time"
 
 	"github.com/caarlos0/env/v9"
 	"github.com/joho/godotenv"
@@ -40,6 +41,15 @@ var Conf = struct {
 	GraylogAPIToken string `env:"GRAYLOG_API_TOKEN"`
 	GraylogStreamID string `env:"GRAYLOG_STREAM_ID"`
 	GraylogQuery    string `env:"GRAYLOG_QUERY"`
+
+	// built-in MCP server for AI agents (api-key auth, own port)
+	McpEnabled bool `env:"MCP_ENABLED" envDefault:"false"`
+	McpPort    int  `env:"MCP_PORT" envDefault:"5060"`
+
+	// change requests proposed over MCP
+	ChangeRequestTTL           time.Duration `env:"CHANGE_REQUEST_TTL" envDefault:"168h"`
+	ChangeRequestRetention     time.Duration `env:"CHANGE_REQUEST_RETENTION" envDefault:"720h"`
+	ChangeRequestMaxPendingKey int64         `env:"CHANGE_REQUEST_MAX_PENDING_PER_KEY" envDefault:"20"`
 }{}
 
 func init() {

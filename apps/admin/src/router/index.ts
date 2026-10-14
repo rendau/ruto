@@ -55,6 +55,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: "Users", requiresAdmin: true }
       },
       {
+        path: "change-requests",
+        name: "change-requests",
+        component: () => import("@/views/ChangeRequestListView.vue"),
+        meta: { title: "Change requests", requiresAdmin: true }
+      },
+      {
         path: "gateways",
         name: "gateways",
         component: () => import("@/views/GatewayListView.vue"),

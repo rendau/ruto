@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "ruto_v1/common.proto";
+
+option go_package = "/ruto_v1";
+
+// ChangeRequest: configuration changes proposed by an agent over MCP. An admin
+// reviews each request and applies or rejects it.
+service ChangeRequest {
+  rpc List(ChangeRequestListReq) returns (ChangeRequestListRep) {
+    option (google.api.http) = { get: "/change_request" };
+  };
+  rpc Get(ChangeRequestGetReq) returns (ChangeRequestDetail) {
+    option (google.api.http) = { get: "/change_request/{id}" };
+  };
+  rpc Apply(ChangeRequestApplyReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/change_request/{id}/apply" body: "*" };
+  };
+  rpc Reject(ChangeRequestRejectReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/change_request/{id}/reject" body: "*" };
+  };
+}
+
+message ChangeRequestListReq {
+  ListParamsSt list_params = 1;
+  optional string status = 2;
+}
+
+message ChangeRequestListRep {
+  PaginationInfoSt pagination_info = 1;
+  repeated ChangeRequestMain results = 2;
+}
+
+message ChangeRequestGetReq {
+  int64 id = 1;
+}
+
+message ChangeRequestApplyReq {
+  int64 id = 1;
+  bool publish = 2;
+}
+
+message ChangeRequestRejectReq {
+  int64 id = 1;
+  string comment = 2;
+}
+
+message ChangeRequestMain {
+  int64 id = 1;
+  string status = 2;
+  string title = 3;
+  string description = 4;
+  bool publish = 5;
+  int64 ops_count = 6;
+  int64 created_at_unix = 7;
+  string api_key_name = 8;
+  int64 decided_at_unix = 9;
+  string comment = 10;
+  string error = 11;
+  int64 published_at_unix = 12;
+  string publish_error = 13;
+}
+
+message ChangeRequestDetail {
+  ChangeRequestMain main = 1;
+  string author_name = 2;
+  string decided_name = 3;
+  bool outdated = 4;
+  string outdated_reason = 5;
+  repeated ChangeRequestOp ops = 6;
+}
+
+message ChangeRequestOp {
+  string op = 1;
+  string target_kind = 2;
+  string target_id = 3;
+  string title = 4;
+  string app_name = 5;
+  repeated ChangeRequestChange changes = 6;
+  repeated string notes = 7;
+}
+
+message ChangeRequestChange {
+  string path = 1;
+  string before = 2;
+  string after = 3;
+  bool secret = 4;
+}

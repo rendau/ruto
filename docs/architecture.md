@@ -148,6 +148,8 @@ a.Exit()   // освобождение ресурсов, код выхода
 
 - `root`, `app`, `endpoint`, `snapshot` — «schemaless»: ключевые поля-колонки + `data jsonb` со всей моделью. Это позволяет менять структуру конфигурации без миграций схемы.
 - `usr` — обычная реляционная таблица (id, username, password-hash, флаги).
+- `api_key` (ключи MCP, хранится sha256) и `change_request` (заявки агентов: `plan jsonb` с операциями и отпечатками объектов) — см. [mcp-server.md](mcp-server.md).
+- Транзакции: `commonRepoPg.Base` даёт каждому репозиторию `mobone.TransactionManager`, поэтому `TxFn` на уровне usecase охватывает все репозитории (так применяются заявки).
 - Доступ — через `mobone.ModelStore` (List/Get/Create/Update/Delete) и `squirrel` (плейсхолдеры `$N`). Базовый помощник — `internal/domain/common/repo/pg/base.go`.
 
 Дальше: соглашения по коду — [code-style.md](code-style.md); практические рецепты — [onboarding.md](onboarding.md).

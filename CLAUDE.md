@@ -22,6 +22,7 @@ This repo has rich docs — read them before non-trivial work:
 - `docs/onboarding.md` — local setup and recipes for common changes.
 - `docs/gateway-grpc.md` — connecting to the gateway over gRPC.
 - `docs/monitoring.md` — admin traffic charts & logs (Prometheus / Loki / Graylog integration).
+- `docs/mcp-server.md` — built-in MCP server for AI agents: api keys, masked secrets, change requests approved in the admin.
 
 ## Commands
 
@@ -68,6 +69,7 @@ Env: copy `config/core.env.example` → `.env.core` and `config/gateway.env.exam
 - **core:** собирать `go build -o <scratchpad>/stand/core cmd/core/main.go` и запускать **из каталога вне репозитория** (чтобы не подхватился `.env.core`), положив рядом симлинк `migrations` → `<repo>/migrations`:
   `PG_DSN=<dsn> ADMIN_JWT_SECRET=ruto-local-test-stand-secret HTTP_PORT=9090 HTTP_CORS=true GRPC_PORT=5050 SYSTEM_PORT=3003 ./core`
   - HTTP `:9090` (REST `/api/*`), gRPC `:5050`, system `:3003`.
+  - MCP (для проверок MCP-сервера): добавить `MCP_ENABLED=true MCP_PORT=5060` → `http://localhost:5060/`; ключ `rtk_…` создаётся в админке (Profile → API keys) или `POST /api/api_key {"name": "..."}` с JWT администратора.
 - **gateway (нужен только для проверок трафика):** `go build -o <scratchpad>/stand/gateway cmd/gateway/main.go`, запуск оттуда же после core:
   `HTTP_PORT=8088 SYSTEM_PORT=3004 CORE_GRPC_ADDRESS=localhost:5050 ./gateway` → трафик на `http://localhost:8088/<path_prefix>/...`.
   - Бэкенд-заглушка для приложений стенда: любой локальный http-сервер на `http://127.0.0.1:18081`.

@@ -11,14 +11,19 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rendau/mobone/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/rendau/ruto/internal/app/common"
 	configCore "github.com/rendau/ruto/internal/config/core"
 	"github.com/rendau/ruto/internal/constant"
+	domainApiKeyRepoDbP "github.com/rendau/ruto/internal/domain/apikey/repo/db"
+	domainApiKeyServiceP "github.com/rendau/ruto/internal/domain/apikey/service"
 	domainAppRepoDbP "github.com/rendau/ruto/internal/domain/app/repo/db"
 	domainAppServiceP "github.com/rendau/ruto/internal/domain/app/service"
+	domainChangeRequestRepoDbP "github.com/rendau/ruto/internal/domain/changerequest/repo/db"
+	domainChangeRequestServiceP "github.com/rendau/ruto/internal/domain/changerequest/service"
 	domainEndpointRepoDbP "github.com/rendau/ruto/internal/domain/endpoint/repo/db"
 	domainEndpointServiceP "github.com/rendau/ruto/internal/domain/endpoint/service"
 	domainRootRepoDbP "github.com/rendau/ruto/internal/domain/root/repo/db"
@@ -32,6 +37,7 @@ import (
 	domainUsrRepoDbP "github.com/rendau/ruto/internal/domain/usr/repo/db"
 	domainUsrServiceP "github.com/rendau/ruto/internal/domain/usr/service"
 	handlerGrpcP "github.com/rendau/ruto/internal/handler/grpc"
+	handlerMcpP "github.com/rendau/ruto/internal/handler/mcp"
 	cacheRepoMemP "github.com/rendau/ruto/internal/service/cache/repo/mem"
 	cacheRepoRedisP "github.com/rendau/ruto/internal/service/cache/repo/redis"
 	cacheServiceP "github.com/rendau/ruto/internal/service/cache/service"
@@ -40,7 +46,9 @@ import (
 	serviceLogstoreLokiP "github.com/rendau/ruto/internal/service/logstore/loki"
 	servicePrometheusP "github.com/rendau/ruto/internal/service/prometheus/service"
 	serviceSwaggerP "github.com/rendau/ruto/internal/service/swagger"
+	usecaseApiKeyP "github.com/rendau/ruto/internal/usecase/apikey"
 	usecaseAppP "github.com/rendau/ruto/internal/usecase/app"
+	usecaseChangeRequestP "github.com/rendau/ruto/internal/usecase/changerequest"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 	usecaseGatewayP "github.com/rendau/ruto/internal/usecase/gateway"
 	usecaseMonitoringP "github.com/rendau/ruto/internal/usecase/monitoring"
@@ -59,7 +67,10 @@ type App struct {
 	pgpool          *pgxpool.Pool
 	grpcServer      *GrpcServer
 	httpServer      *http.Server
+	mcpServer       *http.Server
 	gatewaysService *gatewaysServiceP.Service
+
+	changeRequestUsecase *usecaseChangeRequestP.Usecase
 
 	exitCode int
 }
@@ -194,6 +205,56 @@ func (a *App) Init() error {
 	)
 	handlerGrpcMonitoring := handlerGrpcP.NewMonitoring(usecaseMonitoring)
 
+	// api key
+	domainApiKeyRepoDb := domainApiKeyRepoDbP.New(a.pgpool)
+	domainApiKeyService := domainApiKeyServiceP.New(domainApiKeyRepoDb)
+	usecaseApiKey := usecaseApiKeyP.New(domainApiKeyService, domainUsrService, sessionService)
+	handlerGrpcApiKey := handlerGrpcP.NewApiKey(usecaseApiKey)
+
+	// change request
+	domainChangeRequestRepoDb := domainChangeRequestRepoDbP.New(a.pgpool)
+	domainChangeRequestService := domainChangeRequestServiceP.New(domainChangeRequestRepoDb)
+	a.changeRequestUsecase = usecaseChangeRequestP.New(
+		usecaseChangeRequestP.Config{
+			PendingTTL:       configCore.Conf.ChangeRequestTTL,
+			Retention:        configCore.Conf.ChangeRequestRetention,
+			MaxPendingPerKey: configCore.Conf.ChangeRequestMaxPendingKey,
+		},
+		domainChangeRequestService,
+		mobone.NewTransactionManager(a.pgpool),
+		sessionService,
+		usecaseRoot,
+		usecaseApp,
+		usecaseEndpoint,
+		usecaseSnapshot,
+		domainRootService,
+		domainAppService,
+		domainEndpointService,
+		domainUsrService,
+	)
+	handlerGrpcChangeRequest := handlerGrpcP.NewChangeRequest(a.changeRequestUsecase)
+
+	// mcp
+	if configCore.Conf.McpEnabled {
+		mcpHandler := handlerMcpP.New(
+			sessionService,
+			usecaseApiKey,
+			a.changeRequestUsecase,
+			usecaseApp,
+			usecaseEndpoint,
+			usecaseSeenPath,
+			usecaseSnapshot,
+			usecaseGateway,
+			usecaseMonitoring,
+		)
+		a.mcpServer = &http.Server{
+			Addr:              ":" + strconv.Itoa(configCore.Conf.McpPort),
+			Handler:           mcpHandler.HTTPHandler(),
+			ReadHeaderTimeout: 2 * time.Second,
+			MaxHeaderBytes:    300 * 1024,
+		}
+	}
+
 	// grpc-server
 	a.grpcServer = NewGrpcServer("core", sessionService, func(server *grpc.Server) {
 		ruto_v1.RegisterRootServer(server, handlerGrpcRoot)
@@ -205,6 +266,8 @@ func (a *App) Init() error {
 		ruto_v1.RegisterGatewayServer(server, handlerGrpcGateway)
 		ruto_v1.RegisterMonitoringServer(server, handlerGrpcMonitoring)
 		ruto_v1.RegisterSeenPathServer(server, handlerGrpcSeenPath)
+		ruto_v1.RegisterApiKeyServer(server, handlerGrpcApiKey)
+		ruto_v1.RegisterChangeRequestServer(server, handlerGrpcChangeRequest)
 	})
 
 	// grpc-gateway
@@ -226,6 +289,8 @@ func (a *App) Init() error {
 			ruto_v1.RegisterGatewayHandler,
 			ruto_v1.RegisterMonitoringHandler,
 			ruto_v1.RegisterSeenPathHandler,
+			ruto_v1.RegisterApiKeyHandler,
+			ruto_v1.RegisterChangeRequestHandler,
 		}
 		for _, registerHandler := range handlers {
 			if registerErr := registerHandler(context.Background(), mux, conn); registerErr != nil {
@@ -272,6 +337,19 @@ func (a *App) Start() error {
 	}()
 	slog.Info("http-server started " + a.httpServer.Addr)
 
+	// mcp-server
+	if a.mcpServer != nil {
+		go func() {
+			err := a.mcpServer.ListenAndServe()
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				slog.Error("mcp server stopped unexpectedly", "error", err)
+			}
+		}()
+		slog.Info("mcp-server started " + a.mcpServer.Addr)
+	}
+
+	go a.changeRequestUsecase.RunCleanup(a.ctx, time.Hour)
+
 	return nil
 }
 
@@ -288,6 +366,16 @@ func (a *App) Stop() {
 	// does not wait for these long-lived RPCs to drop on their own.
 	if a.gatewaysService != nil {
 		a.gatewaysService.Close()
+	}
+
+	// mcp server
+	if a.mcpServer != nil {
+		ctx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer ctxCancel()
+		if err := a.mcpServer.Shutdown(ctx); err != nil {
+			slog.Error("mcp-server shutdown error", "error", err)
+			a.exitCode = 1
+		}
 	}
 
 	// grpc gateway server

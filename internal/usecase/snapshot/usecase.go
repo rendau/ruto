@@ -64,23 +64,10 @@ func (u *Usecase) Get(ctx context.Context) ([]byte, error) {
 }
 
 func (u *Usecase) Refresh(ctx context.Context) error {
-	snapshotObj, err := u.construct(ctx)
+	result, newVersion, err := u.build(ctx)
 	if err != nil {
-		return fmt.Errorf("construct: %w", err)
+		return err
 	}
-
-	err = snapshotObj.Normalize()
-	if err != nil {
-		return fmt.Errorf("snapshot.Normalize: %w", err)
-	}
-
-	result, err := json.Marshal(snapshotObj)
-	if err != nil {
-		return fmt.Errorf("json.Marshal: %w", err)
-	}
-
-	sum := sha256.Sum256(result)
-	newVersion := hex.EncodeToString(sum[:])
 
 	err = u.snapshotSvc.Set(ctx, &snapshotModel.Snapshot{
 		Hash: newVersion,
@@ -95,6 +82,42 @@ func (u *Usecase) Refresh(ctx context.Context) error {
 	u.gateways.NotifyAll()
 
 	return nil
+}
+
+// Validate builds the snapshot from the current configuration (in ctx's
+// transaction, if any) without storing it: a configuration that would fail
+// here would block publishing for every app.
+func (u *Usecase) Validate(ctx context.Context) error {
+	_, _, err := u.build(ctx)
+	return err
+}
+
+// CurrentVersion is the version a publish would produce now; it differs from
+// GetVersion while there are unpublished changes.
+func (u *Usecase) CurrentVersion(ctx context.Context) (string, error) {
+	_, version, err := u.build(ctx)
+	return version, err
+}
+
+func (u *Usecase) build(ctx context.Context) ([]byte, string, error) {
+	snapshotObj, err := u.construct(ctx)
+	if err != nil {
+		return nil, "", fmt.Errorf("construct: %w", err)
+	}
+
+	err = snapshotObj.Normalize()
+	if err != nil {
+		return nil, "", fmt.Errorf("snapshot.Normalize: %w", err)
+	}
+
+	result, err := json.Marshal(snapshotObj)
+	if err != nil {
+		return nil, "", fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	sum := sha256.Sum256(result)
+
+	return result, hex.EncodeToString(sum[:]), nil
 }
 
 func (u *Usecase) ensure(ctx context.Context) error {
