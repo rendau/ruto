@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"strings"
 	"syscall"
 	"time"
@@ -37,6 +38,7 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 	if customPath != "" {
 		rewriteFunc = func(r *httputil.ProxyRequest) {
 			r.SetURL(backendUrl)
+			setXForwarded(r)
 
 			r.Out.URL.Path = backendUrl.JoinPath(customPath).Path
 			if !strings.HasPrefix(r.Out.URL.Path, "/") {
@@ -46,6 +48,7 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 	} else {
 		rewriteFunc = func(r *httputil.ProxyRequest) {
 			r.SetURL(backendUrl)
+			setXForwarded(r)
 		}
 	}
 
@@ -57,15 +60,7 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 			if location == "" {
 				return nil
 			}
-			// Keep absolute redirects untouched.
-			if strings.Contains(location, "://") || strings.HasPrefix(location, "//") {
-				return nil
-			}
-			// Keep relative redirects untouched.
-			if !strings.HasPrefix(location, "/") {
-				return nil
-			}
-			resp.Header.Set("Location", app.PathPrefix+location)
+			resp.Header.Set("Location", rewriteLocation(location, backendUrl, app.PathPrefix))
 			return nil
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
@@ -84,6 +79,64 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 	}
 
 	return proxy
+}
+
+// setXForwarded passes the client IP on like nginx's $proxy_add_x_forwarded_for:
+// the inbound X-Forwarded-For (stripped by Rewrite) gets the client IP appended.
+// TLS is terminated by the edge proxy in front of ruto, so its X-Forwarded-Proto
+// and X-Forwarded-Host win over the plain-http values SetXForwarded derives.
+func setXForwarded(r *httputil.ProxyRequest) {
+	r.Out.Header["X-Forwarded-For"] = r.In.Header["X-Forwarded-For"]
+	r.SetXForwarded()
+
+	for _, name := range []string{"X-Forwarded-Proto", "X-Forwarded-Host"} {
+		if values := r.In.Header.Values(name); len(values) > 0 {
+			r.Out.Header[name] = values
+		}
+	}
+}
+
+// rewriteLocation maps a backend redirect onto the gateway, like nginx's
+// "proxy_redirect default": the backend URL path is replaced with the app
+// prefix. A Location outside the backend path, a path-relative one and one
+// pointing to another host is returned untouched. An absolute Location on the
+// backend host becomes host-relative, since that host is internal.
+func rewriteLocation(location string, backendUrl *url.URL, prefix string) string {
+	ref := location
+
+	if !strings.HasPrefix(location, "/") || strings.HasPrefix(location, "//") {
+		u, err := url.Parse(location)
+		if err != nil || u.Host == "" {
+			return location
+		}
+		if (u.Scheme != "" && u.Scheme != "http" && u.Scheme != "https") ||
+			!strings.EqualFold(u.Host, backendUrl.Host) {
+			return location
+		}
+
+		// cut the original string instead of re-encoding u to keep escaping as is
+		ref = location[strings.Index(location, "//")+2:]
+		if i := strings.IndexAny(ref, "/?#"); i >= 0 {
+			ref = ref[i:]
+		} else {
+			ref = ""
+		}
+		if !strings.HasPrefix(ref, "/") {
+			ref = "/" + ref
+		}
+	}
+
+	backendPath := strings.TrimRight(backendUrl.EscapedPath(), "/")
+	if backendPath == "" {
+		return prefix + ref
+	}
+
+	rest, ok := strings.CutPrefix(ref, backendPath)
+	if !ok || (rest != "" && !strings.ContainsAny(rest[:1], "/?#")) {
+		return location
+	}
+
+	return prefix + rest
 }
 
 // classifyProxyError turns a transport-level proxy error into a short,

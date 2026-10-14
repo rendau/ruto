@@ -3,8 +3,10 @@ package http
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/rendau/ruto/internal/constant"
@@ -665,53 +667,186 @@ func TestService_CorsMiddleware(t *testing.T) {
 func TestService_RedirectLocationRewrite(t *testing.T) {
 	tests := []struct {
 		name         string
-		location     string
+		pathPrefix   string
+		backendPath  string
+		requestPath  string
+		location     string // "{backend}" is replaced with the backend scheme://host
 		wantLocation string
 	}{
 		{
-			name:         "absolute-path redirect is prefixed with app path",
+			name:         "no backend path: host-relative redirect is prefixed",
+			pathPrefix:   "/account",
+			requestPath:  "/account/profile",
 			location:     "/login",
 			wantLocation: "/account/login",
 		},
 		{
-			name:         "relative redirect is kept untouched",
+			name:         "no backend path: root redirect is prefixed",
+			pathPrefix:   "/account",
+			requestPath:  "/account/profile",
+			location:     "/",
+			wantLocation: "/account/",
+		},
+		{
+			name:         "path-relative redirect is kept untouched",
+			pathPrefix:   "/account",
+			requestPath:  "/account/profile",
 			location:     "login",
 			wantLocation: "login",
 		},
 		{
-			name:         "absolute redirect is kept untouched",
+			name:         "absolute redirect to another host is kept untouched",
+			pathPrefix:   "/account",
+			requestPath:  "/account/profile",
 			location:     "https://auth.example/login",
 			wantLocation: "https://auth.example/login",
 		},
 		{
-			name:         "protocol-relative redirect is kept untouched",
+			name:         "protocol-relative redirect to another host is kept untouched",
+			pathPrefix:   "/account",
+			requestPath:  "/account/profile",
 			location:     "//auth.example/login",
 			wantLocation: "//auth.example/login",
+		},
+		{
+			name:         "absolute redirect to the backend host becomes relative",
+			pathPrefix:   "/account",
+			requestPath:  "/account/profile",
+			location:     "{backend}/login",
+			wantLocation: "/account/login",
+		},
+		{
+			name:         "B=/p, P=/p: backend path is not doubled",
+			pathPrefix:   "/p",
+			backendPath:  "/p",
+			requestPath:  "/p/profile",
+			location:     "/p/xyz",
+			wantLocation: "/p/xyz",
+		},
+		{
+			name:         "B=/p: redirect outside the backend path is kept",
+			pathPrefix:   "/p",
+			backendPath:  "/p",
+			requestPath:  "/p/profile",
+			location:     "/other",
+			wantLocation: "/other",
+		},
+		{
+			name:         "B=/p: absolute redirect to the backend host",
+			pathPrefix:   "/p",
+			backendPath:  "/p",
+			requestPath:  "/p/profile",
+			location:     "{backend}/p/xyz?a=1",
+			wantLocation: "/p/xyz?a=1",
+		},
+		{
+			name:         "B=/api, P=/api/v1: backend path is replaced with the prefix",
+			pathPrefix:   "/api/v1",
+			backendPath:  "/api",
+			requestPath:  "/api/v1/profile",
+			location:     "/api/orders/1",
+			wantLocation: "/api/v1/orders/1",
+		},
+		{
+			name:         "B=/api, P=/api/v1: root redirect is kept",
+			pathPrefix:   "/api/v1",
+			backendPath:  "/api",
+			requestPath:  "/api/v1/profile",
+			location:     "/",
+			wantLocation: "/",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Location", tt.location)
+				w.Header().Set("Location", strings.ReplaceAll(tt.location, "{backend}", "http://"+r.Host))
 				w.WriteHeader(http.StatusFound)
 			}))
 			defer backend.Close()
 
-			endpoint := &endpointModel.Endpoint{
-				Active: true,
-				Type:   endpointModel.TypeHTTP,
-				Http: endpointModel.Http{
-					Method: http.MethodGet,
-					Path:   "profile",
+			snapshot := rootModel.NewEmpty()
+			snapshot.Apps = []*appModel.App{
+				{
+					Active:     true,
+					PathPrefix: tt.pathPrefix,
+					Name:       "app",
+					Backend:    appModel.Backend{Url: backend.URL + tt.backendPath},
+					Endpoints: []*endpointModel.Endpoint{
+						{
+							Active: true,
+							Type:   endpointModel.TypeHTTP,
+							Http:   endpointModel.Http{Method: http.MethodGet, Path: "profile"},
+						},
+					},
 				},
 			}
-			service := newTestService(t, backend.URL, true, endpoint, nil)
+			require.NoError(t, snapshot.Normalize())
+			snapshot.InheritDown()
+			snapshot.Interpolate()
 
-			rec := performRequest(service, http.MethodGet, "/account/profile", nil)
+			service, err := New(snapshot)
+			require.NoError(t, err)
+
+			rec := performRequest(service, http.MethodGet, tt.requestPath, nil)
 
 			require.Equal(t, http.StatusFound, rec.Code)
-			require.Equal(t, tt.wantLocation, rec.Header().Get("Location"))
+			wantLocation := strings.ReplaceAll(tt.wantLocation, "{backend}", backend.URL)
+			assert.Equal(t, wantLocation, rec.Header().Get("Location"))
+		})
+	}
+}
+
+func TestService_XForwardedHeaders(t *testing.T) {
+	tests := []struct {
+		name      string
+		inHeaders http.Header
+		wantFor   string
+		wantProto string
+		wantHost  string
+	}{
+		{
+			name:      "direct request: client ip and plain http",
+			wantFor:   "192.0.2.1",
+			wantProto: "http",
+			wantHost:  "example.com",
+		},
+		{
+			name: "behind the edge proxy: its headers are kept, the client ip is appended",
+			inHeaders: http.Header{
+				"X-Forwarded-For":   {"198.51.100.1"},
+				"X-Forwarded-Proto": {"https"},
+				"X-Forwarded-Host":  {"mechta.kz"},
+			},
+			wantFor:   "198.51.100.1, 192.0.2.1",
+			wantProto: "https",
+			wantHost:  "mechta.kz",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got http.Header
+			backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				got = r.Header.Clone()
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer backend.Close()
+
+			service := newTestService(t, backend.URL, true, &endpointModel.Endpoint{
+				Active: true,
+				Type:   endpointModel.TypeHTTP,
+				Http:   endpointModel.Http{Method: http.MethodGet, Path: "profile"},
+			}, nil)
+
+			// httptest.NewRequest uses host example.com and remote address 192.0.2.1
+			rec := performRequest(service, http.MethodGet, "/account/profile", tt.inHeaders)
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.NotNil(t, got)
+			assert.Equal(t, tt.wantFor, got.Get("X-Forwarded-For"))
+			assert.Equal(t, tt.wantProto, got.Get("X-Forwarded-Proto"))
+			assert.Equal(t, tt.wantHost, got.Get("X-Forwarded-Host"))
 		})
 	}
 }

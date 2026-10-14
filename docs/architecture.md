@@ -64,6 +64,20 @@ internal/service/gw/
 
 Сборка роутера — `gw/handler/http/service.go:buildHandler`: для каждого активного App берётся `PathPrefix`, для каждого активного HTTP-endpoint строится путь `path_prefix[/http.path]`, оборачивается в цепочку middleware и регистрируется в chi (метод `*` → любой метод). Сверху навешивается CORS из `Root.Cors`.
 
+**Заголовки X-Forwarded-\*.** Прокси (`gw/handler/http/proxy`) ставит их для всех приложений одинаково, без настройки — как nginx с `$proxy_add_x_forwarded_for`:
+- `X-Forwarded-For` — входящий `X-Forwarded-For` (если был) + IP того, кто прислал запрос в ruto: `198.51.100.1, 10.0.0.5`;
+- `X-Forwarded-Proto` и `X-Forwarded-Host` — берутся из входящего запроса, если их прислал прокси перед ruto (Traefik снимает TLS, поэтому сам ruto видит только http); если их нет — `http`/`https` по соединению и `Host` запроса.
+
+`backend.headers` (и request-скрипт) меняют входящий запрос, поэтому заданные там `X-Forwarded-Proto`/`X-Forwarded-Host` считаются пришедшими от внешнего прокси и уходят на backend как есть, а к `X-Forwarded-For` дописывается IP клиента.
+
+**Переписывание редиректов (`Location`).** По смыслу — `proxy_redirect default` из nginx: путь backend URL (B) в ответе заменяется на `path_prefix` приложения (P). Пример: P=`/api/v1`, backend `http://back-sps/api`:
+- `/api/orders/1` → `/api/v1/orders/1` (совпадение по границе сегмента: `/apix` не трогается);
+- `/` или `/other` (не начинается с B) → без изменений;
+- `http://back-sps/api/orders` (абсолютный адрес на хост backend'а, схема любая — http/https) → `/api/v1/orders`, внутренний хост наружу не уходит; абсолютный адрес на хост backend'а вне B и адреса на другие хосты — без изменений;
+- относительные без ведущего `/` (`login`, `?page=2`) — без изменений.
+
+Если путь backend URL пустой или `/` — к любому `Location`, начинающемуся с `/`, просто дописывается P (`/login` → `/account/login`), а абсолютный адрес на хост backend'а становится таким же относительным. Ответ, который вернул request-скрипт, не переписывается.
+
 **Wildcard в пути.** По умолчанию `*` в `http.path` запрещена. Если у App включён `allow_wildcard` (менять флаг может только администратор), endpoint может заканчиваться на `/*` (или быть просто `*`): `docs/*` ловит `/<prefix>/docs/` и всё глубже, но не сам `/<prefix>/docs`; хвост пути уходит на backend как есть. Точный маршрут (`docs/list`) выигрывает у wildcard. Ограничения: `*` только последним сегментом, нельзя вместе с `backend.custom_path`, нельзя снять `allow_wildcard`, пока в App есть wildcard-endpoint'ы (иначе `Normalize()` снапшота упадёт и обновления встанут для всех App). В метриках и логах такой endpoint — один маршрут (`GET /<prefix>/docs/*`), реальный путь виден только в логах.
 
 **Замеченные адреса (seen paths).** Чтобы wildcard можно было постепенно заменить точными endpoint'ами, gateway считает, какие реальные пути обслужил каждый wildcard-endpoint (`gw/service/seen`, middleware `NewSeenPaths`). Путь берётся относительно `path_prefix` и сворачивается в шаблон: числа, uuid/хеши и сегменты длиннее 30 символов → `{id}`. На endpoint держится не больше 1000 разных шаблонов между отправками, остальное складывается в строку `(other)`. Счётчики уходят в core вместе с heartbeat (`GatewayHeartbeatRequest.seen_paths`, раз в 30 с; при ошибке gateway оставляет их у себя и шлёт снова), core суммирует их в таблице `seen_path` (не больше 5000 строк на endpoint). Админка показывает отчёт в приложении (кнопка «Seen paths», API `GET/DELETE /api/seen_path?app_id=`), строки только с 404 и уже заведённые пути по умолчанию скрыты; заведённый точный endpoint выигрывает у wildcard и в отчёт больше не попадает.
