@@ -740,6 +740,14 @@ func TestService_RedirectLocationRewrite(t *testing.T) {
 			wantLocation: "/p/xyz?a=1",
 		},
 		{
+			name:         "B=/p: absolute redirect to the backend host outside B becomes relative",
+			pathPrefix:   "/p",
+			backendPath:  "/p",
+			requestPath:  "/p/profile",
+			location:     "{backend}/other",
+			wantLocation: "/other",
+		},
+		{
 			name:         "B=/api, P=/api/v1: backend path is replaced with the prefix",
 			pathPrefix:   "/api/v1",
 			backendPath:  "/api",

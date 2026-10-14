@@ -98,9 +98,10 @@ func setXForwarded(r *httputil.ProxyRequest) {
 
 // rewriteLocation maps a backend redirect onto the gateway, like nginx's
 // "proxy_redirect default": the backend URL path is replaced with the app
-// prefix. A Location outside the backend path, a path-relative one and one
-// pointing to another host is returned untouched. An absolute Location on the
-// backend host becomes host-relative, since that host is internal.
+// prefix. An absolute Location on the backend host is always made host-relative,
+// since that host is internal; past that, a Location outside the backend path is
+// kept. A path-relative Location and one pointing to another host are returned
+// untouched.
 func rewriteLocation(location string, backendUrl *url.URL, prefix string) string {
 	ref := location
 
@@ -133,7 +134,7 @@ func rewriteLocation(location string, backendUrl *url.URL, prefix string) string
 
 	rest, ok := strings.CutPrefix(ref, backendPath)
 	if !ok || (rest != "" && !strings.ContainsAny(rest[:1], "/?#")) {
-		return location
+		return ref
 	}
 
 	return prefix + rest

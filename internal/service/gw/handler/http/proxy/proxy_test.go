@@ -40,7 +40,7 @@ func TestRewriteLocation(t *testing.T) {
 		{name: "B=/p: absolute on backend host", backendUrl: "http://back-sps/p", prefix: "/p", location: "http://back-sps/p/xyz", want: "/p/xyz"},
 		{name: "B=/p: https absolute on backend host", backendUrl: "http://back-sps/p", prefix: "/p", location: "https://BACK-SPS/p/xyz#top", want: "/p/xyz#top"},
 		{name: "B=/p: protocol-relative on backend host", backendUrl: "http://back-sps/p", prefix: "/p", location: "//back-sps/p/xyz", want: "/p/xyz"},
-		{name: "B=/p: absolute on backend host outside B", backendUrl: "http://back-sps/p", prefix: "/p", location: "http://back-sps/other", want: "http://back-sps/other"},
+		{name: "B=/p: absolute on backend host outside B", backendUrl: "http://back-sps/p", prefix: "/p", location: "http://back-sps/other", want: "/other"},
 
 		// B = /api, P = /api/v1 (mechta.kz)
 		{name: "B=/api: mapped to prefix", backendUrl: "http://back-sps/api", prefix: "/api/v1", location: "/api/orders/1", want: "/api/v1/orders/1"},
