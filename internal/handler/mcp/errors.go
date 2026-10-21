@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	errKeyMismatch = errors.New("the api key of this call differs from the key the MCP session was opened with")
-	errKeyInvalid  = errors.New("the api key is not valid anymore")
+	errKeyMismatch = errors.New("the api key or token of this call differs from the one the MCP session was opened with")
+	errKeyInvalid  = errors.New("the api key or token is not valid anymore")
 )
 
 // toolErr renders an error for the agent: the code and description of ruto

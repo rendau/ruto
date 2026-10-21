@@ -46,6 +46,16 @@ var Conf = struct {
 	McpEnabled bool `env:"MCP_ENABLED" envDefault:"false"`
 	McpPort    int  `env:"MCP_PORT" envDefault:"5060"`
 
+	// OAuth for MCP clients that connect by URL (Claude connectors); api keys
+	// keep working alongside. McpPublicURL is the MCP server URL as clients
+	// see it, McpOAuthAdminURL is where the admin UI (consent page) is opened.
+	McpOAuthEnabled      bool          `env:"MCP_OAUTH_ENABLED" envDefault:"false"`
+	McpPublicURL         string        `env:"MCP_PUBLIC_URL"`
+	McpOAuthAdminURL     string        `env:"MCP_OAUTH_ADMIN_URL"`
+	McpOAuthRedirectURIs []string      `env:"MCP_OAUTH_REDIRECT_URIS" envSeparator:"," envDefault:"https://claude.ai/api/mcp/auth_callback,https://claude.com/api/mcp/auth_callback,http://localhost,http://127.0.0.1"`
+	McpOAuthAccessTTL    time.Duration `env:"MCP_OAUTH_ACCESS_TTL" envDefault:"1h"`
+	McpOAuthRefreshTTL   time.Duration `env:"MCP_OAUTH_REFRESH_TTL" envDefault:"720h"`
+
 	// change requests proposed over MCP
 	ChangeRequestTTL           time.Duration `env:"CHANGE_REQUEST_TTL" envDefault:"168h"`
 	ChangeRequestRetention     time.Duration `env:"CHANGE_REQUEST_RETENTION" envDefault:"720h"`

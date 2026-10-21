@@ -20,6 +20,13 @@ const routes: RouteRecordRaw[] = [
     meta: { title: "Sign in", public: true }
   },
   {
+    // consent page of the MCP server's OAuth flow; the MCP client opens it
+    path: "/oauth/authorize",
+    name: "oauth-authorize",
+    component: () => import("@/views/OAuthAuthorizeView.vue"),
+    meta: { title: "Authorize access", requiresAuth: true }
+  },
+  {
     path: "/",
     component: () => import("@/layouts/DefaultLayout.vue"),
     meta: { requiresAuth: true },

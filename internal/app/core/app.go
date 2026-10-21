@@ -26,6 +26,8 @@ import (
 	domainChangeRequestServiceP "github.com/rendau/ruto/internal/domain/changerequest/service"
 	domainEndpointRepoDbP "github.com/rendau/ruto/internal/domain/endpoint/repo/db"
 	domainEndpointServiceP "github.com/rendau/ruto/internal/domain/endpoint/service"
+	domainOAuthRepoDbP "github.com/rendau/ruto/internal/domain/oauth/repo/db"
+	domainOAuthServiceP "github.com/rendau/ruto/internal/domain/oauth/service"
 	domainRootRepoDbP "github.com/rendau/ruto/internal/domain/root/repo/db"
 	domainRootServiceP "github.com/rendau/ruto/internal/domain/root/service"
 	domainSeenPathRepoDbP "github.com/rendau/ruto/internal/domain/seenpath/repo/db"
@@ -52,6 +54,7 @@ import (
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 	usecaseGatewayP "github.com/rendau/ruto/internal/usecase/gateway"
 	usecaseMonitoringP "github.com/rendau/ruto/internal/usecase/monitoring"
+	usecaseOAuthP "github.com/rendau/ruto/internal/usecase/oauth"
 	usecaseRootP "github.com/rendau/ruto/internal/usecase/root"
 	usecaseSeenPathP "github.com/rendau/ruto/internal/usecase/seenpath"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
@@ -71,6 +74,7 @@ type App struct {
 	gatewaysService *gatewaysServiceP.Service
 
 	changeRequestUsecase *usecaseChangeRequestP.Usecase
+	oauthUsecase         *usecaseOAuthP.Usecase
 
 	exitCode int
 }
@@ -83,6 +87,15 @@ func (a *App) Init() error {
 	a.ctx, a.ctxCancel = context.WithCancel(context.Background())
 
 	common.InitLogger(configCore.Conf.Debug, configCore.Conf.LogLevel)
+
+	if configCore.Conf.McpOAuthEnabled {
+		if !configCore.Conf.McpEnabled {
+			return errors.New("MCP_OAUTH_ENABLED requires MCP_ENABLED")
+		}
+		if configCore.Conf.McpPublicURL == "" || configCore.Conf.McpOAuthAdminURL == "" {
+			return errors.New("MCP_OAUTH_ENABLED requires MCP_PUBLIC_URL and MCP_OAUTH_ADMIN_URL")
+		}
+	}
 
 	// pgpool
 	pgpool, err := initPgPool(configCore.Conf.PgDsn)
@@ -234,11 +247,32 @@ func (a *App) Init() error {
 	)
 	handlerGrpcChangeRequest := handlerGrpcP.NewChangeRequest(a.changeRequestUsecase)
 
+	// oauth (for MCP clients that connect by URL)
+	domainOAuthRepoDb := domainOAuthRepoDbP.New(a.pgpool)
+	domainOAuthService := domainOAuthServiceP.New(domainOAuthRepoDb)
+	a.oauthUsecase = usecaseOAuthP.New(
+		usecaseOAuthP.Config{
+			Enabled:      configCore.Conf.McpOAuthEnabled,
+			Issuer:       configCore.Conf.McpPublicURL,
+			AdminURL:     configCore.Conf.McpOAuthAdminURL,
+			RedirectUris: configCore.Conf.McpOAuthRedirectURIs,
+			AccessTTL:    configCore.Conf.McpOAuthAccessTTL,
+			RefreshTTL:   configCore.Conf.McpOAuthRefreshTTL,
+		},
+		domainOAuthService,
+		domainOAuthServiceP.NewClientCodec(configCore.Conf.AdminJWTSecret),
+		domainUsrService,
+		sessionService,
+		mobone.NewTransactionManager(a.pgpool),
+	)
+	handlerGrpcOAuth := handlerGrpcP.NewOAuth(a.oauthUsecase)
+
 	// mcp
 	if configCore.Conf.McpEnabled {
 		mcpHandler := handlerMcpP.New(
 			sessionService,
 			usecaseApiKey,
+			a.oauthUsecase,
 			a.changeRequestUsecase,
 			usecaseApp,
 			usecaseEndpoint,
@@ -268,6 +302,7 @@ func (a *App) Init() error {
 		ruto_v1.RegisterSeenPathServer(server, handlerGrpcSeenPath)
 		ruto_v1.RegisterApiKeyServer(server, handlerGrpcApiKey)
 		ruto_v1.RegisterChangeRequestServer(server, handlerGrpcChangeRequest)
+		ruto_v1.RegisterOAuthServer(server, handlerGrpcOAuth)
 	})
 
 	// grpc-gateway
@@ -291,6 +326,7 @@ func (a *App) Init() error {
 			ruto_v1.RegisterSeenPathHandler,
 			ruto_v1.RegisterApiKeyHandler,
 			ruto_v1.RegisterChangeRequestHandler,
+			ruto_v1.RegisterOAuthHandler,
 		}
 		for _, registerHandler := range handlers {
 			if registerErr := registerHandler(context.Background(), mux, conn); registerErr != nil {
@@ -349,6 +385,7 @@ func (a *App) Start() error {
 	}
 
 	go a.changeRequestUsecase.RunCleanup(a.ctx, time.Hour)
+	go a.oauthUsecase.RunCleanup(a.ctx, time.Hour)
 
 	return nil
 }

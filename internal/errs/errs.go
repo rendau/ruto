@@ -31,6 +31,9 @@ const (
 	ChangeRequestClosed   = Err("change_request_closed")
 	ChangeRequestOutdated = Err("change_request_outdated")
 	ChangeRequestExpired  = Err("change_request_expired")
+
+	OAuthNotEnabled     = Err("oauth_not_enabled")
+	OAuthInvalidRequest = Err("oauth_invalid_request")
 )
 
 type ErrFull struct {

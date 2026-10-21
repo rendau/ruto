@@ -1,6 +1,7 @@
 // Package mcp is the built-in MCP (Model Context Protocol) server of core for
 // AI agents: streamable HTTP on its own port (MCP_ENABLED / MCP_PORT),
-// authenticated by api keys.
+// authenticated by api keys or, with MCP_OAUTH_ENABLED, OAuth access tokens
+// (clients that connect by URL, such as Claude connectors).
 //
 // Security model: an agent reads the configuration with every secret masked
 // (see package secretref) and never writes it directly. Every change is
@@ -9,13 +10,15 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	apikeyService "github.com/rendau/ruto/internal/domain/apikey/service"
+	oauthService "github.com/rendau/ruto/internal/domain/oauth/service"
+	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	sessionService "github.com/rendau/ruto/internal/domain/session/service"
 	usecaseApiKey "github.com/rendau/ruto/internal/usecase/apikey"
 	usecaseApp "github.com/rendau/ruto/internal/usecase/app"
@@ -23,6 +26,7 @@ import (
 	usecaseEndpoint "github.com/rendau/ruto/internal/usecase/endpoint"
 	usecaseGateway "github.com/rendau/ruto/internal/usecase/gateway"
 	usecaseMonitoring "github.com/rendau/ruto/internal/usecase/monitoring"
+	usecaseOAuth "github.com/rendau/ruto/internal/usecase/oauth"
 	usecaseSeenPath "github.com/rendau/ruto/internal/usecase/seenpath"
 	usecaseSnapshot "github.com/rendau/ruto/internal/usecase/snapshot"
 )
@@ -52,6 +56,7 @@ type Handler struct {
 	sessionSvc *sessionService.Service
 
 	apiKeyUc        *usecaseApiKey.Usecase
+	oauthUc         *usecaseOAuth.Usecase
 	changeRequestUc *usecaseChangeRequest.Usecase
 	appUc           *usecaseApp.Usecase
 	endpointUc      *usecaseEndpoint.Usecase
@@ -64,6 +69,7 @@ type Handler struct {
 func New(
 	sessionSvc *sessionService.Service,
 	apiKeyUc *usecaseApiKey.Usecase,
+	oauthUc *usecaseOAuth.Usecase,
 	changeRequestUc *usecaseChangeRequest.Usecase,
 	appUc *usecaseApp.Usecase,
 	endpointUc *usecaseEndpoint.Usecase,
@@ -75,6 +81,7 @@ func New(
 	return &Handler{
 		sessionSvc:      sessionSvc,
 		apiKeyUc:        apiKeyUc,
+		oauthUc:         oauthUc,
 		changeRequestUc: changeRequestUc,
 		appUc:           appUc,
 		endpointUc:      endpointUc,
@@ -87,39 +94,77 @@ func New(
 
 type ctxKeyT int
 
-const ctxKeyKeyHash ctxKeyT = iota
+// ctxKeyPrincipal holds the id of the api key or OAuth grant of a request.
+const ctxKeyPrincipal ctxKeyT = iota
 
-// HTTPHandler serves streamable HTTP MCP, authenticating every request.
+// HTTPHandler serves streamable HTTP MCP, authenticating every request, and,
+// with OAuth enabled, the OAuth endpoints next to it.
 func (h *Handler) HTTPHandler() http.Handler {
 	streamable := mcpsdk.NewStreamableHTTPHandler(func(r *http.Request) *mcpsdk.Server {
-		keyHash, _ := r.Context().Value(ctxKeyKeyHash).(string)
-		if keyHash == "" {
+		principal, _ := r.Context().Value(ctxKeyPrincipal).(string)
+		if principal == "" {
 			return nil
 		}
-		return h.newSessionServer(keyHash)
+		return h.newSessionServer(principal)
 	}, &mcpsdk.StreamableHTTPOptions{
 		SessionTimeout: sessionIdleTimeout,
 	})
 
-	return h.authMiddleware(streamable)
+	var oauth *oauthEndpoints
+	if h.oauthUc.Config().Enabled {
+		oauth = newOAuthEndpoints(h.oauthUc)
+	}
+
+	mcpHandler := h.authMiddleware(streamable, oauth)
+	if oauth == nil {
+		return mcpHandler
+	}
+
+	mux := http.NewServeMux()
+	oauth.register(mux)
+	mux.Handle("/", mcpHandler)
+
+	return mux
 }
 
-func (h *Handler) authMiddleware(next http.Handler) http.Handler {
+func (h *Handler) authMiddleware(next http.Handler, oauth *oauthEndpoints) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := bearerToken(r.Header.Get("Authorization"))
-		if key == "" {
-			http.Error(w, "ruto mcp: api key required (Authorization: Bearer rtk_...)", http.StatusUnauthorized)
+		credential := bearerToken(r.Header.Get("Authorization"))
+		if credential == "" {
+			unauthorized(w, oauth, "", "ruto mcp: an api key or OAuth token is required (Authorization: Bearer ...)")
 			return
 		}
 
-		if _, err := h.apiKeyUc.SessionFromKey(r.Context(), key); err != nil {
-			http.Error(w, "ruto mcp: invalid api key", http.StatusUnauthorized)
+		session, err := h.authenticate(r.Context(), credential)
+		if err != nil {
+			unauthorized(w, oauth, "invalid_token", "ruto mcp: invalid api key or token")
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), ctxKeyKeyHash, apikeyService.HashKey(key))
+		ctx := context.WithValue(r.Context(), ctxKeyPrincipal, session.ApiKeyId)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// authenticate resolves an api key (rtk_) or an OAuth access token (rto_).
+func (h *Handler) authenticate(ctx context.Context, credential string) (*sessionModel.Session, error) {
+	if strings.HasPrefix(credential, oauthService.AccessTokenPrefix) {
+		return h.oauthUc.SessionFromToken(ctx, credential)
+	}
+	return h.apiKeyUc.SessionFromKey(ctx, credential)
+}
+
+// unauthorized answers 401; with OAuth enabled it points the client to the
+// protected resource metadata (RFC 9728), which starts the OAuth flow.
+func unauthorized(w http.ResponseWriter, oauth *oauthEndpoints, oauthErr, msg string) {
+	if oauth != nil {
+		value := fmt.Sprintf(`Bearer resource_metadata=%q, scope=%q`, oauth.resourceMetadataURL(), usecaseOAuth.Scope)
+		if oauthErr != "" {
+			value += fmt.Sprintf(`, error=%q`, oauthErr)
+		}
+		w.Header().Set("WWW-Authenticate", value)
+	}
+	http.Error(w, msg, http.StatusUnauthorized)
 }
 
 func bearerToken(headerValue string) string {
@@ -133,14 +178,16 @@ func bearerToken(headerValue string) string {
 	return ""
 }
 
-// sessionServer serves one MCP session, bound to the key it was opened with.
+// sessionServer serves one MCP session, bound to the api key or OAuth grant
+// it was opened with. A grant, not a token: access tokens rotate on refresh
+// while the session goes on.
 type sessionServer struct {
-	h       *Handler
-	keyHash string
+	h         *Handler
+	principal string
 }
 
-func (h *Handler) newSessionServer(keyHash string) *mcpsdk.Server {
-	s := &sessionServer{h: h, keyHash: keyHash}
+func (h *Handler) newSessionServer(principal string) *mcpsdk.Server {
+	s := &sessionServer{h: h, principal: principal}
 
 	srv := mcpsdk.NewServer(&mcpsdk.Implementation{
 		Name:    "ruto",
@@ -156,20 +203,23 @@ func (h *Handler) newSessionServer(keyHash string) *mcpsdk.Server {
 	return srv
 }
 
-// toolCtx re-authenticates the key of every tool call (a session id alone
-// must not grant access) and puts the owner's fresh session into ctx.
+// toolCtx re-authenticates the credential of every tool call (a session id
+// alone must not grant access) and puts the owner's fresh session into ctx.
 func (s *sessionServer) toolCtx(ctx context.Context, req *mcpsdk.CallToolRequest) (context.Context, error) {
-	key := ""
+	credential := ""
 	if req != nil && req.Extra != nil && req.Extra.Header != nil {
-		key = bearerToken(req.Extra.Header.Get("Authorization"))
+		credential = bearerToken(req.Extra.Header.Get("Authorization"))
 	}
-	if key == "" || apikeyService.HashKey(key) != s.keyHash {
+	if credential == "" {
 		return nil, errKeyMismatch
 	}
 
-	session, err := s.h.apiKeyUc.SessionFromKey(ctx, key)
+	session, err := s.h.authenticate(ctx, credential)
 	if err != nil {
 		return nil, errKeyInvalid
+	}
+	if session.ApiKeyId != s.principal {
+		return nil, errKeyMismatch
 	}
 
 	return s.h.sessionSvc.WithContext(ctx, session), nil

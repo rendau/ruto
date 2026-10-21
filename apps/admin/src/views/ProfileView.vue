@@ -18,6 +18,7 @@ import PageContainer from "@/components/common/PageContainer.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
 import StatusTag from "@/components/common/StatusTag.vue";
 import ApiKeySection from "@/components/apikey/ApiKeySection.vue";
+import OAuthGrantSection from "@/components/oauth/OAuthGrantSection.vue";
 
 const message = useMessage();
 const router = useRouter();
@@ -111,6 +112,7 @@ async function save(): Promise<void> {
     </SectionCard>
 
     <ApiKeySection v-if="isAdmin" />
+    <OAuthGrantSection v-if="isAdmin" />
   </PageContainer>
 </template>
 

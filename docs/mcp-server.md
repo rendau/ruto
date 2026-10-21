@@ -9,7 +9,8 @@ MCP-сервер (Model Context Protocol) для AI-агентов **встро�
   применяет или отклоняет в админке (раздел «Change requests»).
 
 Код: `internal/handler/mcp` (транспорт), `internal/usecase/changerequest` (заявки),
-`internal/domain/secretref` (маскирование и источники значений), `internal/usecase/apikey`.
+`internal/domain/secretref` (маскирование и источники значений), `internal/usecase/apikey`,
+`internal/usecase/oauth` + `internal/domain/oauth` (вход через OAuth, см. ниже).
 
 Включение: `MCP_ENABLED=true`, порт `MCP_PORT` (по умолчанию `5060`). Порт публикуется
 наружу отдельно от `/api` — агентам можно открыть только MCP.
@@ -25,6 +26,44 @@ MCP-сервер (Model Context Protocol) для AI-агентов **встро�
   пользователя сразу отключает все его ключи.
 - Каждый вызов инструмента заново проверяет ключ и сверяет его с ключом, которым открыта
   MCP-сессия (подменить сессию по её id нельзя).
+
+## Вход через OAuth (коннекторы Claude)
+
+Вместо ключа MCP-клиент может войти по OAuth 2.1: человек вписывает в клиент только адрес
+MCP-сервера, клиент открывает в браузере страницу входа ruto, человек входит в админку и
+нажимает «Allow». Так подключаются коннекторы claude.ai / Claude Desktop / мобильного Claude,
+этот же путь умеет Claude Code. Ключи `rtk_…` продолжают работать рядом.
+
+Включение: `MCP_OAUTH_ENABLED=true` + `MCP_PUBLIC_URL` (адрес MCP-сервера, как его видят
+клиенты) + `MCP_OAUTH_ADMIN_URL` (адрес админки, там страница согласия).
+
+- **Подключение = ключ.** Одобренное подключение (grant, таблица `oauth_grant`) ведёт себя
+  как ключ того администратора, который его разрешил: те же права, маскирование и заявки
+  (в заявке автор — «Claude (OAuth)»). Снятие админских прав сразу отключает и подключения.
+  Список и кнопка «Disconnect» — Profile → Connected apps.
+- **Пропуска.** Access-токен `rto_…` живёт `MCP_OAUTH_ACCESS_TTL`, refresh-токен `rtr_…` —
+  `MCP_OAUTH_REFRESH_TTL`; при каждом обновлении выдаётся новая пара, старый refresh больше
+  не принимается. Код `rtc_…` одноразовый, живёт 2 минуты, обязателен PKCE (S256). В БД
+  (`oauth_token`) хранятся только sha256. MCP-сессия привязана к подключению, а не к токену,
+  поэтому переживает обновление токена.
+- **Регистрация клиента** (`POST /register`, RFC 7591) открыта всем — так требует протокол.
+  Защита — список разрешённых адресов возврата `MCP_OAUTH_REDIRECT_URIS`: код уходит только
+  на них. Адрес без пути разрешает любой путь, loopback (`localhost`, `127.0.0.1`) — любой
+  порт (Claude Code слушает случайный). В БД регистрация ничего не пишет: `client_id`
+  (`rtcl_…`) — подписанные данные клиента (ключ выводится из `ADMIN_JWT_SECRET`, поэтому его
+  смена инвалидирует клиентов — им нужно подключиться заново).
+- **Адреса на MCP-порту:** `/.well-known/oauth-protected-resource`,
+  `/.well-known/oauth-authorization-server` (и `openid-configuration`), `/register`, `/token`,
+  `/revoke`. Страница согласия — `<MCP_OAUTH_ADMIN_URL>/oauth/authorize` в админке.
+  401 от MCP несёт `WWW-Authenticate: Bearer resource_metadata=…` — с него клиент начинает вход.
+- **Сеть.** Коннекторы claude.ai/Desktop/мобильного ходят в MCP-порт **с серверов Anthropic**:
+  порт должен быть доступен из интернета (сузить можно белым списком их IP), а Cloudflare
+  перед ним не должен их блокировать. Claude Code ходит с машины пользователя. Админка нужна
+  только браузеру пользователя.
+- **Публикация лучше отдельным поддоменом** (`https://ruto-mcp.example.com`). Если MCP
+  опубликован путём (`MCP_PUBLIC_URL=https://ruto.example.com/mcp`), все адреса выше
+  живут под этим путём, но часть клиентов ищет метаданные в корне домена
+  (`/.well-known/oauth-*/mcp`) — тогда эти пути в Ingress тоже нужно направить на MCP-порт.
 
 ## Секреты
 
@@ -119,6 +158,12 @@ MCP-сервер (Model Context Protocol) для AI-агентов **встро�
 | --- | --- | --- |
 | `MCP_ENABLED` | `false` | поднять MCP-сервер |
 | `MCP_PORT` | `5060` | порт MCP |
+| `MCP_OAUTH_ENABLED` | `false` | вход через OAuth (требует `MCP_ENABLED`) |
+| `MCP_PUBLIC_URL` | — | адрес MCP-сервера для клиентов (issuer и resource OAuth) |
+| `MCP_OAUTH_ADMIN_URL` | — | адрес админки, где открывается страница согласия |
+| `MCP_OAUTH_REDIRECT_URIS` | адреса claude.ai, claude.com, `http://localhost`, `http://127.0.0.1` | куда можно вернуть код (через запятую) |
+| `MCP_OAUTH_ACCESS_TTL` | `1h` | жизнь access-токена |
+| `MCP_OAUTH_REFRESH_TTL` | `720h` | жизнь refresh-токена (продлевается при каждом обновлении) |
 | `CHANGE_REQUEST_TTL` | `168h` | сколько заявка ждёт решения |
 | `CHANGE_REQUEST_RETENTION` | `720h` | сколько хранятся закрытые заявки |
 | `CHANGE_REQUEST_MAX_PENDING_PER_KEY` | `20` | лимит ожидающих заявок на ключ |
@@ -140,6 +185,10 @@ MCP-сервер (Model Context Protocol) для AI-агентов **встро�
   }
 }
 ```
+
+С OAuth заголовок не нужен: `"url"` без `"headers"`, Claude Code сам откроет браузер для
+входа (`/mcp` → Authenticate). В claude.ai / Claude Desktop: Settings → Connectors → Add custom
+connector → адрес MCP-сервера.
 
 Типовой сценарий:
 
