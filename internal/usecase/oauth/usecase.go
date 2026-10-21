@@ -6,6 +6,7 @@ package oauth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -136,6 +137,7 @@ func (u *Usecase) SessionFromToken(ctx context.Context, token string) (*sessionM
 		return nil, fmt.Errorf("svc.FindToken: %w", err)
 	}
 	if !found {
+		u.logRejectedToken(ctx, token)
 		return nil, errs.NotAuthorized
 	}
 
@@ -144,17 +146,38 @@ func (u *Usecase) SessionFromToken(ctx context.Context, token string) (*sessionM
 		return nil, fmt.Errorf("svc.GetGrant: %w", err)
 	}
 	if !found {
+		slog.Warn("oauth: access token rejected", "reason", "connection removed", "grant_id", item.GrantId)
 		return nil, errs.NotAuthorized
 	}
 
 	session, err := u.grantSession(ctx, grant)
 	if err != nil {
+		if errors.Is(err, errs.NotAuthorized) {
+			slog.Warn("oauth: access token rejected", "reason", "user is not an active administrator",
+				"grant_id", grant.Id, "usr_id", grant.UsrId)
+		}
 		return nil, err
 	}
 
 	u.touchLastUsed(ctx, grant.Id)
 
 	return session, nil
+}
+
+// logRejectedToken tells why a presented access token is not live: the access
+// log alone cannot tell a stale token from a foreign one.
+func (u *Usecase) logRejectedToken(ctx context.Context, token string) {
+	item, found, err := u.svc.FindAnyToken(ctx, token)
+	switch {
+	case err != nil:
+		slog.Warn("oauth: access token rejected", "reason", "lookup failed", "error", err)
+	case !found:
+		slog.Warn("oauth: access token rejected", "reason", "unknown token")
+	case item.Kind != model.TokenKindAccess:
+		slog.Warn("oauth: access token rejected", "reason", "not an access token", "kind", item.Kind, "grant_id", item.GrantId)
+	default:
+		slog.Warn("oauth: access token rejected", "reason", "expired", "expires_at", item.ExpiresAt, "grant_id", item.GrantId)
+	}
 }
 
 // RunCleanup calls Cleanup now and then every interval until ctx is done.

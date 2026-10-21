@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"slices"
 	"strings"
@@ -155,6 +156,7 @@ func (u *Usecase) DescribeAuthorization(ctx context.Context, req *AuthorizeReq) 
 
 	client, err := u.checkAuthorizeReq(req)
 	if err != nil {
+		slog.Warn("oauth: authorization request rejected", "error", err)
 		return nil, err
 	}
 
@@ -178,8 +180,11 @@ func (u *Usecase) Authorize(ctx context.Context, req *AuthorizeReq, approve bool
 
 	client, err := u.checkAuthorizeReq(req)
 	if err != nil {
+		slog.Warn("oauth: authorization request rejected", "usr_id", session.Id, "error", err)
 		return "", err
 	}
+
+	slog.Info("oauth: consent", "approve", approve, "client_name", client.Name, "redirect_uri", req.RedirectUri, "usr_id", session.Id)
 
 	if !approve {
 		return redirectWith(req.RedirectUri, map[string]string{

@@ -11,6 +11,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -117,14 +118,14 @@ func (h *Handler) HTTPHandler() http.Handler {
 
 	mcpHandler := h.authMiddleware(streamable, oauth)
 	if oauth == nil {
-		return mcpHandler
+		return withAccessLog(mcpHandler)
 	}
 
 	mux := http.NewServeMux()
 	oauth.register(mux)
 	mux.Handle("/", mcpHandler)
 
-	return mux
+	return withAccessLog(mux)
 }
 
 func (h *Handler) authMiddleware(next http.Handler, oauth *oauthEndpoints) http.Handler {
@@ -137,6 +138,7 @@ func (h *Handler) authMiddleware(next http.Handler, oauth *oauthEndpoints) http.
 
 		session, err := h.authenticate(r.Context(), credential)
 		if err != nil {
+			slog.Warn("mcp: credential rejected", "credential", credentialKind(r), "client_ip", clientIP(r), "error", err)
 			unauthorized(w, oauth, "invalid_token", "ruto mcp: invalid api key or token")
 			return
 		}

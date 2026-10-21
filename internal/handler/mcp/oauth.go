@@ -180,7 +180,7 @@ func (e *oauthEndpoints) handleRegister(w http.ResponseWriter, r *http.Request) 
 
 	in := &registerIn{}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, oauthFormMaxBytes)).Decode(in); err != nil {
-		writeOAuthError(w, &usecaseOAuth.Error{Code: usecaseOAuth.ErrInvalidClientMetadata, Description: "body must be a JSON object"})
+		writeOAuthError(w, r, &usecaseOAuth.Error{Code: usecaseOAuth.ErrInvalidClientMetadata, Description: "body must be a JSON object"})
 		return
 	}
 
@@ -192,7 +192,7 @@ func (e *oauthEndpoints) handleRegister(w http.ResponseWriter, r *http.Request) 
 		ResponseTypes:           in.ResponseTypes,
 	})
 	if err != nil {
-		writeOAuthError(w, err)
+		writeOAuthError(w, r, err)
 		return
 	}
 
@@ -210,6 +210,13 @@ func (e *oauthEndpoints) handleRegister(w http.ResponseWriter, r *http.Request) 
 		out.ClientSecretExpiresAt = new(int64(0)) // never expires
 	}
 
+	slog.Info("mcp oauth: client registered",
+		"client_name", rep.Client.Name,
+		"redirect_uris", rep.Client.RedirectUris,
+		"auth_method", rep.Client.AuthMethod,
+		"client_ip", clientIP(r),
+	)
+
 	writeJSON(w, http.StatusCreated, out)
 }
 
@@ -220,7 +227,7 @@ func (e *oauthEndpoints) handleToken(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, oauthFormMaxBytes)
 	if err := r.ParseForm(); err != nil {
-		writeOAuthError(w, &usecaseOAuth.Error{Code: usecaseOAuth.ErrInvalidRequest, Description: "body must be a form"})
+		writeOAuthError(w, r, &usecaseOAuth.Error{Code: usecaseOAuth.ErrInvalidRequest, Description: "body must be a form"})
 		return
 	}
 
@@ -237,7 +244,7 @@ func (e *oauthEndpoints) handleToken(w http.ResponseWriter, r *http.Request) {
 		ClientSecret: clientSecret,
 	})
 	if err != nil {
-		writeOAuthError(w, err)
+		writeOAuthError(w, r, err)
 		return
 	}
 
@@ -258,14 +265,14 @@ func (e *oauthEndpoints) handleRevoke(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, oauthFormMaxBytes)
 	if err := r.ParseForm(); err != nil {
-		writeOAuthError(w, &usecaseOAuth.Error{Code: usecaseOAuth.ErrInvalidRequest, Description: "body must be a form"})
+		writeOAuthError(w, r, &usecaseOAuth.Error{Code: usecaseOAuth.ErrInvalidRequest, Description: "body must be a form"})
 		return
 	}
 
 	clientId, clientSecret := clientCredentials(r)
 
 	if err := e.uc.Revoke(r.Context(), r.PostForm.Get("token"), clientId, clientSecret); err != nil {
-		writeOAuthError(w, err)
+		writeOAuthError(w, r, err)
 		return
 	}
 
@@ -288,15 +295,23 @@ func clientCredentials(r *http.Request) (string, string) {
 	return r.PostForm.Get("client_id"), r.PostForm.Get("client_secret")
 }
 
-func writeOAuthError(w http.ResponseWriter, err error) {
+func writeOAuthError(w http.ResponseWriter, r *http.Request, err error) {
 	w.Header().Set("Cache-Control", "no-store")
 
 	oauthErr, ok := errors.AsType[*usecaseOAuth.Error](err)
 	if !ok {
-		slog.Error("mcp oauth: request failed", "error", err)
+		slog.Error("mcp oauth: request failed", "path", r.URL.Path, "client_ip", clientIP(r), "error", err)
 		writeJSON(w, http.StatusInternalServerError, &errorOut{Error: "server_error", ErrorDescription: "internal error"})
 		return
 	}
+
+	slog.Warn("mcp oauth: request rejected",
+		"path", r.URL.Path,
+		"grant_type", r.PostForm.Get("grant_type"),
+		"error", oauthErr.Code,
+		"description", oauthErr.Description,
+		"client_ip", clientIP(r),
+	)
 
 	if oauthErr.Code == usecaseOAuth.ErrInvalidClient {
 		w.Header().Set("WWW-Authenticate", `Basic realm="ruto"`)

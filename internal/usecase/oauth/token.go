@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -84,12 +85,12 @@ func (u *Usecase) Token(ctx context.Context, req *TokenReq) (*TokenRep, error) {
 		return nil, newError(ErrInvalidTarget, "resource is not this server (%s)", u.conf.Issuer)
 	}
 
-	var result *TokenRep
+	var (
+		result *TokenRep
+		grant  *model.Grant
+	)
 	err := u.txm.TxFn(ctx, func(ctx context.Context) error {
-		var (
-			grant *model.Grant
-			err   error
-		)
+		var err error
 
 		switch req.GrantType {
 		case grantTypeAuthorizationCode:
@@ -137,6 +138,14 @@ func (u *Usecase) Token(ctx context.Context, req *TokenReq) (*TokenRep, error) {
 		}
 		return nil, err
 	}
+
+	slog.Info("oauth: tokens issued",
+		"grant_type", req.GrantType,
+		"grant_id", grant.Id,
+		"client_name", grant.ClientName,
+		"usr_id", grant.UsrId,
+		"access_ttl", u.conf.AccessTTL.String(),
+	)
 
 	return result, nil
 }
@@ -233,6 +242,8 @@ func (u *Usecase) Revoke(ctx context.Context, token, clientId, clientSecret stri
 	if err = u.svc.DeleteGrant(ctx, grant.Id); err != nil {
 		return fmt.Errorf("svc.DeleteGrant: %w", err)
 	}
+
+	slog.Info("oauth: connection revoked by the client", "grant_id", grant.Id, "client_name", grant.ClientName, "kind", item.Kind)
 
 	return nil
 }

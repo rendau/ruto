@@ -65,6 +65,17 @@ MCP-сервера, клиент открывает в браузере стра
   живут под этим путём, но часть клиентов ищет метаданные в корне домена
   (`/.well-known/oauth-*/mcp`) — тогда эти пути в Ingress тоже нужно направить на MCP-порт.
 
+## Логи
+
+Каждый запрос на MCP-порт пишется строкой `mcp: request`: метод, путь, JSON-RPC метод
+(`initialize`, `tools/call`…), статус, время, вид учётных данных (`none` / `api_key` /
+`oauth`, сами значения никогда), адрес клиента (`Cf-Connecting-Ip` → `X-Forwarded-For` →
+`X-Real-Ip`), `cf_ray` для поиска запроса в событиях Cloudflare и User-Agent. Отказы —
+отдельно с причиной: `mcp: credential rejected` + `oauth: access token rejected` (неизвестный,
+истёкший, не access-токен, подключение удалено, пользователь больше не админ),
+`mcp oauth: request rejected` (код и описание ошибки OAuth). Шаги входа: `mcp oauth: client
+registered`, `oauth: consent`, `oauth: tokens issued`, `oauth: connection revoked by the client`.
+
 ## Секреты
 
 Секретными считаются: пароли basic-авторизации, ключи `api_key`, значения переменных
