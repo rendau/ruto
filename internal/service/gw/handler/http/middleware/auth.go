@@ -23,14 +23,20 @@ func NewAuth(
 			authRequest.SetHttpHeader(r.Header)
 			authRequest.SetHttpQueryParams(r.URL.Query())
 			authRequest.SetRemoteAddr(r.RemoteAddr)
-			if service.Check(authRequest) {
+			result := service.Check(authRequest)
+			if result == authModel.Allowed {
 				next.ServeHTTP(w, r)
-			} else {
-				if rw, ok := w.(*rw_wrapper.Wrapper); ok {
-					rw.MarkExpected()
-				}
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
 			}
+
+			if rw, ok := w.(*rw_wrapper.Wrapper); ok {
+				rw.MarkExpected()
+			}
+			code := http.StatusUnauthorized
+			if result.Forbidden() {
+				code = http.StatusForbidden
+			}
+			http.Error(w, http.StatusText(code), code)
 		})
 	}
 }

@@ -15,15 +15,11 @@ func New(conf *authModel.AuthMethodBasic) *Authorizer {
 	return &Authorizer{conf: conf}
 }
 
-func (a *Authorizer) Authorize(req *model.AuthRequest) bool {
-	if len(a.conf.Users) == 0 {
-		return false
-	}
-
+func (a *Authorizer) Authorize(req *model.AuthRequest) model.Result {
 	username, password := req.ExtractBasic()
 
 	if username == "" {
-		return false
+		return model.NoCredentials
 	}
 
 	for _, user := range a.conf.Users {
@@ -31,9 +27,9 @@ func (a *Authorizer) Authorize(req *model.AuthRequest) bool {
 			continue
 		}
 		if subtle.ConstantTimeCompare([]byte(password), []byte(user.Password)) == 1 {
-			return true
+			return model.Allowed
 		}
 	}
 
-	return false
+	return model.InvalidCredentials
 }

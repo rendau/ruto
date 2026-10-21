@@ -31,25 +31,17 @@ func New(conf *authModel.AuthMethodAPIKey) *Authorizer {
 	}
 }
 
-func (a *Authorizer) Authorize(req *model.AuthRequest) bool {
-	if len(a.allowedKeyMap) == 0 {
-		return false
-	}
-
+func (a *Authorizer) Authorize(req *model.AuthRequest) model.Result {
 	apiKey := req.ExtractAPIKey(a.header)
 	if apiKey == "" {
-		return false
+		return model.NoCredentials
 	}
 
-	if a.allowedKeyMap[apiKey] {
-		return true
+	if a.allowedKeyMap[apiKey] || a.allowedKeyMap[stripBearer(apiKey)] {
+		return model.Allowed
 	}
 
-	if stripped := stripBearer(apiKey); stripped != apiKey {
-		return a.allowedKeyMap[stripped]
-	}
-
-	return false
+	return model.InvalidCredentials
 }
 
 func stripBearer(value string) string {

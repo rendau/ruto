@@ -34,14 +34,20 @@ func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handl
 		}),
 		runtime.WithErrorHandler(func(_ context.Context, _ *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, _ *http.Request, err error) {
 			var repBody []byte
+			httpStatus := http.StatusBadRequest
 
 			if st, ok := status.FromError(err); ok {
-				if st.Code() == codes.NotFound {
+				switch st.Code() {
+				case codes.NotFound:
 					w.WriteHeader(http.StatusNotFound)
 					_, _ = w.Write([]byte(`service path not found`))
 					return
+				case codes.Unauthenticated:
+					httpStatus = http.StatusUnauthorized
+				case codes.PermissionDenied:
+					httpStatus = http.StatusForbidden
 				}
-				if st.Code() == codes.InvalidArgument && len(st.Details()) > 0 {
+				if len(st.Details()) > 0 {
 					var marshalErr error
 					repBody, marshalErr = marshaler.Marshal(st.Details()[0])
 					if marshalErr != nil {
@@ -66,7 +72,7 @@ func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handl
 			}
 
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
+			w.WriteHeader(httpStatus)
 			_, err = io.Copy(w, bytes.NewReader(repBody))
 			if err != nil {
 				slog.Error("GRPC_GW: ErrorHandler: Failed to write response", "error", err)

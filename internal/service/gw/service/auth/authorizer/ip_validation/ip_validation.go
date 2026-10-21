@@ -32,10 +32,10 @@ func New(conf *authModel.AuthMethodIPValidation, trustedProxyAddresses []string)
 	}
 }
 
-func (a *Authorizer) Authorize(req *model.AuthRequest) bool {
+func (a *Authorizer) Authorize(req *model.AuthRequest) model.Result {
 	clientIP := a.extractClientIP(req)
 	if a.checkIP(clientIP) {
-		return true
+		return model.Allowed
 	}
 
 	slog.Warn(
@@ -47,7 +47,7 @@ func (a *Authorizer) Authorize(req *model.AuthRequest) bool {
 		"remote_addr", req.RemoteAddr,
 	)
 
-	return false
+	return model.Denied
 }
 
 func (a *Authorizer) checkIP(ip netip.Addr) bool {

@@ -29,15 +29,15 @@ func TestAuthorize(t *testing.T) {
 	tests := []struct {
 		name  string
 		value string
-		want  bool
+		want  model.Result
 	}{
-		{"plain key", "secret-key", true},
-		{"bearer prefix", "Bearer secret-key", true},
-		{"bearer lowercase", "bearer secret-key", true},
-		{"bearer extra spaces", "Bearer   secret-key  ", true},
-		{"wrong key", "wrong", false},
-		{"bearer wrong key", "Bearer wrong", false},
-		{"empty", "", false},
+		{"plain key", "secret-key", model.Allowed},
+		{"bearer prefix", "Bearer secret-key", model.Allowed},
+		{"bearer lowercase", "bearer secret-key", model.Allowed},
+		{"bearer extra spaces", "Bearer   secret-key  ", model.Allowed},
+		{"wrong key", "wrong", model.InvalidCredentials},
+		{"bearer wrong key", "Bearer wrong", model.InvalidCredentials},
+		{"empty", "", model.NoCredentials},
 	}
 
 	for _, tt := range tests {

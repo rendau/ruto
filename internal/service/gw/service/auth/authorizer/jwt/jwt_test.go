@@ -111,42 +111,42 @@ func TestAuthorize(t *testing.T) {
 		conf      *authModel.AuthMethodJWT
 		token     string
 		jwkGetter jwk.PublicKeyGetter
-		want      bool
+		want      model.Result
 	}{
 		{
 			name:      "missing token",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
 			token:     "",
 			jwkGetter: testJWKGetter,
-			want:      false,
+			want:      model.NoCredentials,
 		},
 		{
 			name:      "invalid algorithm",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
 			token:     "Bearer " + hsToken,
 			jwkGetter: testJWKGetter,
-			want:      false,
+			want:      model.InvalidCredentials,
 		},
 		{
 			name:      "missing kid",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
 			token:     "Bearer " + missingKidToken,
 			jwkGetter: testJWKGetter,
-			want:      false,
+			want:      model.InvalidCredentials,
 		},
 		{
 			name:      "kid is not allowed by config",
 			conf:      &authModel.AuthMethodJWT{Kid: "kid-2"},
 			token:     "Bearer " + validToken,
 			jwkGetter: testJWKGetter,
-			want:      false,
+			want:      model.InvalidCredentials,
 		},
 		{
 			name:      "kid not found in jwk service",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
 			token:     "Bearer " + validToken,
 			jwkGetter: &testJWKGetterT{},
-			want:      false,
+			want:      model.InvalidCredentials,
 		},
 		{
 			name:  "jwk alg mismatch",
@@ -163,42 +163,42 @@ func TestAuthorize(t *testing.T) {
 					},
 				},
 			},
-			want: false,
+			want: model.InvalidCredentials,
 		},
 		{
 			name:      "invalid signature",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
 			token:     "Bearer " + badSignatureToken,
 			jwkGetter: testJWKGetter,
-			want:      false,
+			want:      model.InvalidCredentials,
 		},
 		{
 			name:      "required role missing",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid, Roles: []string{"super-admin"}},
 			token:     "Bearer " + validToken,
 			jwkGetter: testJWKGetter,
-			want:      false,
+			want:      model.DeniedAuthenticated,
 		},
 		{
 			name:      "authorized",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid, Roles: []string{"moderator"}},
 			token:     "Bearer " + validToken,
 			jwkGetter: testJWKGetter,
-			want:      true,
+			want:      model.Allowed,
 		},
 		{
 			name:      "authorized when role is not required and token has no roles claims",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
 			token:     "Bearer " + validTokenWithoutRoles,
 			jwkGetter: testJWKGetter,
-			want:      true,
+			want:      model.Allowed,
 		},
 		{
 			name:      "authorized by keycloak resource_access roles",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid, Roles: []string{"admin"}},
 			token:     "Bearer " + keycloakResourceAccessToken,
 			jwkGetter: testJWKGetter,
-			want:      true,
+			want:      model.Allowed,
 		},
 	}
 

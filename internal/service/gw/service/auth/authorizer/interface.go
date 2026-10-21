@@ -5,5 +5,5 @@ import (
 )
 
 type Authorizer interface {
-	Authorize(req *model.AuthRequest) bool
+	Authorize(req *model.AuthRequest) model.Result
 }

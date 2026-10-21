@@ -17,7 +17,7 @@ func TestAuthorizeTrustedProxyFlow(t *testing.T) {
 		trustedProxyAddresses []string
 		remoteAddr            string
 		xff                   string
-		want                  bool
+		want                  authReqModel.Result
 	}{
 		{
 			name:                  "remote is not trusted so forwarded headers are ignored",
@@ -25,7 +25,7 @@ func TestAuthorizeTrustedProxyFlow(t *testing.T) {
 			trustedProxyAddresses: []string{"10.0.0.0/8"},
 			remoteAddr:            "203.0.113.10:443",
 			xff:                   "1.1.1.1",
-			want:                  false,
+			want:                  authReqModel.Denied,
 		},
 		{
 			name:                  "remote is trusted and client is detected from right to left",
@@ -33,7 +33,7 @@ func TestAuthorizeTrustedProxyFlow(t *testing.T) {
 			trustedProxyAddresses: []string{"10.0.0.0/8"},
 			remoteAddr:            "10.0.0.10:443",
 			xff:                   "1.1.1.1, 10.0.0.2, 10.0.0.3",
-			want:                  true,
+			want:                  authReqModel.Allowed,
 		},
 		{
 			name:                  "all addresses are trusted proxies",
@@ -41,7 +41,7 @@ func TestAuthorizeTrustedProxyFlow(t *testing.T) {
 			trustedProxyAddresses: []string{"10.0.0.0/8"},
 			remoteAddr:            "10.0.0.10:443",
 			xff:                   "10.0.0.2, 10.0.0.3",
-			want:                  false,
+			want:                  authReqModel.Denied,
 		},
 	}
 

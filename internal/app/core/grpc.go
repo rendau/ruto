@@ -202,7 +202,15 @@ func GrpcInterceptorError() grpc.UnaryServerInterceptor {
 			slog.String("method", info.FullMethod),
 		)
 
-		st := status.New(codes.InvalidArgument, errStr)
+		code := codes.InvalidArgument
+		switch ei.Code {
+		case errs.NotAuthorized.Error():
+			code = codes.Unauthenticated
+		case errs.NoPermission.Error():
+			code = codes.PermissionDenied
+		}
+
+		st := status.New(code, errStr)
 		st, err = st.WithDetails(ei)
 		if err != nil {
 			slog.Error(
@@ -210,7 +218,7 @@ func GrpcInterceptorError() grpc.UnaryServerInterceptor {
 				slog.String("error", errStr),
 				slog.String("method", info.FullMethod),
 			)
-			st = status.New(codes.InvalidArgument, errStr)
+			st = status.New(code, errStr)
 		}
 
 		return h, st.Err()

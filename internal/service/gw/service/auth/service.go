@@ -31,11 +31,14 @@ func New(
 	}
 }
 
-func (s *Service) Check(req *model.AuthRequest) bool {
+func (s *Service) Check(req *model.AuthRequest) model.Result {
+	result := model.Allowed
 	for _, x := range s.methods {
-		if x.check(req) {
-			return true
+		res := x.check(req)
+		if res == model.Allowed {
+			return model.Allowed
 		}
+		result = max(result, res)
 	}
-	return false
+	return result
 }

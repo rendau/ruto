@@ -41,11 +41,18 @@ func newMethod(src *authModel.AuthMethod) (*method, bool) {
 	}, true
 }
 
-func (m *method) check(req *model.AuthRequest) bool {
-	for _, x := range m.authorizers {
-		if !x.Authorize(req) {
-			return false
+func (m *method) check(req *model.AuthRequest) model.Result {
+	for i, x := range m.authorizers {
+		res := x.Authorize(req)
+		if res == model.Allowed {
+			continue
 		}
+		// ip validation goes after the credential authorizers, so its denial
+		// after any of them passed refuses an authenticated client.
+		if res == model.Denied && i > 0 {
+			return model.DeniedAuthenticated
+		}
+		return res
 	}
-	return true
+	return model.Allowed
 }

@@ -34,15 +34,15 @@ func New(conf *domAuthModel.AuthMethodJWT, jwkGetter jwk.PublicKeyGetter) *Jwt {
 	}
 }
 
-func (a *Jwt) Authorize(req *model.AuthRequest) bool {
+func (a *Jwt) Authorize(req *model.AuthRequest) model.Result {
 	jwtToken := req.ExtractToken()
 	if jwtToken == "" {
-		return false
+		return model.NoCredentials
 	}
 
 	jwkPubKey, jwkAlg := a.jwkGetter.GetPublicKey(a.requiredKid)
 	if jwkPubKey == nil {
-		return false
+		return model.InvalidCredentials
 	}
 
 	claims := jwtv5.MapClaims{}
@@ -63,7 +63,7 @@ func (a *Jwt) Authorize(req *model.AuthRequest) bool {
 		jwtv5.WithValidMethods([]string{jwkAlg}),
 	)
 	if err != nil || parsed == nil || !parsed.Valid {
-		return false
+		return model.InvalidCredentials
 	}
 
 	if userId, firstSeen := markIndefinite(a.requiredKid, claims); firstSeen {
@@ -77,11 +77,11 @@ func (a *Jwt) Authorize(req *model.AuthRequest) bool {
 
 	if len(a.requiredRoleMap) > 0 {
 		if !hasAnyRole(claims, a.checkRole) {
-			return false
+			return model.DeniedAuthenticated
 		}
 	}
 
-	return true
+	return model.Allowed
 }
 
 func (a *Jwt) checkRole(role string) bool {

@@ -125,6 +125,7 @@ _ = resp
 ## Частые ошибки
 
 - `route not found`: нет `x-ruto-app-name`, app name не совпадает, endpoint inactive, app inactive или `gRPC Path` не совпадает с реальным `/package.Service/Method`.
-- `Unauthenticated`: endpoint/app/root auth включен, но клиент не передал нужные metadata headers.
+- `Unauthenticated`: endpoint/app/root auth включен, но клиент не передал нужные metadata headers или они неверные (истёкший токен, чужой ключ).
+- `PermissionDenied`: учётные данные верные, но доступа не дают — у JWT нет нужной роли или IP клиента не в списке разрешённых.
 - `Unavailable: dial backend`: gateway нашел route, но не смог подключиться к `<Backend hostname>:<gRPC Port>`.
 - HTTP gateway port не подходит для gRPC. Для gRPC нужен `GRPC_PORT`, сейчас локально это `3031`.
