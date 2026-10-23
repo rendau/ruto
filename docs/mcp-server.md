@@ -155,7 +155,7 @@ registered`, `oauth: consent`, `oauth: tokens issued`, `oauth: connection revoke
 
 | Группа | Инструменты |
 | --- | --- |
-| Чтение | `get_root`, `list_apps`, `get_app`, `list_endpoints`, `get_endpoint`, `get_endpoint_effective` (после наследования), `get_swagger_diff`, `list_seen_paths` (пути wildcard-эндпоинтов с числом запросов) |
+| Чтение | `get_root`, `list_apps`, `get_app`, `list_endpoints`, `get_endpoint`, `get_endpoint_effective` (после наследования), `get_swagger_diff`, `list_seen_paths` (пути wildcard-эндпоинтов с `track_paths=true` с числом запросов; флаг виден в `get_endpoint`/`list_endpoints` и меняется через `propose_changes`) |
 | Публикация | `get_publish_status` — опубликованная версия, версия, которую дала бы публикация сейчас, и версия каждого шлюза |
 | Метрики | `get_endpoint_metrics`, `get_app_metrics` — запросы в секунду, доля ошибок, среднее время; итоги и ряд (нужен `PROMETHEUS_URL`) |
 | Заявки | `propose_changes`, `get_change_request` (статус, комментарий, ошибка, id созданных объектов, «было → стало»), `list_change_requests`, `cancel_change_request` |

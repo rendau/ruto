@@ -244,6 +244,7 @@ export interface EndpointMain {
   app_id: string;
   active: boolean;
   exclude_from_metrics: boolean;
+  track_paths: boolean;
   type: EndpointType;
   http: EndpointHttp;
   grpc: EndpointGrpc;

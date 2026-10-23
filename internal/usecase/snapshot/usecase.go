@@ -88,9 +88,13 @@ func (u *Usecase) Refresh(ctx context.Context) error {
 		return err
 	}
 
-	err = u.snapshotSvc.Set(ctx, &snapshotModel.Snapshot{
-		Hash: newVersion,
-		Data: result,
+	return u.store(ctx, result, newVersion)
+}
+
+func (u *Usecase) store(ctx context.Context, data []byte, version string) error {
+	err := u.snapshotSvc.Set(ctx, &snapshotModel.Snapshot{
+		Hash: version,
+		Data: data,
 	})
 	if err != nil {
 		return fmt.Errorf("snapshotSvc.Set: %w", err)
@@ -134,22 +138,42 @@ func (u *Usecase) build(ctx context.Context) ([]byte, string, error) {
 		return nil, "", fmt.Errorf("json.Marshal: %w", err)
 	}
 
-	sum := sha256.Sum256(result)
+	return result, digest(result), nil
+}
 
-	return result, hex.EncodeToString(sum[:]), nil
+func digest(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
 
 func (u *Usecase) ensure(ctx context.Context) error {
-	version, err := u.GetVersion(ctx)
+	current, err := u.snapshotSvc.Get(ctx)
 	if err != nil {
-		return fmt.Errorf("GetVersion: %w", err)
+		return fmt.Errorf("snapshotSvc.Get: %w", err)
 	}
-	if version != "" {
+	if current.Hash == "" {
+		if err = u.Refresh(ctx); err != nil {
+			return fmt.Errorf("u.Refresh: %w", err)
+		}
 		return nil
 	}
 
-	if err = u.Refresh(ctx); err != nil {
-		return fmt.Errorf("u.Refresh: %w", err)
+	// A migration may edit the published snapshot in SQL. Its hash is then
+	// recomputed from the stored data: gateways reload it, and publishing the
+	// unchanged config later still yields the same version.
+	obj := &rootModel.Root{}
+	if err = json.Unmarshal(current.Data, obj); err != nil {
+		return fmt.Errorf("json.Unmarshal: %w", err)
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %w", err)
+	}
+	if version := digest(data); version != current.Hash {
+		slog.Info("snapshot-usecase: stored snapshot changed, version recomputed", "old", current.Hash, "new", version)
+		if err = u.store(ctx, data, version); err != nil {
+			return fmt.Errorf("store: %w", err)
+		}
 	}
 
 	return nil

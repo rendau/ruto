@@ -37,12 +37,12 @@ func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_endpoints",
-		Description: "Endpoints of an app: id, type, method, path, custom_path, active, whether transform scripts are set. app: id or exact name.",
+		Description: "Endpoints of an app: id, type, method, path, custom_path, active, track_paths, whether transform scripts are set. app: id or exact name.",
 	}, s.listEndpoints)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_endpoint",
-		Description: "Full endpoint configuration (including transform scripts) with secrets masked, plus its version for update_endpoint.",
+		Description: "Full endpoint configuration (including transform scripts and track_paths) with secrets masked, plus its version for update_endpoint.",
 	}, s.getEndpoint)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
@@ -57,7 +57,7 @@ func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_seen_paths",
-		Description: "Concrete paths the gateway served through wildcard endpoints of an app, with hit counts (ids collapsed to {id}), most requested first. Use it to replace a wildcard with exact endpoints. endpoint_id narrows to one wildcard endpoint.",
+		Description: "Concrete paths the gateway served through wildcard endpoints of an app, with hit counts (ids collapsed to {id}), most requested first. Use it to replace a wildcard with exact endpoints. Only wildcard endpoints with track_paths=true are counted. endpoint_id narrows to one wildcard endpoint.",
 	}, s.listSeenPaths)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
@@ -225,6 +225,7 @@ type EndpointSummary struct {
 	Method            string `json:"method,omitempty"`
 	Path              string `json:"path"`
 	CustomPath        string `json:"custom_path,omitempty"`
+	TrackPaths        bool   `json:"track_paths,omitempty"`
 	TransformRequest  bool   `json:"transform_request,omitempty"`
 	TransformResponse bool   `json:"transform_response,omitempty"`
 }
@@ -257,6 +258,7 @@ func (s *sessionServer) listEndpoints(ctx context.Context, req *mcpsdk.CallToolR
 			Active:            v.Active,
 			Type:              string(v.Type),
 			CustomPath:        v.Backend.CustomPath,
+			TrackPaths:        v.TrackPaths,
 			TransformRequest:  v.Transform.Request != "",
 			TransformResponse: v.Transform.Response != "",
 		}

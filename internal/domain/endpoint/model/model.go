@@ -19,6 +19,7 @@ type Endpoint struct {
 	AppId              string               `json:"app_id"`
 	Active             bool                 `json:"active"`
 	ExcludeFromMetrics bool                 `json:"exclude_from_metrics"`
+	TrackPaths         bool                 `json:"track_paths"`
 	Type               Type                 `json:"type"`
 	Http               Http                 `json:"http"`
 	Grpc               Grpc                 `json:"grpc"`

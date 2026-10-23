@@ -115,3 +115,34 @@ func TestEndpointNormalize_BackendRequestParams(t *testing.T) {
 		t.Fatalf("query param normalize failed: %#v", item.Backend.QueryParams)
 	}
 }
+
+func TestEndpointNormalize_TrackPathsOnlyForWildcard(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{path: "docs/*", want: true},
+		{path: "*", want: true},
+		{path: "docs/{id}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			item := &Endpoint{
+				Type:       TypeHTTP,
+				TrackPaths: true,
+				Http:       Http{Method: "GET", Path: tt.path},
+			}
+			require.NoError(t, item.Normalize())
+			require.Equal(t, tt.want, item.TrackPaths)
+		})
+	}
+
+	item := &Endpoint{
+		Type:       TypeGRPC,
+		TrackPaths: true,
+		Grpc:       Grpc{Service: "svc.Users", Method: "Get", Path: "/svc.Users/Get"},
+	}
+	require.NoError(t, item.Normalize())
+	require.False(t, item.TrackPaths)
+}

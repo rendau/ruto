@@ -214,6 +214,7 @@ export function normalizeEndpoint(value: EndpointMain): EndpointMain {
     app_id: value?.app_id || "",
     active: Boolean(value?.active),
     exclude_from_metrics: Boolean(value?.exclude_from_metrics),
+    track_paths: Boolean(value?.track_paths),
     type: value?.type === "grpc" ? "grpc" : "http",
     http: {
       method: raw.http?.method || raw.method || "",

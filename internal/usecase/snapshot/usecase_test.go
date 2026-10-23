@@ -2,6 +2,7 @@ package snapshot
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,38 +16,77 @@ import (
 )
 
 type testSnapshotService struct {
+	stored   snapshotModel.Snapshot
 	setCalls int
 }
 
 func (s *testSnapshotService) GetVersion(_ context.Context) (string, error) {
-	return "existing", nil
+	return s.stored.Hash, nil
 }
 
 func (s *testSnapshotService) Get(_ context.Context) (*snapshotModel.Snapshot, error) {
-	return &snapshotModel.Snapshot{}, nil
+	return new(s.stored), nil
 }
 
-func (s *testSnapshotService) Set(_ context.Context, _ *snapshotModel.Snapshot) error {
+func (s *testSnapshotService) Set(_ context.Context, obj *snapshotModel.Snapshot) error {
+	s.stored = *obj
 	s.setCalls++
 	return nil
+}
+
+// newStoredSnapshot is a snapshot published earlier: its hash matches its data.
+func newStoredSnapshot(t *testing.T) *testSnapshotService {
+	data, err := json.Marshal(&rootModel.Root{})
+	require.NoError(t, err)
+	return &testSnapshotService{stored: snapshotModel.Snapshot{Hash: digest(data), Data: data}}
 }
 
 type testRootService struct{}
 
 func (s *testRootService) Get(_ context.Context) (*rootModel.Root, error) {
-	return &rootModel.Root{}, nil
+	root := rootModel.NewEmpty()
+	root.Variables = map[string]string{"TOKEN": "root-token"}
+	return root, nil
 }
 
 type testAppService struct{}
 
 func (s *testAppService) List(_ context.Context, _ *appModel.ListReq) ([]*appModel.App, int64, error) {
-	return nil, 0, nil
+	return []*appModel.App{{
+		Id:            "app-1",
+		Active:        true,
+		Name:          "shop",
+		PathPrefix:    "/shop",
+		AllowWildcard: true,
+		Backend:       appModel.Backend{Url: "http://shop:8080"},
+	}}, 1, nil
 }
 
-type testEndpointService struct{}
+// testEndpointService serves the config of one app; trackPaths stands for the
+// migration that adds the flag to wildcard endpoints.
+type testEndpointService struct {
+	trackPaths bool
+}
 
 func (s *testEndpointService) List(_ context.Context, _ *endpointModel.ListReq) ([]*endpointModel.Endpoint, int64, error) {
-	return nil, 0, nil
+	return []*endpointModel.Endpoint{
+		{
+			Id:         "ep-wild",
+			AppId:      "app-1",
+			Active:     true,
+			TrackPaths: s.trackPaths,
+			Type:       endpointModel.TypeHTTP,
+			Http:       endpointModel.Http{Method: "*", Path: "*"},
+		},
+		{
+			Id:      "ep-exact",
+			AppId:   "app-1",
+			Active:  true,
+			Type:    endpointModel.TypeHTTP,
+			Http:    endpointModel.Http{Method: "GET", Path: "product/{code}"},
+			Backend: endpointModel.Backend{Headers: map[string]string{"X-Token": "{{TOKEN}}"}},
+		},
+	}, 2, nil
 }
 
 type testGatewaysNotifier struct {
@@ -78,7 +118,7 @@ func TestUsecase_Deploy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			snapshotSvc := &testSnapshotService{}
+			snapshotSvc := newStoredSnapshot(t)
 			notifier := &testGatewaysNotifier{}
 			uc := New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, &testSessionService{session: tt.session})
 
@@ -95,4 +135,53 @@ func TestUsecase_Deploy(t *testing.T) {
 			require.Equal(t, 1, notifier.calls)
 		})
 	}
+}
+
+func TestUsecase_EnsureKeepsPublishedVersion(t *testing.T) {
+	snapshotSvc := newStoredSnapshot(t)
+	notifier := &testGatewaysNotifier{}
+	session := &testSessionService{session: &sessionModel.Session{Id: 1, Admin: true}}
+
+	uc := New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, session)
+	require.Zero(t, snapshotSvc.setCalls)
+
+	require.NoError(t, uc.Deploy(context.Background()))
+	published := snapshotSvc.stored.Hash
+
+	// a core restart reads the snapshot it published itself
+	New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, session)
+	require.Equal(t, 1, snapshotSvc.setCalls)
+	require.Equal(t, published, snapshotSvc.stored.Hash)
+}
+
+func TestUsecase_EnsureRecomputesEditedSnapshot(t *testing.T) {
+	snapshotSvc := newStoredSnapshot(t)
+	notifier := &testGatewaysNotifier{}
+	session := &testSessionService{session: &sessionModel.Session{Id: 1, Admin: true}}
+
+	uc := New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, session)
+	require.NoError(t, uc.Deploy(context.Background()))
+	published := snapshotSvc.stored.Hash
+
+	// the migration sets the flag in the config and in the published snapshot,
+	// leaving the hash as it was
+	var data map[string]any
+	require.NoError(t, json.Unmarshal(snapshotSvc.stored.Data, &data))
+	wildcard := data["apps"].([]any)[0].(map[string]any)["endpoints"].([]any)[0].(map[string]any)
+	require.Equal(t, "ep-wild", wildcard["id"])
+	wildcard["track_paths"] = true
+	edited, err := json.Marshal(data)
+	require.NoError(t, err)
+	snapshotSvc.stored.Data = edited
+
+	migrated := &testEndpointService{trackPaths: true}
+	uc = New(snapshotSvc, &testRootService{}, &testAppService{}, migrated, notifier, session)
+
+	require.Equal(t, 2, snapshotSvc.setCalls)
+	require.NotEqual(t, published, snapshotSvc.stored.Hash, "gateways must see a new version")
+
+	// nothing is left unpublished: the config builds into the same version
+	current, err := uc.CurrentVersion(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, current, snapshotSvc.stored.Hash)
 }

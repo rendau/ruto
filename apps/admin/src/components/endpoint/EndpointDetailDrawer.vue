@@ -33,6 +33,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useRootStore } from "@/stores/root";
 import { variablesToArray } from "@/api/normalize";
 import { joinPath, joinUrl } from "@/lib/format";
+import { hasWildcard } from "@/lib/endpointPath";
 import MethodBadge from "@/components/common/MethodBadge.vue";
 import StatusTag from "@/components/common/StatusTag.vue";
 import CopyText from "@/components/common/CopyText.vue";
@@ -236,6 +237,9 @@ function remove(): void {
             </DefRow>
             <DefRow label="Metrics">
               {{ item.exclude_from_metrics ? "Excluded" : "Included" }}
+            </DefRow>
+            <DefRow v-if="item.type === 'http' && hasWildcard(item.http.path)" label="Seen paths">
+              {{ item.track_paths ? "Tracked" : "Not tracked" }}
             </DefRow>
           </DefList>
 

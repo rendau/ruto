@@ -216,6 +216,13 @@ function close(): void {
         <div class="switch-row">
           <SwitchField v-model="model.active" label="Active" />
           <NCheckbox v-model:checked="model.exclude_from_metrics">Exclude from metrics</NCheckbox>
+          <NCheckbox
+            v-if="model.type === 'http' && hasWildcard(model.http.path)"
+            v-model:checked="model.track_paths"
+            title="Count the concrete paths this wildcard serves in the Seen paths report"
+          >
+            Track seen paths
+          </NCheckbox>
         </div>
 
         <NCollapse v-model:expanded-names="expandedNames" class="advanced">

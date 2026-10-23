@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/go-chi/chi/v5"
 
@@ -48,6 +49,12 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper) (_ http
 		if len(endpoints) == 0 {
 			continue
 		}
+		// chi stores a "*" handler under every method of its route, overwriting
+		// the method handlers registered before it on the same path: registering
+		// "*" first lets a concrete method win whatever the snapshot order.
+		slices.SortStableFunc(endpoints, func(a, b *endpointModel.Endpoint) int {
+			return anyMethodOrder(a) - anyMethodOrder(b)
+		})
 
 		appProxyHandler := http.StripPrefix(app.PathPrefix, proxy.NewProxy(app, "", transport))
 
@@ -89,4 +96,11 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper) (_ http
 	}
 
 	return middleware.NewCors(snapshot.Cors)(router), nil
+}
+
+func anyMethodOrder(ep *endpointModel.Endpoint) int {
+	if ep.Http.Method == "*" {
+		return 0
+	}
+	return 1
 }

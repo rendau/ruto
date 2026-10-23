@@ -31,6 +31,9 @@ func (m *Endpoint) Normalize() error {
 	if m.Http.HasWildcard() && m.Backend.CustomPath != "" {
 		return fmt.Errorf("backend: custom_path: not allowed with wildcard path")
 	}
+	if !m.Http.HasWildcard() {
+		m.TrackPaths = false
+	}
 
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)

@@ -17,6 +17,7 @@ import { SearchOutline, TrashOutline } from "@vicons/ionicons5";
 import { clearSeenPaths, deleteSeenPaths, listSeenPaths } from "@/api/seenPath";
 import { apiErrorMessage } from "@/api/http";
 import { formatUnixAge } from "@/lib/datetime";
+import { hasWildcard } from "@/lib/endpointPath";
 import MethodBadge from "@/components/common/MethodBadge.vue";
 import type { AppMain, EndpointMain, SeenPathMain } from "@/api/types";
 
@@ -46,6 +47,14 @@ const error = ref("");
 const items = ref<SeenPathMain[]>([]);
 const showNotFound = ref(false);
 const showRegistered = ref(false);
+
+// Without a tracked wildcard the report stays empty, which is easy to mistake
+// for no traffic.
+const hasTrackedWildcard = computed(() =>
+  props.endpoints.some(
+    (item) => item.type === "http" && item.active && item.track_paths && hasWildcard(item.http.path)
+  )
+);
 
 function splitPath(path: string): string[] {
   return path.replace(/^\/+|\/+$/g, "").split("/");
@@ -195,10 +204,14 @@ watch(
       <NAlert v-if="error" type="error" :bordered="false" class="seen__alert">{{ error }}</NAlert>
 
       <p class="muted seen__sub">
-        What wildcard endpoints of this app actually serve. Identifiers are collapsed to
-        <code>{id}</code>. Register an explicit endpoint for a path and it stops being counted here.
-        Gateways report about every 30 seconds.
+        What wildcard endpoints of this app with <b>Track seen paths</b> on actually serve. Identifiers
+        are collapsed to <code>{id}</code>. Register an explicit endpoint for a path and it stops being
+        counted here. Gateways report about every 30 seconds.
       </p>
+      <NAlert v-if="!hasTrackedWildcard" type="info" :bordered="false" class="seen__alert">
+        No active wildcard endpoint of this app has <b>Track seen paths</b> on, so new requests are
+        not counted. Turn it on in the endpoint form.
+      </NAlert>
 
       <div class="seen__filters">
         <NInput

@@ -23,7 +23,7 @@ Operations (applied in order, all or nothing):
 - create_app: data = app object; ref = "$name" to use the new app in later operations.
 - update_app: id, version, data = full app object (get_app, edited).
 - delete_app: id, version. Deletes all its endpoints too.
-- create_endpoint: app = app id or a "$ref" of create_app in this request; data = endpoint object (type "http": http.method, http.path, e.g. "users/{id}" or a trailing "*" when the app allows wildcards; backend.custom_path; transform.request / transform.response JavaScript).
+- create_endpoint: app = app id or a "$ref" of create_app in this request; data = endpoint object (type "http": http.method, http.path, e.g. "users/{id}" or a trailing "*" when the app allows wildcards; track_paths = true on a wildcard endpoint to count the concrete paths it serves (list_seen_paths), ignored for exact paths; backend.custom_path; transform.request / transform.response JavaScript).
 - update_endpoint: id, version, data = full endpoint object (get_endpoint, edited).
 - delete_endpoint: id, version.
 - update_root: version, data = full root object (get_root, edited).

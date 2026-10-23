@@ -3,9 +3,11 @@ package http
 import (
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -203,6 +205,118 @@ func TestService_HTTPWildcardPath(t *testing.T) {
 	}
 }
 
+func TestService_HTTPRoutePriority(t *testing.T) {
+	ep := func(name, method, path string) *endpointModel.Endpoint {
+		return &endpointModel.Endpoint{
+			Active:  true,
+			Type:    endpointModel.TypeHTTP,
+			Http:    endpointModel.Http{Method: method, Path: path},
+			Backend: endpointModel.Backend{Headers: varsModel.Vars{"X-Endpoint": name}},
+		}
+	}
+
+	type request struct {
+		method string
+		path   string
+		want   string
+	}
+
+	tests := []struct {
+		name      string
+		endpoints []*endpointModel.Endpoint
+		requests  []request
+	}{
+		{
+			name: "concrete method wins over any method on the same path",
+			endpoints: []*endpointModel.Endpoint{
+				ep("any", "*", "*"),
+				ep("options", http.MethodOptions, "*"),
+				ep("product", http.MethodGet, "product/{code}"),
+			},
+			requests: []request{
+				{method: http.MethodOptions, path: "/account/catalog/offers", want: "options"},
+				{method: http.MethodGet, path: "/account/catalog/offers", want: "any"},
+				{method: http.MethodPost, path: "/account/catalog/offers", want: "any"},
+				// the exact route has only GET: other methods fall back to the wildcards
+				{method: http.MethodGet, path: "/account/product/AB123", want: "product"},
+				{method: http.MethodOptions, path: "/account/product/AB123", want: "options"},
+				{method: http.MethodPost, path: "/account/product/AB123", want: "any"},
+			},
+		},
+		{
+			name: "more specific path wins over a wider wildcard",
+			endpoints: []*endpointModel.Endpoint{
+				ep("root", "*", "*"),
+				ep("catalog", "*", "catalog/*"),
+				ep("offers", "*", "catalog/offers"),
+			},
+			requests: []request{
+				{method: http.MethodGet, path: "/account/catalog/offers", want: "offers"},
+				{method: http.MethodPost, path: "/account/catalog/offers", want: "offers"},
+				{method: http.MethodGet, path: "/account/catalog/products", want: "catalog"},
+				{method: http.MethodGet, path: "/account/basket", want: "root"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		for _, order := range permutations(tt.endpoints) {
+			names := lo.Map(order, func(v *endpointModel.Endpoint, _ int) string { return v.Backend.Headers["X-Endpoint"] })
+			t.Run(tt.name+"/"+strings.Join(names, ","), func(t *testing.T) {
+				var got string
+				backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					got = r.Header.Get("X-Endpoint")
+					w.WriteHeader(http.StatusOK)
+				}))
+				defer backend.Close()
+
+				snapshot := rootModel.NewEmpty()
+				snapshot.Apps = []*appModel.App{
+					{
+						Active:        true,
+						PathPrefix:    "/account",
+						Name:          "account",
+						AllowWildcard: true,
+						Backend:       appModel.Backend{Url: backend.URL},
+						Endpoints:     order,
+					},
+				}
+				require.NoError(t, snapshot.Normalize())
+				snapshot.InheritDown()
+				snapshot.Interpolate()
+
+				service, err := New(snapshot, proxy.NewTransport(0))
+				require.NoError(t, err)
+
+				for _, req := range tt.requests {
+					got = ""
+					rec := performRequest(service, req.method, req.path, nil)
+					require.Equal(t, http.StatusOK, rec.Code, "%s %s", req.method, req.path)
+					assert.Equal(t, req.want, got, "%s %s", req.method, req.path)
+				}
+			})
+		}
+	}
+}
+
+// permutations returns every order of items, each as a fresh slice of copies:
+// building a service normalizes the endpoints in place.
+func permutations(items []*endpointModel.Endpoint) [][]*endpointModel.Endpoint {
+	if len(items) <= 1 {
+		return [][]*endpointModel.Endpoint{lo.Map(items, func(v *endpointModel.Endpoint, _ int) *endpointModel.Endpoint {
+			return new(*v)
+		})}
+	}
+	var result [][]*endpointModel.Endpoint
+	for i := range items {
+		rest := append(slices.Clone(items[:i]), items[i+1:]...)
+		for _, tail := range permutations(rest) {
+			result = append(result, append([]*endpointModel.Endpoint{new(*items[i])}, tail...))
+		}
+	}
+	return result
+}
+
 func TestService_HTTPRequestScriptDirectResponse(t *testing.T) {
 	backendHit := false
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -249,10 +363,17 @@ func TestService_HTTPWildcardSeenPaths(t *testing.T) {
 			Backend:       appModel.Backend{Url: backend.URL},
 			Endpoints: []*endpointModel.Endpoint{
 				{
-					Id:     "ep-wild",
+					Id:         "ep-wild",
+					Active:     true,
+					TrackPaths: true,
+					Type:       endpointModel.TypeHTTP,
+					Http:       endpointModel.Http{Method: "*", Path: "docs/*"},
+				},
+				{
+					Id:     "ep-wild-untracked",
 					Active: true,
 					Type:   endpointModel.TypeHTTP,
-					Http:   endpointModel.Http{Method: "*", Path: "docs/*"},
+					Http:   endpointModel.Http{Method: "*", Path: "files/*"},
 				},
 				{
 					Id:     "ep-exact",
@@ -276,11 +397,12 @@ func TestService_HTTPWildcardSeenPaths(t *testing.T) {
 	performRequest(service, http.MethodPost, "/account/docs/16", nil)
 	performRequest(service, http.MethodGet, "/account/docs/missing", nil)
 	performRequest(service, http.MethodGet, "/account/docs/list", nil)
+	performRequest(service, http.MethodGet, "/account/files/a.txt", nil)
 
 	got := make(map[string]*seen.Item)
 	for _, item := range seen.Ins().Drain() {
 		require.Equal(t, "app-seen", item.AppId)
-		require.Equal(t, "ep-wild", item.EndpointId, "exact endpoints are not recorded")
+		require.Equal(t, "ep-wild", item.EndpointId, "exact endpoints and wildcards without track_paths are not recorded")
 		got[item.Method+" "+item.Path] = item
 	}
 

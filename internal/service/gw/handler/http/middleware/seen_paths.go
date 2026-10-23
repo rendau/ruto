@@ -10,10 +10,11 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/service/seen"
 )
 
-// NewSeenPaths records which concrete paths a wildcard endpoint serves. It is a
-// no-op for regular endpoints: their path is already known.
+// NewSeenPaths records which concrete paths a wildcard endpoint with
+// track_paths serves. It is a no-op for regular endpoints: their path is
+// already known.
 func NewSeenPaths(app *appModel.App, ep *endpointModel.Endpoint) Middleware {
-	if !ep.Http.HasWildcard() {
+	if !ep.Http.HasWildcard() || !ep.TrackPaths {
 		return func(next http.Handler) http.Handler { return next }
 	}
 
