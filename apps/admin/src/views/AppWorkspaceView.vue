@@ -24,7 +24,7 @@ import {
   TrashOutline
 } from "@vicons/ionicons5";
 import { deleteApp, getApp, getAppInterpolate, updateApp } from "@/api/app";
-import { listEndpoints } from "@/api/endpoint";
+import { deleteEndpoint, listEndpoints } from "@/api/endpoint";
 import { getAppEndpointsRps, getMonitoringStatus } from "@/api/monitoring";
 import { apiErrorMessage } from "@/api/http";
 import { variablesToArray } from "@/api/normalize";
@@ -324,7 +324,6 @@ function confirmDeleteEndpoint(endpoint: EndpointMain): void {
     content: `Delete endpoint "${endpoint.id}"? This cannot be undone.`,
     onConfirm: async () => {
       try {
-        const { deleteEndpoint } = await import("@/api/endpoint");
         await deleteEndpoint(endpoint.id);
         message.success("Endpoint deleted");
         await loadEndpoints();

@@ -1,5 +1,16 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import DefaultLayout from "@/layouts/DefaultLayout.vue";
+import AppWorkspaceView from "@/views/AppWorkspaceView.vue";
+import ChangeRequestListView from "@/views/ChangeRequestListView.vue";
+import DashboardView from "@/views/DashboardView.vue";
+import GatewayListView from "@/views/GatewayListView.vue";
+import LoginView from "@/views/LoginView.vue";
+import NotFoundView from "@/views/NotFoundView.vue";
+import OAuthAuthorizeView from "@/views/OAuthAuthorizeView.vue";
+import ProfileView from "@/views/ProfileView.vue";
+import RootConfigView from "@/views/RootConfigView.vue";
+import UsrListView from "@/views/UsrListView.vue";
 
 declare module "vue-router" {
   interface RouteMeta {
@@ -16,67 +27,67 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/login",
     name: "login",
-    component: () => import("@/views/LoginView.vue"),
+    component: LoginView,
     meta: { title: "Sign in", public: true }
   },
   {
     // consent page of the MCP server's OAuth flow; the MCP client opens it
     path: "/oauth/authorize",
     name: "oauth-authorize",
-    component: () => import("@/views/OAuthAuthorizeView.vue"),
+    component: OAuthAuthorizeView,
     meta: { title: "Authorize access", requiresAuth: true }
   },
   {
     path: "/",
-    component: () => import("@/layouts/DefaultLayout.vue"),
+    component: DefaultLayout,
     meta: { requiresAuth: true },
     children: [
       {
         path: "",
         name: "dashboard",
-        component: () => import("@/views/DashboardView.vue"),
+        component: DashboardView,
         meta: { title: "Dashboard" }
       },
       {
         path: "apps",
         name: "apps",
-        component: () => import("@/views/AppWorkspaceView.vue"),
+        component: AppWorkspaceView,
         meta: { title: "Applications" }
       },
       {
         path: "apps/:id",
         name: "app-workspace",
-        component: () => import("@/views/AppWorkspaceView.vue"),
+        component: AppWorkspaceView,
         meta: { title: "Application" }
       },
       {
         path: "root",
         name: "root-config",
-        component: () => import("@/views/RootConfigView.vue"),
+        component: RootConfigView,
         meta: { title: "Root configuration" }
       },
       {
         path: "users",
         name: "users",
-        component: () => import("@/views/UsrListView.vue"),
+        component: UsrListView,
         meta: { title: "Users", requiresAdmin: true }
       },
       {
         path: "change-requests",
         name: "change-requests",
-        component: () => import("@/views/ChangeRequestListView.vue"),
+        component: ChangeRequestListView,
         meta: { title: "Change requests", requiresAdmin: true }
       },
       {
         path: "gateways",
         name: "gateways",
-        component: () => import("@/views/GatewayListView.vue"),
+        component: GatewayListView,
         meta: { title: "Gateways" }
       },
       {
         path: "profile",
         name: "profile",
-        component: () => import("@/views/ProfileView.vue"),
+        component: ProfileView,
         meta: { title: "Profile" }
       }
     ]
@@ -84,7 +95,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/:pathMatch(.*)*",
     name: "not-found",
-    component: () => import("@/views/NotFoundView.vue"),
+    component: NotFoundView,
     meta: { title: "Not found" }
   }
 ];

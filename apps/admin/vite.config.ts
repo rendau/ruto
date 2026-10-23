@@ -22,14 +22,15 @@ export default defineConfig(({ mode }) => {
       host,
       port: Number.isFinite(port) && port > 0 ? port : 5173
     },
+    // One js and one css file: every route is imported statically and nothing is
+    // split off or preloaded, so the admin loads in a single round of requests.
     build: {
-      chunkSizeWarningLimit: 1500,
+      chunkSizeWarningLimit: 3000,
+      cssCodeSplit: false,
+      modulePreload: false,
       rollupOptions: {
         output: {
-          manualChunks: {
-            vue: ["vue", "vue-router", "pinia"],
-            "naive-ui": ["naive-ui", "@vicons/ionicons5"]
-          }
+          inlineDynamicImports: true
         }
       }
     }
