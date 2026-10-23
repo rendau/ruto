@@ -50,6 +50,7 @@ func (a *App) Init() error {
 		configGateway.Conf.HttpPort,
 		configGateway.Conf.GrpcPort,
 		configGateway.Conf.CoreGrpcAddress,
+		configGateway.Conf.BackendIdleConnTimeout,
 	)
 	if err != nil {
 		return fmt.Errorf("gw-server New: %w", err)

@@ -16,8 +16,11 @@ type Service struct {
 	h http.Handler
 }
 
-func New(snapshot *rootModel.Root) (*Service, error) {
-	handler, err := buildHandler(snapshot)
+// New builds the handler for a snapshot. transport is owned by the caller and
+// outlives the handler: a transport per snapshot would leave the idle
+// connections of the previous one open after every config change.
+func New(snapshot *rootModel.Root, transport http.RoundTripper) (*Service, error) {
+	handler, err := buildHandler(snapshot, transport)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -31,7 +34,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(snapshot *rootModel.Root) (_ http.Handler, finalErr error) {
+func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)
@@ -39,7 +42,6 @@ func buildHandler(snapshot *rootModel.Root) (_ http.Handler, finalErr error) {
 	}()
 
 	router := chi.NewRouter()
-	sharedTransport := proxy.NewTransport()
 
 	for _, app := range snapshot.ActiveApps() {
 		endpoints := app.ActiveEndpoints()
@@ -47,7 +49,7 @@ func buildHandler(snapshot *rootModel.Root) (_ http.Handler, finalErr error) {
 			continue
 		}
 
-		appProxyHandler := http.StripPrefix(app.PathPrefix, proxy.NewProxy(app, "", sharedTransport))
+		appProxyHandler := http.StripPrefix(app.PathPrefix, proxy.NewProxy(app, "", transport))
 
 		for _, ep := range endpoints {
 			if ep.Type != "" && ep.Type != endpointModel.TypeHTTP {
@@ -64,7 +66,7 @@ func buildHandler(snapshot *rootModel.Root) (_ http.Handler, finalErr error) {
 			if ep.Backend.CustomPath != "" {
 				proxyHandler = http.StripPrefix(
 					app.PathPrefix,
-					proxy.NewProxy(app, ep.Backend.CustomPath, sharedTransport),
+					proxy.NewProxy(app, ep.Backend.CustomPath, transport),
 				)
 			}
 

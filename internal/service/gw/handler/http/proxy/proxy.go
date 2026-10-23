@@ -18,7 +18,12 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxyerr"
 )
 
-func NewTransport() *http.Transport {
+// NewTransport builds the transport shared by all backends. idleConnTimeout
+// must stay below the keep-alive timeout of every backend: a backend that closes
+// an idle connection at the moment the gateway reuses it resets the request,
+// and a non-idempotent one (POST) is not retried and ends in a 502. When the
+// gateway closes idle connections first, that race cannot happen.
+func NewTransport(idleConnTimeout time.Duration) *http.Transport {
 	return &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		DialContext: (&net.Dialer{
@@ -27,6 +32,7 @@ func NewTransport() *http.Transport {
 		DisableCompression:  true,
 		TLSHandshakeTimeout: 2 * time.Second,
 		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     idleConnTimeout,
 	}
 }
 

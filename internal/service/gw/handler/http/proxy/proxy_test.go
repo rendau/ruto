@@ -1,10 +1,15 @@
 package proxy
 
 import (
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -124,7 +129,7 @@ func TestNewProxy_XForwarded(t *testing.T) {
 					req.Header[name] = values
 				}
 
-				NewProxy(app, customPath, NewTransport()).ServeHTTP(httptest.NewRecorder(), req)
+				NewProxy(app, customPath, NewTransport(0)).ServeHTTP(httptest.NewRecorder(), req)
 
 				require.NotNil(t, got)
 				assert.Equal(t, tt.wantFor, got.Get("X-Forwarded-For"))
@@ -133,4 +138,26 @@ func TestNewProxy_XForwarded(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestNewTransport_ClosesIdleConnFirst(t *testing.T) {
+	var closed atomic.Int32
+	backend := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	backend.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateClosed {
+			closed.Add(1)
+		}
+	}
+	backend.Start()
+	defer backend.Close()
+
+	client := &http.Client{Transport: NewTransport(50 * time.Millisecond)}
+	resp, err := client.Post(backend.URL, "application/json", strings.NewReader(`{}`))
+	require.NoError(t, err)
+	_, _ = io.Copy(io.Discard, resp.Body)
+	require.NoError(t, resp.Body.Close())
+
+	require.Eventually(t, func() bool { return closed.Load() == 1 }, 2*time.Second, 10*time.Millisecond)
 }

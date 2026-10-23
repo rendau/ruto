@@ -3,6 +3,7 @@ package gateway
 import (
 	"errors"
 	"os"
+	"time"
 
 	"github.com/caarlos0/env/v9"
 	"github.com/joho/godotenv"
@@ -18,6 +19,10 @@ var Conf = struct {
 	GrpcPort int `env:"GRPC_PORT"`
 
 	CoreGrpcAddress string `env:"CORE_GRPC_ADDRESS"`
+
+	// below the keep-alive timeout of every backend (Go net/http: 60s and more,
+	// uvicorn and Node.js: 5s), see proxy.NewTransport
+	BackendIdleConnTimeout time.Duration `env:"BACKEND_IDLE_CONN_TIMEOUT" envDefault:"4s"`
 
 	TrustedProxyAddresses []string `env:"TRUSTED_PROXY_ADDRESSES" envSeparator:","`
 }{}

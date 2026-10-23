@@ -3,6 +3,7 @@ package gw
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync/atomic"
 	"time"
 
@@ -12,25 +13,33 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/core_client"
 	handlerGrpc "github.com/rendau/ruto/internal/service/gw/handler/grpc"
 	handlerHttp "github.com/rendau/ruto/internal/service/gw/handler/http"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 	localGrpc "github.com/rendau/ruto/internal/service/gw/server/grpc"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 )
 
 type Service struct {
-	globalCtx  context.Context
-	httpServer *localHttp.Service
-	grpcServer *localGrpc.Service
-	coreClient *core_client.Service
-	ready      atomic.Bool
+	globalCtx     context.Context
+	httpServer    *localHttp.Service
+	httpTransport *http.Transport
+	grpcServer    *localGrpc.Service
+	coreClient    *core_client.Service
+	ready         atomic.Bool
 }
 
-func New(globalCtx context.Context, httpPort, grpcPort int, configAddress string) (*Service, error) {
+func New(
+	globalCtx context.Context,
+	httpPort, grpcPort int,
+	configAddress string,
+	backendIdleConnTimeout time.Duration,
+) (*Service, error) {
 	var err error
 
 	service := &Service{
-		globalCtx:  globalCtx,
-		httpServer: localHttp.New(httpPort),
+		globalCtx:     globalCtx,
+		httpServer:    localHttp.New(httpPort),
+		httpTransport: proxy.NewTransport(backendIdleConnTimeout),
 	}
 	if grpcPort > 0 {
 		service.grpcServer = localGrpc.New(grpcPort)
@@ -82,7 +91,7 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf)
+	httpHandler, err := handlerHttp.New(conf, s.httpTransport)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}

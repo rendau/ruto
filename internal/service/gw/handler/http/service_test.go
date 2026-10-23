@@ -15,6 +15,7 @@ import (
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 	"github.com/rendau/ruto/internal/service/gw/service/seen"
 )
 
@@ -168,7 +169,7 @@ func TestService_HTTPWildcardPath(t *testing.T) {
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot)
+	service, err := New(snapshot, proxy.NewTransport(0))
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -266,7 +267,7 @@ func TestService_HTTPWildcardSeenPaths(t *testing.T) {
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot)
+	service, err := New(snapshot, proxy.NewTransport(0))
 	require.NoError(t, err)
 
 	seen.Ins().Drain()
@@ -358,7 +359,7 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot)
+	service, err := New(snapshot, proxy.NewTransport(0))
 	require.NoError(t, err)
 
 	rec := performRequest(service, http.MethodGet, "/account/profile?inbound=ok&shared=inbound", http.Header{
@@ -793,7 +794,7 @@ func TestService_RedirectLocationRewrite(t *testing.T) {
 			snapshot.InheritDown()
 			snapshot.Interpolate()
 
-			service, err := New(snapshot)
+			service, err := New(snapshot, proxy.NewTransport(0))
 			require.NoError(t, err)
 
 			rec := performRequest(service, http.MethodGet, tt.requestPath, nil)
@@ -887,7 +888,7 @@ func newTestService(
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot)
+	service, err := New(snapshot, proxy.NewTransport(0))
 	require.NoError(t, err)
 	return service
 }
