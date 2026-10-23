@@ -13,7 +13,7 @@ import {
   type FormRules
 } from "naive-ui";
 import { useAuthStore } from "@/stores/auth";
-import { getBootstrapStatus, createUser, login as apiLogin } from "@/api/usr";
+import { getBootstrapStatus, createUser } from "@/api/usr";
 import { apiErrorMessage } from "@/api/http";
 import BrandLogo from "@/components/common/BrandLogo.vue";
 
@@ -81,9 +81,8 @@ async function submitBootstrap(): Promise<void> {
       active: true,
       all_apps: true
     });
-    await apiLogin(model.username, model.password);
-    await authStore.initialize();
-    await router.push("/");
+    await authStore.login(model.username, model.password);
+    await router.push(redirectTarget());
   } catch (error) {
     errorMessage.value = apiErrorMessage(error, "Unable to create the first administrator");
   } finally {
