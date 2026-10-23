@@ -20,8 +20,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SeenPath_List_FullMethodName  = "/ruto_v1.SeenPath/List"
-	SeenPath_Clear_FullMethodName = "/ruto_v1.SeenPath/Clear"
+	SeenPath_List_FullMethodName   = "/ruto_v1.SeenPath/List"
+	SeenPath_Clear_FullMethodName  = "/ruto_v1.SeenPath/Clear"
+	SeenPath_Delete_FullMethodName = "/ruto_v1.SeenPath/Delete"
 )
 
 // SeenPathClient is the client API for SeenPath service.
@@ -32,6 +33,8 @@ const (
 type SeenPathClient interface {
 	List(ctx context.Context, in *SeenPathListReq, opts ...grpc.CallOption) (*SeenPathListRep, error)
 	Clear(ctx context.Context, in *SeenPathClearReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Delete removes the listed rows only, keeping the other counters.
+	Delete(ctx context.Context, in *SeenPathDeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type seenPathClient struct {
@@ -62,6 +65,16 @@ func (c *seenPathClient) Clear(ctx context.Context, in *SeenPathClearReq, opts .
 	return out, nil
 }
 
+func (c *seenPathClient) Delete(ctx context.Context, in *SeenPathDeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, SeenPath_Delete_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SeenPathServer is the server API for SeenPath service.
 // All implementations must embed UnimplementedSeenPathServer
 // for forward compatibility.
@@ -70,6 +83,8 @@ func (c *seenPathClient) Clear(ctx context.Context, in *SeenPathClearReq, opts .
 type SeenPathServer interface {
 	List(context.Context, *SeenPathListReq) (*SeenPathListRep, error)
 	Clear(context.Context, *SeenPathClearReq) (*emptypb.Empty, error)
+	// Delete removes the listed rows only, keeping the other counters.
+	Delete(context.Context, *SeenPathDeleteReq) (*emptypb.Empty, error)
 	mustEmbedUnimplementedSeenPathServer()
 }
 
@@ -85,6 +100,9 @@ func (UnimplementedSeenPathServer) List(context.Context, *SeenPathListReq) (*See
 }
 func (UnimplementedSeenPathServer) Clear(context.Context, *SeenPathClearReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Clear not implemented")
+}
+func (UnimplementedSeenPathServer) Delete(context.Context, *SeenPathDeleteReq) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 func (UnimplementedSeenPathServer) mustEmbedUnimplementedSeenPathServer() {}
 func (UnimplementedSeenPathServer) testEmbeddedByValue()                  {}
@@ -143,6 +161,24 @@ func _SeenPath_Clear_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SeenPath_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SeenPathDeleteReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SeenPathServer).Delete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SeenPath_Delete_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SeenPathServer).Delete(ctx, req.(*SeenPathDeleteReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SeenPath_ServiceDesc is the grpc.ServiceDesc for SeenPath service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -157,6 +193,10 @@ var SeenPath_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Clear",
 			Handler:    _SeenPath_Clear_Handler,
+		},
+		{
+			MethodName: "Delete",
+			Handler:    _SeenPath_Delete_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

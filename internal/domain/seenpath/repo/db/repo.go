@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/samber/lo"
 
 	"github.com/rendau/ruto/internal/domain/seenpath/model"
 )
@@ -37,6 +38,12 @@ const (
 		LIMIT $2`
 
 	deleteByAppSQL = `DELETE FROM seen_path WHERE app_id = $1`
+
+	// app_id keeps a caller with access to one app from deleting rows of another.
+	deleteItemsSQL = `
+		DELETE FROM seen_path
+		WHERE app_id = $1
+		  AND (endpoint_id, method, path) IN (SELECT * FROM unnest($2::text[], $3::text[], $4::text[]))`
 )
 
 type Repo struct {
@@ -92,6 +99,23 @@ func (r *Repo) ListByApp(ctx context.Context, appId string) ([]*model.SeenPath, 
 	}
 
 	return items, nil
+}
+
+func (r *Repo) DeleteItems(ctx context.Context, appId string, keys []*model.SeenPathKey) error {
+	if len(keys) == 0 {
+		return nil
+	}
+
+	_, err := r.con.Exec(ctx, deleteItemsSQL, appId,
+		lo.Map(keys, func(v *model.SeenPathKey, _ int) string { return v.EndpointId }),
+		lo.Map(keys, func(v *model.SeenPathKey, _ int) string { return v.Method }),
+		lo.Map(keys, func(v *model.SeenPathKey, _ int) string { return v.Path }),
+	)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+
+	return nil
 }
 
 func (r *Repo) DeleteByApp(ctx context.Context, appId string) error {

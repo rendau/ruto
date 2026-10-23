@@ -21,6 +21,14 @@ func EncodeSeenPathMain(v *model.SeenPath, _ int) *ruto_v1.SeenPathMain {
 	}
 }
 
+func DecodeSeenPathKey(v *ruto_v1.SeenPathKey, _ int) *model.SeenPathKey {
+	return &model.SeenPathKey{
+		EndpointId: v.EndpointId,
+		Method:     v.Method,
+		Path:       v.Path,
+	}
+}
+
 func DecodeGatewaySeenPath(v *ruto_v1.GatewaySeenPath, _ int) *model.SeenPath {
 	return &model.SeenPath{
 		AppId:        v.AppId,

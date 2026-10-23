@@ -15,6 +15,10 @@ service SeenPath {
   rpc Clear(SeenPathClearReq) returns (google.protobuf.Empty) {
     option (google.api.http) = { delete: "/seen_path" };
   };
+  // Delete removes the listed rows only, keeping the other counters.
+  rpc Delete(SeenPathDeleteReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/seen_path/delete" body: "*" };
+  };
 }
 
 message SeenPathListReq {
@@ -27,6 +31,17 @@ message SeenPathListRep {
 
 message SeenPathClearReq {
   string app_id = 1;
+}
+
+message SeenPathDeleteReq {
+  string app_id = 1;
+  repeated SeenPathKey items = 2;
+}
+
+message SeenPathKey {
+  string endpoint_id = 1;
+  string method = 2;
+  string path = 3;
 }
 
 message SeenPathMain {

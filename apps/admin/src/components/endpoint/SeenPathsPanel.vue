@@ -1,9 +1,21 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { NAlert, NButton, NCheckbox, NEmpty, NModal, NPopconfirm, NSpin, NTag, useMessage } from "naive-ui";
-import { clearSeenPaths, listSeenPaths } from "@/api/seenPath";
+import {
+  NAlert,
+  NButton,
+  NCheckbox,
+  NEmpty,
+  NIcon,
+  NInput,
+  NModal,
+  NPopconfirm,
+  NSpin,
+  NTag,
+  useMessage
+} from "naive-ui";
+import { SearchOutline, TrashOutline } from "@vicons/ionicons5";
+import { clearSeenPaths, deleteSeenPaths, listSeenPaths } from "@/api/seenPath";
 import { apiErrorMessage } from "@/api/http";
-import { endpointMatchKey } from "@/lib/endpointImport";
 import { formatUnixAge } from "@/lib/datetime";
 import MethodBadge from "@/components/common/MethodBadge.vue";
 import type { AppMain, EndpointMain, SeenPathMain } from "@/api/types";
@@ -11,7 +23,7 @@ import type { AppMain, EndpointMain, SeenPathMain } from "@/api/types";
 // Aggregate row the gateway uses once an endpoint exceeds its distinct-path cap.
 const OTHER_PATH = "(other)";
 
-// readonly shows the report only: no creating endpoints or clearing.
+// readonly shows the report only: no creating endpoints or deleting rows.
 const props = defineProps<{
   show: boolean;
   app: AppMain;
@@ -27,53 +39,78 @@ const message = useMessage();
 
 const loading = ref(false);
 const clearing = ref(false);
+const deleting = ref(false);
+const deletingKeys = ref(new Set<string>());
+const search = ref("");
 const error = ref("");
 const items = ref<SeenPathMain[]>([]);
 const showNotFound = ref(false);
 const showRegistered = ref(false);
 
-const registeredKeys = computed(
-  () =>
-    new Set(
-      props.endpoints
-        .filter((item) => item.type === "http" && !item.http.path.includes("*"))
-        .map((item) =>
-          endpointMatchKey({
-            type: "http",
-            method: item.http.method.toUpperCase(),
-            path: `/${item.http.path}`
-          })
-        )
-    )
+function splitPath(path: string): string[] {
+  return path.replace(/^\/+|\/+$/g, "").split("/");
+}
+
+const explicitEndpoints = computed(() =>
+  props.endpoints
+    .filter((item) => item.type === "http" && !item.http.path.includes("*"))
+    .map((item) => ({ method: item.http.method.toUpperCase(), segments: splitPath(item.http.path) }))
 );
 
-// An explicit endpoint may be registered for one method or for any ("*").
+// The gateway collapses only numbers, uuids, hashes and long slugs to {id}, so
+// a code like "AB123" stays literal: a path param of an endpoint has to match
+// any segment, not just {id}. An endpoint may serve one method or any ("*").
 function isRegistered(item: SeenPathMain): boolean {
-  const path = `/${item.path}`;
-  return (
-    registeredKeys.value.has(endpointMatchKey({ type: "http", method: item.method, path })) ||
-    registeredKeys.value.has(endpointMatchKey({ type: "http", method: "*", path }))
+  const segments = splitPath(item.path);
+  return explicitEndpoints.value.some(
+    (endpoint) =>
+      (endpoint.method === item.method || endpoint.method === "*") &&
+      endpoint.segments.length === segments.length &&
+      endpoint.segments.every(
+        (segment, index) => /^(\{.+\}|:.+)$/.test(segment) || segment === segments[index]
+      )
   );
+}
+
+function rowsLabel(count: number): string {
+  return `${count} row${count === 1 ? "" : "s"}`;
+}
+
+function rowKey(item: SeenPathMain): string {
+  return `${item.endpoint_id} ${item.method} ${item.path}`;
 }
 
 const rows = computed(() =>
   items.value.map((item) => ({
     item,
-    key: `${item.endpoint_id} ${item.method} ${item.path}`,
-    registered: isRegistered(item),
+    key: rowKey(item),
+    registered: item.path !== OTHER_PATH && isRegistered(item),
     onlyNotFound: item.hits > 0 && item.hits_not_found >= item.hits,
     other: item.path === OTHER_PATH
   }))
 );
 
+const searchText = computed(() => search.value.trim().replace(/^\/+/, "").toLowerCase());
+
+const matchedRows = computed(() =>
+  searchText.value
+    ? rows.value.filter((row) => row.item.path.toLowerCase().includes(searchText.value))
+    : rows.value
+);
+
 const visibleRows = computed(() =>
-  rows.value.filter(
+  matchedRows.value.filter(
     (row) => (showNotFound.value || !row.onlyNotFound) && (showRegistered.value || !row.registered)
   )
 );
 
-const notFoundCount = computed(() => rows.value.filter((row) => row.onlyNotFound).length);
-const registeredCount = computed(() => rows.value.filter((row) => row.registered).length);
+const notFoundCount = computed(() => matchedRows.value.filter((row) => row.onlyNotFound).length);
+const registeredItems = computed(() =>
+  rows.value.filter((row) => row.registered).map((row) => row.item)
+);
+const registeredCount = computed(
+  () => matchedRows.value.filter((row) => row.registered).length
+);
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -97,6 +134,38 @@ async function clear(): Promise<void> {
     message.error(apiErrorMessage(err, "Failed to clear seen paths"));
   } finally {
     clearing.value = false;
+  }
+}
+
+// Rows reappear on their own if the path is still served, so deleting needs no
+// confirmation; bulk deletes still ask.
+async function remove(list: SeenPathMain[]): Promise<boolean> {
+  if (!list.length) return false;
+  const keys = list.map(rowKey);
+  keys.forEach((key) => deletingKeys.value.add(key));
+  try {
+    await deleteSeenPaths(
+      props.app.id,
+      list.map((item) => ({ endpoint_id: item.endpoint_id, method: item.method, path: item.path }))
+    );
+    const removed = new Set(keys);
+    items.value = items.value.filter((item) => !removed.has(rowKey(item)));
+    return true;
+  } catch (err) {
+    message.error(apiErrorMessage(err, "Failed to delete seen paths"));
+    return false;
+  } finally {
+    keys.forEach((key) => deletingKeys.value.delete(key));
+  }
+}
+
+async function removeBulk(list: SeenPathMain[]): Promise<void> {
+  deleting.value = true;
+  try {
+    const count = list.length;
+    if (await remove(list)) message.success(`Deleted ${rowsLabel(count)}`);
+  } finally {
+    deleting.value = false;
   }
 }
 
@@ -132,6 +201,15 @@ watch(
       </p>
 
       <div class="seen__filters">
+        <NInput
+          v-model:value="search"
+          size="small"
+          clearable
+          placeholder="Filter by path, e.g. product/"
+          class="seen__search"
+        >
+          <template #prefix><NIcon :component="SearchOutline" /></template>
+        </NInput>
         <NCheckbox v-model:checked="showNotFound">
           Show paths that only returned 404 ({{ notFoundCount }})
         </NCheckbox>
@@ -167,24 +245,70 @@ watch(
           >
             Create endpoint
           </NButton>
+          <NButton
+            v-if="!readonly"
+            size="tiny"
+            quaternary
+            circle
+            type="error"
+            title="Delete this row"
+            aria-label="Delete this row"
+            :loading="deletingKeys.has(row.key)"
+            @click="remove([row.item])"
+          >
+            <template #icon><NIcon :component="TrashOutline" /></template>
+          </NButton>
         </div>
       </div>
       <NEmpty
         v-else
         size="small"
-        :description="items.length ? 'Nothing left to register' : 'No requests seen under wildcard endpoints yet'"
+        :description="
+          !items.length
+            ? 'No requests seen under wildcard endpoints yet'
+            : searchText && !matchedRows.length
+              ? 'No paths match the filter'
+              : 'Nothing left to register'
+        "
       />
     </NSpin>
 
     <template #footer>
       <div class="seen__footer">
         <NButton tertiary :loading="loading" @click="load">Refresh</NButton>
-        <NPopconfirm v-if="!readonly" @positive-click="clear">
-          <template #trigger>
-            <NButton tertiary type="error" :disabled="!items.length" :loading="clearing">Clear</NButton>
-          </template>
-          Delete all seen paths of this app and start counting from scratch?
-        </NPopconfirm>
+        <div v-if="!readonly" class="seen__footer-actions">
+          <NPopconfirm v-if="registeredItems.length" @positive-click="removeBulk(registeredItems)">
+            <template #trigger>
+              <NButton tertiary type="warning" :loading="deleting">
+                Delete registered ({{ registeredItems.length }})
+              </NButton>
+            </template>
+            <div class="seen__confirm">
+              Delete {{ rowsLabel(registeredItems.length) }} of paths that already have explicit
+              endpoints? They no longer get counted, but still take up the per-endpoint limit.
+            </div>
+          </NPopconfirm>
+          <NPopconfirm
+            v-if="searchText && matchedRows.length"
+            @positive-click="removeBulk(matchedRows.map((row) => row.item))"
+          >
+            <template #trigger>
+              <NButton tertiary type="warning" :loading="deleting">
+                Delete matching ({{ matchedRows.length }})
+              </NButton>
+            </template>
+            <div class="seen__confirm">
+              Delete {{ rowsLabel(matchedRows.length) }} whose path contains “{{ searchText }}”,
+              including hidden ones?
+            </div>
+          </NPopconfirm>
+          <NPopconfirm @positive-click="clear">
+            <template #trigger>
+              <NButton tertiary type="error" :disabled="!items.length" :loading="clearing">Clear all</NButton>
+            </template>
+            Delete all seen paths of this app and start counting from scratch?
+          </NPopconfirm>
+        </div>
       </div>
     </template>
   </NModal>
@@ -207,8 +331,13 @@ watch(
 .seen__filters {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px 18px;
   margin-bottom: 12px;
+}
+
+.seen__search {
+  width: 260px;
 }
 
 .seen__list {
@@ -268,7 +397,18 @@ watch(
 .seen__footer {
   display: flex;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
   width: 100%;
+}
+
+.seen__confirm {
+  max-width: 320px;
+}
+
+.seen__footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>

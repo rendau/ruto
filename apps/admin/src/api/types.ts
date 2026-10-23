@@ -447,6 +447,12 @@ export interface SeenPathMain {
   sample: string;
 }
 
+export interface SeenPathKey {
+  endpoint_id: string;
+  method: string;
+  path: string;
+}
+
 export interface SeenPathListRep {
   results: SeenPathMain[];
 }

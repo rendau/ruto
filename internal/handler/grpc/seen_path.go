@@ -30,6 +30,13 @@ func (h *SeenPath) List(ctx context.Context, req *ruto_v1.SeenPathListReq) (*rut
 	}, nil
 }
 
+func (h *SeenPath) Delete(ctx context.Context, req *ruto_v1.SeenPathDeleteReq) (*emptypb.Empty, error) {
+	if err := h.usecase.Delete(ctx, req.AppId, lo.Map(req.Items, dto.DecodeSeenPathKey)); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
 func (h *SeenPath) Clear(ctx context.Context, req *ruto_v1.SeenPathClearReq) (*emptypb.Empty, error) {
 	if err := h.usecase.Clear(ctx, req.AppId); err != nil {
 		return nil, err

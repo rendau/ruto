@@ -59,21 +59,52 @@ func (u *Usecase) List(ctx context.Context, appId string) ([]*model.SeenPath, er
 	return items, nil
 }
 
-func (u *Usecase) Clear(ctx context.Context, appId string) error {
-	if !u.sessionSvc.CtxIsAuthorized(ctx) {
-		return errs.NotAuthorized
-	}
-	appId = strings.TrimSpace(appId)
-	if appId == "" {
-		return errs.IdRequired
-	}
-	if !u.sessionSvc.CtxHasFullAppAccess(ctx) && !lo.Contains(u.sessionSvc.CtxGetAppIds(ctx), appId) {
-		return errs.NoPermission
+// Delete removes single rows, e.g. paths already registered as explicit
+// endpoints: they still count against the per-endpoint row cap.
+func (u *Usecase) Delete(ctx context.Context, appId string, keys []*model.SeenPathKey) error {
+	appId, err := u.checkWrite(ctx, appId)
+	if err != nil {
+		return err
 	}
 
-	if err := u.svc.DeleteByApp(ctx, appId); err != nil {
+	keys = lo.Filter(keys, func(v *model.SeenPathKey, _ int) bool {
+		return v != nil && v.EndpointId != "" && v.Method != ""
+	})
+	if len(keys) == 0 {
+		return nil
+	}
+
+	if err = u.svc.DeleteItems(ctx, appId, keys); err != nil {
+		return fmt.Errorf("svc.DeleteItems: %w", err)
+	}
+
+	return nil
+}
+
+func (u *Usecase) Clear(ctx context.Context, appId string) error {
+	appId, err := u.checkWrite(ctx, appId)
+	if err != nil {
+		return err
+	}
+
+	if err = u.svc.DeleteByApp(ctx, appId); err != nil {
 		return fmt.Errorf("svc.DeleteByApp: %w", err)
 	}
 
 	return nil
+}
+
+// checkWrite returns the trimmed app id when the caller may change the app's report.
+func (u *Usecase) checkWrite(ctx context.Context, appId string) (string, error) {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return "", errs.NotAuthorized
+	}
+	appId = strings.TrimSpace(appId)
+	if appId == "" {
+		return "", errs.IdRequired
+	}
+	if !u.sessionSvc.CtxHasFullAppAccess(ctx) && !lo.Contains(u.sessionSvc.CtxGetAppIds(ctx), appId) {
+		return "", errs.NoPermission
+	}
+	return appId, nil
 }

@@ -15,3 +15,10 @@ type SeenPath struct {
 	LastSeenAt   time.Time
 	Sample       string
 }
+
+// SeenPathKey identifies one row of the report.
+type SeenPathKey struct {
+	EndpointId string
+	Method     string
+	Path       string
+}

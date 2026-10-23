@@ -1501,6 +1501,40 @@
         ]
       }
     },
+    "/seen_path/delete": {
+      "post": {
+        "summary": "Delete removes the listed rows only, keeping the other counters.",
+        "operationId": "SeenPath_Delete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ruto_v1SeenPathDeleteReq"
+            }
+          }
+        ],
+        "tags": [
+          "SeenPath"
+        ]
+      }
+    },
     "/snapshot/deploy": {
       "post": {
         "operationId": "Snapshot_Deploy",
@@ -2733,6 +2767,35 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "ruto_v1SeenPathDeleteReq": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1SeenPathKey"
+          }
+        }
+      }
+    },
+    "ruto_v1SeenPathKey": {
+      "type": "object",
+      "properties": {
+        "endpoint_id": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
         }
       }
     },

@@ -155,6 +155,118 @@ func (x *SeenPathClearReq) GetAppId() string {
 	return ""
 }
 
+type SeenPathDeleteReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AppId         string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	Items         []*SeenPathKey         `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SeenPathDeleteReq) Reset() {
+	*x = SeenPathDeleteReq{}
+	mi := &file_ruto_v1_seen_path_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SeenPathDeleteReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SeenPathDeleteReq) ProtoMessage() {}
+
+func (x *SeenPathDeleteReq) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_seen_path_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SeenPathDeleteReq.ProtoReflect.Descriptor instead.
+func (*SeenPathDeleteReq) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_seen_path_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *SeenPathDeleteReq) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+func (x *SeenPathDeleteReq) GetItems() []*SeenPathKey {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type SeenPathKey struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EndpointId    string                 `protobuf:"bytes,1,opt,name=endpoint_id,json=endpointId,proto3" json:"endpoint_id,omitempty"`
+	Method        string                 `protobuf:"bytes,2,opt,name=method,proto3" json:"method,omitempty"`
+	Path          string                 `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SeenPathKey) Reset() {
+	*x = SeenPathKey{}
+	mi := &file_ruto_v1_seen_path_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SeenPathKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SeenPathKey) ProtoMessage() {}
+
+func (x *SeenPathKey) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_seen_path_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SeenPathKey.ProtoReflect.Descriptor instead.
+func (*SeenPathKey) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_seen_path_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *SeenPathKey) GetEndpointId() string {
+	if x != nil {
+		return x.EndpointId
+	}
+	return ""
+}
+
+func (x *SeenPathKey) GetMethod() string {
+	if x != nil {
+		return x.Method
+	}
+	return ""
+}
+
+func (x *SeenPathKey) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
 type SeenPathMain struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	AppId           string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
@@ -172,7 +284,7 @@ type SeenPathMain struct {
 
 func (x *SeenPathMain) Reset() {
 	*x = SeenPathMain{}
-	mi := &file_ruto_v1_seen_path_proto_msgTypes[3]
+	mi := &file_ruto_v1_seen_path_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -184,7 +296,7 @@ func (x *SeenPathMain) String() string {
 func (*SeenPathMain) ProtoMessage() {}
 
 func (x *SeenPathMain) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_seen_path_proto_msgTypes[3]
+	mi := &file_ruto_v1_seen_path_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -197,7 +309,7 @@ func (x *SeenPathMain) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SeenPathMain.ProtoReflect.Descriptor instead.
 func (*SeenPathMain) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_seen_path_proto_rawDescGZIP(), []int{3}
+	return file_ruto_v1_seen_path_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SeenPathMain) GetAppId() string {
@@ -273,7 +385,15 @@ const file_ruto_v1_seen_path_proto_rawDesc = "" +
 	"\x0fSeenPathListRep\x12/\n" +
 	"\aresults\x18\x01 \x03(\v2\x15.ruto_v1.SeenPathMainR\aresults\")\n" +
 	"\x10SeenPathClearReq\x12\x15\n" +
-	"\x06app_id\x18\x01 \x01(\tR\x05appId\"\x9c\x02\n" +
+	"\x06app_id\x18\x01 \x01(\tR\x05appId\"V\n" +
+	"\x11SeenPathDeleteReq\x12\x15\n" +
+	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12*\n" +
+	"\x05items\x18\x02 \x03(\v2\x14.ruto_v1.SeenPathKeyR\x05items\"Z\n" +
+	"\vSeenPathKey\x12\x1f\n" +
+	"\vendpoint_id\x18\x01 \x01(\tR\n" +
+	"endpointId\x12\x16\n" +
+	"\x06method\x18\x02 \x01(\tR\x06method\x12\x12\n" +
+	"\x04path\x18\x03 \x01(\tR\x04path\"\x9c\x02\n" +
 	"\fSeenPathMain\x12\x15\n" +
 	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12\x1f\n" +
 	"\vendpoint_id\x18\x02 \x01(\tR\n" +
@@ -284,12 +404,13 @@ const file_ruto_v1_seen_path_proto_rawDesc = "" +
 	"\x0ehits_not_found\x18\x06 \x01(\x03R\fhitsNotFound\x12+\n" +
 	"\x12first_seen_at_unix\x18\a \x01(\x03R\x0ffirstSeenAtUnix\x12)\n" +
 	"\x11last_seen_at_unix\x18\b \x01(\x03R\x0elastSeenAtUnix\x12\x16\n" +
-	"\x06sample\x18\t \x01(\tR\x06sample2\xaa\x01\n" +
+	"\x06sample\x18\t \x01(\tR\x06sample2\x86\x02\n" +
 	"\bSeenPath\x12N\n" +
 	"\x04List\x12\x18.ruto_v1.SeenPathListReq\x1a\x18.ruto_v1.SeenPathListRep\"\x12\x82\xd3\xe4\x93\x02\f\x12\n" +
 	"/seen_path\x12N\n" +
 	"\x05Clear\x12\x19.ruto_v1.SeenPathClearReq\x1a\x16.google.protobuf.Empty\"\x12\x82\xd3\xe4\x93\x02\f*\n" +
-	"/seen_pathB\n" +
+	"/seen_path\x12Z\n" +
+	"\x06Delete\x12\x1a.ruto_v1.SeenPathDeleteReq\x1a\x16.google.protobuf.Empty\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/seen_path/deleteB\n" +
 	"Z\b/ruto_v1b\x06proto3"
 
 var (
@@ -304,25 +425,30 @@ func file_ruto_v1_seen_path_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_seen_path_proto_rawDescData
 }
 
-var file_ruto_v1_seen_path_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_ruto_v1_seen_path_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_ruto_v1_seen_path_proto_goTypes = []any{
-	(*SeenPathListReq)(nil),  // 0: ruto_v1.SeenPathListReq
-	(*SeenPathListRep)(nil),  // 1: ruto_v1.SeenPathListRep
-	(*SeenPathClearReq)(nil), // 2: ruto_v1.SeenPathClearReq
-	(*SeenPathMain)(nil),     // 3: ruto_v1.SeenPathMain
-	(*emptypb.Empty)(nil),    // 4: google.protobuf.Empty
+	(*SeenPathListReq)(nil),   // 0: ruto_v1.SeenPathListReq
+	(*SeenPathListRep)(nil),   // 1: ruto_v1.SeenPathListRep
+	(*SeenPathClearReq)(nil),  // 2: ruto_v1.SeenPathClearReq
+	(*SeenPathDeleteReq)(nil), // 3: ruto_v1.SeenPathDeleteReq
+	(*SeenPathKey)(nil),       // 4: ruto_v1.SeenPathKey
+	(*SeenPathMain)(nil),      // 5: ruto_v1.SeenPathMain
+	(*emptypb.Empty)(nil),     // 6: google.protobuf.Empty
 }
 var file_ruto_v1_seen_path_proto_depIdxs = []int32{
-	3, // 0: ruto_v1.SeenPathListRep.results:type_name -> ruto_v1.SeenPathMain
-	0, // 1: ruto_v1.SeenPath.List:input_type -> ruto_v1.SeenPathListReq
-	2, // 2: ruto_v1.SeenPath.Clear:input_type -> ruto_v1.SeenPathClearReq
-	1, // 3: ruto_v1.SeenPath.List:output_type -> ruto_v1.SeenPathListRep
-	4, // 4: ruto_v1.SeenPath.Clear:output_type -> google.protobuf.Empty
-	3, // [3:5] is the sub-list for method output_type
-	1, // [1:3] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	5, // 0: ruto_v1.SeenPathListRep.results:type_name -> ruto_v1.SeenPathMain
+	4, // 1: ruto_v1.SeenPathDeleteReq.items:type_name -> ruto_v1.SeenPathKey
+	0, // 2: ruto_v1.SeenPath.List:input_type -> ruto_v1.SeenPathListReq
+	2, // 3: ruto_v1.SeenPath.Clear:input_type -> ruto_v1.SeenPathClearReq
+	3, // 4: ruto_v1.SeenPath.Delete:input_type -> ruto_v1.SeenPathDeleteReq
+	1, // 5: ruto_v1.SeenPath.List:output_type -> ruto_v1.SeenPathListRep
+	6, // 6: ruto_v1.SeenPath.Clear:output_type -> google.protobuf.Empty
+	6, // 7: ruto_v1.SeenPath.Delete:output_type -> google.protobuf.Empty
+	5, // [5:8] is the sub-list for method output_type
+	2, // [2:5] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_seen_path_proto_init() }
@@ -336,7 +462,7 @@ func file_ruto_v1_seen_path_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_seen_path_proto_rawDesc), len(file_ruto_v1_seen_path_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
