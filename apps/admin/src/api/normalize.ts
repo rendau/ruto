@@ -14,6 +14,8 @@ import type {
   RootMain,
   RootTransform,
   Transform,
+  EndpointCache,
+  CacheScope,
   Variable
 } from "./types";
 
@@ -68,6 +70,43 @@ export function normalizeTransform(value?: Transform | null): Transform {
     request: typeof value.request === "string" ? value.request : "",
     response: typeof value.response === "string" ? value.response : "",
     max_workers: Math.max(0, Math.trunc(Number(value.max_workers) || 0))
+  };
+}
+
+export function emptyCache(): EndpointCache {
+  return {
+    server: { enabled: false, ttl: 60, shared: false, vary_headers: [], max_body_size: 0 },
+    browser: { enabled: false, scope: "private", max_age: 300, override: false }
+  };
+}
+
+const cacheScopes: CacheScope[] = ["private", "public", "no-store"];
+
+function nonNegativeInt(value: unknown): number {
+  return Math.max(0, Math.trunc(Number(value) || 0));
+}
+
+export function normalizeCache(value?: EndpointCache | null): EndpointCache {
+  const empty = emptyCache();
+  const server = value?.server;
+  const browser = value?.browser;
+  return {
+    server: {
+      enabled: Boolean(server?.enabled),
+      ttl: server?.ttl ? nonNegativeInt(server.ttl) : empty.server.ttl,
+      shared: Boolean(server?.shared),
+      vary_headers: Array.isArray(server?.vary_headers)
+        ? server.vary_headers.filter((v) => typeof v === "string" && v.trim() !== "")
+        : [],
+      max_body_size: nonNegativeInt(server?.max_body_size)
+    },
+    browser: {
+      enabled: Boolean(browser?.enabled),
+      scope: cacheScopes.includes(browser?.scope as CacheScope) ? (browser?.scope as CacheScope) : "private",
+      // 0 is a valid max-age for an enabled cache; a disabled one gets a sensible preset
+      max_age: browser?.enabled ? nonNegativeInt(browser.max_age) : nonNegativeInt(browser?.max_age) || empty.browser.max_age,
+      override: Boolean(browser?.override)
+    }
   };
 }
 
@@ -233,7 +272,8 @@ export function normalizeEndpoint(value: EndpointMain): EndpointMain {
     auth: normalizeAuth(value?.auth),
     logging: normalizeLogging(value?.logging),
     variables: variablesToArray(raw.variables),
-    transform: normalizeTransform(value?.transform)
+    transform: normalizeTransform(value?.transform),
+    cache: normalizeCache(value?.cache)
   };
 }
 

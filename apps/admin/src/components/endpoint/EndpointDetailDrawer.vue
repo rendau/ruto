@@ -138,6 +138,18 @@ function hasBackendExtras(ep: EndpointMain | null): boolean {
   );
 }
 
+function cacheSummary(ep: EndpointMain): string {
+  const parts: string[] = [];
+  const { server, browser } = ep.cache;
+  if (server.enabled) {
+    parts.push(`gateway ${server.ttl}s${server.shared ? " shared" : ""}`);
+  }
+  if (browser.enabled) {
+    parts.push(browser.scope === "no-store" ? "browser no-store" : `browser ${browser.scope} ${browser.max_age}s`);
+  }
+  return parts.length ? parts.join(" · ") : "Off";
+}
+
 function toItems(record: Record<string, string> | undefined): Variable[] {
   return variablesToArray(record);
 }
@@ -240,6 +252,9 @@ function remove(): void {
             </DefRow>
             <DefRow v-if="item.type === 'http' && hasWildcard(item.http.path)" label="Seen paths">
               {{ item.track_paths ? "Tracked" : "Not tracked" }}
+            </DefRow>
+            <DefRow v-if="item.type === 'http'" label="Cache">
+              {{ cacheSummary(item) }}
             </DefRow>
           </DefList>
 

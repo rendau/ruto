@@ -1,4 +1,4 @@
-import { emptyLogging, emptyTransform } from "@/api/normalize";
+import { emptyCache, emptyLogging, emptyTransform } from "@/api/normalize";
 import type { AppMain, Auth, EndpointMain } from "@/api/types";
 
 // New entities default auth to "enabled + extend" with no methods — i.e. inherit
@@ -37,6 +37,7 @@ export function emptyEndpoint(appId: string): EndpointMain {
     auth: defaultAuth(),
     logging: emptyLogging(),
     variables: [],
-    transform: emptyTransform()
+    transform: emptyTransform(),
+    cache: emptyCache()
   };
 }

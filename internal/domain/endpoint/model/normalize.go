@@ -2,7 +2,13 @@ package model
 
 import (
 	"fmt"
+	"net/http"
+	"slices"
 	"strings"
+
+	"github.com/samber/lo"
+
+	"github.com/rendau/ruto/internal/constant"
 )
 
 func (m *Endpoint) Normalize() error {
@@ -49,7 +55,73 @@ func (m *Endpoint) Normalize() error {
 
 	m.Transform.Normalize()
 
+	if m.Type != TypeHTTP {
+		m.Cache = Cache{}
+	}
+	if err := m.Cache.Normalize(); err != nil {
+		return fmt.Errorf("cache: %w", err)
+	}
+
 	return nil
+}
+
+func (m *Cache) Normalize() error {
+	if err := m.Server.Normalize(); err != nil {
+		return fmt.Errorf("server: %w", err)
+	}
+	if err := m.Browser.Normalize(); err != nil {
+		return fmt.Errorf("browser: %w", err)
+	}
+	return nil
+}
+
+func (m *CacheServer) Normalize() error {
+	if m.Ttl < 0 {
+		return fmt.Errorf("ttl: must be >= 0")
+	}
+	if m.Enabled && m.Ttl == 0 {
+		return fmt.Errorf("ttl: must be > 0")
+	}
+	if m.MaxBodySize < 0 {
+		return fmt.Errorf("max_body_size: must be >= 0")
+	}
+
+	m.VaryHeaders = lo.Uniq(lo.FilterMap(m.VaryHeaders, func(v string, _ int) (string, bool) {
+		v = http.CanonicalHeaderKey(strings.TrimSpace(v))
+		return v, v != ""
+	}))
+	slices.Sort(m.VaryHeaders)
+
+	return nil
+}
+
+func (m *CacheServer) MaxBodySizeOrDefault() int {
+	if m.MaxBodySize <= 0 {
+		return constant.DefaultCacheMaxBodySize
+	}
+	return m.MaxBodySize
+}
+
+func (m *CacheBrowser) Normalize() error {
+	m.Scope = strings.ToLower(strings.TrimSpace(m.Scope))
+	if m.Scope == "" {
+		m.Scope = constant.CacheScopePrivate
+	}
+	if !constant.CacheScopeIsValid(m.Scope) {
+		return fmt.Errorf("scope: is invalid")
+	}
+	if m.MaxAge < 0 {
+		return fmt.Errorf("max_age: must be >= 0")
+	}
+	return nil
+}
+
+// HeaderValue is the Cache-Control value sent to the client.
+func (m *CacheBrowser) HeaderValue() string {
+	if m.Scope == constant.CacheScopeNoStore {
+		return constant.CacheScopeNoStore
+	}
+	return fmt.Sprintf("%s, max-age=%d", m.Scope, m.MaxAge)
 }
 
 func (m *Transform) Normalize() {

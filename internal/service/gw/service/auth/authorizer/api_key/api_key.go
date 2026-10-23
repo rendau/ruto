@@ -5,6 +5,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/rendau/ruto/internal/constant"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
 )
@@ -15,14 +16,13 @@ type Authorizer struct {
 }
 
 const (
-	defaultAPIKeyHeader = "x-api-key"
-	bearerPrefix        = "bearer "
+	bearerPrefix = "bearer "
 )
 
 func New(conf *authModel.AuthMethodAPIKey) *Authorizer {
 	header := strings.ToLower(strings.TrimSpace(conf.Header))
 	if header == "" {
-		header = defaultAPIKeyHeader
+		header = constant.AuthAPIKeyDefaultHeader
 	}
 
 	return &Authorizer{

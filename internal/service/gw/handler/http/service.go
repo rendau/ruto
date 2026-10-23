@@ -11,6 +11,7 @@ import (
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
+	"github.com/rendau/ruto/internal/service/gw/service/cache"
 )
 
 type Service struct {
@@ -19,9 +20,10 @@ type Service struct {
 
 // New builds the handler for a snapshot. transport is owned by the caller and
 // outlives the handler: a transport per snapshot would leave the idle
-// connections of the previous one open after every config change.
-func New(snapshot *rootModel.Root, transport http.RoundTripper) (*Service, error) {
-	handler, err := buildHandler(snapshot, transport)
+// connections of the previous one open after every config change. The same
+// holds for store: cached responses survive a config change.
+func New(snapshot *rootModel.Root, transport http.RoundTripper, store *cache.Service) (*Service, error) {
+	handler, err := buildHandler(snapshot, transport, store)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -35,7 +37,7 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper) (_ http.Handler, finalErr error) {
+func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *cache.Service) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)
@@ -82,6 +84,8 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper) (_ http
 				middleware.NewSeenPaths(app, ep),
 				middleware.NewRequestLog(app, ep, routePath, snapshot.LogOwnResponseErrors),
 				middleware.NewAuth(ep),
+				middleware.NewBrowserCache(ep),
+				middleware.NewServerCache(app, ep, store),
 				middleware.NewBackendRequestParams(ep),
 				middleware.NewRequestTransform(ep, snapshot.Transform.MaxWorkers),
 				middleware.NewResponseTransform(ep, snapshot.Transform.MaxWorkers),

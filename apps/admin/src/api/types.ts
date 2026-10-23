@@ -239,6 +239,34 @@ export interface Transform {
   max_workers: number;
 }
 
+export type CacheScope = "private" | "public" | "no-store";
+
+export interface CacheServer {
+  enabled: boolean;
+  // Seconds a response stays in the gateway cache.
+  ttl: number;
+  // One cached response for all callers: credentials don't split the cache.
+  shared: boolean;
+  // Request headers that keep separate cached responses.
+  vary_headers: string[];
+  // Bytes; 0 = default (1 MB).
+  max_body_size: number;
+}
+
+export interface CacheBrowser {
+  enabled: boolean;
+  scope: CacheScope;
+  // Seconds the client keeps the response; ignored for "no-store".
+  max_age: number;
+  // Replace the Cache-Control sent by the backend.
+  override: boolean;
+}
+
+export interface EndpointCache {
+  server: CacheServer;
+  browser: CacheBrowser;
+}
+
 export interface EndpointMain {
   id: string;
   app_id: string;
@@ -253,6 +281,7 @@ export interface EndpointMain {
   logging: Logging;
   variables: Variable[];
   transform: Transform;
+  cache: EndpointCache;
 }
 
 export interface EndpointListRep {

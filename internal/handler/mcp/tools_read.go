@@ -37,12 +37,12 @@ func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_endpoints",
-		Description: "Endpoints of an app: id, type, method, path, custom_path, active, track_paths, whether transform scripts are set. app: id or exact name.",
+		Description: "Endpoints of an app: id, type, method, path, custom_path, active, track_paths, whether transform scripts and server/browser cache are set. app: id or exact name.",
 	}, s.listEndpoints)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_endpoint",
-		Description: "Full endpoint configuration (including transform scripts and track_paths) with secrets masked, plus its version for update_endpoint.",
+		Description: "Full endpoint configuration (including transform scripts, cache and track_paths) with secrets masked, plus its version for update_endpoint.",
 	}, s.getEndpoint)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
@@ -228,6 +228,8 @@ type EndpointSummary struct {
 	TrackPaths        bool   `json:"track_paths,omitempty"`
 	TransformRequest  bool   `json:"transform_request,omitempty"`
 	TransformResponse bool   `json:"transform_response,omitempty"`
+	ServerCache       bool   `json:"server_cache,omitempty"`
+	BrowserCache      bool   `json:"browser_cache,omitempty"`
 }
 
 type EndpointListOut struct {
@@ -261,6 +263,8 @@ func (s *sessionServer) listEndpoints(ctx context.Context, req *mcpsdk.CallToolR
 			TrackPaths:        v.TrackPaths,
 			TransformRequest:  v.Transform.Request != "",
 			TransformResponse: v.Transform.Response != "",
+			ServerCache:       v.Cache.Server.Enabled,
+			BrowserCache:      v.Cache.Browser.Enabled,
 		}
 		if v.Type == endpointModel.TypeGRPC {
 			result.Path = v.Grpc.Path

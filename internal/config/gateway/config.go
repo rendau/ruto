@@ -25,6 +25,10 @@ var Conf = struct {
 	BackendIdleConnTimeout time.Duration `env:"BACKEND_IDLE_CONN_TIMEOUT" envDefault:"4s"`
 
 	TrustedProxyAddresses []string `env:"TRUSTED_PROXY_ADDRESSES" envSeparator:","`
+
+	// memory ceiling for responses of endpoints with server cache, see gw/service/cache
+	CacheMaxSizeMb     int           `env:"CACHE_MAX_SIZE_MB" envDefault:"256"`
+	CacheSweepInterval time.Duration `env:"CACHE_SWEEP_INTERVAL" envDefault:"30s"`
 }{}
 
 func init() {

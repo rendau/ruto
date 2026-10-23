@@ -146,3 +146,32 @@ func TestEndpointNormalize_TrackPathsOnlyForWildcard(t *testing.T) {
 	require.NoError(t, item.Normalize())
 	require.False(t, item.TrackPaths)
 }
+
+func TestEndpointNormalize_Cache(t *testing.T) {
+	item := &Endpoint{
+		Type: TypeHTTP,
+		Http: Http{Method: "GET", Path: "items"},
+		Cache: Cache{
+			Server:  CacheServer{Enabled: true, Ttl: 60, VaryHeaders: []string{" accept-language", "", "Accept-Language", "x-tenant"}},
+			Browser: CacheBrowser{Enabled: true, MaxAge: 30},
+		},
+	}
+	require.NoError(t, item.Normalize())
+	require.Equal(t, []string{"Accept-Language", "X-Tenant"}, item.Cache.Server.VaryHeaders)
+	require.Equal(t, "private, max-age=30", item.Cache.Browser.HeaderValue())
+
+	item.Cache.Server.Ttl = 0
+	require.ErrorContains(t, item.Normalize(), "cache: server: ttl")
+
+	item.Cache.Server.Ttl = 60
+	item.Cache.Browser.Scope = "everyone"
+	require.ErrorContains(t, item.Normalize(), "cache: browser: scope")
+
+	grpc := &Endpoint{
+		Type:  TypeGRPC,
+		Grpc:  Grpc{Service: "pkg.Svc", Method: "Get", Path: "/pkg.Svc/Get"},
+		Cache: Cache{Server: CacheServer{Enabled: true}},
+	}
+	require.NoError(t, grpc.Normalize())
+	require.False(t, grpc.Cache.Server.Enabled, "cache is http only")
+}

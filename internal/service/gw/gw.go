@@ -16,6 +16,7 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 	localGrpc "github.com/rendau/ruto/internal/service/gw/server/grpc"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
+	"github.com/rendau/ruto/internal/service/gw/service/cache"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 )
 
@@ -23,6 +24,8 @@ type Service struct {
 	globalCtx     context.Context
 	httpServer    *localHttp.Service
 	httpTransport *http.Transport
+	cache         *cache.Service
+	cacheSweep    time.Duration
 	grpcServer    *localGrpc.Service
 	coreClient    *core_client.Service
 	ready         atomic.Bool
@@ -33,6 +36,8 @@ func New(
 	httpPort, grpcPort int,
 	configAddress string,
 	backendIdleConnTimeout time.Duration,
+	cacheMaxSize int64,
+	cacheSweepInterval time.Duration,
 ) (*Service, error) {
 	var err error
 
@@ -40,6 +45,8 @@ func New(
 		globalCtx:     globalCtx,
 		httpServer:    localHttp.New(httpPort),
 		httpTransport: proxy.NewTransport(backendIdleConnTimeout),
+		cache:         cache.New(cacheMaxSize),
+		cacheSweep:    cacheSweepInterval,
 	}
 	if grpcPort > 0 {
 		service.grpcServer = localGrpc.New(grpcPort)
@@ -56,6 +63,7 @@ func New(
 
 func (s *Service) Start() {
 	s.coreClient.Start()
+	go s.cache.Run(s.globalCtx, s.cacheSweep)
 	s.httpServer.Start()
 	if s.grpcServer != nil {
 		s.grpcServer.Start()
@@ -91,7 +99,7 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf, s.httpTransport)
+	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}

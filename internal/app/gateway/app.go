@@ -51,6 +51,8 @@ func (a *App) Init() error {
 		configGateway.Conf.GrpcPort,
 		configGateway.Conf.CoreGrpcAddress,
 		configGateway.Conf.BackendIdleConnTimeout,
+		int64(configGateway.Conf.CacheMaxSizeMb)<<20,
+		configGateway.Conf.CacheSweepInterval,
 	)
 	if err != nil {
 		return fmt.Errorf("gw-server New: %w", err)

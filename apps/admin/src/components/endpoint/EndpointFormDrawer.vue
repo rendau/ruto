@@ -23,6 +23,7 @@ import { useIsMobile } from "@/composables/useIsMobile";
 import { useRootStore } from "@/stores/root";
 import { HTTP_METHOD_OPTIONS } from "@/constants/enums";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
+import CacheEditor from "@/components/editors/CacheEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import TransformEditor from "@/components/editors/TransformEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
@@ -65,6 +66,9 @@ function nonDefaultSections(): string[] {
   }
   if (model.transform.request || model.transform.response || model.transform.max_workers) {
     names.push("transform");
+  }
+  if (model.type === "http" && (model.cache.server.enabled || model.cache.browser.enabled)) {
+    names.push("cache");
   }
   return names;
 }
@@ -266,6 +270,9 @@ function close(): void {
           </NCollapseItem>
           <NCollapseItem title="Transform (request &amp; response)" name="transform">
             <TransformEditor v-model="model.transform" />
+          </NCollapseItem>
+          <NCollapseItem v-if="model.type === 'http'" title="Cache" name="cache">
+            <CacheEditor v-model="model.cache" />
           </NCollapseItem>
         </NCollapse>
       </NForm>

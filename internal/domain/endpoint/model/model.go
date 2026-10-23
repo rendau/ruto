@@ -28,6 +28,38 @@ type Endpoint struct {
 	Logging            loggingModel.Logging `json:"logging"`
 	Variables          varsModel.Vars       `json:"variables"`
 	Transform          Transform            `json:"transform"`
+	Cache              Cache                `json:"cache"`
+}
+
+// Cache configures response caching of an http endpoint. Server keeps
+// responses in the gateway memory and answers repeated GET requests itself;
+// Browser only sets Cache-Control so the client keeps the response.
+type Cache struct {
+	Server  CacheServer  `json:"server"`
+	Browser CacheBrowser `json:"browser"`
+}
+
+type CacheServer struct {
+	Enabled bool `json:"enabled"`
+	Ttl     int  `json:"ttl"` // seconds
+	// Shared keeps one cached response for all callers: the credentials are
+	// left out of the cache key even when auth is enabled. Only for responses
+	// that do not depend on who asks.
+	Shared bool `json:"shared"`
+	// VaryHeaders are request headers whose values keep separate cached
+	// responses, on top of path, query, Accept-Encoding and the caller's
+	// credentials when auth is enabled and the cache is not shared.
+	VaryHeaders []string `json:"vary_headers"`
+	MaxBodySize int      `json:"max_body_size"` // bytes, 0 => DefaultCacheMaxBodySize
+}
+
+type CacheBrowser struct {
+	Enabled bool   `json:"enabled"`
+	Scope   string `json:"scope"`   // "private" | "public" | "no-store"
+	MaxAge  int    `json:"max_age"` // seconds, ignored for "no-store"
+	// Override replaces the Cache-Control the backend sent; otherwise it is set
+	// only when the backend sent none.
+	Override bool `json:"override"`
 }
 
 // Transform holds optional scripts (JavaScript, evaluated by the gateway) that
