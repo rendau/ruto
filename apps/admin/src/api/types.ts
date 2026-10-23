@@ -122,6 +122,7 @@ export interface RootMain {
   auth: Auth;
   logging: Logging;
   log_own_response_errors: boolean;
+  strip_slashes: boolean;
   variables: Variable[];
   transform: RootTransform;
 }

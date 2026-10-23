@@ -214,6 +214,7 @@ export function normalizeRoot(value: RootMain): RootMain {
     auth: normalizeAuth(value?.auth),
     logging: normalizeLogging(value?.logging),
     log_own_response_errors: Boolean(value?.log_own_response_errors),
+    strip_slashes: Boolean(value?.strip_slashes),
     variables: variablesToArray(raw.variables),
     transform: normalizeRootTransform(value?.transform)
   };

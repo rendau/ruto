@@ -16,6 +16,7 @@ type Root struct {
 	Auth                 authModel.Auth       `json:"auth"`
 	Logging              loggingModel.Logging `json:"logging"`
 	LogOwnResponseErrors bool                 `json:"log_own_response_errors"` // log error responses the gateway returns itself (e.g. auth 401)
+	StripSlashes         bool                 `json:"strip_slashes"`           // "/users/" reaches the "users" endpoint; the backend still gets "/users/"
 	Variables            varsModel.Vars       `json:"variables"`
 	Transform            RootTransform        `json:"transform"`
 

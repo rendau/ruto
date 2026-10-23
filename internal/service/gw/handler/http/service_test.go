@@ -205,6 +205,80 @@ func TestService_HTTPWildcardPath(t *testing.T) {
 	}
 }
 
+func TestService_HTTPStripSlashes(t *testing.T) {
+	var backendPaths []string
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		backendPaths = append(backendPaths, r.URL.RequestURI())
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer backend.Close()
+
+	newService := func(stripSlashes bool) *Service {
+		snapshot := rootModel.NewEmpty()
+		snapshot.StripSlashes = stripSlashes
+		snapshot.Apps = []*appModel.App{
+			{
+				Active:        true,
+				PathPrefix:    "/account",
+				Name:          "account",
+				AllowWildcard: true,
+				Backend:       appModel.Backend{Url: backend.URL},
+				Endpoints: []*endpointModel.Endpoint{
+					{Active: true, Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: http.MethodGet, Path: ""}},
+					{Active: true, Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: http.MethodGet, Path: "users"}},
+					{Active: true, Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: "*", Path: "users/{id}"}},
+					{Active: true, Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: http.MethodGet, Path: "docs/*"}},
+				},
+			},
+		}
+		require.NoError(t, snapshot.Normalize())
+		snapshot.InheritDown()
+		snapshot.Interpolate()
+
+		service, err := New(snapshot, proxy.NewTransport(0), nil)
+		require.NoError(t, err)
+		return service
+	}
+
+	tests := []struct {
+		name            string
+		stripSlashes    bool
+		method          string
+		requestPath     string
+		wantCode        int
+		wantBackendPath string
+	}{
+		{name: "off: trailing slash is another route", method: http.MethodGet, requestPath: "/account/users/", wantCode: http.StatusNotFound},
+		{name: "off: exact path", method: http.MethodGet, requestPath: "/account/users", wantCode: http.StatusOK, wantBackendPath: "/users"},
+		// the backend gets the path the client sent, slash and query included
+		{name: "on: trailing slash", stripSlashes: true, method: http.MethodGet, requestPath: "/account/users/?a=1", wantCode: http.StatusOK, wantBackendPath: "/users/?a=1"},
+		{name: "on: exact path", stripSlashes: true, method: http.MethodGet, requestPath: "/account/users", wantCode: http.StatusOK, wantBackendPath: "/users"},
+		{name: "on: param route", stripSlashes: true, method: http.MethodPost, requestPath: "/account/users/42/", wantCode: http.StatusOK, wantBackendPath: "/users/42/"},
+		{name: "on: app root", stripSlashes: true, method: http.MethodGet, requestPath: "/account/", wantCode: http.StatusOK, wantBackendPath: "/"},
+		{name: "on: only one slash is trimmed", stripSlashes: true, method: http.MethodGet, requestPath: "/account/users//", wantCode: http.StatusNotFound},
+		// the slash is trimmed before matching, so a wildcard loses its empty tail
+		{name: "on: wildcard with empty tail", stripSlashes: true, method: http.MethodGet, requestPath: "/account/docs/", wantCode: http.StatusNotFound},
+		{name: "on: wildcard", stripSlashes: true, method: http.MethodGet, requestPath: "/account/docs/a/", wantCode: http.StatusOK, wantBackendPath: "/docs/a/"},
+	}
+
+	services := map[bool]*Service{false: newService(false), true: newService(true)}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			backendPaths = nil
+
+			rec := performRequest(services[tt.stripSlashes], tt.method, tt.requestPath, nil)
+
+			require.Equal(t, tt.wantCode, rec.Code)
+			if tt.wantBackendPath == "" {
+				require.Empty(t, backendPaths)
+				return
+			}
+			require.Equal(t, []string{tt.wantBackendPath}, backendPaths)
+		})
+	}
+}
+
 func TestService_HTTPRoutePriority(t *testing.T) {
 	ep := func(name, method, path string) *endpointModel.Endpoint {
 		return &endpointModel.Endpoint{
