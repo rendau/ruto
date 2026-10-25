@@ -35,6 +35,7 @@ import { useConfirm } from "@/composables/useConfirm";
 import { useAuthStore } from "@/stores/auth";
 import { HTTP_METHOD_OPTIONS } from "@/constants/enums";
 import { joinPath, joinUrl } from "@/lib/format";
+import { hasWildcard } from "@/lib/endpointPath";
 import PageContainer from "@/components/common/PageContainer.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
@@ -91,7 +92,13 @@ const appMetricsAvailable = computed(
 );
 
 const protocol = ref<"http" | "grpc">("http");
-const filters = reactive({ search: "", method: null as string | null, status: "all", auth: "all" });
+const filters = reactive({
+  search: "",
+  method: null as string | null,
+  status: "all",
+  auth: "all",
+  slash: "all"
+});
 
 // ---- Endpoint drawers/panels ---------------------------------------------
 
@@ -111,6 +118,11 @@ const showImport = ref(false);
 const hasWildcardEndpoint = computed(() =>
   endpoints.value.some((item) => item.type === "http" && item.http.path.includes("*"))
 );
+// The flag is ignored on wildcard paths: a wildcard catches "users/" anyway.
+function allowsTrailingSlash(endpoint: EndpointMain): boolean {
+  return endpoint.type === "http" && endpoint.allow_trailing_slash && !hasWildcard(endpoint.http.path);
+}
+
 const hasGrpc = computed(() => Boolean(app.value?.backend?.grpc_url?.trim()));
 const showGrpcTab = computed(() => hasGrpc.value || endpoints.value.some((e) => e.type === "grpc"));
 
@@ -139,6 +151,9 @@ const filteredEndpoints = computed(() => {
     if (protocol.value === "http" && filters.method && endpoint.http.method !== filters.method) {
       return false;
     }
+    if (protocol.value === "http" && filters.slash !== "all") {
+      if ((filters.slash === "allowed") !== allowsTrailingSlash(endpoint)) return false;
+    }
     if (search) {
       const haystack = [
         endpoint.id,
@@ -164,6 +179,12 @@ const statusOptions = [
   { label: "Active", value: "active" },
   { label: "Inactive", value: "inactive" }
 ];
+const slashOptions = [
+  { label: "Any slash", value: "all" },
+  { label: "Trailing /", value: "allowed" },
+  { label: "No trailing /", value: "not_allowed" }
+];
+
 const authOptions = [
   { label: "Any auth", value: "all" },
   { label: "Protected", value: "protected" },
@@ -561,6 +582,13 @@ onBeforeUnmount(() => {
                 class="ep-filters__select"
               />
               <NSelect
+                v-if="protocol === 'http'"
+                v-model:value="filters.slash"
+                size="small"
+                :options="slashOptions"
+                class="ep-filters__select"
+              />
+              <NSelect
                 v-model:value="filters.auth"
                 size="small"
                 :options="authOptions"
@@ -588,6 +616,13 @@ onBeforeUnmount(() => {
                     <code class="ep-row__path">
                       {{ endpoint.type === "grpc" ? endpoint.grpc.path : endpoint.http.path }}
                     </code>
+                    <span
+                      v-if="allowsTrailingSlash(endpoint)"
+                      class="ep-row__slash mono"
+                      :title="`Trailing slash allowed: ${endpoint.http.path}/ also reaches this endpoint`"
+                    >
+                      /
+                    </span>
                   </div>
                   <div v-if="appMetricsAvailable" class="ep-row__spark" title="RPS, last hour">
                     <template v-if="endpointsRps[endpoint.id]?.length">
@@ -848,6 +883,7 @@ onBeforeUnmount(() => {
 }
 
 .ep-filters__search {
+  flex: 1 1 200px;
   max-width: 280px;
 }
 
@@ -896,6 +932,17 @@ onBeforeUnmount(() => {
   color: var(--c-text);
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.ep-row__slash {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--c-teal);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border-strong);
+  padding: 0 6px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .ep-row__foot {
