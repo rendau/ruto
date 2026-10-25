@@ -129,8 +129,10 @@ function apply(): void {
     positiveText: "Apply",
     onConfirm: async () => {
       applying.value = true;
+      let applied = false;
       try {
         await applyChangeRequest(detail.main.id, shouldPublish);
+        applied = true;
         message.success("Change request applied");
       } catch (error) {
         message.error(apiErrorMessage(error, "Failed to apply change request"));
@@ -145,6 +147,10 @@ function apply(): void {
       }
       if (shouldPublish) {
         void snapshotStore.loadVersion();
+      }
+      // a failed apply stays open: the drawer shows why (outdated, expired, publish error)
+      if (applied) {
+        emit("update:show", false);
       }
     }
   });
