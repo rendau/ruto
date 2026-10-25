@@ -147,6 +147,39 @@ func TestEndpointNormalize_TrackPathsOnlyForWildcard(t *testing.T) {
 	require.False(t, item.TrackPaths)
 }
 
+func TestEndpointNormalize_AllowTrailingSlashOnlyForExactPath(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{path: "compare", want: true},
+		{path: "", want: true},
+		{path: "items/{id}", want: true},
+		{path: "docs/*"},
+		{path: "*"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			item := &Endpoint{
+				Type:               TypeHTTP,
+				AllowTrailingSlash: true,
+				Http:               Http{Method: "GET", Path: tt.path},
+			}
+			require.NoError(t, item.Normalize())
+			require.Equal(t, tt.want, item.AllowTrailingSlash)
+		})
+	}
+
+	item := &Endpoint{
+		Type:               TypeGRPC,
+		AllowTrailingSlash: true,
+		Grpc:               Grpc{Service: "svc.Users", Method: "Get", Path: "/svc.Users/Get"},
+	}
+	require.NoError(t, item.Normalize())
+	require.False(t, item.AllowTrailingSlash)
+}
+
 func TestEndpointNormalize_Cache(t *testing.T) {
 	item := &Endpoint{
 		Type: TypeHTTP,

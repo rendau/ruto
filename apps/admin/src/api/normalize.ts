@@ -214,7 +214,6 @@ export function normalizeRoot(value: RootMain): RootMain {
     auth: normalizeAuth(value?.auth),
     logging: normalizeLogging(value?.logging),
     log_own_response_errors: Boolean(value?.log_own_response_errors),
-    strip_slashes: Boolean(value?.strip_slashes),
     variables: variablesToArray(raw.variables),
     transform: normalizeRootTransform(value?.transform)
   };
@@ -255,6 +254,7 @@ export function normalizeEndpoint(value: EndpointMain): EndpointMain {
     active: Boolean(value?.active),
     exclude_from_metrics: Boolean(value?.exclude_from_metrics),
     track_paths: Boolean(value?.track_paths),
+    allow_trailing_slash: Boolean(value?.allow_trailing_slash),
     type: value?.type === "grpc" ? "grpc" : "http",
     http: {
       method: raw.http?.method || raw.method || "",

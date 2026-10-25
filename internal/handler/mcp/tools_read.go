@@ -37,12 +37,12 @@ func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_endpoints",
-		Description: "Endpoints of an app: id, type, method, path, custom_path, active, track_paths, whether transform scripts and server/browser cache are set. app: id or exact name.",
+		Description: "Endpoints of an app: id, type, method, path, custom_path, active, track_paths, allow_trailing_slash, whether transform scripts and server/browser cache are set. app: id or exact name.",
 	}, s.listEndpoints)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_endpoint",
-		Description: "Full endpoint configuration (including transform scripts, cache and track_paths) with secrets masked, plus its version for update_endpoint.",
+		Description: "Full endpoint configuration (including transform scripts, cache, track_paths and allow_trailing_slash) with secrets masked, plus its version for update_endpoint.",
 	}, s.getEndpoint)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
@@ -218,18 +218,19 @@ func (s *sessionServer) listApps(ctx context.Context, req *mcpsdk.CallToolReques
 }
 
 type EndpointSummary struct {
-	Id                string `json:"id"`
-	Version           string `json:"version"`
-	Active            bool   `json:"active"`
-	Type              string `json:"type"`
-	Method            string `json:"method,omitempty"`
-	Path              string `json:"path"`
-	CustomPath        string `json:"custom_path,omitempty"`
-	TrackPaths        bool   `json:"track_paths,omitempty"`
-	TransformRequest  bool   `json:"transform_request,omitempty"`
-	TransformResponse bool   `json:"transform_response,omitempty"`
-	ServerCache       bool   `json:"server_cache,omitempty"`
-	BrowserCache      bool   `json:"browser_cache,omitempty"`
+	Id                 string `json:"id"`
+	Version            string `json:"version"`
+	Active             bool   `json:"active"`
+	Type               string `json:"type"`
+	Method             string `json:"method,omitempty"`
+	Path               string `json:"path"`
+	CustomPath         string `json:"custom_path,omitempty"`
+	TrackPaths         bool   `json:"track_paths,omitempty"`
+	AllowTrailingSlash bool   `json:"allow_trailing_slash,omitempty"`
+	TransformRequest   bool   `json:"transform_request,omitempty"`
+	TransformResponse  bool   `json:"transform_response,omitempty"`
+	ServerCache        bool   `json:"server_cache,omitempty"`
+	BrowserCache       bool   `json:"browser_cache,omitempty"`
 }
 
 type EndpointListOut struct {
@@ -255,16 +256,17 @@ func (s *sessionServer) listEndpoints(ctx context.Context, req *mcpsdk.CallToolR
 
 	return nil, EndpointListOut{AppId: app.Id, Endpoints: lo.Map(items, func(v *endpointModel.Endpoint, _ int) EndpointSummary {
 		result := EndpointSummary{
-			Id:                v.Id,
-			Version:           version(v),
-			Active:            v.Active,
-			Type:              string(v.Type),
-			CustomPath:        v.Backend.CustomPath,
-			TrackPaths:        v.TrackPaths,
-			TransformRequest:  v.Transform.Request != "",
-			TransformResponse: v.Transform.Response != "",
-			ServerCache:       v.Cache.Server.Enabled,
-			BrowserCache:      v.Cache.Browser.Enabled,
+			Id:                 v.Id,
+			Version:            version(v),
+			Active:             v.Active,
+			Type:               string(v.Type),
+			CustomPath:         v.Backend.CustomPath,
+			TrackPaths:         v.TrackPaths,
+			AllowTrailingSlash: v.AllowTrailingSlash,
+			TransformRequest:   v.Transform.Request != "",
+			TransformResponse:  v.Transform.Response != "",
+			ServerCache:        v.Cache.Server.Enabled,
+			BrowserCache:       v.Cache.Browser.Enabled,
 		}
 		if v.Type == endpointModel.TypeGRPC {
 			result.Path = v.Grpc.Path

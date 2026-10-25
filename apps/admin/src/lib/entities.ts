@@ -30,6 +30,7 @@ export function emptyEndpoint(appId: string): EndpointMain {
     active: true,
     exclude_from_metrics: false,
     track_paths: false,
+    allow_trailing_slash: false,
     type: "http",
     http: { method: "GET", path: "" },
     grpc: { service: "", method: "", path: "" },

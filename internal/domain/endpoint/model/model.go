@@ -20,6 +20,7 @@ type Endpoint struct {
 	Active             bool                 `json:"active"`
 	ExcludeFromMetrics bool                 `json:"exclude_from_metrics"`
 	TrackPaths         bool                 `json:"track_paths"`
+	AllowTrailingSlash bool                 `json:"allow_trailing_slash"` // "users/" also reaches an exact path "users"; only admins change it
 	Type               Type                 `json:"type"`
 	Http               Http                 `json:"http"`
 	Grpc               Grpc                 `json:"grpc"`

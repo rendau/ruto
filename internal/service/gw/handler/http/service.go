@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/go-chi/chi/v5"
-	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
@@ -46,12 +45,6 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 	}()
 
 	router := chi.NewRouter()
-
-	// Inside the router StripSlashes trims only the path chi matches routes by,
-	// so the backend gets the path the client sent.
-	if snapshot.StripSlashes {
-		router.Use(chiMiddleware.StripSlashes)
-	}
 
 	for _, app := range snapshot.ActiveApps() {
 		endpoints := app.ActiveEndpoints()
@@ -98,10 +91,19 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 				middleware.NewResponseTransform(ep, snapshot.Transform.MaxWorkers),
 			)
 
-			if ep.Http.Method == "*" {
-				router.Handle(routePath, handler)
-			} else {
-				router.Method(ep.Http.Method, routePath, handler)
+			routePaths := make([]string, 1, 2)
+			routePaths[0] = routePath
+			// The same handler, not a copy: one endpoint for metrics and logs,
+			// and the backend gets the path as the client sent it.
+			if ep.AllowTrailingSlash {
+				routePaths = append(routePaths, routePath+"/")
+			}
+			for _, p := range routePaths {
+				if ep.Http.Method == "*" {
+					router.Handle(p, handler)
+				} else {
+					router.Method(ep.Http.Method, p, handler)
+				}
 			}
 		}
 	}

@@ -40,6 +40,10 @@ func (m *Endpoint) Normalize() error {
 	if !m.Http.HasWildcard() {
 		m.TrackPaths = false
 	}
+	// A wildcard already catches the path with a trailing slash.
+	if m.Type != TypeHTTP || m.Http.HasWildcard() {
+		m.AllowTrailingSlash = false
+	}
 
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)

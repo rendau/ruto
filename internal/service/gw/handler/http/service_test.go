@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -205,17 +206,26 @@ func TestService_HTTPWildcardPath(t *testing.T) {
 	}
 }
 
-func TestService_HTTPStripSlashes(t *testing.T) {
-	var backendPaths []string
+func TestService_HTTPAllowTrailingSlash(t *testing.T) {
+	type hit struct{ endpoint, path string }
+	var hits []hit
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		backendPaths = append(backendPaths, r.URL.RequestURI())
+		hits = append(hits, hit{endpoint: r.Header.Get("X-Endpoint"), path: r.URL.Path})
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer backend.Close()
 
-	newService := func(stripSlashes bool) *Service {
+	newEndpoint := func(path, name string, allowTrailingSlash bool) *endpointModel.Endpoint {
+		return &endpointModel.Endpoint{
+			Active:             true,
+			Type:               endpointModel.TypeHTTP,
+			Http:               endpointModel.Http{Method: http.MethodGet, Path: path},
+			Backend:            endpointModel.Backend{Headers: varsModel.Vars{"X-Endpoint": name}},
+			AllowTrailingSlash: allowTrailingSlash,
+		}
+	}
+	newService := func(allowTrailingSlash bool) *Service {
 		snapshot := rootModel.NewEmpty()
-		snapshot.StripSlashes = stripSlashes
 		snapshot.Apps = []*appModel.App{
 			{
 				Active:        true,
@@ -224,11 +234,19 @@ func TestService_HTTPStripSlashes(t *testing.T) {
 				AllowWildcard: true,
 				Backend:       appModel.Backend{Url: backend.URL},
 				Endpoints: []*endpointModel.Endpoint{
-					{Active: true, Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: http.MethodGet, Path: ""}},
-					{Active: true, Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: http.MethodGet, Path: "users"}},
-					{Active: true, Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: "*", Path: "users/{id}"}},
-					{Active: true, Type: endpointModel.TypeHTTP, Http: endpointModel.Http{Method: http.MethodGet, Path: "docs/*"}},
+					newEndpoint("*", "mask", false),
+					newEndpoint("compare", "compare", allowTrailingSlash),
+					newEndpoint("", "root", allowTrailingSlash),
+					newEndpoint("items/{id}", "item", allowTrailingSlash),
 				},
+			},
+			{
+				Active:        true,
+				PathPrefix:    "/files",
+				Name:          "files",
+				AllowWildcard: true,
+				Backend:       appModel.Backend{Url: backend.URL},
+				Endpoints:     []*endpointModel.Endpoint{newEndpoint("*", "files-mask", true)},
 			},
 		}
 		require.NoError(t, snapshot.Normalize())
@@ -241,40 +259,34 @@ func TestService_HTTPStripSlashes(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		stripSlashes    bool
-		method          string
-		requestPath     string
-		wantCode        int
-		wantBackendPath string
+		allowTrailingSlash bool
+		requestPath        string
+		want               hit
 	}{
-		{name: "off: trailing slash is another route", method: http.MethodGet, requestPath: "/account/users/", wantCode: http.StatusNotFound},
-		{name: "off: exact path", method: http.MethodGet, requestPath: "/account/users", wantCode: http.StatusOK, wantBackendPath: "/users"},
-		// the backend gets the path the client sent, slash and query included
-		{name: "on: trailing slash", stripSlashes: true, method: http.MethodGet, requestPath: "/account/users/?a=1", wantCode: http.StatusOK, wantBackendPath: "/users/?a=1"},
-		{name: "on: exact path", stripSlashes: true, method: http.MethodGet, requestPath: "/account/users", wantCode: http.StatusOK, wantBackendPath: "/users"},
-		{name: "on: param route", stripSlashes: true, method: http.MethodPost, requestPath: "/account/users/42/", wantCode: http.StatusOK, wantBackendPath: "/users/42/"},
-		{name: "on: app root", stripSlashes: true, method: http.MethodGet, requestPath: "/account/", wantCode: http.StatusOK, wantBackendPath: "/"},
-		{name: "on: only one slash is trimmed", stripSlashes: true, method: http.MethodGet, requestPath: "/account/users//", wantCode: http.StatusNotFound},
-		// the slash is trimmed before matching, so a wildcard loses its empty tail
-		{name: "on: wildcard with empty tail", stripSlashes: true, method: http.MethodGet, requestPath: "/account/docs/", wantCode: http.StatusNotFound},
-		{name: "on: wildcard", stripSlashes: true, method: http.MethodGet, requestPath: "/account/docs/a/", wantCode: http.StatusOK, wantBackendPath: "/docs/a/"},
+		{requestPath: "/account/compare", want: hit{"compare", "/compare"}},
+		{requestPath: "/account/compare/", want: hit{"mask", "/compare/"}},
+		{requestPath: "/account/", want: hit{"mask", "/"}},
+		{requestPath: "/account/items/AB1/", want: hit{"mask", "/items/AB1/"}},
+		{allowTrailingSlash: true, requestPath: "/account/compare", want: hit{"compare", "/compare"}},
+		{allowTrailingSlash: true, requestPath: "/account/compare/", want: hit{"compare", "/compare/"}},
+		{allowTrailingSlash: true, requestPath: "/account/", want: hit{"root", "/"}},
+		{allowTrailingSlash: true, requestPath: "/account/items/AB1/", want: hit{"item", "/items/AB1/"}},
+		{allowTrailingSlash: true, requestPath: "/account/other/", want: hit{"mask", "/other/"}},
+		// the bare prefix of an app served by a wildcard only stays with the wildcard
+		{requestPath: "/files/", want: hit{"files-mask", "/"}},
+		{allowTrailingSlash: true, requestPath: "/files/", want: hit{"files-mask", "/"}},
 	}
 
 	services := map[bool]*Service{false: newService(false), true: newService(true)}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			backendPaths = nil
+		t.Run(fmt.Sprintf("%t %s", tt.allowTrailingSlash, tt.requestPath), func(t *testing.T) {
+			hits = nil
 
-			rec := performRequest(services[tt.stripSlashes], tt.method, tt.requestPath, nil)
+			rec := performRequest(services[tt.allowTrailingSlash], http.MethodGet, tt.requestPath, nil)
 
-			require.Equal(t, tt.wantCode, rec.Code)
-			if tt.wantBackendPath == "" {
-				require.Empty(t, backendPaths)
-				return
-			}
-			require.Equal(t, []string{tt.wantBackendPath}, backendPaths)
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.Equal(t, []hit{tt.want}, hits)
 		})
 	}
 }

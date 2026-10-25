@@ -63,15 +63,19 @@ function splitPath(path: string): string[] {
 const explicitEndpoints = computed(() =>
   props.endpoints
     .filter((item) => item.type === "http" && !item.http.path.includes("*"))
-    .map((item) => ({ method: item.http.method.toUpperCase(), segments: splitPath(item.http.path) }))
+    .map((item) => ({
+      method: item.http.method.toUpperCase(),
+      segments: splitPath(item.http.path),
+      allowTrailingSlash: item.allow_trailing_slash
+    }))
 );
 
 // The gateway collapses only numbers, uuids, hashes and long slugs to {id}, so
 // a code like "AB123" stays literal: a path param of an endpoint has to match
 // any segment, not just {id}. An endpoint may serve one method or any ("*").
-function isRegistered(item: SeenPathMain): boolean {
+function matchingEndpoints(item: SeenPathMain) {
   const segments = splitPath(item.path);
-  return explicitEndpoints.value.some(
+  return explicitEndpoints.value.filter(
     (endpoint) =>
       (endpoint.method === item.method || endpoint.method === "*") &&
       endpoint.segments.length === segments.length &&
@@ -79,6 +83,19 @@ function isRegistered(item: SeenPathMain): boolean {
         (segment, index) => /^(\{.+\}|:.+)$/.test(segment) || segment === segments[index]
       )
   );
+}
+
+// "compare/" reaches the "compare" endpoint only with allow_trailing_slash;
+// without it the wildcard serves the path, and the row says which flag to set.
+function registration(item: SeenPathMain): "registered" | "needs-trailing-slash" | "" {
+  const matched = matchingEndpoints(item);
+  if (!matched.length) {
+    return "";
+  }
+  if (!item.path.endsWith("/") || matched.some((endpoint) => endpoint.allowTrailingSlash)) {
+    return "registered";
+  }
+  return "needs-trailing-slash";
 }
 
 function rowsLabel(count: number): string {
@@ -90,13 +107,17 @@ function rowKey(item: SeenPathMain): string {
 }
 
 const rows = computed(() =>
-  items.value.map((item) => ({
-    item,
-    key: rowKey(item),
-    registered: item.path !== OTHER_PATH && isRegistered(item),
-    onlyNotFound: item.hits > 0 && item.hits_not_found >= item.hits,
-    other: item.path === OTHER_PATH
-  }))
+  items.value.map((item) => {
+    const state = item.path === OTHER_PATH ? "" : registration(item);
+    return {
+      item,
+      key: rowKey(item),
+      registered: state === "registered",
+      needsTrailingSlash: state === "needs-trailing-slash",
+      onlyNotFound: item.hits > 0 && item.hits_not_found >= item.hits,
+      other: item.path === OTHER_PATH
+    };
+  })
 );
 
 const searchText = computed(() => search.value.trim().replace(/^\/+/, "").toLowerCase());
@@ -244,13 +265,22 @@ watch(
             </span>
           </div>
           <NTag v-if="row.registered" size="small" type="success" :bordered="false">registered</NTag>
+          <NTag
+            v-else-if="row.needsTrailingSlash"
+            size="small"
+            type="info"
+            :bordered="false"
+            title="An endpoint for this path exists; turn on its Allow trailing slash flag"
+          >
+            needs trailing slash
+          </NTag>
           <NTag v-else-if="row.onlyNotFound" size="small" type="warning" :bordered="false">404 only</NTag>
           <span class="seen__hits mono" :title="`${row.item.hits_not_found} of them returned 404`">
             {{ row.item.hits.toLocaleString() }}
           </span>
           <span class="seen__age muted">{{ formatUnixAge(row.item.last_seen_at_unix) }}</span>
           <NButton
-            v-if="!readonly && !row.registered && !row.other"
+            v-if="!readonly && !row.registered && !row.needsTrailingSlash && !row.other"
             size="tiny"
             tertiary
             type="primary"

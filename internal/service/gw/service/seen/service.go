@@ -132,9 +132,11 @@ func (s *Service) add(v *Item) {
 }
 
 // NormalizePath turns a concrete path into a template: segments that look like
-// identifiers (numbers, uuids, hashes, long slugs) become {id}.
+// identifiers (numbers, uuids, hashes, long slugs) become {id}. A trailing
+// slash is kept: "compare/" and "compare" are different rows, so the report
+// shows which endpoint needs allow_trailing_slash.
 func NormalizePath(path string) string {
-	path = strings.Trim(path, "/")
+	path = strings.TrimLeft(path, "/")
 	if path == "" {
 		return ""
 	}

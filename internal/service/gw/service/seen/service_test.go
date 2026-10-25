@@ -12,7 +12,9 @@ func TestNormalizePath(t *testing.T) {
 		"":                          "",
 		"/":                         "",
 		"/api/v2/product/12345":     "api/v2/product/{id}",
-		"api/v2/orders/7/items/15/": "api/v2/orders/{id}/items/{id}",
+		"api/v2/orders/7/items/15/": "api/v2/orders/{id}/items/{id}/",
+		"/compare":                  "compare",
+		"/compare/":                 "compare/",
 		"users/550e8400-e29b-41d4-a716-446655440000":                                    "users/{id}",
 		"files/5d41402abc4b2a76b9719d911017c592":                                        "files/{id}",
 		"product/operacionnaya-sistema-microsoft-windows-11-home":                       "product/{id}",
@@ -63,6 +65,20 @@ func TestService_RecordAndDrain(t *testing.T) {
 	s.Record("app-1", "ep-1", "GET", "/product/3", false)
 	items = s.Drain()
 	require.Len(t, items, 3)
+}
+
+func TestService_TrailingSlashIsSeparateRow(t *testing.T) {
+	s := New()
+
+	s.Record("app-1", "ep-1", "GET", "/compare", false)
+	s.Record("app-1", "ep-1", "GET", "/compare/", true)
+	s.Record("app-1", "ep-1", "GET", "/compare/", true)
+
+	hits := make(map[string]int64)
+	for _, item := range s.Drain() {
+		hits[item.Path] = int64(item.Hits)
+	}
+	require.Equal(t, map[string]int64{"compare": 1, "compare/": 2}, hits)
 }
 
 func TestService_CapsDistinctPathsPerEndpoint(t *testing.T) {

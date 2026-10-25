@@ -87,6 +87,9 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Endpoint) (string, erro
 	if err = u.requireAppAccess(ctx, obj.AppId); err != nil {
 		return "", err
 	}
+	if err = u.validateAllowTrailingSlashChange(ctx, false, obj); err != nil {
+		return "", err
+	}
 
 	newId, err := u.svc.Create(ctx, obj)
 	if err != nil {
@@ -148,6 +151,9 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Endpoint) er
 			return err
 		}
 	}
+	if err = u.validateAllowTrailingSlashChange(ctx, current.AllowTrailingSlash, obj); err != nil {
+		return err
+	}
 
 	err = u.svc.Update(ctx, id, obj)
 	if err != nil {
@@ -206,6 +212,14 @@ func (u *Usecase) validateEdit(ctx context.Context, obj *model.Endpoint) error {
 	}
 
 	return nil
+}
+
+// validateAllowTrailingSlashChange lets only admins toggle allow_trailing_slash.
+func (u *Usecase) validateAllowTrailingSlashChange(ctx context.Context, current bool, obj *model.Endpoint) error {
+	if obj.AllowTrailingSlash == current || u.sessionSvc.CtxIsAdmin(ctx) {
+		return nil
+	}
+	return errs.NoPermission
 }
 
 func (u *Usecase) getInherited(

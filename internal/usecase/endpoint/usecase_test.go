@@ -378,3 +378,74 @@ func TestSubstitutePathParams_WildcardTail(t *testing.T) {
 	require.Equal(t, "docs/7/x", substitutePathParams("docs/{id}/*", varsModel.Vars{"id": "7", "*": "x"}))
 	require.Equal(t, "docs/*", substitutePathParams("docs/*", varsModel.Vars{"id": "7"}))
 }
+
+func TestUsecase_EndpointAllowTrailingSlash_AdminOnly(t *testing.T) {
+	newUsecase := func(session *sessionModel.Session, current bool, saved *bool) *Usecase {
+		return New(
+			&testEndpointService{
+				get: func(_ context.Context, id string, _ bool) (*endpointModel.Endpoint, bool, error) {
+					return &endpointModel.Endpoint{Id: id, AppId: "app-1", AllowTrailingSlash: current}, true, nil
+				},
+				create: func(_ context.Context, _ *endpointModel.Endpoint) (string, error) {
+					*saved = true
+					return "ep-new", nil
+				},
+				update: func(_ context.Context, _ string, _ *endpointModel.Endpoint) error {
+					*saved = true
+					return nil
+				},
+			},
+			&testSessionService{session: session},
+		)
+	}
+	newEndpoint := func(allowTrailingSlash bool) *endpointModel.Endpoint {
+		return &endpointModel.Endpoint{
+			AppId:              "app-1",
+			Type:               endpointModel.TypeHTTP,
+			Http:               endpointModel.Http{Method: "GET", Path: "compare"},
+			AllowTrailingSlash: allowTrailingSlash,
+		}
+	}
+	owner := &sessionModel.Session{Id: 1, AppIds: []string{"app-1"}}
+	admin := &sessionModel.Session{Id: 2, Admin: true}
+
+	tests := []struct {
+		name    string
+		session *sessionModel.Session
+		create  bool
+		current bool
+		want    bool
+		wantErr error
+	}{
+		{name: "owner creates with the flag", session: owner, create: true, want: true, wantErr: errs.NoPermission},
+		{name: "owner creates without the flag", session: owner, create: true},
+		{name: "owner turns the flag on", session: owner, want: true, wantErr: errs.NoPermission},
+		{name: "owner turns the flag off", session: owner, current: true, wantErr: errs.NoPermission},
+		{name: "owner keeps the flag on", session: owner, current: true, want: true},
+		{name: "admin creates with the flag", session: admin, create: true, want: true},
+		{name: "admin turns the flag on", session: admin, want: true},
+		{name: "admin turns the flag off", session: admin, current: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			saved := false
+			uc := newUsecase(tt.session, tt.current, &saved)
+
+			var err error
+			if tt.create {
+				_, err = uc.Create(context.Background(), newEndpoint(tt.want))
+			} else {
+				err = uc.Update(context.Background(), "ep-1", newEndpoint(tt.want))
+			}
+
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				require.False(t, saved)
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, saved)
+		})
+	}
+}

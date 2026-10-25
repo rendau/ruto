@@ -21,6 +21,7 @@ import { hasWildcard, wildcardPathError } from "@/lib/endpointPath";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useIsMobile } from "@/composables/useIsMobile";
 import { useRootStore } from "@/stores/root";
+import { useAuthStore } from "@/stores/auth";
 import { HTTP_METHOD_OPTIONS } from "@/constants/enums";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CacheEditor from "@/components/editors/CacheEditor.vue";
@@ -41,6 +42,7 @@ const props = defineProps<{
 const emit = defineEmits<{ "update:show": [value: boolean]; saved: [] }>();
 
 const rootStore = useRootStore();
+const authStore = useAuthStore();
 const isMobile = useIsMobile();
 
 const model = reactive<EndpointMain>(emptyEndpoint(""));
@@ -226,6 +228,18 @@ function close(): void {
             title="Count the concrete paths this wildcard serves in the Seen paths report"
           >
             Track seen paths
+          </NCheckbox>
+          <NCheckbox
+            v-if="model.type === 'http' && !hasWildcard(model.http.path)"
+            v-model:checked="model.allow_trailing_slash"
+            :disabled="!authStore.isAdmin"
+            :title="
+              authStore.isAdmin
+                ? 'The path with a trailing slash reaches this endpoint too; the backend gets it as sent'
+                : 'Only an administrator can change this'
+            "
+          >
+            Allow trailing slash
           </NCheckbox>
         </div>
 

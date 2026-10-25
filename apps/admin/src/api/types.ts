@@ -122,7 +122,6 @@ export interface RootMain {
   auth: Auth;
   logging: Logging;
   log_own_response_errors: boolean;
-  strip_slashes: boolean;
   variables: Variable[];
   transform: RootTransform;
 }
@@ -274,6 +273,7 @@ export interface EndpointMain {
   active: boolean;
   exclude_from_metrics: boolean;
   track_paths: boolean;
+  allow_trailing_slash: boolean;
   type: EndpointType;
   http: EndpointHttp;
   grpc: EndpointGrpc;

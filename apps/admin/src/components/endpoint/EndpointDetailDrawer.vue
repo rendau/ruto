@@ -253,6 +253,9 @@ function remove(): void {
             <DefRow v-if="item.type === 'http' && hasWildcard(item.http.path)" label="Seen paths">
               {{ item.track_paths ? "Tracked" : "Not tracked" }}
             </DefRow>
+            <DefRow v-if="item.type === 'http' && !hasWildcard(item.http.path)" label="Trailing slash">
+              {{ item.allow_trailing_slash ? "Allowed" : "Not allowed" }}
+            </DefRow>
             <DefRow v-if="item.type === 'http'" label="Cache">
               {{ cacheSummary(item) }}
             </DefRow>

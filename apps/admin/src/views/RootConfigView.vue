@@ -50,7 +50,6 @@ function emptyRoot(): RootMain {
     auth: emptyAuth(),
     logging: emptyLogging(),
     log_own_response_errors: false,
-    strip_slashes: false,
     variables: [],
     transform: { max_workers: 0 }
   };
@@ -142,17 +141,9 @@ onMounted(load);
             <span class="field__label">Base URL</span>
             <NInput v-model:value="model.base_url" placeholder="https://api.example.com" />
           </label>
-          <div class="general__checks">
-            <NCheckbox v-model:checked="model.log_own_response_errors">
-              Log gateway's own response errors
-            </NCheckbox>
-            <NCheckbox
-              v-model:checked="model.strip_slashes"
-              title="/users/ reaches the users endpoint, the backend still gets /users/. A wildcard docs/* then no longer catches /docs/."
-            >
-              Ignore trailing slash in request paths
-            </NCheckbox>
-          </div>
+          <NCheckbox v-model:checked="model.log_own_response_errors" class="general__check">
+            Log gateway's own response errors
+          </NCheckbox>
           <label class="field general__workers">
             <span class="field__label">
               Transform max workers (default cap on concurrent runtimes per endpoint script; 0 = engine default)
@@ -292,12 +283,8 @@ onMounted(load);
   color: var(--c-text-3);
 }
 
-.general__checks {
+.general__check {
   margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
 }
 
 .general__workers {
