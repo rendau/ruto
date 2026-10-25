@@ -39,6 +39,7 @@ import {
 } from "@/lib/changeRequest";
 import DefList from "@/components/common/DefList.vue";
 import DefRow from "@/components/common/DefRow.vue";
+import MethodBadge from "@/components/common/MethodBadge.vue";
 import type { ChangeRequestDetail, ChangeRequestOp } from "@/api/types";
 import type { TagType } from "@/constants/enums";
 
@@ -90,6 +91,11 @@ function opTagType(op: ChangeRequestOp): TagType {
 // Create ops have no "before" side; hiding the column keeps their diff compact.
 function hasBefore(op: ChangeRequestOp): boolean {
   return op.changes.some((change) => change.before !== "");
+}
+
+// Rows are stored without the leading slash; "(other)" is the overflow bucket.
+function seenPathLabel(path: string): string {
+  return path === "(other)" ? path : `/${path}`;
 }
 
 function plural(count: number, word: string): string {
@@ -273,6 +279,27 @@ async function submitReject(): Promise<void> {
                     <div v-if="change.after" class="diff__value">{{ change.after }}</div>
                     <span v-else class="muted">—</span>
                   </div>
+                </div>
+              </div>
+              <div v-else-if="op.seen_paths.length" class="seen">
+                <div
+                  v-for="row in op.seen_paths"
+                  :key="`${row.method} ${row.path}`"
+                  class="seen__row"
+                >
+                  <MethodBadge :method="row.method" />
+                  <div class="seen__main">
+                    <code class="seen__path">{{ seenPathLabel(row.path) }}</code>
+                    <span v-if="row.sample" class="muted seen__sample" :title="row.sample">
+                      e.g. {{ row.sample }}
+                    </span>
+                  </div>
+                  <span
+                    class="seen__hits mono"
+                    :title="`${row.hits.toLocaleString()} hits, ${row.hits_not_found.toLocaleString()} of them returned 404`"
+                  >
+                    {{ row.hits.toLocaleString() }}
+                  </span>
                 </div>
               </div>
               <span v-else-if="changeRequestOpTone(op.op) !== 'delete'" class="muted op__empty">
@@ -510,6 +537,53 @@ async function submitReject(): Promise<void> {
 
 .diff__value--before {
   color: var(--c-text-2);
+}
+
+.seen {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.seen__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: var(--c-surface);
+}
+
+.seen__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.seen__path {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--c-text);
+  overflow-wrap: anywhere;
+}
+
+.seen__sample {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seen__hits {
+  flex: none;
+  min-width: 56px;
+  text-align: right;
+  font-size: 12.5px;
 }
 
 .cr__footer {

@@ -54,6 +54,16 @@ type OpView struct {
 	AppName string    `json:"app_name"`
 	Changes []*Change `json:"changes"`
 	Notes   []string  `json:"notes"`
+	// SeenPaths are the report rows a delete_seen_paths removes.
+	SeenPaths []*SeenPathView `json:"seen_paths,omitempty"`
+}
+
+type SeenPathView struct {
+	Method       string `json:"method"`
+	Path         string `json:"path"`
+	Hits         int64  `json:"hits"`
+	HitsNotFound int64  `json:"hits_not_found"`
+	Sample       string `json:"sample"`
 }
 
 type Change struct {

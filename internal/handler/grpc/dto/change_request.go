@@ -55,6 +55,17 @@ func encodeChangeRequestOp(v *usecase.OpView, _ int) *ruto_v1.ChangeRequestOp {
 		AppName:    v.AppName,
 		Changes:    lo.Map(v.Changes, encodeChangeRequestChange),
 		Notes:      v.Notes,
+		SeenPaths:  lo.Map(v.SeenPaths, encodeChangeRequestSeenPath),
+	}
+}
+
+func encodeChangeRequestSeenPath(v *usecase.SeenPathView, _ int) *ruto_v1.ChangeRequestSeenPath {
+	return &ruto_v1.ChangeRequestSeenPath{
+		Method:       v.Method,
+		Path:         v.Path,
+		Hits:         v.Hits,
+		HitsNotFound: v.HitsNotFound,
+		Sample:       v.Sample,
 	}
 }
 

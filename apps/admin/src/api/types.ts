@@ -564,7 +564,8 @@ export type ChangeRequestOpKind =
   | "create_endpoint"
   | "update_endpoint"
   | "delete_endpoint"
-  | "update_root";
+  | "update_root"
+  | "delete_seen_paths";
 
 export interface ChangeRequestMain {
   id: number;
@@ -595,6 +596,15 @@ export interface ChangeRequestChange {
   secret: boolean;
 }
 
+// A seen paths report row removed by delete_seen_paths, with its counters.
+export interface ChangeRequestSeenPath {
+  method: string;
+  path: string;
+  hits: number;
+  hits_not_found: number;
+  sample: string;
+}
+
 export interface ChangeRequestOp {
   op: ChangeRequestOpKind;
   target_kind: string;
@@ -603,6 +613,7 @@ export interface ChangeRequestOp {
   app_name: string;
   changes: ChangeRequestChange[];
   notes: string[];
+  seen_paths: ChangeRequestSeenPath[];
 }
 
 export interface ChangeRequestDetail {

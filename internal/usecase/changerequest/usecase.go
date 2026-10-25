@@ -25,11 +25,13 @@ type Usecase struct {
 	rootUc     RootUsecaseI
 	appUc      AppUsecaseI
 	endpointUc EndpointUsecaseI
+	seenPathUc SeenPathUsecaseI
 	snapshotUc SnapshotUsecaseI
 
 	rootSvc     RootServiceI
 	appSvc      AppServiceI
 	endpointSvc EndpointServiceI
+	seenPathSvc SeenPathServiceI
 	usrSvc      UsrServiceI
 }
 
@@ -41,10 +43,12 @@ func New(
 	rootUc RootUsecaseI,
 	appUc AppUsecaseI,
 	endpointUc EndpointUsecaseI,
+	seenPathUc SeenPathUsecaseI,
 	snapshotUc SnapshotUsecaseI,
 	rootSvc RootServiceI,
 	appSvc AppServiceI,
 	endpointSvc EndpointServiceI,
+	seenPathSvc SeenPathServiceI,
 	usrSvc UsrServiceI,
 ) *Usecase {
 	return &Usecase{
@@ -55,10 +59,12 @@ func New(
 		rootUc:      rootUc,
 		appUc:       appUc,
 		endpointUc:  endpointUc,
+		seenPathUc:  seenPathUc,
 		snapshotUc:  snapshotUc,
 		rootSvc:     rootSvc,
 		appSvc:      appSvc,
 		endpointSvc: endpointSvc,
+		seenPathSvc: seenPathSvc,
 		usrSvc:      usrSvc,
 	}
 }
@@ -96,6 +102,14 @@ func (u *Usecase) Propose(ctx context.Context, req *ProposeReq) (int64, error) {
 	}
 	if err = checkShape(ops); err != nil {
 		return 0, err
+	}
+	for i, op := range ops {
+		if op.Op != model.OpDeleteSeenPaths {
+			continue
+		}
+		if err = u.prepareSeenPaths(ctx, op); err != nil {
+			return 0, wrapOp(i, op, err)
+		}
 	}
 
 	plan := model.Plan{Ops: ops, Versions: map[string]string{}}

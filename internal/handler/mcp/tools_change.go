@@ -27,6 +27,7 @@ Operations (applied in order, all or nothing):
 - update_endpoint: id, version, data = full endpoint object (get_endpoint, edited).
 - delete_endpoint: id, version.
 - update_root: version, data = full root object (get_root, edited).
+- delete_seen_paths: data = {app: app id or name, rows: [{method, path}]} — rows of the app's seen paths report as list_seen_paths shows them (endpoint_id is not needed). Every row must be in the report. Put it into the request that creates exact endpoints for these paths, so the report keeps only what the wildcard still serves.
 
 Secret positions take value sources, never secret values: keep or copy a {"secret_ref": ...} object, {"generate": {...}, "name": ...}, {"reuse": name} or a plain non-secret string.`,
 	}, s.proposeChanges)
@@ -48,12 +49,12 @@ Secret positions take value sources, never secret values: keep or copy a {"secre
 }
 
 type OpIn struct {
-	Op      string         `json:"op" jsonschema:"create_app | update_app | delete_app | create_endpoint | update_endpoint | delete_endpoint | update_root"`
+	Op      string         `json:"op" jsonschema:"create_app | update_app | delete_app | create_endpoint | update_endpoint | delete_endpoint | update_root | delete_seen_paths"`
 	Ref     string         `json:"ref,omitempty" jsonschema:"create_app: a name starting with $ to reference the new app in later operations"`
 	Id      string         `json:"id,omitempty" jsonschema:"update_*/delete_*: id of the target"`
 	App     string         `json:"app,omitempty" jsonschema:"create_endpoint: app id or $ref"`
 	Version string         `json:"version,omitempty" jsonschema:"update_*/delete_*: version returned by get_* when you read the object"`
-	Data    map[string]any `json:"data,omitempty" jsonschema:"the full object for create_*/update_*"`
+	Data    map[string]any `json:"data,omitempty" jsonschema:"the full object for create_*/update_*; {app, rows: [{method, path}]} for delete_seen_paths"`
 }
 
 type ProposeIn struct {
@@ -122,13 +123,22 @@ type ChangeOut struct {
 	After  string `json:"after,omitempty"`
 }
 
+type SeenPathRowOut struct {
+	Method       string `json:"method"`
+	Path         string `json:"path"`
+	Hits         int64  `json:"hits"`
+	HitsNotFound int64  `json:"hits_not_found"`
+	Sample       string `json:"sample,omitempty"`
+}
+
 type OpViewOut struct {
-	Op       string      `json:"op"`
-	TargetId string      `json:"target_id,omitempty"`
-	Title    string      `json:"title,omitempty"`
-	AppName  string      `json:"app_name,omitempty"`
-	Changes  []ChangeOut `json:"changes,omitempty"`
-	Notes    []string    `json:"notes,omitempty"`
+	Op        string           `json:"op"`
+	TargetId  string           `json:"target_id,omitempty"`
+	Title     string           `json:"title,omitempty"`
+	AppName   string           `json:"app_name,omitempty"`
+	Changes   []ChangeOut      `json:"changes,omitempty"`
+	SeenPaths []SeenPathRowOut `json:"seen_paths,omitempty"`
+	Notes     []string         `json:"notes,omitempty"`
 }
 
 type ChangeRequestOut struct {
@@ -172,6 +182,9 @@ func (s *sessionServer) getChangeRequest(ctx context.Context, req *mcpsdk.CallTo
 			Notes:    v.Notes,
 			Changes: lo.Map(v.Changes, func(c *usecaseChangeRequest.Change, _ int) ChangeOut {
 				return ChangeOut{Path: c.Path, Before: c.Before, After: c.After}
+			}),
+			SeenPaths: lo.Map(v.SeenPaths, func(r *usecaseChangeRequest.SeenPathView, _ int) SeenPathRowOut {
+				return SeenPathRowOut{Method: r.Method, Path: r.Path, Hits: r.Hits, HitsNotFound: r.HitsNotFound, Sample: r.Sample}
 			}),
 		}
 	})

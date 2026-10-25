@@ -24,6 +24,9 @@ const (
 	OpUpdateEndpoint = "update_endpoint"
 	OpDeleteEndpoint = "delete_endpoint"
 	OpUpdateRoot     = "update_root"
+	// OpDeleteSeenPaths removes rows of an app's seen paths report, e.g. the
+	// paths the same request registers as exact endpoints.
+	OpDeleteSeenPaths = "delete_seen_paths"
 )
 
 // ChangeRequest is a batch of configuration changes proposed by an agent.
@@ -72,6 +75,20 @@ type Op struct {
 	// App is the owner of a new endpoint: an app id or a Ref.
 	App  string          `json:"app,omitempty"`
 	Data json.RawMessage `json:"data,omitempty"`
+}
+
+// SeenPathsData is the data of delete_seen_paths. App is pinned to an app id
+// when the request is proposed.
+type SeenPathsData struct {
+	App  string        `json:"app"`
+	Rows []SeenPathRow `json:"rows"`
+}
+
+// SeenPathRow is a report row as list_seen_paths shows it; the wildcard
+// endpoint that counted it is not needed.
+type SeenPathRow struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
 }
 
 type Result struct {

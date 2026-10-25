@@ -22,3 +22,10 @@ type SeenPathKey struct {
 	Method     string
 	Path       string
 }
+
+// PathKey matches report rows by method and path, whatever wildcard endpoint
+// counted them.
+type PathKey struct {
+	Method string
+	Path   string
+}

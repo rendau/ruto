@@ -2289,6 +2289,36 @@
           "items": {
             "type": "string"
           }
+        },
+        "seen_paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1ChangeRequestSeenPath"
+          },
+          "title": "rows of the seen paths report removed by delete_seen_paths"
+        }
+      }
+    },
+    "ruto_v1ChangeRequestSeenPath": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "hits": {
+          "type": "string",
+          "format": "int64"
+        },
+        "hits_not_found": {
+          "type": "string",
+          "format": "int64"
+        },
+        "sample": {
+          "type": "string"
         }
       }
     },

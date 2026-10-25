@@ -57,7 +57,7 @@ func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_seen_paths",
-		Description: "Concrete paths the gateway served through wildcard endpoints of an app, with hit counts (ids collapsed to {id}), most requested first. Use it to replace a wildcard with exact endpoints. Only wildcard endpoints with track_paths=true are counted. endpoint_id narrows to one wildcard endpoint.",
+		Description: "Concrete paths the gateway served through wildcard endpoints of an app, with hit counts (ids collapsed to {id}), most requested first. Use it to replace a wildcard with exact endpoints. Only wildcard endpoints with track_paths=true are counted. endpoint_id narrows to one wildcard endpoint. Rows you turn into exact endpoints can be removed by delete_seen_paths in the same propose_changes request.",
 	}, s.listSeenPaths)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{

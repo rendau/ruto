@@ -122,9 +122,17 @@ registered`, `oauth: consent`, `oauth: tokens issued`, `oauth: connection revoke
 | `update_endpoint` | `id`, `version`, `data` |
 | `delete_endpoint` | `id`, `version` |
 | `update_root` | `version`, `data` |
+| `delete_seen_paths` | `data` = `{"app": "<id или имя>", "rows": [{"method": "GET", "path": "users/{id}"}]}` — строки отчёта `list_seen_paths` (`endpoint_id` не нужен: удаляется строка у любой маски приложения, которая её насчитала) |
 
 `version` — отпечаток объекта, который вернули `get_*`/`list_*`. Если объект изменился с
 момента чтения, заявка не создаётся.
+
+`delete_seen_paths` чистит отчёт о путях точечно. При создании заявки имя приложения
+заменяется его id, и каждая строка должна быть в отчёте — иначе заявка не создаётся.
+Применяется вместе с остальными операциями (всё или ничего); строки, которые до применения
+успели удалить из админки, просто пропускаются. Удобно класть в ту же заявку, что создаёт
+точные эндпоинты для этих путей: в отчёте остаётся только то, что ещё обслуживает маска.
+В админке заявка показывает удаляемые строки с числом запросов и примером пути.
 
 **Проверка при создании.** core сразу прогоняет все операции в транзакции, которая всегда
 откатывается: те же проверки, что у правки из админки (права, обязательные поля, уникальность
@@ -207,6 +215,7 @@ connector → адрес MCP-сервера.
 list_apps → get_app {"app": "orders"} → list_seen_paths {"app": "orders"}
 propose_changes {"title": "Точные эндпоинты вместо orders/v1/*", "publish": true, "ops": [
   {"op": "create_endpoint", "app": "<id>", "data": {"type": "http", "http": {"method": "GET", "path": "v1/users/{id}"}}},
+  {"op": "delete_seen_paths", "data": {"app": "orders", "rows": [{"method": "GET", "path": "v1/users/{id}"}]}},
   {"op": "delete_endpoint", "id": "<id wildcard>", "version": "<version>"}]}
 → человек применяет заявку в админке
 get_change_request {"id": 7} → get_publish_status

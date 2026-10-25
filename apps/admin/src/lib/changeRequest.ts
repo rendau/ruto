@@ -34,7 +34,8 @@ const OP_LABEL: Record<ChangeRequestOpKind, string> = {
   create_endpoint: "New endpoint",
   update_endpoint: "Update endpoint",
   delete_endpoint: "Delete endpoint",
-  update_root: "Update root"
+  update_root: "Update root",
+  delete_seen_paths: "Delete seen paths"
 };
 
 export function changeRequestOpLabel(op: string): string {

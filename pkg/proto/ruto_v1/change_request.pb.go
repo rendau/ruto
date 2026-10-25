@@ -500,14 +500,16 @@ func (x *ChangeRequestDetail) GetOps() []*ChangeRequestOp {
 }
 
 type ChangeRequestOp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Op            string                 `protobuf:"bytes,1,opt,name=op,proto3" json:"op,omitempty"`
-	TargetKind    string                 `protobuf:"bytes,2,opt,name=target_kind,json=targetKind,proto3" json:"target_kind,omitempty"`
-	TargetId      string                 `protobuf:"bytes,3,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
-	Title         string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
-	AppName       string                 `protobuf:"bytes,5,opt,name=app_name,json=appName,proto3" json:"app_name,omitempty"`
-	Changes       []*ChangeRequestChange `protobuf:"bytes,6,rep,name=changes,proto3" json:"changes,omitempty"`
-	Notes         []string               `protobuf:"bytes,7,rep,name=notes,proto3" json:"notes,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Op         string                 `protobuf:"bytes,1,opt,name=op,proto3" json:"op,omitempty"`
+	TargetKind string                 `protobuf:"bytes,2,opt,name=target_kind,json=targetKind,proto3" json:"target_kind,omitempty"`
+	TargetId   string                 `protobuf:"bytes,3,opt,name=target_id,json=targetId,proto3" json:"target_id,omitempty"`
+	Title      string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	AppName    string                 `protobuf:"bytes,5,opt,name=app_name,json=appName,proto3" json:"app_name,omitempty"`
+	Changes    []*ChangeRequestChange `protobuf:"bytes,6,rep,name=changes,proto3" json:"changes,omitempty"`
+	Notes      []string               `protobuf:"bytes,7,rep,name=notes,proto3" json:"notes,omitempty"`
+	// rows of the seen paths report removed by delete_seen_paths
+	SeenPaths     []*ChangeRequestSeenPath `protobuf:"bytes,8,rep,name=seen_paths,json=seenPaths,proto3" json:"seen_paths,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -591,6 +593,89 @@ func (x *ChangeRequestOp) GetNotes() []string {
 	return nil
 }
 
+func (x *ChangeRequestOp) GetSeenPaths() []*ChangeRequestSeenPath {
+	if x != nil {
+		return x.SeenPaths
+	}
+	return nil
+}
+
+type ChangeRequestSeenPath struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Method        string                 `protobuf:"bytes,1,opt,name=method,proto3" json:"method,omitempty"`
+	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	Hits          int64                  `protobuf:"varint,3,opt,name=hits,proto3" json:"hits,omitempty"`
+	HitsNotFound  int64                  `protobuf:"varint,4,opt,name=hits_not_found,json=hitsNotFound,proto3" json:"hits_not_found,omitempty"`
+	Sample        string                 `protobuf:"bytes,5,opt,name=sample,proto3" json:"sample,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChangeRequestSeenPath) Reset() {
+	*x = ChangeRequestSeenPath{}
+	mi := &file_ruto_v1_change_request_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeRequestSeenPath) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeRequestSeenPath) ProtoMessage() {}
+
+func (x *ChangeRequestSeenPath) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_change_request_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeRequestSeenPath.ProtoReflect.Descriptor instead.
+func (*ChangeRequestSeenPath) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_change_request_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ChangeRequestSeenPath) GetMethod() string {
+	if x != nil {
+		return x.Method
+	}
+	return ""
+}
+
+func (x *ChangeRequestSeenPath) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *ChangeRequestSeenPath) GetHits() int64 {
+	if x != nil {
+		return x.Hits
+	}
+	return 0
+}
+
+func (x *ChangeRequestSeenPath) GetHitsNotFound() int64 {
+	if x != nil {
+		return x.HitsNotFound
+	}
+	return 0
+}
+
+func (x *ChangeRequestSeenPath) GetSample() string {
+	if x != nil {
+		return x.Sample
+	}
+	return ""
+}
+
 type ChangeRequestChange struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
@@ -603,7 +688,7 @@ type ChangeRequestChange struct {
 
 func (x *ChangeRequestChange) Reset() {
 	*x = ChangeRequestChange{}
-	mi := &file_ruto_v1_change_request_proto_msgTypes[8]
+	mi := &file_ruto_v1_change_request_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -615,7 +700,7 @@ func (x *ChangeRequestChange) String() string {
 func (*ChangeRequestChange) ProtoMessage() {}
 
 func (x *ChangeRequestChange) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_change_request_proto_msgTypes[8]
+	mi := &file_ruto_v1_change_request_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -628,7 +713,7 @@ func (x *ChangeRequestChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangeRequestChange.ProtoReflect.Descriptor instead.
 func (*ChangeRequestChange) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_change_request_proto_rawDescGZIP(), []int{8}
+	return file_ruto_v1_change_request_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ChangeRequestChange) GetPath() string {
@@ -703,7 +788,7 @@ const file_ruto_v1_change_request_proto_rawDesc = "" +
 	"\fdecided_name\x18\x03 \x01(\tR\vdecidedName\x12\x1a\n" +
 	"\boutdated\x18\x04 \x01(\bR\boutdated\x12'\n" +
 	"\x0foutdated_reason\x18\x05 \x01(\tR\x0eoutdatedReason\x12*\n" +
-	"\x03ops\x18\x06 \x03(\v2\x18.ruto_v1.ChangeRequestOpR\x03ops\"\xde\x01\n" +
+	"\x03ops\x18\x06 \x03(\v2\x18.ruto_v1.ChangeRequestOpR\x03ops\"\x9d\x02\n" +
 	"\x0fChangeRequestOp\x12\x0e\n" +
 	"\x02op\x18\x01 \x01(\tR\x02op\x12\x1f\n" +
 	"\vtarget_kind\x18\x02 \x01(\tR\n" +
@@ -712,7 +797,15 @@ const file_ruto_v1_change_request_proto_rawDesc = "" +
 	"\x05title\x18\x04 \x01(\tR\x05title\x12\x19\n" +
 	"\bapp_name\x18\x05 \x01(\tR\aappName\x126\n" +
 	"\achanges\x18\x06 \x03(\v2\x1c.ruto_v1.ChangeRequestChangeR\achanges\x12\x14\n" +
-	"\x05notes\x18\a \x03(\tR\x05notes\"o\n" +
+	"\x05notes\x18\a \x03(\tR\x05notes\x12=\n" +
+	"\n" +
+	"seen_paths\x18\b \x03(\v2\x1e.ruto_v1.ChangeRequestSeenPathR\tseenPaths\"\x95\x01\n" +
+	"\x15ChangeRequestSeenPath\x12\x16\n" +
+	"\x06method\x18\x01 \x01(\tR\x06method\x12\x12\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\x12\x12\n" +
+	"\x04hits\x18\x03 \x01(\x03R\x04hits\x12$\n" +
+	"\x0ehits_not_found\x18\x04 \x01(\x03R\fhitsNotFound\x12\x16\n" +
+	"\x06sample\x18\x05 \x01(\tR\x06sample\"o\n" +
 	"\x13ChangeRequestChange\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
 	"\x06before\x18\x02 \x01(\tR\x06before\x12\x14\n" +
@@ -737,7 +830,7 @@ func file_ruto_v1_change_request_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_change_request_proto_rawDescData
 }
 
-var file_ruto_v1_change_request_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_ruto_v1_change_request_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_ruto_v1_change_request_proto_goTypes = []any{
 	(*ChangeRequestListReq)(nil),   // 0: ruto_v1.ChangeRequestListReq
 	(*ChangeRequestListRep)(nil),   // 1: ruto_v1.ChangeRequestListRep
@@ -747,31 +840,33 @@ var file_ruto_v1_change_request_proto_goTypes = []any{
 	(*ChangeRequestMain)(nil),      // 5: ruto_v1.ChangeRequestMain
 	(*ChangeRequestDetail)(nil),    // 6: ruto_v1.ChangeRequestDetail
 	(*ChangeRequestOp)(nil),        // 7: ruto_v1.ChangeRequestOp
-	(*ChangeRequestChange)(nil),    // 8: ruto_v1.ChangeRequestChange
-	(*ListParamsSt)(nil),           // 9: ruto_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),       // 10: ruto_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),          // 11: google.protobuf.Empty
+	(*ChangeRequestSeenPath)(nil),  // 8: ruto_v1.ChangeRequestSeenPath
+	(*ChangeRequestChange)(nil),    // 9: ruto_v1.ChangeRequestChange
+	(*ListParamsSt)(nil),           // 10: ruto_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),       // 11: ruto_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),          // 12: google.protobuf.Empty
 }
 var file_ruto_v1_change_request_proto_depIdxs = []int32{
-	9,  // 0: ruto_v1.ChangeRequestListReq.list_params:type_name -> ruto_v1.ListParamsSt
-	10, // 1: ruto_v1.ChangeRequestListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
+	10, // 0: ruto_v1.ChangeRequestListReq.list_params:type_name -> ruto_v1.ListParamsSt
+	11, // 1: ruto_v1.ChangeRequestListRep.pagination_info:type_name -> ruto_v1.PaginationInfoSt
 	5,  // 2: ruto_v1.ChangeRequestListRep.results:type_name -> ruto_v1.ChangeRequestMain
 	5,  // 3: ruto_v1.ChangeRequestDetail.main:type_name -> ruto_v1.ChangeRequestMain
 	7,  // 4: ruto_v1.ChangeRequestDetail.ops:type_name -> ruto_v1.ChangeRequestOp
-	8,  // 5: ruto_v1.ChangeRequestOp.changes:type_name -> ruto_v1.ChangeRequestChange
-	0,  // 6: ruto_v1.ChangeRequest.List:input_type -> ruto_v1.ChangeRequestListReq
-	2,  // 7: ruto_v1.ChangeRequest.Get:input_type -> ruto_v1.ChangeRequestGetReq
-	3,  // 8: ruto_v1.ChangeRequest.Apply:input_type -> ruto_v1.ChangeRequestApplyReq
-	4,  // 9: ruto_v1.ChangeRequest.Reject:input_type -> ruto_v1.ChangeRequestRejectReq
-	1,  // 10: ruto_v1.ChangeRequest.List:output_type -> ruto_v1.ChangeRequestListRep
-	6,  // 11: ruto_v1.ChangeRequest.Get:output_type -> ruto_v1.ChangeRequestDetail
-	11, // 12: ruto_v1.ChangeRequest.Apply:output_type -> google.protobuf.Empty
-	11, // 13: ruto_v1.ChangeRequest.Reject:output_type -> google.protobuf.Empty
-	10, // [10:14] is the sub-list for method output_type
-	6,  // [6:10] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	9,  // 5: ruto_v1.ChangeRequestOp.changes:type_name -> ruto_v1.ChangeRequestChange
+	8,  // 6: ruto_v1.ChangeRequestOp.seen_paths:type_name -> ruto_v1.ChangeRequestSeenPath
+	0,  // 7: ruto_v1.ChangeRequest.List:input_type -> ruto_v1.ChangeRequestListReq
+	2,  // 8: ruto_v1.ChangeRequest.Get:input_type -> ruto_v1.ChangeRequestGetReq
+	3,  // 9: ruto_v1.ChangeRequest.Apply:input_type -> ruto_v1.ChangeRequestApplyReq
+	4,  // 10: ruto_v1.ChangeRequest.Reject:input_type -> ruto_v1.ChangeRequestRejectReq
+	1,  // 11: ruto_v1.ChangeRequest.List:output_type -> ruto_v1.ChangeRequestListRep
+	6,  // 12: ruto_v1.ChangeRequest.Get:output_type -> ruto_v1.ChangeRequestDetail
+	12, // 13: ruto_v1.ChangeRequest.Apply:output_type -> google.protobuf.Empty
+	12, // 14: ruto_v1.ChangeRequest.Reject:output_type -> google.protobuf.Empty
+	11, // [11:15] is the sub-list for method output_type
+	7,  // [7:11] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_change_request_proto_init() }
@@ -787,7 +882,7 @@ func file_ruto_v1_change_request_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_change_request_proto_rawDesc), len(file_ruto_v1_change_request_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

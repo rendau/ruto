@@ -82,6 +82,16 @@ message ChangeRequestOp {
   string app_name = 5;
   repeated ChangeRequestChange changes = 6;
   repeated string notes = 7;
+  // rows of the seen paths report removed by delete_seen_paths
+  repeated ChangeRequestSeenPath seen_paths = 8;
+}
+
+message ChangeRequestSeenPath {
+  string method = 1;
+  string path = 2;
+  int64 hits = 3;
+  int64 hits_not_found = 4;
+  string sample = 5;
 }
 
 message ChangeRequestChange {

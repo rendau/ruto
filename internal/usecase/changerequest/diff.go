@@ -130,6 +130,8 @@ func (u *Usecase) opView(ctx context.Context, cache *objectCache, op *model.Op, 
 		view.AppName = u.appName(ctx, cache, op.App, refNames)
 	case model.OpUpdateRoot:
 		view.Title = "root"
+	case model.OpDeleteSeenPaths:
+		return u.seenPathsView(ctx, cache, op, view)
 	}
 
 	if current != nil {

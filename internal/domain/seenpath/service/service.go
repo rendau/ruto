@@ -28,6 +28,14 @@ func (s *Service) ListByApp(ctx context.Context, appId string) ([]*model.SeenPat
 	return items, nil
 }
 
+func (s *Service) ListByPaths(ctx context.Context, appId string, keys []*model.PathKey) ([]*model.SeenPath, error) {
+	items, err := s.repoDb.ListByPaths(ctx, appId, keys)
+	if err != nil {
+		return nil, fmt.Errorf("repoDb.ListByPaths: %w", err)
+	}
+	return items, nil
+}
+
 func (s *Service) DeleteItems(ctx context.Context, appId string, keys []*model.SeenPathKey) error {
 	if err := s.repoDb.DeleteItems(ctx, appId, keys); err != nil {
 		return fmt.Errorf("repoDb.DeleteItems: %w", err)

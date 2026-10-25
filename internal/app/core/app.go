@@ -239,10 +239,12 @@ func (a *App) Init() error {
 		usecaseRoot,
 		usecaseApp,
 		usecaseEndpoint,
+		usecaseSeenPath,
 		usecaseSnapshot,
 		domainRootService,
 		domainAppService,
 		domainEndpointService,
+		domainSeenPathService,
 		domainUsrService,
 	)
 	handlerGrpcChangeRequest := handlerGrpcP.NewChangeRequest(a.changeRequestUsecase)

@@ -8,6 +8,7 @@ import (
 	"github.com/rendau/ruto/internal/domain/changerequest/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	seenPathModel "github.com/rendau/ruto/internal/domain/seenpath/model"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	usrModel "github.com/rendau/ruto/internal/domain/usr/model"
 )
@@ -48,6 +49,10 @@ type EndpointUsecaseI interface {
 	Delete(ctx context.Context, id string) error
 }
 
+type SeenPathUsecaseI interface {
+	Delete(ctx context.Context, appId string, keys []*seenPathModel.SeenPathKey) error
+}
+
 // Reads go to the services: secrets must be resolvable regardless of what
 // the caller may see.
 
@@ -63,6 +68,10 @@ type AppServiceI interface {
 type EndpointServiceI interface {
 	List(ctx context.Context, pars *endpointModel.ListReq) ([]*endpointModel.Endpoint, int64, error)
 	Get(ctx context.Context, id string, errNE bool) (*endpointModel.Endpoint, bool, error)
+}
+
+type SeenPathServiceI interface {
+	ListByPaths(ctx context.Context, appId string, keys []*seenPathModel.PathKey) ([]*seenPathModel.SeenPath, error)
 }
 
 type SnapshotUsecaseI interface {

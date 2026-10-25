@@ -73,7 +73,7 @@ func checkShape(ops []*model.Op) error {
 			if isRef(op.Id) {
 				return invalid(at + ": id must be an existing object, not a ref")
 			}
-		case model.OpUpdateRoot:
+		case model.OpUpdateRoot, model.OpDeleteSeenPaths:
 		default:
 			return invalid(at + ": unknown op")
 		}
@@ -88,6 +88,12 @@ func checkShape(ops []*model.Op) error {
 	}
 
 	return nil
+}
+
+// hasObjectData reports whether op.Data is a configuration object, which may
+// hold secret value sources.
+func hasObjectData(op *model.Op) bool {
+	return len(op.Data) > 0 && op.Op != model.OpDeleteSeenPaths
 }
 
 // sourceSet holds the value sources of one request, resolved together so
@@ -127,7 +133,7 @@ func collectRefs(ops []*model.Op) (map[string]*secretref.Ref, error) {
 	var reused []string
 
 	for i, op := range ops {
-		if len(op.Data) == 0 {
+		if !hasObjectData(op) {
 			continue
 		}
 		_, sources, err := parseOpData(op)
@@ -256,7 +262,7 @@ func (u *Usecase) applyPlan(ctx context.Context, plan *model.Plan) (*model.Resul
 	sources := &sourceSet{generated: map[string]string{}}
 	trees := make([]map[string]any, len(plan.Ops))
 	for i, op := range plan.Ops {
-		if len(op.Data) == 0 {
+		if !hasObjectData(op) {
 			continue
 		}
 		tree, opSources, err := parseOpData(op)
@@ -378,6 +384,9 @@ func (u *Usecase) applyOp(
 		}
 		obj.Apps = nil
 		return u.rootUc.Set(ctx, obj)
+
+	case model.OpDeleteSeenPaths:
+		return u.deleteSeenPaths(ctx, op)
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import type {
   ChangeRequestListRep,
   ChangeRequestMain,
   ChangeRequestOp,
+  ChangeRequestSeenPath,
   ChangeRequestStatus
 } from "./types";
 
@@ -37,6 +38,16 @@ function normalizeChange(value: ChangeRequestChange): ChangeRequestChange {
   };
 }
 
+function normalizeSeenPath(value: ChangeRequestSeenPath): ChangeRequestSeenPath {
+  return {
+    method: value?.method || "",
+    path: value?.path || "",
+    hits: Number(value?.hits || 0),
+    hits_not_found: Number(value?.hits_not_found || 0),
+    sample: value?.sample || ""
+  };
+}
+
 function normalizeOp(value: ChangeRequestOp): ChangeRequestOp {
   return {
     op: value?.op,
@@ -45,7 +56,8 @@ function normalizeOp(value: ChangeRequestOp): ChangeRequestOp {
     title: value?.title || "",
     app_name: value?.app_name || "",
     changes: (value?.changes || []).map(normalizeChange),
-    notes: value?.notes || []
+    notes: value?.notes || [],
+    seen_paths: (value?.seen_paths || []).map(normalizeSeenPath)
   };
 }
 

@@ -27,6 +27,7 @@ func TestCheckShape(t *testing.T) {
 		op(model.OpUpdateEndpoint, func(o *model.Op) { o.Id = "e1"; withData(o) }),
 		op(model.OpDeleteApp, func(o *model.Op) { o.Id = "a2" }),
 		op(model.OpUpdateRoot, withData),
+		op(model.OpDeleteSeenPaths, withData),
 	}
 	require.NoError(t, checkShape(valid))
 
@@ -41,6 +42,7 @@ func TestCheckShape(t *testing.T) {
 		"update ref id":    {op(model.OpUpdateApp, func(o *model.Op) { o.Id = "$a"; withData(o) })},
 		"update no data":   {op(model.OpUpdateApp, func(o *model.Op) { o.Id = "a" })},
 		"delete with data": {op(model.OpDeleteEndpoint, func(o *model.Op) { o.Id = "e"; withData(o) })},
+		"seen no data":     {op(model.OpDeleteSeenPaths, nil)},
 	}
 	for name, ops := range cases {
 		assert.Error(t, checkShape(ops), name)

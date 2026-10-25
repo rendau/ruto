@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/samber/lo"
 
+	commonRepoPg "github.com/rendau/ruto/internal/domain/common/repo/pg"
 	"github.com/rendau/ruto/internal/domain/seenpath/model"
 )
 
@@ -37,6 +38,13 @@ const (
 		ORDER BY hits DESC, path, method
 		LIMIT $2`
 
+	listByPathsSQL = `
+		SELECT app_id, endpoint_id, method, path, hits, hits_not_found, first_seen_at, last_seen_at, sample
+		FROM seen_path
+		WHERE app_id = $1
+		  AND (method, path) IN (SELECT * FROM unnest($2::text[], $3::text[]))
+		ORDER BY path, method, endpoint_id`
+
 	deleteByAppSQL = `DELETE FROM seen_path WHERE app_id = $1`
 
 	// app_id keeps a caller with access to one app from deleting rows of another.
@@ -46,12 +54,14 @@ const (
 		  AND (endpoint_id, method, path) IN (SELECT * FROM unnest($2::text[], $3::text[], $4::text[]))`
 )
 
+// Repo joins the transaction stored in ctx, so a change request deletes rows
+// together with its other operations (and its dry run deletes nothing).
 type Repo struct {
-	con *pgxpool.Pool
+	*commonRepoPg.Base
 }
 
 func New(con *pgxpool.Pool) *Repo {
-	return &Repo{con: con}
+	return &Repo{Base: commonRepoPg.NewBase(con)}
 }
 
 // Add merges the counters into the stored ones. It is all-or-nothing, so a
@@ -70,7 +80,7 @@ func (r *Repo) Add(ctx context.Context, items []*model.SeenPath) error {
 		)
 	}
 
-	err := pgx.BeginFunc(ctx, r.con, func(tx pgx.Tx) error {
+	err := pgx.BeginFunc(ctx, r.Con, func(tx pgx.Tx) error {
 		return tx.SendBatch(ctx, batch).Close()
 	})
 	if err != nil {
@@ -81,7 +91,22 @@ func (r *Repo) Add(ctx context.Context, items []*model.SeenPath) error {
 }
 
 func (r *Repo) ListByApp(ctx context.Context, appId string) ([]*model.SeenPath, error) {
-	rows, err := r.con.Query(ctx, listSQL, appId, listLimit)
+	return r.list(ctx, listSQL, appId, listLimit)
+}
+
+func (r *Repo) ListByPaths(ctx context.Context, appId string, keys []*model.PathKey) ([]*model.SeenPath, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+
+	return r.list(ctx, listByPathsSQL, appId,
+		lo.Map(keys, func(v *model.PathKey, _ int) string { return v.Method }),
+		lo.Map(keys, func(v *model.PathKey, _ int) string { return v.Path }),
+	)
+}
+
+func (r *Repo) list(ctx context.Context, query string, args ...any) ([]*model.SeenPath, error) {
+	rows, err := r.Txm.GetConnection(ctx).Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
@@ -106,7 +131,7 @@ func (r *Repo) DeleteItems(ctx context.Context, appId string, keys []*model.Seen
 		return nil
 	}
 
-	_, err := r.con.Exec(ctx, deleteItemsSQL, appId,
+	_, err := r.Txm.GetConnection(ctx).Exec(ctx, deleteItemsSQL, appId,
 		lo.Map(keys, func(v *model.SeenPathKey, _ int) string { return v.EndpointId }),
 		lo.Map(keys, func(v *model.SeenPathKey, _ int) string { return v.Method }),
 		lo.Map(keys, func(v *model.SeenPathKey, _ int) string { return v.Path }),
@@ -119,7 +144,7 @@ func (r *Repo) DeleteItems(ctx context.Context, appId string, keys []*model.Seen
 }
 
 func (r *Repo) DeleteByApp(ctx context.Context, appId string) error {
-	if _, err := r.con.Exec(ctx, deleteByAppSQL, appId); err != nil {
+	if _, err := r.Txm.GetConnection(ctx).Exec(ctx, deleteByAppSQL, appId); err != nil {
 		return fmt.Errorf("exec: %w", err)
 	}
 	return nil
