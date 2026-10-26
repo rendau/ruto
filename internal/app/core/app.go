@@ -40,6 +40,8 @@ import (
 	domainUsrServiceP "github.com/rendau/ruto/internal/domain/usr/service"
 	handlerGrpcP "github.com/rendau/ruto/internal/handler/grpc"
 	handlerMcpP "github.com/rendau/ruto/internal/handler/mcp"
+	handlerSystemP "github.com/rendau/ruto/internal/handler/system"
+	"github.com/rendau/ruto/internal/infra/pulsekit"
 	cacheRepoMemP "github.com/rendau/ruto/internal/service/cache/repo/mem"
 	cacheRepoRedisP "github.com/rendau/ruto/internal/service/cache/repo/redis"
 	cacheServiceP "github.com/rendau/ruto/internal/service/cache/service"
@@ -59,6 +61,7 @@ import (
 	usecaseSeenPathP "github.com/rendau/ruto/internal/usecase/seenpath"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
 	usecaseStatsP "github.com/rendau/ruto/internal/usecase/stats"
+	usecaseSystemP "github.com/rendau/ruto/internal/usecase/system"
 	usecaseUsrP "github.com/rendau/ruto/internal/usecase/usr"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
@@ -71,7 +74,9 @@ type App struct {
 	grpcServer      *GrpcServer
 	httpServer      *http.Server
 	mcpServer       *http.Server
+	systemServer    *http.Server
 	gatewaysService *gatewaysServiceP.Service
+	pulsekit        *pulsekit.Kit
 
 	changeRequestUsecase *usecaseChangeRequestP.Usecase
 	oauthUsecase         *usecaseOAuthP.Usecase
@@ -104,6 +109,11 @@ func (a *App) Init() error {
 	}
 	a.pgpool = pgpool
 
+	// pulsekit (manifest for pulse: background dependency checks for its status endpoint)
+	a.pulsekit = newPulsekit()
+	a.pulsekit.Depend("pg", "postgres", pulsekit.Host(configCore.Conf.PgDsn), true, a.pgpool.Ping).
+		Affects("админка, публикация конфигурации, новые шлюзы не получат маршруты")
+
 	// migrations
 	runMigrations()
 	slog.Info("PG-migrations have been successfully applied")
@@ -117,7 +127,10 @@ func (a *App) Init() error {
 	// cache
 	var cacheRepo cacheServiceP.RepoI
 	if configCore.Conf.RedisAddr != "" {
-		cacheRepo = cacheRepoRedisP.New(configCore.Conf.RedisAddr, configCore.Conf.RedisDB, configCore.Conf.RedisPassword)
+		redisRepo := cacheRepoRedisP.New(configCore.Conf.RedisAddr, configCore.Conf.RedisDB, configCore.Conf.RedisPassword)
+		cacheRepo = redisRepo
+		a.pulsekit.Depend("redis", "redis", pulsekit.Host(configCore.Conf.RedisAddr), false, redisRepo.Ping).
+			Affects("список шлюзов и их версии, отчёт о замеченных адресах")
 		slog.Info("Cache initialized with Redis")
 	} else {
 		cacheRepo = cacheRepoMemP.New()
@@ -185,7 +198,10 @@ func (a *App) Init() error {
 	// monitoring
 	var monitoringPromSvc usecaseMonitoringP.PrometheusServiceI
 	if configCore.Conf.PrometheusURL != "" {
-		monitoringPromSvc = servicePrometheusP.New(configCore.Conf.PrometheusURL, 15*time.Second)
+		promSvc := servicePrometheusP.New(configCore.Conf.PrometheusURL, 15*time.Second)
+		monitoringPromSvc = promSvc
+		a.pulsekit.Depend("prometheus", "http", pulsekit.Host(configCore.Conf.PrometheusURL), false, promSvc.Ping).
+			Affects("графики трафика в админке")
 	}
 	var monitoringLogSvc usecaseMonitoringP.LogStoreServiceI
 	monitoringLogsProvider := ""
@@ -248,6 +264,11 @@ func (a *App) Init() error {
 		domainUsrService,
 	)
 	handlerGrpcChangeRequest := handlerGrpcP.NewChangeRequest(a.changeRequestUsecase)
+
+	// system (the system port: pulse manifest and routes for pulse)
+	usecaseSystem := usecaseSystemP.New(domainSnapshotService, usecaseSnapshot, usecaseGateway, gatewaysService, domainChangeRequestService)
+	handlerSystem := handlerSystemP.New(usecaseSystem)
+	handlerSystem.RegisterPulse(a.pulsekit)
 
 	// oauth (for MCP clients that connect by URL)
 	domainOAuthRepoDb := domainOAuthRepoDbP.New(a.pgpool)
@@ -355,6 +376,9 @@ func (a *App) Init() error {
 		MaxHeaderBytes:    300 * 1024,
 	}
 
+	// system server
+	a.systemServer = newSystemServer(configCore.Conf.SystemPort, a.pulsekit.Register, handlerSystem.Register)
+
 	return nil
 }
 
@@ -374,6 +398,18 @@ func (a *App) Start() error {
 		}
 	}()
 	slog.Info("http-server started " + a.httpServer.Addr)
+
+	// system-server
+	go func() {
+		err := a.systemServer.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("system server stopped unexpectedly", "error", err)
+		}
+	}()
+	slog.Info("system-server started " + a.systemServer.Addr)
+
+	// pulsekit
+	a.pulsekit.Start(a.ctx)
 
 	// mcp-server
 	if a.mcpServer != nil {
@@ -429,6 +465,19 @@ func (a *App) Stop() {
 
 	// grpc server
 	a.grpcServer.Stop()
+
+	// system server: last, so probes and pulse see core until it is gone
+	{
+		ctx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer ctxCancel()
+		if err := a.systemServer.Shutdown(ctx); err != nil {
+			slog.Error("system-server shutdown error", "error", err)
+			a.exitCode = 1
+		}
+	}
+
+	// pulsekit (stops with a.ctx)
+	a.pulsekit.Wait()
 }
 
 func (a *App) Exit() {

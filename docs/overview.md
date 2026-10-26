@@ -50,7 +50,7 @@ Root ──(inherit)──▶ App ──(inherit)──▶ Endpoint
 cmd/                  entrypoints: core/main.go, gateway/main.go
 internal/
   app/                composition root + lifecycle (Init/Start/Wait/Stop/Exit)
-    core/             сборка core: pgpool, миграции, сервисы, grpc, grpc-gateway, SPA
+    core/             сборка core: pgpool, миграции, сервисы, grpc, grpc-gateway, SPA, system-сервер (healthcheck, pulse)
     gateway/          сборка gateway: gw-сервис + system-сервер (healthcheck, metrics)
     common/           logger, перехват сигналов
   config/             разбор env (caarlos0/env) — core/ и gateway/
@@ -60,15 +60,18 @@ internal/
     root, app, endpoint, usr, snapshot, session, auth, vars, common,
     apikey, changerequest, secretref (маскирование секретов для MCP)
   usecase/            прикладной слой: оркестрация + авторизация
-    root, app, endpoint, usr, snapshot, stats, gateway, apikey, changerequest
+    root, app, endpoint, usr, snapshot, stats, gateway, apikey, changerequest,
+    system (состояние ruto для служебного порта, без проверки входа)
   handler/grpc/       транспорт core: gRPC-хендлеры + dto (encode/decode proto↔domain)
   handler/mcp/        встроенный MCP-сервер для AI-агентов (см. mcp-server.md)
+  handler/system/     служебный порт core: манифест pulse, маршруты для pulse (см. pulse.md)
   service/            вспомогательные сервисы
     cache/            кэш (redis | mem) за общим интерфейсом
     swagger/          парсинг swagger backend'ов
     grpcreflect/      gRPC reflection
     gw/               ВЕСЬ data plane gateway (см. architecture.md)
   infra/metrics/      prometheus-метрики
+  infra/pulsekit/     стандарт манифеста pulse (копия из репозитория pulse, не правится)
 api/proto/ruto_v1/    ИСХОДНЫЕ .proto (редактировать здесь)
 pkg/proto/ruto_v1/    СГЕНЕРИРОВАННЫЙ код (не редактировать вручную)
 migrations/           SQL-миграции (golang-migrate)

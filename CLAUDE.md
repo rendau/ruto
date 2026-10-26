@@ -22,6 +22,7 @@ This repo has rich docs — read them before non-trivial work:
 - `docs/onboarding.md` — local setup and recipes for common changes.
 - `docs/gateway-grpc.md` — connecting to the gateway over gRPC.
 - `docs/monitoring.md` — admin traffic charts & logs (Prometheus / Loki / Graylog integration).
+- `docs/pulse.md` — integration with pulse: the manifest and `/routes` on core's system port (pulse talks to core only, never to the gateways); `internal/infra/pulsekit` is a verbatim copy from the pulse repo.
 - `docs/mcp-server.md` — built-in MCP server for AI agents: api keys and OAuth (Claude connectors), masked secrets, change requests approved in the admin.
 
 ## Commands
@@ -68,7 +69,7 @@ Env: copy `config/core.env.example` → `.env.core` and `config/gateway.env.exam
   - DSN: `postgres://ruto:ruto@localhost:55432/ruto?sslmode=disable`
 - **core:** собирать `go build -o <scratchpad>/stand/core cmd/core/main.go` и запускать **из каталога вне репозитория** (чтобы не подхватился `.env.core`), положив рядом симлинк `migrations` → `<repo>/migrations`:
   `PG_DSN=<dsn> ADMIN_JWT_SECRET=ruto-local-test-stand-secret HTTP_PORT=9090 HTTP_CORS=true GRPC_PORT=5050 SYSTEM_PORT=3003 ./core`
-  - HTTP `:9090` (REST `/api/*`), gRPC `:5050`, system `:3003`.
+  - HTTP `:9090` (REST `/api/*`), gRPC `:5050`, system `:3003` (`/healthcheck`, `/.well-known/pulse`, `/.well-known/pulse/status`, `/diag/gateways`, `/routes`).
   - MCP (для проверок MCP-сервера): добавить `MCP_ENABLED=true MCP_PORT=5060` → `http://localhost:5060/`; ключ `rtk_…` создаётся в админке (Profile → API keys) или `POST /api/api_key {"name": "..."}` с JWT администратора.
   - OAuth для MCP: ещё `MCP_OAUTH_ENABLED=true MCP_PUBLIC_URL=http://localhost:5060 MCP_OAUTH_ADMIN_URL=http://localhost:5173`. Клиента регистрировать с адресом возврата `http://localhost:18099/callback` (loopback разрешён по умолчанию; там никто не слушает — код берётся из адресной строки после «Allow»), страница согласия — `http://localhost:5173/oauth/authorize?...`.
 - **gateway (нужен только для проверок трафика):** `go build -o <scratchpad>/stand/gateway cmd/gateway/main.go`, запуск оттуда же после core:

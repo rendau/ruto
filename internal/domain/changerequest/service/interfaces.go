@@ -14,5 +14,6 @@ type RepoDbI interface {
 	Create(ctx context.Context, obj *model.ChangeRequest) (int64, error)
 	Update(ctx context.Context, id int64, obj *model.Edit) error
 	ExpirePending(ctx context.Context, createdBefore time.Time) (int64, error)
+	PendingStats(ctx context.Context, stuckBefore time.Time) (*model.PendingStats, error)
 	DeleteClosed(ctx context.Context, decidedBefore time.Time) (int64, error)
 }

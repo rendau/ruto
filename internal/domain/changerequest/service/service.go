@@ -65,6 +65,14 @@ func (s *Service) Update(ctx context.Context, id int64, obj *model.Edit) error {
 	return nil
 }
 
+func (s *Service) PendingStats(ctx context.Context, stuckAfter time.Duration) (*model.PendingStats, error) {
+	result, err := s.repoDb.PendingStats(ctx, time.Now().Add(-stuckAfter))
+	if err != nil {
+		return nil, fmt.Errorf("repoDb.PendingStats: %w", err)
+	}
+	return result, nil
+}
+
 // Cleanup expires stale pending requests and deletes old closed ones.
 func (s *Service) Cleanup(ctx context.Context, pendingTTL, retention time.Duration) (expired, deleted int64, err error) {
 	now := time.Now()

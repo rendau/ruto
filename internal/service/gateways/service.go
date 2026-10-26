@@ -89,3 +89,17 @@ func (s *Service) Count() int {
 
 	return len(s.subs)
 }
+
+// ConnectedIDs returns the ids of gateways that hold an open notification
+// stream now (a gateway with a reconnecting stream may appear twice).
+func (s *Service) ConnectedIDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ids := make([]string, 0, len(s.subs))
+	for _, sub := range s.subs {
+		ids = append(ids, sub.gatewayID)
+	}
+
+	return ids
+}

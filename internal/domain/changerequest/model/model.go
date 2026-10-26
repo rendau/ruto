@@ -117,6 +117,14 @@ type Edit struct {
 	PublishError *string
 }
 
+// PendingStats counts requests waiting for a decision: Stuck — of them created
+// before the stuck threshold, OldestAt — when the oldest one was created.
+type PendingStats struct {
+	Count    int
+	Stuck    int
+	OldestAt *time.Time
+}
+
 func (m *ChangeRequest) IsClosed() bool {
 	return m.Status != StatusPending
 }

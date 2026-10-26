@@ -10,6 +10,12 @@ import (
 	prometheusModel "github.com/rendau/ruto/internal/service/prometheus/model"
 )
 
+type StatusRep struct {
+	Status    string `json:"status"`
+	ErrorType string `json:"errorType"`
+	Error     string `json:"error"`
+}
+
 type QueryRangeRep struct {
 	Status    string         `json:"status"`
 	ErrorType string         `json:"errorType"`

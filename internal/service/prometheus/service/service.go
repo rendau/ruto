@@ -51,6 +51,23 @@ func New(baseURL string, timeout time.Duration) *Service {
 	}
 }
 
+// Ping asks for the build info: the cheapest API call that proves prometheus
+// answers queries, not just that its port is open.
+func (s *Service) Ping(ctx context.Context) error {
+	repObj := &localModel.StatusRep{}
+
+	err := s.sendRequest(ctx, "/api/v1/status/buildinfo", nil, repObj)
+	if err != nil {
+		return fmt.Errorf("sendRequest: %w", err)
+	}
+
+	if repObj.Status != "success" {
+		return fmt.Errorf("prometheus error response: %s: %s: %w", repObj.ErrorType, repObj.Error, errs.ServiceNA)
+	}
+
+	return nil
+}
+
 func (s *Service) QueryRange(
 	ctx context.Context,
 	query string,

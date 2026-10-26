@@ -26,6 +26,12 @@ const (
 	statusStaleTTL  = 3 * time.Minute
 )
 
+const (
+	StatusOnline  = "online"
+	StatusStale   = "stale"
+	StatusOffline = "offline"
+)
+
 func New(sessionSvc SessionServiceI, cache CacheI, gateways GatewaysI, seenPaths SeenPathsI) *Usecase {
 	return &Usecase{
 		sessionSvc: sessionSvc,
@@ -114,6 +120,12 @@ func (u *Usecase) List(ctx context.Context) ([]*Item, error) {
 		return nil, errs.NotAuthorized
 	}
 
+	return u.ListAll(ctx)
+}
+
+// ListAll is List without the login check, for the system port only (the pulse
+// manifest): it is not reachable through the API.
+func (u *Usecase) ListAll(_ context.Context) ([]*Item, error) {
 	keys, err := u.cache.ListKeys()
 	if err != nil {
 		return nil, fmt.Errorf("cache.ListKeys: %w", err)
@@ -134,11 +146,11 @@ func (u *Usecase) List(ctx context.Context) ([]*Item, error) {
 		age := now.Sub(time.Unix(item.LastSeenAtUnix, 0))
 		switch {
 		case age <= statusOnlineTTL:
-			item.Status = "online"
+			item.Status = StatusOnline
 		case age <= statusStaleTTL:
-			item.Status = "stale"
+			item.Status = StatusStale
 		default:
-			item.Status = "offline"
+			item.Status = StatusOffline
 		}
 
 		items = append(items, item)
@@ -146,11 +158,11 @@ func (u *Usecase) List(ctx context.Context) ([]*Item, error) {
 
 	statusOrder := func(status string) int {
 		switch status {
-		case "online":
+		case StatusOnline:
 			return 0
-		case "stale":
+		case StatusStale:
 			return 1
-		case "offline":
+		case StatusOffline:
 			return 2
 		default:
 			return 3

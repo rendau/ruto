@@ -28,7 +28,7 @@
 
 | Переменная | core | gateway |
 | --- | --- | --- |
-| `SYSTEM_PORT` | 3003 (healthcheck/metrics) | 3003 |
+| `SYSTEM_PORT` | 3003 (healthcheck, pulse — см. pulse.md) | 3003 (healthcheck/metrics) |
 | `GRPC_PORT` | 5050 | задаётся вручную |
 | `HTTP_PORT` | 80 | задаётся вручную |
 

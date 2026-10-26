@@ -109,3 +109,14 @@ func (o *Redis) Del(key string) error {
 
 	return nil
 }
+
+func (o *Redis) Ping(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, opTimeout)
+	defer cancel()
+
+	if err := o.client.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("client.Ping: %w", err)
+	}
+
+	return nil
+}

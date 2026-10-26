@@ -124,6 +124,23 @@ func (r *Repo) ExpirePending(ctx context.Context, createdBefore time.Time) (int6
 	return tag.RowsAffected(), nil
 }
 
+// PendingStats counts pending requests in one pass over the (status, created_at)
+// index; a pending request keeps its status since creation.
+func (r *Repo) PendingStats(ctx context.Context, stuckBefore time.Time) (*domainModel.PendingStats, error) {
+	result := &domainModel.PendingStats{}
+
+	err := r.ModelStore.GetConnection(ctx).QueryRow(
+		ctx,
+		"SELECT count(*), count(*) FILTER (WHERE created_at < $2), min(created_at) FROM change_request WHERE status = $1",
+		domainModel.StatusPending, stuckBefore,
+	).Scan(&result.Count, &result.Stuck, &result.OldestAt)
+	if err != nil {
+		return nil, fmt.Errorf("QueryRow: %w", err)
+	}
+
+	return result, nil
+}
+
 // DeleteClosed removes closed requests decided before the given time.
 func (r *Repo) DeleteClosed(ctx context.Context, decidedBefore time.Time) (int64, error) {
 	tag, err := r.ModelStore.GetConnection(ctx).Exec(
