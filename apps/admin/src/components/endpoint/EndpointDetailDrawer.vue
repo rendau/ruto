@@ -42,6 +42,7 @@ import DefRow from "@/components/common/DefRow.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
 import KeyValueGrid from "@/components/common/KeyValueGrid.vue";
 import AuthSummary from "@/components/display/AuthSummary.vue";
+import CompressionSummary from "@/components/display/CompressionSummary.vue";
 import LoggingSummary from "@/components/display/LoggingSummary.vue";
 import TrafficPanel from "@/components/monitoring/TrafficPanel.vue";
 import EndpointLogsPanel from "@/components/monitoring/EndpointLogsPanel.vue";
@@ -292,6 +293,10 @@ function remove(): void {
                     <span class="section-label">Logging</span>
                     <LoggingSummary :logging="item.logging" />
                   </div>
+                  <div v-if="item.type === 'http'">
+                    <span class="section-label">Compression</span>
+                    <CompressionSummary :compression="item.compression" />
+                  </div>
                   <div>
                     <span class="section-label">Variables</span>
                     <KeyValueGrid :items="item.variables" empty-text="No variables" />
@@ -330,6 +335,10 @@ function remove(): void {
                   <div>
                     <span class="section-label">Logging</span>
                     <LoggingSummary :logging="effective.logging" />
+                  </div>
+                  <div v-if="item.type === 'http'">
+                    <span class="section-label">Compression</span>
+                    <CompressionSummary :compression="effective.compression" />
                   </div>
                   <div>
                     <span class="section-label">Variables</span>

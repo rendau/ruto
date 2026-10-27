@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
+
+	"github.com/rendau/ruto/internal/infra/acceptenc"
 )
 
 var adminDistCandidates = []string{
@@ -66,7 +67,7 @@ func serveAdminFile(w http.ResponseWriter, r *http.Request, path string) {
 
 	acceptEncoding := r.Header.Get("Accept-Encoding")
 	for _, enc := range precompressedEncodings {
-		if acceptsEncoding(acceptEncoding, enc.name) && serveEncodedFile(w, r, path, enc) {
+		if acceptenc.Accepts(acceptEncoding, enc.name) && serveEncodedFile(w, r, path, enc) {
 			return
 		}
 	}
@@ -99,25 +100,6 @@ func serveEncodedFile(w http.ResponseWriter, r *http.Request, path string, enc p
 	http.ServeContent(w, r, path, stat.ModTime(), f)
 
 	return true
-}
-
-func acceptsEncoding(header, name string) bool {
-	for part := range strings.SplitSeq(header, ",") {
-		coding, params, _ := strings.Cut(part, ";")
-		if !strings.EqualFold(strings.TrimSpace(coding), name) {
-			continue
-		}
-
-		q, found := strings.CutPrefix(strings.TrimSpace(params), "q=")
-		if !found {
-			return true
-		}
-		weight, err := strconv.ParseFloat(q, 64)
-
-		return err == nil && weight > 0
-	}
-
-	return false
 }
 
 func resolveFirstExistingDir(paths ...string) string {

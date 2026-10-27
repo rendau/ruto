@@ -94,6 +94,21 @@ export interface Logging {
   resp_body_limit: number;
 }
 
+// ---- Compression ----------------------------------------------------------
+
+export type CompressionBackend = "" | "identity" | "client";
+export type CompressionResponse = "" | "on" | "off";
+export type CompressionAlgorithm = "br" | "zstd" | "gzip";
+
+// Empty string / 0 / empty list = inherit from the parent (root fills defaults).
+export interface Compression {
+  backend: CompressionBackend;
+  response: CompressionResponse;
+  algorithms: CompressionAlgorithm[];
+  min_size: number;
+  content_types: string[];
+}
+
 // ---- Root -----------------------------------------------------------------
 
 export interface RootCors {
@@ -124,6 +139,7 @@ export interface RootMain {
   log_own_response_errors: boolean;
   variables: Variable[];
   transform: RootTransform;
+  compression: Compression;
 }
 
 export interface RootJwtKidsReq {
@@ -160,6 +176,7 @@ export interface AppMain {
   auth: Auth;
   logging: Logging;
   variables: Variable[];
+  compression: Compression;
 }
 
 export interface AppListRep {
@@ -283,6 +300,7 @@ export interface EndpointMain {
   variables: Variable[];
   transform: Transform;
   cache: EndpointCache;
+  compression: Compression;
 }
 
 export interface EndpointListRep {

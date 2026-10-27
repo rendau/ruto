@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/rendau/ruto/internal/constant"
+	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 )
 
 func (m *Endpoint) Normalize() error {
@@ -61,9 +62,13 @@ func (m *Endpoint) Normalize() error {
 
 	if m.Type != TypeHTTP {
 		m.Cache = Cache{}
+		m.Compression = compressionModel.Compression{}
 	}
 	if err := m.Cache.Normalize(); err != nil {
 		return fmt.Errorf("cache: %w", err)
+	}
+	if err := m.Compression.Normalize(); err != nil {
+		return fmt.Errorf("compression: %w", err)
 	}
 
 	return nil

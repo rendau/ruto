@@ -80,6 +80,7 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 			}
 
 			handler := middleware.Chain(proxyHandler,
+				middleware.NewCompression(ep),
 				middleware.NewMetrics(app, ep, routePath),
 				middleware.NewSeenPaths(app, ep),
 				middleware.NewRequestLog(app, ep, routePath, snapshot.LogOwnResponseErrors),

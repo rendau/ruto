@@ -16,7 +16,7 @@ import {
   type FormItemRule
 } from "naive-ui";
 import { createEndpoint, updateEndpoint } from "@/api/endpoint";
-import { emptyEndpoint } from "@/lib/entities";
+import { emptyEndpoint, hasCompressionOverrides } from "@/lib/entities";
 import { hasWildcard, wildcardPathError } from "@/lib/endpointPath";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useIsMobile } from "@/composables/useIsMobile";
@@ -25,6 +25,7 @@ import { useAuthStore } from "@/stores/auth";
 import { HTTP_METHOD_OPTIONS } from "@/constants/enums";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CacheEditor from "@/components/editors/CacheEditor.vue";
+import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import TransformEditor from "@/components/editors/TransformEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
@@ -71,6 +72,9 @@ function nonDefaultSections(): string[] {
   }
   if (model.type === "http" && (model.cache.server.enabled || model.cache.browser.enabled)) {
     names.push("cache");
+  }
+  if (model.type === "http" && hasCompressionOverrides(model.compression)) {
+    names.push("compression");
   }
   return names;
 }
@@ -287,6 +291,10 @@ function close(): void {
           </NCollapseItem>
           <NCollapseItem v-if="model.type === 'http'" title="Cache" name="cache">
             <CacheEditor v-model="model.cache" />
+          </NCollapseItem>
+          <NCollapseItem v-if="model.type === 'http'" title="Compression" name="compression">
+            <p class="muted form-hint">Inherited from the application unless overridden here.</p>
+            <CompressionEditor v-model="model.compression" />
           </NCollapseItem>
         </NCollapse>
       </NForm>

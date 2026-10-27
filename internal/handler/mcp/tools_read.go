@@ -22,7 +22,7 @@ import (
 func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_root",
-		Description: "Root configuration (gateway-wide CORS, JWT keys, auth, logging, variables) with secrets masked, plus its version for update_root.",
+		Description: "Root configuration (gateway-wide CORS, JWT keys, auth, logging, variables, compression defaults) with secrets masked, plus its version for update_root.",
 	}, s.getRoot)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
@@ -42,12 +42,12 @@ func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_endpoint",
-		Description: "Full endpoint configuration (including transform scripts, cache, track_paths and allow_trailing_slash) with secrets masked, plus its version for update_endpoint.",
+		Description: "Full endpoint configuration (including transform scripts, cache, compression, track_paths and allow_trailing_slash) with secrets masked, plus its version for update_endpoint.",
 	}, s.getEndpoint)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_endpoint_effective",
-		Description: "The endpoint as the gateway applies it: auth, logging and variables inherited from root and app merged in. Secrets masked (only their length is shown).",
+		Description: "The endpoint as the gateway applies it: auth, logging, compression and variables inherited from root and app merged in. Secrets masked (only their length is shown).",
 	}, s.getEndpointEffective)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{

@@ -86,11 +86,15 @@ func NewBrowserCache(ep *endpointModel.Endpoint) Middleware {
 }
 
 // cacheKeyHeaders lists request headers that split the cache: Accept-Encoding
-// (the backend may answer compressed), the configured ones and, with auth on,
-// the credentials — so one user never gets a response cached for another,
-// unless the endpoint declares its cache shared.
+// when the backend may answer compressed (the gateway compresses its own
+// answers after the cache, so it keeps one plain copy otherwise), the
+// configured ones and, with auth on, the credentials — so one user never gets
+// a response cached for another, unless the endpoint declares its cache shared.
 func cacheKeyHeaders(ep *endpointModel.Endpoint) []string {
-	result := []string{"Accept-Encoding"}
+	var result []string
+	if !ep.Compression.BackendIdentity() {
+		result = append(result, "Accept-Encoding")
+	}
 	result = append(result, ep.Cache.Server.VaryHeaders...)
 
 	if ep.Auth.Enabled && !ep.Cache.Server.Shared {

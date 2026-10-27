@@ -4,6 +4,7 @@ go 1.27
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
+	github.com/andybalholm/brotli v1.2.7
 	github.com/caarlos0/env/v9 v9.0.0
 	github.com/dop251/goja v0.0.0-20260618133527-c9b2ea77db59
 	github.com/go-chi/chi/v5 v5.2.3
@@ -12,6 +13,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
+	github.com/klauspost/compress v1.20.3
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/mwitkow/grpc-proxy v0.0.0-20250813121105-2866842de9a5
 	github.com/prometheus/client_golang v1.23.2

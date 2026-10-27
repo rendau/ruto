@@ -41,6 +41,12 @@ func (w *Wrapper) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p)
 }
 
+// Unwrap lets http.ResponseController reach the Flusher / Hijacker of the
+// underlying writer: a streamed response flushes through the wrapper.
+func (w *Wrapper) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 func (w *Wrapper) GetCapturedBody() string {
 	c := w.bodyCap
 	if c == nil {

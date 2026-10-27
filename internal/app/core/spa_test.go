@@ -117,27 +117,3 @@ func TestAdminSPAHandler_Precompressed(t *testing.T) {
 		})
 	}
 }
-
-func TestAcceptsEncoding(t *testing.T) {
-	tests := []struct {
-		header string
-		name   string
-		want   bool
-	}{
-		{header: "gzip, deflate, br", name: "br", want: true},
-		{header: "gzip, deflate, br", name: "gzip", want: true},
-		{header: "Gzip", name: "gzip", want: true},
-		{header: "br;q=0.5", name: "br", want: true},
-		{header: "br; q=0", name: "br", want: false},
-		{header: "br;q=0.0, gzip", name: "br", want: false},
-		{header: "br;q=bad", name: "br", want: false},
-		{header: "x-br, gzip", name: "br", want: false},
-		{header: "", name: "gzip", want: false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.header+"/"+tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, acceptsEncoding(tt.header, tt.name))
-		})
-	}
-}

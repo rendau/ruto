@@ -3,6 +3,7 @@ package model
 import (
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
+	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
@@ -15,21 +16,22 @@ const (
 )
 
 type Endpoint struct {
-	Id                 string               `json:"id"`
-	AppId              string               `json:"app_id"`
-	Active             bool                 `json:"active"`
-	ExcludeFromMetrics bool                 `json:"exclude_from_metrics"`
-	TrackPaths         bool                 `json:"track_paths"`
-	AllowTrailingSlash bool                 `json:"allow_trailing_slash"` // "users/" also reaches an exact path "users"; only admins change it
-	Type               Type                 `json:"type"`
-	Http               Http                 `json:"http"`
-	Grpc               Grpc                 `json:"grpc"`
-	Backend            Backend              `json:"backend"`
-	Auth               authModel.Auth       `json:"auth"`
-	Logging            loggingModel.Logging `json:"logging"`
-	Variables          varsModel.Vars       `json:"variables"`
-	Transform          Transform            `json:"transform"`
-	Cache              Cache                `json:"cache"`
+	Id                 string                       `json:"id"`
+	AppId              string                       `json:"app_id"`
+	Active             bool                         `json:"active"`
+	ExcludeFromMetrics bool                         `json:"exclude_from_metrics"`
+	TrackPaths         bool                         `json:"track_paths"`
+	AllowTrailingSlash bool                         `json:"allow_trailing_slash"` // "users/" also reaches an exact path "users"; only admins change it
+	Type               Type                         `json:"type"`
+	Http               Http                         `json:"http"`
+	Grpc               Grpc                         `json:"grpc"`
+	Backend            Backend                      `json:"backend"`
+	Auth               authModel.Auth               `json:"auth"`
+	Logging            loggingModel.Logging         `json:"logging"`
+	Variables          varsModel.Vars               `json:"variables"`
+	Transform          Transform                    `json:"transform"`
+	Cache              Cache                        `json:"cache"`
+	Compression        compressionModel.Compression `json:"compression"`
 }
 
 // Cache configures response caching of an http endpoint. Server keeps

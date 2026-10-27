@@ -5,6 +5,7 @@ import (
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
+	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
@@ -18,6 +19,9 @@ type Root struct {
 	LogOwnResponseErrors bool                 `json:"log_own_response_errors"` // log error responses the gateway returns itself (e.g. auth 401)
 	Variables            varsModel.Vars       `json:"variables"`
 	Transform            RootTransform        `json:"transform"`
+	// Compression is always complete on a root: Normalize fills the empty
+	// fields with the defaults.
+	Compression compressionModel.Compression `json:"compression"`
 
 	Apps []*appModel.App `json:"apps"` // not stored in db
 }
@@ -52,8 +56,9 @@ func NewEmpty() *Root {
 			AllowMethods:     []string{"*"},
 			AllowHeaders:     []string{"*"},
 		},
-		Jwt:  []RootJwt{},
-		Apps: []*appModel.App{},
+		Jwt:         []RootJwt{},
+		Compression: compressionModel.Default(),
+		Apps:        []*appModel.App{},
 	}
 }
 

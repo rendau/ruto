@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 	"github.com/rendau/ruto/internal/domain/root/model"
 )
 
@@ -21,6 +22,9 @@ func (s *Service) Get(ctx context.Context) (*model.Root, error) {
 	if result == nil {
 		return model.NewEmpty(), nil
 	}
+	// A root stored before a section got defaults has it empty: every reader
+	// (admin, MCP, the effective endpoint) sees the values the gateway applies.
+	result.Compression = compressionModel.Merge(compressionModel.Default(), result.Compression)
 
 	return result, nil
 }
@@ -31,6 +35,11 @@ func (s *Service) Set(ctx context.Context, obj *model.Root) error {
 	defer func() {
 		obj.Apps = apps
 	}()
+
+	if err := obj.Compression.Normalize(); err != nil {
+		return fmt.Errorf("compression: %w", err)
+	}
+	obj.Compression = compressionModel.Merge(compressionModel.Default(), obj.Compression)
 
 	if err := s.repoDb.Set(ctx, obj); err != nil {
 		return fmt.Errorf("repoDb.Set: %w", err)

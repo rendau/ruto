@@ -1,5 +1,12 @@
 import type { SelectOption } from "naive-ui";
-import type { AuthMethodType, LoggingLevel, LoggingMode } from "@/api/types";
+import type {
+  AuthMethodType,
+  CompressionAlgorithm,
+  CompressionBackend,
+  CompressionResponse,
+  LoggingLevel,
+  LoggingMode
+} from "@/api/types";
 
 export const HTTP_METHODS = [
   "GET",
@@ -70,4 +77,22 @@ export const LOGGING_LEVEL_OPTIONS: { label: string; value: LoggingLevel }[] = [
   { label: "all", value: "all" },
   { label: "error", value: "error" },
   { label: "don't log", value: "none" }
+];
+
+export const COMPRESSION_BACKEND_OPTIONS: { label: string; value: CompressionBackend }[] = [
+  { label: "inherit", value: "" },
+  { label: "plain (gateway compresses)", value: "identity" },
+  { label: "as the client asks (backend may compress)", value: "client" }
+];
+
+export const COMPRESSION_RESPONSE_OPTIONS: { label: string; value: CompressionResponse }[] = [
+  { label: "inherit", value: "" },
+  { label: "on", value: "on" },
+  { label: "off", value: "off" }
+];
+
+export const COMPRESSION_ALGORITHM_OPTIONS: { label: string; value: CompressionAlgorithm }[] = [
+  { label: "br (Brotli)", value: "br" },
+  { label: "zstd (Zstandard)", value: "zstd" },
+  { label: "gzip", value: "gzip" }
 ];

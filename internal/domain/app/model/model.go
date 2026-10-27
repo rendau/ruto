@@ -7,23 +7,25 @@ import (
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
+	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
 type App struct {
-	Id                 string               `json:"id"`
-	Active             bool                 `json:"active"`
-	ExcludeFromMetrics bool                 `json:"exclude_from_metrics"`
-	AllowWildcard      bool                 `json:"allow_wildcard"` // endpoints may use a trailing '*' in http.path
-	PathPrefix         string               `json:"path_prefix"`
-	Name               string               `json:"name"`
-	Group              string               `json:"group"` // free-form label used by the admin to group apps visually
-	Backend            Backend              `json:"backend"`
-	Auth               authModel.Auth       `json:"auth"`
-	Logging            loggingModel.Logging `json:"logging"`
-	Variables          varsModel.Vars       `json:"variables"`
+	Id                 string                       `json:"id"`
+	Active             bool                         `json:"active"`
+	ExcludeFromMetrics bool                         `json:"exclude_from_metrics"`
+	AllowWildcard      bool                         `json:"allow_wildcard"` // endpoints may use a trailing '*' in http.path
+	PathPrefix         string                       `json:"path_prefix"`
+	Name               string                       `json:"name"`
+	Group              string                       `json:"group"` // free-form label used by the admin to group apps visually
+	Backend            Backend                      `json:"backend"`
+	Auth               authModel.Auth               `json:"auth"`
+	Logging            loggingModel.Logging         `json:"logging"`
+	Variables          varsModel.Vars               `json:"variables"`
+	Compression        compressionModel.Compression `json:"compression"`
 
 	Endpoints []*endpointModel.Endpoint `json:"endpoints"` // not stored in db
 }

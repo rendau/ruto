@@ -45,6 +45,7 @@ import CopyText from "@/components/common/CopyText.vue";
 import KeyValueGrid from "@/components/common/KeyValueGrid.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
 import AuthSummary from "@/components/display/AuthSummary.vue";
+import CompressionSummary from "@/components/display/CompressionSummary.vue";
 import LoggingSummary from "@/components/display/LoggingSummary.vue";
 import EndpointFormDrawer from "@/components/endpoint/EndpointFormDrawer.vue";
 import EndpointDetailDrawer from "@/components/endpoint/EndpointDetailDrawer.vue";
@@ -497,6 +498,10 @@ onBeforeUnmount(() => {
 
             <SectionCard title="Logging">
               <LoggingSummary :logging="app.logging" />
+            </SectionCard>
+
+            <SectionCard title="Compression">
+              <CompressionSummary :compression="app.compression" />
             </SectionCard>
 
             <SectionCard title="Variables">

@@ -14,7 +14,7 @@ import {
 } from "naive-ui";
 import { SaveOutline } from "@vicons/ionicons5";
 import { getRoot, setRoot } from "@/api/root";
-import { emptyAuth, emptyLogging } from "@/api/normalize";
+import { emptyAuth, emptyCompression, emptyLogging } from "@/api/normalize";
 import { apiErrorMessage } from "@/api/http";
 import { useRootStore } from "@/stores/root";
 import { useAuthStore } from "@/stores/auth";
@@ -23,6 +23,7 @@ import PageContainer from "@/components/common/PageContainer.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
+import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import type { RootMain } from "@/api/types";
@@ -51,7 +52,8 @@ function emptyRoot(): RootMain {
     logging: emptyLogging(),
     log_own_response_errors: false,
     variables: [],
-    transform: { max_workers: 0 }
+    transform: { max_workers: 0 },
+    compression: emptyCompression()
   };
 }
 
@@ -233,6 +235,13 @@ onMounted(load);
 
         <SectionCard title="Logging">
           <LoggingEditor v-model="model.logging" hide-mode />
+        </SectionCard>
+
+        <SectionCard
+          title="Compression"
+          description="Defaults for every application: what the gateway asks the backend for and how it compresses responses to clients"
+        >
+          <CompressionEditor v-model="model.compression" root />
         </SectionCard>
 
         <SectionCard

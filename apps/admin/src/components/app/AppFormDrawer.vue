@@ -20,7 +20,7 @@ import {
 import { SearchOutline } from "@vicons/ionicons5";
 import { createApp, getAppSwaggerUrlByBackendUrl, updateApp } from "@/api/app";
 import { apiErrorMessage } from "@/api/http";
-import { emptyApp } from "@/lib/entities";
+import { emptyApp, hasCompressionOverrides } from "@/lib/entities";
 import { useAppForm } from "@/composables/useAppForm";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useIsMobile } from "@/composables/useIsMobile";
@@ -28,6 +28,7 @@ import { useAppsStore } from "@/stores/apps";
 import { useAuthStore } from "@/stores/auth";
 import { useRootStore } from "@/stores/root";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
+import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import KeyValueTextarea from "@/components/editors/KeyValueTextarea.vue";
@@ -65,6 +66,9 @@ function nonDefaultSections(): string[] {
   }
   if (model.variables.length) {
     names.push("variables");
+  }
+  if (hasCompressionOverrides(model.compression)) {
+    names.push("compression");
   }
   return names;
 }
@@ -223,6 +227,10 @@ async function detectSwagger(): Promise<void> {
           </NCollapseItem>
           <NCollapseItem title="Logging" name="logging">
             <LoggingEditor v-model="model.logging" />
+          </NCollapseItem>
+          <NCollapseItem title="Compression" name="compression">
+            <p class="muted form-hint">Inherited from Root unless overridden here.</p>
+            <CompressionEditor v-model="model.compression" />
           </NCollapseItem>
           <NCollapseItem title="Variables" name="variables">
             <p class="muted form-hint">

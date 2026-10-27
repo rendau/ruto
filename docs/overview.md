@@ -31,15 +31,17 @@
 | **Snapshot** | Денормализованный, «запечённый» слепок `root + apps + endpoints` с хэшем-версией. Именно его потребляет `gateway`. |
 | **Auth** | Набор методов проверки: `basic`, `api_key`, `jwt`, `ip_validation`. Наследуется Root → App → Endpoint в режиме `extend`/`replace`. |
 | **Vars (переменные)** | Пары ключ-значение, наследуются вниз и подставляются (`interpolate`) в backend-заголовки, query-параметры и auth. |
+| **Compression (сжатие)** | Что просить у backend'а (без сжатия или как просит клиент) и как сжимать ответ клиенту: алгоритмы по приоритету (`br`, `zstd`, `gzip`), порог размера, типы содержимого. Наследуется Root → App → Endpoint: пустое поле берётся у родителя, у Root пустое заполняется значениями по умолчанию. |
 | **Session** | Админ-сессия (JWT, секрет `ADMIN_JWT_SECRET`), прокидывается через `context`; на ней строится авторизация в usecase-слое. |
 
 ## Иерархия конфигурации
 
-`Root` владеет списком `App`, каждый `App` владеет списком `Endpoint`. Auth и переменные **наследуются сверху вниз** при сборке snapshot:
+`Root` владеет списком `App`, каждый `App` владеет списком `Endpoint`. Auth, логирование, сжатие и переменные **наследуются сверху вниз** при сборке snapshot:
 
 ```
 Root ──(inherit)──▶ App ──(inherit)──▶ Endpoint
- auth, vars          auth, vars          auth, vars
+ auth, logging,      auth, logging,      auth, logging,
+ compression, vars   compression, vars   compression, vars
 ```
 
 В БД `app` и `endpoint` хранятся отдельными таблицами (jsonb `data`), но в snapshot они вложены в дерево `Root.Apps[].Endpoints[]`.

@@ -5,6 +5,7 @@ import (
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
+	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
 )
 
@@ -15,6 +16,7 @@ func (m *Root) InheritDown() {
 func (m *Root) inheritToApp(app *appModel.App, _ int) {
 	app.Auth = authModel.Merge(m.Auth, app.Auth)
 	app.Logging = loggingModel.Merge(m.Logging, app.Logging)
+	app.Compression = compressionModel.Merge(m.Compression, app.Compression)
 	app.Variables.FillMissing(m.Variables)
 	app.InheritDown()
 }

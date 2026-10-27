@@ -1,5 +1,5 @@
-import { emptyCache, emptyLogging, emptyTransform } from "@/api/normalize";
-import type { AppMain, Auth, EndpointMain } from "@/api/types";
+import { emptyCache, emptyCompression, emptyLogging, emptyTransform } from "@/api/normalize";
+import type { AppMain, Auth, Compression, EndpointMain } from "@/api/types";
 
 // New entities default auth to "enabled + extend" with no methods — i.e. inherit
 // the parent's auth and add nothing. This is the baseline treated as "default".
@@ -19,7 +19,8 @@ export function emptyApp(): AppMain {
     backend: { url: "", swagger_url: "", grpc_url: "", headers: {}, query_params: {} },
     auth: defaultAuth(),
     logging: emptyLogging(),
-    variables: []
+    variables: [],
+    compression: emptyCompression()
   };
 }
 
@@ -39,6 +40,18 @@ export function emptyEndpoint(appId: string): EndpointMain {
     logging: emptyLogging(),
     variables: [],
     transform: emptyTransform(),
-    cache: emptyCache()
+    cache: emptyCache(),
+    compression: emptyCompression()
   };
+}
+
+// True when the section sets anything of its own instead of inheriting.
+export function hasCompressionOverrides(c: Compression): boolean {
+  return (
+    c.backend !== "" ||
+    c.response !== "" ||
+    c.algorithms.length > 0 ||
+    c.min_size > 0 ||
+    c.content_types.length > 0
+  );
 }

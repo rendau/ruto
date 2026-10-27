@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+
+	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 )
 
 func (m *Root) Normalize() error {
@@ -29,6 +31,10 @@ func (m *Root) Normalize() error {
 	if m.Transform.MaxWorkers < 0 {
 		m.Transform.MaxWorkers = 0
 	}
+	if err := m.Compression.Normalize(); err != nil {
+		return fmt.Errorf("compression: %w", err)
+	}
+	m.Compression = compressionModel.Merge(compressionModel.Default(), m.Compression)
 	for i := range m.Apps {
 		if err := m.Apps[i].Normalize(); err != nil {
 			return fmt.Errorf("apps[%d]: %w", i, err)

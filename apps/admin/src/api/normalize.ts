@@ -11,6 +11,8 @@ import type {
   AuthMethodJwt,
   EndpointMain,
   Logging,
+  Compression,
+  CompressionAlgorithm,
   RootMain,
   RootTransform,
   Transform,
@@ -51,6 +53,39 @@ export function normalizeLogging(value?: Logging | null): Logging {
     resp_body: !!value.resp_body,
     req_body_limit: Math.max(0, Math.trunc(value.req_body_limit || 0)),
     resp_body_limit: Math.max(0, Math.trunc(value.resp_body_limit || 0))
+  };
+}
+
+export function emptyCompression(): Compression {
+  return { backend: "", response: "", algorithms: [], min_size: 0, content_types: [] };
+}
+
+const COMPRESSION_ALGORITHMS: CompressionAlgorithm[] = ["br", "zstd", "gzip"];
+
+export function normalizeCompression(value?: Compression | null): Compression {
+  if (!value) {
+    return emptyCompression();
+  }
+  const algorithms: CompressionAlgorithm[] = [];
+  for (const raw of Array.isArray(value.algorithms) ? value.algorithms : []) {
+    const name = String(raw || "").trim().toLowerCase() as CompressionAlgorithm;
+    if (COMPRESSION_ALGORITHMS.includes(name) && !algorithms.includes(name)) {
+      algorithms.push(name);
+    }
+  }
+  const contentTypes: string[] = [];
+  for (const raw of Array.isArray(value.content_types) ? value.content_types : []) {
+    const name = String(raw || "").trim().toLowerCase();
+    if (name && !contentTypes.includes(name)) {
+      contentTypes.push(name);
+    }
+  }
+  return {
+    backend: value.backend === "identity" || value.backend === "client" ? value.backend : "",
+    response: value.response === "on" || value.response === "off" ? value.response : "",
+    algorithms,
+    min_size: Math.max(0, Math.trunc(value.min_size || 0)),
+    content_types: contentTypes
   };
 }
 
@@ -215,7 +250,8 @@ export function normalizeRoot(value: RootMain): RootMain {
     logging: normalizeLogging(value?.logging),
     log_own_response_errors: Boolean(value?.log_own_response_errors),
     variables: variablesToArray(raw.variables),
-    transform: normalizeRootTransform(value?.transform)
+    transform: normalizeRootTransform(value?.transform),
+    compression: normalizeCompression(value?.compression)
   };
 }
 
@@ -238,7 +274,8 @@ export function normalizeApp(value: AppMain): AppMain {
     },
     auth: normalizeAuth(value?.auth),
     logging: normalizeLogging(value?.logging),
-    variables: variablesToArray(raw.variables)
+    variables: variablesToArray(raw.variables),
+    compression: normalizeCompression(value?.compression)
   };
 }
 
@@ -274,7 +311,8 @@ export function normalizeEndpoint(value: EndpointMain): EndpointMain {
     logging: normalizeLogging(value?.logging),
     variables: variablesToArray(raw.variables),
     transform: normalizeTransform(value?.transform),
-    cache: normalizeCache(value?.cache)
+    cache: normalizeCache(value?.cache),
+    compression: normalizeCompression(value?.compression)
   };
 }
 
