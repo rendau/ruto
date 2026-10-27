@@ -2,12 +2,15 @@ package middleware
 
 import (
 	"bytes"
+	"mime"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/samber/lo"
 
+	"github.com/rendau/ruto/internal/constant"
 	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	"github.com/rendau/ruto/internal/infra/acceptenc"
@@ -76,10 +79,11 @@ type compressWriter struct {
 	conf    *compressionModel.Compression
 	minSize int
 
-	status int
-	state  compressState
-	held   bytes.Buffer
-	enc    compress.Encoder
+	status    int
+	state     compressState
+	streaming bool // the body is a stream: every flush must reach the client
+	held      bytes.Buffer
+	enc       compress.Encoder
 }
 
 func (c *compressWriter) WriteHeader(status int) {
@@ -98,6 +102,9 @@ func (c *compressWriter) WriteHeader(status int) {
 		c.startPlain()
 		return
 	}
+
+	mediaType, _, _ := mime.ParseMediaType(c.Header().Get("Content-Type"))
+	c.streaming = slices.Contains(constant.StreamingContentTypes, mediaType)
 
 	if cl := c.Header().Get("Content-Length"); cl != "" {
 		if n, err := strconv.Atoi(cl); err == nil && n < c.minSize {
@@ -184,14 +191,16 @@ func (c *compressWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// Flush pushes everything through to the client. A response still undecided
-// when its first bytes are flushed is streamed, and its size unknown: it goes
-// out as is. A flush with no body yet (the proxy flushes right after the
-// headers of a chunked response) is held back, so the body still decides.
+// Flush pushes everything through to the client. While the response is
+// undecided the flush is held back with the body: the proxy flushes after
+// every piece of a response without Content-Length, and letting it through
+// would commit a small response to chunked transfer, which the edge proxy
+// then compresses whatever its size. Only a streamed body (a listed media
+// type) goes out as is on its first flush, since its pieces must not wait.
 func (c *compressWriter) Flush() {
 	switch c.state {
 	case stateUndecided:
-		if c.status == 0 || c.held.Len() == 0 {
+		if c.status == 0 || c.held.Len() == 0 || !c.streaming {
 			return
 		}
 		c.startPlain()
@@ -202,12 +211,14 @@ func (c *compressWriter) Flush() {
 }
 
 // finish is called once the handler returned: a body held back because it
-// stayed under min_size goes out as is, an encoder closes its stream.
+// stayed under min_size goes out as is, with its now known size, so that no
+// proxy downstream takes it for a stream; an encoder closes its stream.
 func (c *compressWriter) finish() {
 	switch c.state {
 	case stateUndecided:
 		// Nothing written at all: net/http answers 200 itself.
 		if c.status != 0 {
+			c.Header().Set("Content-Length", strconv.Itoa(c.held.Len()))
 			c.startPlain()
 		}
 	case stateCompressed:

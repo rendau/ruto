@@ -87,6 +87,16 @@ var DefaultCompressionAlgorithms = []string{
 // is sent as is: the encoding overhead would eat the gain.
 const DefaultCompressionMinSize = 1024
 
+// StreamingContentTypes name responses sent as a stream of small pieces,
+// each of which must reach the client at once. For every other media type a
+// response under the compression threshold is held back until it ends.
+var StreamingContentTypes = []string{
+	"text/event-stream",
+	"application/x-ndjson",
+	"application/stream+json",
+	"multipart/x-mixed-replace",
+}
+
 // DefaultCompressionContentTypes are the media types compressed when the root
 // lists none: text and structured data. Images, archives and binary bodies
 // do not shrink. "type/*" matches a whole type; a "+json"/"+xml" structured

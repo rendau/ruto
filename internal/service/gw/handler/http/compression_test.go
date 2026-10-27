@@ -274,6 +274,58 @@ func TestCompression_ChunkedBigBodyIsCompressed(t *testing.T) {
 	assert.Equal(t, bigJSON, decodeBody(t, "zstd", rec.Body.Bytes()))
 }
 
+// A small body without Content-Length is held until it ends and goes out
+// with its size: the proxy's per-piece flushes do not commit it to chunked
+// transfer, so the edge proxy does not compress it either.
+func TestCompression_SmallChunkedBodyGetsContentLength(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "404 json", status: http.StatusNotFound, body: `{"error":"not found"}`},
+		{name: "302 html", status: http.StatusFound, body: strings.Repeat("r", 330)},
+		{name: "200 under threshold", status: http.StatusOK, body: strings.Repeat("z", 900)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service, _ := newCompressionTestService(t, compressionModel.Default(), func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Transfer-Encoding", "chunked")
+				w.WriteHeader(tt.status)
+				cut := min(10, len(tt.body))
+				_, _ = io.WriteString(w, tt.body[:cut])
+				http.NewResponseController(w).Flush()
+				_, _ = io.WriteString(w, tt.body[cut:])
+			})
+
+			rec := performRequest(service, http.MethodGet, "/app/items", acceptHeader("gzip"))
+
+			assert.Equal(t, tt.status, rec.Code)
+			assert.Empty(t, rec.Header().Get("Content-Encoding"))
+			assert.Equal(t, strconv.Itoa(len(tt.body)), rec.Header().Get("Content-Length"))
+			assert.Equal(t, tt.body, rec.Body.String())
+			assert.False(t, rec.Flushed, "a held response must not be flushed piecewise")
+		})
+	}
+}
+
+// A chunked body that crosses the threshold after a small first piece is
+// still compressed: the early flush does not commit it to plain transfer.
+func TestCompression_SmallFirstPieceThenBigBodyIsCompressed(t *testing.T) {
+	service, _ := newCompressionTestService(t, compressionModel.Default(), func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, bigJSON[:100])
+		http.NewResponseController(w).Flush()
+		_, _ = io.WriteString(w, bigJSON[100:])
+	})
+
+	rec := performRequest(service, http.MethodGet, "/app/items", acceptHeader("gzip"))
+
+	assert.Equal(t, "gzip", rec.Header().Get("Content-Encoding"))
+	assert.Equal(t, bigJSON, decodeBody(t, "gzip", rec.Body.Bytes()))
+}
+
 // A stream whose first flush carries less than min_size goes out as is, and
 // each event reaches the client right away.
 func TestCompression_StreamFlushesThrough(t *testing.T) {
