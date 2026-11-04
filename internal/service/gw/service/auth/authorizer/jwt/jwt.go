@@ -8,6 +8,7 @@ import (
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/samber/lo"
 
+	"github.com/rendau/ruto/internal/constant"
 	domAuthModel "github.com/rendau/ruto/internal/domain/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
@@ -18,14 +19,21 @@ var jwtError = errors.New("jwt error")
 type Jwt struct {
 	jwkGetter       jwk.PublicKeyGetter
 	provider        string
+	cookieName      string // empty when the method pins no provider: no cookie to read
 	requiredKid     string
 	requiredRoleMap map[string]bool
 }
 
 func New(conf *domAuthModel.AuthMethodJWT, jwkGetter jwk.PublicKeyGetter) *Jwt {
+	cookieName := ""
+	if conf.Provider != "" {
+		cookieName = constant.JwtCookieName(conf.Provider)
+	}
+
 	return &Jwt{
 		jwkGetter:   jwkGetter,
 		provider:    conf.Provider,
+		cookieName:  cookieName,
 		requiredKid: conf.Kid,
 		requiredRoleMap: lo.SliceToMap(
 			conf.Roles,
@@ -38,6 +46,11 @@ func New(conf *domAuthModel.AuthMethodJWT, jwkGetter jwk.PublicKeyGetter) *Jwt {
 
 func (a *Jwt) Authorize(req *model.AuthRequest) model.Result {
 	jwtToken := req.ExtractToken()
+	fromCookie := false
+	if jwtToken == "" && a.cookieName != "" {
+		jwtToken = req.ExtractCookie(a.cookieName)
+		fromCookie = true
+	}
 	if jwtToken == "" {
 		return model.NoCredentials
 	}
@@ -80,6 +93,10 @@ func (a *Jwt) Authorize(req *model.AuthRequest) model.Result {
 		if !hasAnyRole(claims, a.checkRole) {
 			return model.DeniedAuthenticated
 		}
+	}
+
+	if fromCookie {
+		req.MarkCookieToken(jwtToken)
 	}
 
 	return model.Allowed

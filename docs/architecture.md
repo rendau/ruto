@@ -60,7 +60,7 @@ internal/service/gw/
             Compression        сжатие ответа клиенту; к backend'у — без Accept-Encoding (если включено)
             Metrics            учёт запроса в prometheus
             RequestLog         access-log (если включён)
-            Auth               проверка методов авторизации endpoint'а
+            Auth               проверка методов авторизации endpoint'а; токен из куки ruto_<provider> → + Authorization: Bearer backend'у
             BrowserCache       Cache-Control для клиента (если включён)
             ServerCache        ответ из кэша шлюза / сохранение ответа (если включён)
             BackendRequestParams  подстановка заголовков/query из vars
@@ -68,6 +68,8 @@ internal/service/gw/
 ```
 
 Сборка роутера — `gw/handler/http/service.go:buildHandler`: для каждого активного App берётся `PathPrefix`, для каждого активного HTTP-endpoint строится путь `path_prefix[/http.path]`, оборачивается в цепочку middleware и регистрируется в chi (метод `*` → любой метод). Сверху навешивается CORS из `Root.Cors`.
+
+**Токен из куки.** Метод `jwt` с `provider` читает токен и из куки `ruto_<provider>`, если в запросе нет `Authorization: Bearer` и `auth_token`. Принятый из куки токен middleware Auth дописывает в запрос как `Authorization: Bearer …` (только если клиент не прислал свой `Authorization`), а куку оставляет: backend'ы на заголовке и backend'ы на куке работают одинаково. Auth стоит раньше ServerCache, поэтому ключ кэша видит подставленный заголовок и различает пользователей и по куке. Заголовок `Cookie` в access-логе маскируется. В gRPC кука в метаданных так же проходит проверку, но `authorization` в метаданные backend'а не добавляется.
 
 **Заголовки X-Forwarded-\*.** Прокси (`gw/handler/http/proxy`) ставит их для всех приложений одинаково, без настройки — как nginx с `$proxy_add_x_forwarded_for`:
 - `X-Forwarded-For` — входящий `X-Forwarded-For` (если был) + IP того, кто прислал запрос в ruto: `198.51.100.1, 10.0.0.5`;

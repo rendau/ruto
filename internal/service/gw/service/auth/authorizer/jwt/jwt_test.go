@@ -112,12 +112,51 @@ func TestAuthorize(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		conf      *authModel.AuthMethodJWT
-		token     string
-		jwkGetter jwk.PublicKeyGetter
-		want      model.Result
+		name       string
+		conf       *authModel.AuthMethodJWT
+		token      string
+		cookie     string
+		jwkGetter  jwk.PublicKeyGetter
+		want       model.Result
+		fromCookie bool // the accepted token came from the cookie
 	}{
+		{
+			name:       "token from the provider cookie",
+			conf:       &authModel.AuthMethodJWT{Provider: "corp"},
+			cookie:     "other=1; ruto_corp=" + validToken,
+			jwkGetter:  testJWKGetter,
+			want:       model.Allowed,
+			fromCookie: true,
+		},
+		{
+			name:      "cookie of another provider is not read",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp"},
+			cookie:    "ruto_clients=" + validToken,
+			jwkGetter: testJWKGetter,
+			want:      model.NoCredentials,
+		},
+		{
+			name:      "method without provider reads no cookie",
+			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
+			cookie:    "ruto_corp=" + validToken,
+			jwkGetter: testJWKGetter,
+			want:      model.NoCredentials,
+		},
+		{
+			name:      "authorization header wins over the cookie",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp"},
+			token:     "Bearer " + badSignatureToken,
+			cookie:    "ruto_corp=" + validToken,
+			jwkGetter: testJWKGetter,
+			want:      model.InvalidCredentials,
+		},
+		{
+			name:      "cookie token without the required role",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"super-admin"}},
+			cookie:    "ruto_corp=" + validToken,
+			jwkGetter: testJWKGetter,
+			want:      model.DeniedAuthenticated,
+		},
 		{
 			name:      "missing token",
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
@@ -232,11 +271,18 @@ func TestAuthorize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			headers := http.Header{}
 			headers.Set("Authorization", tt.token)
+			if tt.cookie != "" {
+				headers.Set("Cookie", tt.cookie)
+			}
 
-			got := New(tt.conf, tt.jwkGetter).Authorize(&model.AuthRequest{
-				Headers: headers,
-			})
+			req := &model.AuthRequest{Headers: headers}
+			got := New(tt.conf, tt.jwkGetter).Authorize(req)
 			require.Equal(t, tt.want, got)
+			if tt.fromCookie {
+				require.Equal(t, validToken, req.CookieToken())
+			} else {
+				require.Empty(t, req.CookieToken())
+			}
 		})
 	}
 }

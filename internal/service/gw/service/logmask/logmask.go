@@ -8,7 +8,7 @@ import (
 
 // defaultSensitiveKeys are always masked in logged headers, gRPC metadata and
 // query params.
-var defaultSensitiveKeys = []string{"authorization", "api-key"}
+var defaultSensitiveKeys = []string{"authorization", "api-key", "cookie"}
 
 const maskedValue = "***"
 

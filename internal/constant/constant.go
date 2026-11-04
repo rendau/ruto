@@ -16,6 +16,15 @@ func AuthModeIsValid(v string) bool {
 // AuthAPIKeyDefaultHeader carries the api key when an api_key method sets no header.
 const AuthAPIKeyDefaultHeader = "x-api-key"
 
+// JwtCookiePrefix starts the name of the cookie that holds a provider's JWT:
+// one cookie per provider, so logins of different providers live side by side
+// on the same host.
+const JwtCookiePrefix = "ruto_"
+
+func JwtCookieName(provider string) string {
+	return JwtCookiePrefix + provider
+}
+
 const (
 	LoggingModeExtend  = "extend"
 	LoggingModeReplace = "replace"

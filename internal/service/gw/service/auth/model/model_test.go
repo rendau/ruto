@@ -34,6 +34,28 @@ func TestAuthRequestExtractTokenFromLowercaseHeader(t *testing.T) {
 	require.Equal(t, "token", req.ExtractToken())
 }
 
+func TestAuthRequestExtractCookie(t *testing.T) {
+	req := &AuthRequest{
+		Headers: http.Header{
+			"Cookie": {
+				`ruto_corp=tok-corp; broken; =novalue; quoted="q v"; ruto_corp=second`,
+				"ruto_clients=tok-clients",
+			},
+		},
+	}
+
+	require.Equal(t, "tok-corp", req.ExtractCookie("ruto_corp"), "first value wins when the name repeats")
+	require.Equal(t, "tok-clients", req.ExtractCookie("ruto_clients"), "every Cookie header line is read")
+	require.Equal(t, "q v", req.ExtractCookie("quoted"))
+	require.Equal(t, "", req.ExtractCookie("broken"), "a pair without = is skipped, not fatal")
+	require.Equal(t, "", req.ExtractCookie("missing"))
+
+	lower := &AuthRequest{Headers: http.Header{"cookie": {"ruto_corp=tok"}}}
+	require.Equal(t, "tok", lower.ExtractCookie("ruto_corp"))
+
+	require.Equal(t, "", (&AuthRequest{}).ExtractCookie("ruto_corp"))
+}
+
 func TestAuthRequestExtractAPIKey(t *testing.T) {
 	headers := http.Header{}
 	headers.Set("X-Api-Key", "from-header")

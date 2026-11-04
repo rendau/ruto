@@ -25,6 +25,12 @@ func NewAuth(
 			authRequest.SetRemoteAddr(r.RemoteAddr)
 			result := service.Check(authRequest)
 			if result == authModel.Allowed {
+				// A token accepted from a cookie also goes to the backend as a
+				// bearer, so backends on headers and backends on cookies both
+				// work. An Authorization the client sent itself is kept.
+				if token := authRequest.CookieToken(); token != "" && r.Header.Get("Authorization") == "" {
+					r.Header.Set("Authorization", "Bearer "+token)
+				}
 				next.ServeHTTP(w, r)
 				return
 			}
