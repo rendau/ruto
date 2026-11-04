@@ -64,7 +64,9 @@ export interface AuthMethodApiKey {
   keys: AuthMethodApiKeyItem[];
 }
 
+// provider: name of a root JWT provider (empty = any); kid: optional pin to one key.
 export interface AuthMethodJwt {
+  provider: string;
   kid: string;
   roles: string[];
 }
@@ -121,6 +123,7 @@ export interface RootCors {
 }
 
 export interface RootJwt {
+  name: string;
   jwk_url: string;
 }
 

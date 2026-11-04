@@ -42,9 +42,12 @@ type AuthMethodAPIKeyItem struct {
 	Key  string `json:"key"`
 }
 
+// AuthMethodJWT accepts tokens signed by a key of Provider (a Root jwt
+// provider name; empty — any provider). Kid optionally pins one key.
 type AuthMethodJWT struct {
-	Kid   string   `json:"kid"`
-	Roles []string `json:"roles"`
+	Provider string   `json:"provider"`
+	Kid      string   `json:"kid"`
+	Roles    []string `json:"roles"`
 }
 
 type AuthMethodIPValidation struct {
@@ -133,8 +136,9 @@ func (m *AuthMethodJWT) Clone() *AuthMethodJWT {
 	}
 
 	return &AuthMethodJWT{
-		Kid:   m.Kid,
-		Roles: append([]string(nil), m.Roles...),
+		Provider: m.Provider,
+		Kid:      m.Kid,
+		Roles:    append([]string(nil), m.Roles...),
 	}
 }
 
@@ -146,4 +150,10 @@ func (m *AuthMethodIPValidation) Clone() *AuthMethodIPValidation {
 	return &AuthMethodIPValidation{
 		AllowedIps: append([]AuthMethodIPValidationItem(nil), m.AllowedIps...),
 	}
+}
+
+// MergeKey identifies the key set a jwt method accepts: methods with the same
+// provider and kid merge their roles on extend.
+func (m *AuthMethodJWT) MergeKey() string {
+	return m.Provider + "|" + m.Kid
 }

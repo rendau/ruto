@@ -10,6 +10,9 @@ export const useRootStore = defineStore("root", () => {
   const jwtKids = ref<string[]>([]);
 
   const baseUrl = computed(() => root.value?.base_url || "");
+  const jwtProviderNames = computed(() =>
+    (root.value?.jwt || []).map((item) => item.name.trim()).filter(Boolean)
+  );
 
   async function loadJwtKids(urls?: string[]): Promise<void> {
     const list = (urls ?? (root.value?.jwt || []).map((item) => item.jwk_url))
@@ -60,6 +63,7 @@ export const useRootStore = defineStore("root", () => {
     loading,
     loaded,
     jwtKids,
+    jwtProviderNames,
     baseUrl,
     load,
     refresh: load,

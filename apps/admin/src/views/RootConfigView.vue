@@ -26,7 +26,7 @@ import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
-import type { RootMain } from "@/api/types";
+import type { RootJwt, RootMain } from "@/api/types";
 
 const message = useMessage();
 const rootStore = useRootStore();
@@ -58,7 +58,10 @@ function emptyRoot(): RootMain {
 }
 
 const model = reactive<RootMain>(emptyRoot());
-const jwtUrls = ref<string[]>([]);
+const jwtProviders = ref<RootJwt[]>([]);
+const jwtProviderNames = computed(() =>
+  jwtProviders.value.map((item) => item.name.trim()).filter(Boolean)
+);
 const corsText = reactive({ origins: "", methods: "", headers: "" });
 
 const authVariables = computed(() => model.variables);
@@ -68,12 +71,12 @@ async function load(): Promise<void> {
   try {
     const root = await getRoot();
     Object.assign(model, JSON.parse(JSON.stringify(root)) as RootMain);
-    jwtUrls.value = model.jwt.map((item) => item.jwk_url);
+    jwtProviders.value = model.jwt.map((item) => ({ ...item }));
     corsText.origins = arrayToLines(model.cors.allow_origins);
     corsText.methods = arrayToLines(model.cors.allow_methods);
     corsText.headers = arrayToLines(model.cors.allow_headers);
     rootStore.setRoot(root);
-    void rootStore.loadJwtKids(jwtUrls.value);
+    void rootStore.loadJwtKids(jwtProviderUrls());
   } catch (error) {
     message.error(apiErrorMessage(error, "Failed to load root configuration"));
   } finally {
@@ -81,14 +84,21 @@ async function load(): Promise<void> {
   }
 }
 
+function jwtProviderUrls(): string[] {
+  return jwtProviders.value.map((item) => item.jwk_url);
+}
+
+function newJwtProvider(): RootJwt {
+  return { name: "", jwk_url: "" };
+}
+
 let kidTimer: ReturnType<typeof setTimeout> | undefined;
 watch(
-  jwtUrls,
-  (urls) => {
+  () => jwtProviderUrls().join("\n"),
+  () => {
     clearTimeout(kidTimer);
-    kidTimer = setTimeout(() => void rootStore.loadJwtKids(urls), 400);
-  },
-  { deep: true }
+    kidTimer = setTimeout(() => void rootStore.loadJwtKids(jwtProviderUrls()), 400);
+  }
 );
 
 async function save(): Promise<void> {
@@ -97,7 +107,9 @@ async function save(): Promise<void> {
   try {
     const payload: RootMain = {
       ...model,
-      jwt: jwtUrls.value.map((url) => ({ jwk_url: url.trim() })).filter((item) => item.jwk_url),
+      jwt: jwtProviders.value
+        .map((item) => ({ name: item.name.trim(), jwk_url: item.jwk_url.trim() }))
+        .filter((item) => item.jwk_url),
       cors: {
         ...model.cors,
         allow_origins: linesToArray(corsText.origins),
@@ -107,7 +119,7 @@ async function save(): Promise<void> {
     };
     await setRoot(payload);
     rootStore.setRoot(payload);
-    void rootStore.loadJwtKids(jwtUrls.value);
+    void rootStore.loadJwtKids(jwtProviderUrls());
     message.success("Root configuration saved");
   } catch (error) {
     message.error(apiErrorMessage(error, "Failed to save configuration"));
@@ -203,13 +215,20 @@ onMounted(load);
 
         <SectionCard
           title="JWT providers"
-          description="JWKS endpoints whose key IDs become available to endpoint JWT auth"
+          description="JWKS endpoints whose keys JWT auth trusts. Auth methods refer to a provider by name; a provider without a name serves only methods with no provider set"
         >
-          <NDynamicInput
-            v-model:value="jwtUrls"
-            :min="0"
-            placeholder="https://issuer/.well-known/jwks.json"
-          />
+          <NDynamicInput v-model:value="jwtProviders" :min="0" :on-create="newJwtProvider">
+            <template #default="{ value }">
+              <div class="provider-row">
+                <NInput
+                  v-model:value="value.name"
+                  class="provider-row__name"
+                  placeholder="name, e.g. corp"
+                />
+                <NInput v-model:value="value.jwk_url" placeholder="https://issuer/.well-known/jwks.json" />
+              </div>
+            </template>
+          </NDynamicInput>
           <div v-if="rootStore.jwtKids.length" class="kids">
             <span class="muted kids__label">Available KIDs:</span>
             <NTag
@@ -227,6 +246,7 @@ onMounted(load);
         <SectionCard title="Authentication">
           <AuthEditor
             v-model="model.auth"
+            :jwt-provider-options="jwtProviderNames"
             :jwt-kid-options="rootStore.jwtKids"
             :variable-options="authVariables"
             hide-mode
@@ -325,6 +345,16 @@ onMounted(load);
 
 .kids__label {
   font-size: 12px;
+}
+
+.provider-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.provider-row__name {
+  flex: 0 0 200px;
 }
 
 @media (max-width: 760px) {

@@ -7,8 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/samber/lo"
-
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/core_client"
 	handlerGrpc "github.com/rendau/ruto/internal/service/gw/handler/grpc"
@@ -115,11 +113,7 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 
 	s.ready.Store(true)
 
-	// set jwk URLs
-	jwkUrls := lo.Map(conf.Jwt, func(item rootModel.RootJwt, _ int) string {
-		return item.JwkUrl
-	})
-	jwk.Ins().SetUrls(jwkUrls)
+	jwk.Ins().SetProviders(conf.Jwt)
 
 	return nil
 }

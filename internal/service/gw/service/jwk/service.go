@@ -16,13 +16,14 @@ import (
 	"encoding/json"
 
 	"github.com/rendau/ruto/internal/constant"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/errs"
 )
 
 const (
 	ScrapeInterval = 10 * time.Minute
-	// ScrapeRetryInterval — укороченный интервал опроса, пока URL-ы заданы, но ни
-	// одного ключа нет либо последний опрос какого-то URL-а упал. Без этого
+	// ScrapeRetryInterval — укороченный интервал опроса, пока провайдеры заданы, но
+	// ни одного ключа нет либо последний опрос какого-то URL-а упал. Без этого
 	// авторизация молчит (или живёт на устаревших ключах) до следующего ScrapeInterval.
 	ScrapeRetryInterval = 15 * time.Second
 )
@@ -32,15 +33,22 @@ var (
 )
 
 type Service struct {
-	ctx        context.Context
-	ctxCancel  context.CancelFunc
-	urlStore   atomic.Pointer[[]string]
-	itemStore  atomic.Pointer[map[string]*Item]
-	loadMu     sync.Mutex
-	urlItems   map[string][]*Item // под loadMu: ключи последнего удачного опроса по каждому URL
-	loadFailed atomic.Bool
-	trigger    chan struct{}
-	httpClient *http.Client
+	ctx           context.Context
+	ctxCancel     context.CancelFunc
+	providerStore atomic.Pointer[[]rootModel.RootJwt]
+	itemStore     atomic.Pointer[keySet]
+	loadMu        sync.Mutex
+	urlItems      map[string][]*Item // под loadMu: ключи последнего удачного опроса по каждому URL
+	loadFailed    atomic.Bool
+	trigger       chan struct{}
+	httpClient    *http.Client
+}
+
+// keySet — ключи всех провайдеров: общий индекс по kid для методов без
+// провайдера и индекс по имени провайдера для методов с ним.
+type keySet struct {
+	all        map[string]*Item
+	byProvider map[string]map[string]*Item
 }
 
 func init() {
@@ -72,10 +80,10 @@ func Ins() *Service {
 	return instance
 }
 
-func (s *Service) SetUrls(urls []string) {
-	urlsCopy := make([]string, len(urls))
-	copy(urlsCopy, urls)
-	s.urlStore.Store(&urlsCopy)
+func (s *Service) SetProviders(providers []rootModel.RootJwt) {
+	providersCopy := make([]rootModel.RootJwt, len(providers))
+	copy(providersCopy, providers)
+	s.providerStore.Store(&providersCopy)
 	s.signal()
 }
 
@@ -88,8 +96,15 @@ func (s *Service) signal() {
 	}
 }
 
-func (s *Service) GetPublicKey(kid string) (*rsa.PublicKey, string) {
-	if item := s.getItems()[kid]; item != nil {
+// GetPublicKey returns the key kid of the named provider, or of any provider
+// when provider is empty.
+func (s *Service) GetPublicKey(provider, kid string) (*rsa.PublicKey, string) {
+	set := s.getItems()
+	items := set.all
+	if provider != "" {
+		items = set.byProvider[provider]
+	}
+	if item := items[kid]; item != nil {
 		return &item.RSAPublicKey, item.Alg
 	}
 	return nil, ""
@@ -99,12 +114,12 @@ func Stop() {
 	instance.ctxCancel()
 }
 
-func (s *Service) getUrls() []string {
-	urlsPtr := s.urlStore.Load()
-	if urlsPtr == nil || *urlsPtr == nil {
-		return []string{}
+func (s *Service) getProviders() []rootModel.RootJwt {
+	providersPtr := s.providerStore.Load()
+	if providersPtr == nil {
+		return nil
 	}
-	return *urlsPtr
+	return *providersPtr
 }
 
 func (s *Service) worker() {
@@ -132,19 +147,18 @@ func (s *Service) worker() {
 // первого старта при недоступном JWK-сервере) либо последний опрос какого-то
 // URL-а упал.
 func (s *Service) needFastRetry() bool {
-	return len(s.getUrls()) > 0 && (len(s.getItems()) == 0 || s.loadFailed.Load())
+	return len(s.getProviders()) > 0 && (len(s.getItems().all) == 0 || s.loadFailed.Load())
 }
 
-func (s *Service) setItems(items map[string]*Item) {
-	s.itemStore.Store(&items)
+func (s *Service) setItems(set *keySet) {
+	s.itemStore.Store(set)
 }
 
-func (s *Service) getItems() map[string]*Item {
-	itemsPtr := s.itemStore.Load()
-	if itemsPtr == nil || *itemsPtr == nil {
-		return map[string]*Item{}
+func (s *Service) getItems() *keySet {
+	if set := s.itemStore.Load(); set != nil {
+		return set
 	}
-	return *itemsPtr
+	return &keySet{}
 }
 
 func (s *Service) load() {
@@ -157,8 +171,8 @@ func (s *Service) load() {
 
 	ctx := s.ctx
 
-	urls := s.getUrls()
-	if len(urls) == 0 {
+	providers := s.getProviders()
+	if len(providers) == 0 {
 		s.urlItems = nil
 		s.loadFailed.Store(false)
 		s.setItems(nil)
@@ -166,61 +180,86 @@ func (s *Service) load() {
 	}
 
 	var (
-		err      error
-		itemSet  *ItemSet
-		item     *Item
 		failed   bool
-		urlItems = make(map[string][]*Item, len(urls))
-		result   = make(map[string]*Item, len(urls)*2)
+		urlItems = make(map[string][]*Item, len(providers))
+		result   = &keySet{
+			all:        make(map[string]*Item, len(providers)*2),
+			byProvider: make(map[string]map[string]*Item, len(providers)),
+		}
 	)
 
-	for _, uri := range urls {
+	for _, provider := range providers {
 		if ctx.Err() != nil {
 			return
 		}
 
-		itemSet, err = s.loadForUri(ctx, uri)
-		if err != nil {
+		// Один URL у нескольких провайдеров опрашивается один раз.
+		items, loaded := urlItems[provider.JwkUrl]
+		if !loaded {
+			var ok bool
+			items, ok = s.loadItems(ctx, provider.JwkUrl)
 			if ctx.Err() != nil {
 				return
 			}
-			slog.Error(
-				"jwk-scrapper: loadForUri failed",
-				"error", fmt.Errorf("loadForUri: %w", err),
-				"uri", uri,
-			)
-			// Разовый сбой опроса не должен отзывать рабочие ключи: оставляем
-			// прежние ключи этого URL-а до удачного повтора.
-			failed = true
-			urlItems[uri] = s.urlItems[uri]
-			for _, item = range urlItems[uri] {
-				result[item.Kid] = item
-			}
-			continue
+			failed = failed || !ok
+			urlItems[provider.JwkUrl] = items
 		}
 
-		for _, item = range itemSet.Keys {
-			if !constant.IsSupportedJWTAlgorithm(item.Alg) {
-				continue
+		for _, item := range items {
+			result.all[item.Kid] = item
+		}
+		if provider.Name != "" {
+			byKid := result.byProvider[provider.Name]
+			if byKid == nil {
+				byKid = make(map[string]*Item, len(items))
+				result.byProvider[provider.Name] = byKid
 			}
-			item.RSAPublicKey, err = toRSAPublicKey(item)
-			if err != nil {
-				slog.Error(
-					"jwk-scrapper: invalid key",
-					"error", fmt.Errorf("ToRSAPublicKey: %w", err),
-					"kid", item.Kid,
-					"uri", uri,
-				)
-				continue
+			for _, item := range items {
+				byKid[item.Kid] = item
 			}
-			urlItems[uri] = append(urlItems[uri], item)
-			result[item.Kid] = item
 		}
 	}
 
 	s.urlItems = urlItems
 	s.loadFailed.Store(failed)
 	s.setItems(result)
+}
+
+// loadItems returns the usable keys of uri. On a failed poll ok is false and
+// the keys of the last successful poll are returned: a one-off failure must not
+// revoke working keys.
+func (s *Service) loadItems(ctx context.Context, uri string) (_ []*Item, ok bool) {
+	itemSet, err := s.loadForUri(ctx, uri)
+	if err != nil {
+		if ctx.Err() == nil {
+			slog.Error(
+				"jwk-scrapper: loadForUri failed",
+				"error", fmt.Errorf("loadForUri: %w", err),
+				"uri", uri,
+			)
+		}
+		return s.urlItems[uri], false
+	}
+
+	items := make([]*Item, 0, len(itemSet.Keys))
+	for _, item := range itemSet.Keys {
+		if !constant.IsSupportedJWTAlgorithm(item.Alg) {
+			continue
+		}
+		item.RSAPublicKey, err = toRSAPublicKey(item)
+		if err != nil {
+			slog.Error(
+				"jwk-scrapper: invalid key",
+				"error", fmt.Errorf("ToRSAPublicKey: %w", err),
+				"kid", item.Kid,
+				"uri", uri,
+			)
+			continue
+		}
+		items = append(items, item)
+	}
+
+	return items, true
 }
 
 func (s *Service) loadForUri(ctx context.Context, uri string) (*ItemSet, error) {

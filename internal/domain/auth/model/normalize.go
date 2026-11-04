@@ -102,9 +102,10 @@ func (m *AuthMethodAPIKey) Normalize() error {
 }
 
 func (m *AuthMethodJWT) Normalize() error {
+	m.Provider = strings.TrimSpace(m.Provider)
 	m.Kid = strings.TrimSpace(m.Kid)
-	if m.Kid == "" {
-		return fmt.Errorf("kid: empty")
+	if m.Provider == "" && m.Kid == "" {
+		return fmt.Errorf("provider: empty")
 	}
 	m.Roles = lo.FilterMap(m.Roles, func(v string, _ int) (string, bool) {
 		v = strings.TrimSpace(v)

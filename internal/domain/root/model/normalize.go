@@ -14,9 +14,16 @@ func (m *Root) Normalize() error {
 	if err := m.Cors.Normalize(); err != nil {
 		return fmt.Errorf("cors: %w", err)
 	}
+	providerNames := make(map[string]struct{}, len(m.Jwt))
 	for i := range m.Jwt {
 		if err := m.Jwt[i].Normalize(); err != nil {
 			return fmt.Errorf("jwt[%d]: %w", i, err)
+		}
+		if name := m.Jwt[i].Name; name != "" {
+			if _, ok := providerNames[name]; ok {
+				return fmt.Errorf("jwt[%d]: name: duplicate %q", i, name)
+			}
+			providerNames[name] = struct{}{}
 		}
 	}
 	if err := m.Auth.Normalize(); err != nil {
@@ -61,6 +68,7 @@ func (m *RootCors) Normalize() error {
 }
 
 func (m *RootJwt) Normalize() error {
+	m.Name = strings.TrimSpace(m.Name)
 	m.JwkUrl = strings.TrimSpace(m.JwkUrl)
 	if m.JwkUrl == "" {
 		return fmt.Errorf("jwk_url: empty")

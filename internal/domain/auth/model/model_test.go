@@ -7,11 +7,19 @@ import (
 )
 
 func TestAuthMethodJWTNormalize(t *testing.T) {
-	t.Run("kid is required", func(t *testing.T) {
+	t.Run("provider or kid is required", func(t *testing.T) {
 		item := AuthMethodJWT{}
 		err := item.Normalize()
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "kid: empty")
+		require.Contains(t, err.Error(), "provider: empty")
+
+		item = AuthMethodJWT{Provider: " corp "}
+		require.NoError(t, item.Normalize())
+		require.Equal(t, "corp", item.Provider)
+		require.Equal(t, "", item.Kid)
+
+		item = AuthMethodJWT{Kid: "kid-1"}
+		require.NoError(t, item.Normalize())
 	})
 
 	t.Run("trims and deduplicates roles", func(t *testing.T) {

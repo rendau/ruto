@@ -15,13 +15,17 @@ import (
 )
 
 type testJWKGetterT struct {
-	keys map[string]struct {
+	provider string // name of the provider the keys belong to
+	keys     map[string]struct {
 		publicKey *rsa.PublicKey
 		alg       string
 	}
 }
 
-func (s *testJWKGetterT) GetPublicKey(kid string) (*rsa.PublicKey, string) {
+func (s *testJWKGetterT) GetPublicKey(provider, kid string) (*rsa.PublicKey, string) {
+	if provider != "" && provider != s.provider {
+		return nil, ""
+	}
 	item := s.keys[kid]
 	return item.publicKey, item.alg
 }
@@ -95,6 +99,7 @@ func TestAuthorize(t *testing.T) {
 	)
 
 	testJWKGetter := &testJWKGetterT{
+		provider: "corp",
 		keys: map[string]struct {
 			publicKey *rsa.PublicKey
 			alg       string
@@ -146,6 +151,27 @@ func TestAuthorize(t *testing.T) {
 			conf:      &authModel.AuthMethodJWT{Kid: itemKid},
 			token:     "Bearer " + validToken,
 			jwkGetter: &testJWKGetterT{},
+			want:      model.InvalidCredentials,
+		},
+		{
+			name:      "any kid of the provider when kid is not pinned",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp"},
+			token:     "Bearer " + validToken,
+			jwkGetter: testJWKGetter,
+			want:      model.Allowed,
+		},
+		{
+			name:      "key of another provider is rejected",
+			conf:      &authModel.AuthMethodJWT{Provider: "clients"},
+			token:     "Bearer " + validToken,
+			jwkGetter: testJWKGetter,
+			want:      model.InvalidCredentials,
+		},
+		{
+			name:      "provider and pinned kid together",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Kid: "kid-2"},
+			token:     "Bearer " + validToken,
+			jwkGetter: testJWKGetter,
 			want:      model.InvalidCredentials,
 		},
 		{

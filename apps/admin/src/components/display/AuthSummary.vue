@@ -31,7 +31,13 @@ function describeMethod(method: AuthMethod): MethodLine[] {
     const roles = method.jwt.roles || [];
     lines.push({
       type: "JWT",
-      detail: `${method.jwt.kid || "any kid"}${roles.length ? ` · roles: ${roles.join(", ")}` : ""}`
+      detail: [
+        method.jwt.provider || "any provider",
+        method.jwt.kid ? `kid ${method.jwt.kid}` : "",
+        roles.length ? `roles: ${roles.join(", ")}` : ""
+      ]
+        .filter(Boolean)
+        .join(" · ")
     });
   }
   if (method.ip_validation) {

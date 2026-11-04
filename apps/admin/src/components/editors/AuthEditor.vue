@@ -11,6 +11,7 @@ import type { Auth, AuthMethod, AuthMethodType, AuthMode, Variable } from "@/api
 
 const props = defineProps<{
   modelValue: Auth;
+  jwtProviderOptions?: string[];
   jwtKidOptions?: string[];
   variableOptions?: Variable[];
   hideMode?: boolean;
@@ -24,10 +25,12 @@ const methodKeys = ref<string[]>([]);
 const pushingToParent = ref(false);
 let nextMethodKey = 0;
 
-const jwtKidOptions = computed(() => {
-  const source = props.jwtKidOptions || [];
-  return Array.from(new Set(source.map((value) => value.trim()).filter(Boolean))).sort();
-});
+const jwtProviderOptions = computed(() => uniqueSorted(props.jwtProviderOptions));
+const jwtKidOptions = computed(() => uniqueSorted(props.jwtKidOptions));
+
+function uniqueSorted(source?: string[]): string[] {
+  return Array.from(new Set((source || []).map((value) => value.trim()).filter(Boolean))).sort();
+}
 
 watch(
   () => props.modelValue,
@@ -123,7 +126,9 @@ function toggleType(methodIndex: number, type: AuthMethodType, enabled: boolean)
       api_key: enabled ? method.api_key || { header: "", keys: [{ name: "", key: "" }] } : undefined
     });
   } else if (type === "jwt") {
-    updateMethod(methodIndex, { jwt: enabled ? method.jwt || { kid: "", roles: [] } : undefined });
+    updateMethod(methodIndex, {
+      jwt: enabled ? method.jwt || { provider: "", kid: "", roles: [] } : undefined
+    });
   } else {
     updateMethod(methodIndex, {
       ip_validation: enabled
@@ -243,6 +248,12 @@ function setAllowedIpField(
 
 // ---- JWT ------------------------------------------------------------------
 
+function setJwtProvider(methodIndex: number, value: string): void {
+  const method = localAuth.value.methods[methodIndex];
+  if (!method?.jwt) return;
+  updateMethod(methodIndex, { jwt: { ...method.jwt, provider: value } });
+}
+
 function setJwtKid(methodIndex: number, value: string): void {
   const method = localAuth.value.methods[methodIndex];
   if (!method?.jwt) return;
@@ -257,10 +268,10 @@ function setJwtRoles(methodIndex: number, value: string): void {
   }
 }
 
-function jwtKidSelectOptions(currentKid: string) {
-  const options = jwtKidOptions.value.map((kid) => ({ label: kid, value: kid }));
-  if (currentKid && !jwtKidOptions.value.includes(currentKid)) {
-    options.push({ label: `${currentKid} (current)`, value: currentKid });
+function jwtSelectOptions(known: string[], current: string) {
+  const options = known.map((item) => ({ label: item, value: item }));
+  if (current && !known.includes(current)) {
+    options.push({ label: `${current} (current)`, value: current });
   }
   return options;
 }
@@ -447,21 +458,33 @@ function jwtKidSelectOptions(currentKid: string) {
 
         <div v-if="method.jwt" class="auth-block">
           <label class="field">
-            <span class="field__label">KID</span>
+            <span class="field__label">Provider (root JWT provider; empty = any)</span>
             <NSelect
-              v-if="jwtKidOptions.length > 0"
-              :value="method.jwt.kid"
+              :value="method.jwt.provider || null"
               clearable
               filterable
               tag
-              placeholder="Select or type a KID"
-              :options="jwtKidSelectOptions(method.jwt.kid)"
+              placeholder="Any provider"
+              :options="jwtSelectOptions(jwtProviderOptions, method.jwt.provider)"
+              @update:value="(value: string | null) => setJwtProvider(methodIndex, value || '')"
+            />
+          </label>
+          <label class="field">
+            <span class="field__label">KID (optional, pins one key)</span>
+            <NSelect
+              v-if="jwtKidOptions.length > 0"
+              :value="method.jwt.kid || null"
+              clearable
+              filterable
+              tag
+              placeholder="Any key of the provider"
+              :options="jwtSelectOptions(jwtKidOptions, method.jwt.kid)"
               @update:value="(value: string | null) => setJwtKid(methodIndex, value || '')"
             />
             <NInput
               v-else
               :value="method.jwt.kid"
-              placeholder="provider-main-key"
+              placeholder="Any key of the provider"
               @update:value="(value: string) => setJwtKid(methodIndex, value)"
             />
           </label>

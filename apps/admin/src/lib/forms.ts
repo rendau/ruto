@@ -8,7 +8,7 @@ export function createEmptyAuthMethod(type: AuthMethodType): AuthMethod {
   } else if (type === "api_key") {
     result.api_key = { header: "", keys: [{ name: "", key: "" }] };
   } else if (type === "jwt") {
-    result.jwt = { kid: "", roles: [] };
+    result.jwt = { provider: "", kid: "", roles: [] };
   } else {
     result.ip_validation = { allowed_ips: [{ name: "", ip: "" }] };
   }

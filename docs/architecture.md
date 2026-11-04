@@ -144,7 +144,7 @@ conf.InheritDown()   // Root.auth/vars → App → Endpoint (Merge + FillMissing
 conf.Interpolate()   // подставить переменные в заголовки/query/auth
 ```
 
-Затем из готового `Root` собираются новые http- и grpc-handler'ы и атомарно ставятся в серверы; `ready` → `true` (это видит `/healthcheck`). JWK URLs из конфига передаются в `jwk`-сервис.
+Затем из готового `Root` собираются новые http- и grpc-handler'ы и атомарно ставятся в серверы; `ready` → `true` (это видит `/healthcheck`). JWT-провайдеры из конфига (`Root.jwt`: имя + адрес JWK) передаются в `jwk`-сервис, который держит ключи в двух индексах: по kid для методов без провайдера и по имени провайдера для методов с ним.
 
 > Тот же триптих `Normalize → InheritDown → Interpolate` определён на доменных моделях (`root`, `app`, `endpoint`) и переиспользуется. Наследование auth — через `auth.Merge(parent, child)` с учётом режима `extend`/`replace`; наследование переменных — через `Vars.FillMissing(parent)`.
 

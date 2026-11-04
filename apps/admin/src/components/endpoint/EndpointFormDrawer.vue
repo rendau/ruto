@@ -276,6 +276,7 @@ function close(): void {
             <p class="muted form-hint">Inherited from the application unless overridden here.</p>
             <AuthEditor
               v-model="model.auth"
+              :jwt-provider-options="rootStore.jwtProviderNames"
               :jwt-kid-options="rootStore.jwtKids"
               :variable-options="authVariables"
             />

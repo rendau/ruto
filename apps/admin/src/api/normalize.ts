@@ -172,7 +172,7 @@ function cloneApiKey(value?: AuthMethodApiKey): AuthMethodApiKey | undefined {
 
 function cloneJwt(value?: AuthMethodJwt): AuthMethodJwt | undefined {
   if (!value) return undefined;
-  return { kid: value.kid || "", roles: [...(value.roles || [])] };
+  return { provider: value.provider || "", kid: value.kid || "", roles: [...(value.roles || [])] };
 }
 
 function cloneIpValidation(value?: AuthMethodIpValidation): AuthMethodIpValidation | undefined {
@@ -245,7 +245,7 @@ export function normalizeRoot(value: RootMain): RootMain {
       allow_methods: [],
       allow_headers: []
     },
-    jwt: value?.jwt || [],
+    jwt: (value?.jwt || []).map((item) => ({ name: item.name || "", jwk_url: item.jwk_url || "" })),
     auth: normalizeAuth(value?.auth),
     logging: normalizeLogging(value?.logging),
     log_own_response_errors: Boolean(value?.log_own_response_errors),

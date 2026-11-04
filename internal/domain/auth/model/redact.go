@@ -6,7 +6,7 @@ import (
 
 // Redacted returns a copy of the auth config with all secret material (basic
 // passwords, api keys) masked. Non-secret data (usernames, key names, headers,
-// kid, roles, allowed ips) is preserved. The receiver is left untouched.
+// provider, kid, roles, allowed ips) is preserved. The receiver is left untouched.
 func (m *Auth) Redacted() Auth {
 	result := Auth{
 		Enabled: m.Enabled,

@@ -221,6 +221,7 @@ async function detectSwagger(): Promise<void> {
           <NCollapseItem title="Authentication" name="auth">
             <AuthEditor
               v-model="model.auth"
+              :jwt-provider-options="rootStore.jwtProviderNames"
               :jwt-kid-options="rootStore.jwtKids"
               :variable-options="authVariables"
             />

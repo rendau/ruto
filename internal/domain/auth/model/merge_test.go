@@ -152,6 +152,29 @@ func TestAuthMerge(t *testing.T) {
 		require.Nil(t, final.Methods[1].Basic)
 	})
 
+	t.Run("jwt with same provider merges roles on extend", func(t *testing.T) {
+		root := Auth{
+			Enabled: true,
+			Mode:    "extend",
+			Methods: []*AuthMethod{{JWT: &AuthMethodJWT{Provider: "corp", Roles: []string{"admin"}}}},
+		}
+		app := Auth{
+			Enabled: true,
+			Mode:    "extend",
+			Methods: []*AuthMethod{
+				{JWT: &AuthMethodJWT{Provider: "corp", Roles: []string{"moderator"}}},
+				{JWT: &AuthMethodJWT{Provider: "clients"}},
+			},
+		}
+
+		final := Merge(root, app)
+
+		require.Len(t, final.Methods, 2)
+		require.Equal(t, "corp", final.Methods[0].JWT.Provider)
+		require.ElementsMatch(t, []string{"admin", "moderator"}, final.Methods[0].JWT.Roles)
+		require.Equal(t, "clients", final.Methods[1].JWT.Provider)
+	})
+
 	t.Run("jwt with different kid does not merge", func(t *testing.T) {
 		root := Auth{
 			Enabled: true,

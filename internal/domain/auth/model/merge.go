@@ -85,7 +85,7 @@ func mergeMethods(parent, child []*AuthMethod) []*AuthMethod {
 			)
 
 		case AuthMethodTypeJWT:
-			if existing, ok := jwtMethods[method.JWT.Kid]; ok {
+			if existing, ok := jwtMethods[method.JWT.MergeKey()]; ok {
 				existing.JWT.Roles = lo.Uniq(
 					append(existing.JWT.Roles, method.JWT.Roles...),
 				)
@@ -93,7 +93,7 @@ func mergeMethods(parent, child []*AuthMethod) []*AuthMethod {
 			}
 
 			cloned := method.Clone()
-			jwtMethods[cloned.JWT.Kid] = cloned
+			jwtMethods[cloned.JWT.MergeKey()] = cloned
 			result = append(result, cloned)
 
 		default:

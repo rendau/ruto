@@ -17,6 +17,7 @@ var jwtError = errors.New("jwt error")
 
 type Jwt struct {
 	jwkGetter       jwk.PublicKeyGetter
+	provider        string
 	requiredKid     string
 	requiredRoleMap map[string]bool
 }
@@ -24,6 +25,7 @@ type Jwt struct {
 func New(conf *domAuthModel.AuthMethodJWT, jwkGetter jwk.PublicKeyGetter) *Jwt {
 	return &Jwt{
 		jwkGetter:   jwkGetter,
+		provider:    conf.Provider,
 		requiredKid: conf.Kid,
 		requiredRoleMap: lo.SliceToMap(
 			conf.Roles,
@@ -40,37 +42,36 @@ func (a *Jwt) Authorize(req *model.AuthRequest) model.Result {
 		return model.NoCredentials
 	}
 
-	jwkPubKey, jwkAlg := a.jwkGetter.GetPublicKey(a.requiredKid)
-	if jwkPubKey == nil {
-		return model.InvalidCredentials
-	}
-
+	var kid string
 	claims := jwtv5.MapClaims{}
 	parsed, err := jwtv5.ParseWithClaims(jwtToken, claims,
 		func(tokenObj *jwtv5.Token) (any, error) {
-			// check kid
-			kid, ok := tokenObj.Header["kid"].(string)
-			if !ok {
+			kid, _ = tokenObj.Header["kid"].(string)
+			kid = strings.TrimSpace(kid)
+			if kid == "" || (a.requiredKid != "" && kid != a.requiredKid) {
 				return nil, jwtError
 			}
-			kid = strings.TrimSpace(kid)
-			if kid == "" || kid != a.requiredKid {
+
+			// The key is looked up by the token's kid, so the signing method
+			// is checked against that key here rather than via WithValidMethods.
+			jwkPubKey, jwkAlg := a.jwkGetter.GetPublicKey(a.provider, kid)
+			if jwkPubKey == nil || tokenObj.Method.Alg() != jwkAlg {
 				return nil, jwtError
 			}
 
 			return jwkPubKey, nil
 		},
-		jwtv5.WithValidMethods([]string{jwkAlg}),
 	)
 	if err != nil || parsed == nil || !parsed.Valid {
 		return model.InvalidCredentials
 	}
 
-	if userId, firstSeen := markIndefinite(a.requiredKid, claims); firstSeen {
+	if userId, firstSeen := markIndefinite(kid, claims); firstSeen {
 		slog.Info(
 			"indefinite jwt detected (no exp claim)",
 			"user_id", userId,
-			"kid", a.requiredKid,
+			"provider", a.provider,
+			"kid", kid,
 			"payload", map[string]any(claims), // весь payload токена целиком
 		)
 	}

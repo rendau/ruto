@@ -42,7 +42,11 @@ type RootCors struct {
 	AllowHeaders     []string `json:"allow_headers"`
 }
 
+// RootJwt is a JWT provider: a JWKS endpoint whose keys the gateway trusts.
+// Name is what auth methods refer to; a provider without a name only serves
+// methods that pin no provider.
 type RootJwt struct {
+	Name   string `json:"name"`
 	JwkUrl string `json:"jwk_url"`
 }
 
