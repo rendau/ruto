@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -142,8 +143,67 @@ func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The cookies live as long as the session can be renewed, not as long as
-	// the access token: a browser must not drop them before a refresh.
+	u.setSession(w, tokens)
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
+}
+
+// refresh renews the session with the refresh token from the refresh cookie
+// and sets fresh cookies. A front calls it after a 401 and repeats the
+// request; a 401 from here means the session is over and it is time for login.
+func (u *unit) refresh(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+
+	session := u.readSession(r)
+	if session.RefreshToken == "" {
+		http.Error(w, "no session to refresh: log in", http.StatusUnauthorized)
+		return
+	}
+
+	meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
+	if err != nil {
+		u.logWarn("provider discovery failed", err, r)
+		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
+		return
+	}
+
+	tokens, err := oidc.Ins().Refresh(r.Context(), meta.TokenEndpoint, u.client, session.RefreshToken)
+	if err != nil {
+		if refusal, ok := errors.AsType[*oidc.Error](err); ok && refusal.Code == "invalid_grant" {
+			// The cookies are left as they are: a refresh of the same token
+			// in another tab or pod may have just set fresh ones, and the
+			// browser applies responses in the order they arrive.
+			slog.Info("authflow: session can no longer be refreshed", "unit", u.name, "error", err)
+			http.Error(w, "session is over: log in", http.StatusUnauthorized)
+			return
+		}
+		u.logWarn("refresh failed", err, r)
+		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
+		return
+	}
+
+	if err = u.verifyAccessToken(tokens.AccessToken); err != nil {
+		u.logWarn("access token from the provider is not acceptable", err, r)
+		http.Error(w, "login provider returned a token this gateway cannot verify", http.StatusBadGateway)
+		return
+	}
+
+	// A provider that does not rotate refresh tokens leaves them out of the
+	// answer, and the id token is optional on a refresh: keep what we had.
+	if tokens.RefreshToken == "" {
+		tokens.RefreshToken = session.RefreshToken
+	}
+	if tokens.IdToken == "" {
+		tokens.IdToken = session.IdToken
+	}
+
+	u.setSession(w, tokens)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// setSession sets the access and refresh cookies from the provider's answer.
+// They live as long as the session can be renewed, not as long as the access
+// token: a browser must not drop them before a refresh.
+func (u *unit) setSession(w http.ResponseWriter, tokens *oidc.TokenResponse) {
 	maxAge := tokens.RefreshExpiresIn
 	if maxAge <= 0 {
 		maxAge = defaultSessionMaxAge
@@ -153,8 +213,6 @@ func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
 		session := sessionCookie{RefreshToken: tokens.RefreshToken, IdToken: tokens.IdToken}
 		u.setCookie(w, u.refreshCookieName(), session.encode(), u.basePath, maxAge)
 	}
-
-	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
 // logout drops the session cookies and, when the provider supports it, ends

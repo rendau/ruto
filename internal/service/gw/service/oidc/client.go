@@ -30,17 +30,28 @@ func (s *Service) Exchange(
 }
 
 // Refresh trades a refresh token for a new token pair (RFC 6749 §6).
+// Simultaneous refreshes of one token in this process (several tabs that got a
+// 401 at once) share one call to the provider: one that rotates refresh tokens
+// would refuse all but the first. The call outlives a caller that gives up, so
+// the others still get the answer.
 func (s *Service) Refresh(
 	ctx context.Context,
 	tokenEndpoint string,
 	client *authModel.JwtClient,
 	refreshToken string,
 ) (*TokenResponse, error) {
-	form := url.Values{
-		"grant_type":    {"refresh_token"},
-		"refresh_token": {refreshToken},
+	key := tokenEndpoint + "\x00" + client.Id + "\x00" + refreshToken
+	rep, err, _ := s.refreshes.Do(key, func() (any, error) {
+		form := url.Values{
+			"grant_type":    {"refresh_token"},
+			"refresh_token": {refreshToken},
+		}
+		return s.token(context.WithoutCancel(ctx), tokenEndpoint, client, form)
+	})
+	if err != nil {
+		return nil, err
 	}
-	return s.token(ctx, tokenEndpoint, client, form)
+	return rep.(*TokenResponse), nil
 }
 
 // token posts form to the token endpoint as a confidential client

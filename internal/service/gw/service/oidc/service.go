@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/rendau/ruto/internal/infra/httpx"
 )
 
@@ -36,6 +38,7 @@ type Service struct {
 	httpClient *http.Client
 	mu         sync.Mutex
 	entries    map[string]*entry // by discovery url
+	refreshes  singleflight.Group
 }
 
 type entry struct {

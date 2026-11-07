@@ -1,7 +1,8 @@
 // Package authflow serves the gateway's own login routes,
-// /_auth/<provider>[/<app prefix>]/login|callback|logout: the OpenID Connect
-// authorization code flow with PKCE, ending in the access and refresh cookies
-// that the jwt auth method reads on every other request.
+// /_auth/<provider>[/<app prefix>]/login|callback|refresh|logout: the OpenID
+// Connect authorization code flow with PKCE, ending in the access and refresh
+// cookies that the jwt auth method reads on every other request, and the
+// renewal of those cookies with the refresh token.
 //
 // A login unit is a provider plus a client: the provider's default client
 // (shared by every app that names the provider) or an app's own client (its own
@@ -112,6 +113,9 @@ func newUnit(
 func (u *unit) register(router chi.Router) {
 	router.Get(u.basePath+"/login", u.login)
 	router.Get(u.basePath+"/callback", u.callback)
+	// POST only: a SameSite=Lax cookie does not travel with a cross-site POST,
+	// so another site cannot make the browser renew the session.
+	router.Post(u.basePath+"/refresh", u.refresh)
 	router.Get(u.basePath+"/logout", u.logout)
 }
 

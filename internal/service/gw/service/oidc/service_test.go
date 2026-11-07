@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -129,4 +132,53 @@ func TestExchange(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "refresh_token", seen.form["grant_type"])
 	assert.Equal(t, "rt", seen.form["refresh_token"])
+}
+
+func TestRefreshSharesSimultaneousCalls(t *testing.T) {
+	var issuer string
+	var calls atomic.Int32
+	release := make(chan struct{})
+	server := fakeProvider(t, func() string { return issuer }, func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		<-release
+		_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "at", RefreshToken: "rt-2"})
+	})
+	issuer = server.URL + "/realms/corp"
+
+	svc := New()
+	meta, err := svc.Metadata(context.Background(), issuer, "")
+	require.NoError(t, err)
+	client := &authModel.JwtClient{Id: "ruto", Secret: "s"}
+
+	const callers = 5
+	var wg sync.WaitGroup
+	results := make([]*TokenResponse, callers)
+	errs := make([]error, callers)
+	refresh := func(ctx context.Context, i int) {
+		wg.Go(func() { results[i], errs[i] = svc.Refresh(ctx, meta.TokenEndpoint, client, "rt-1") })
+	}
+
+	// The caller that started the call gives up: the others must still get
+	// the answer.
+	firstCtx, cancelFirst := context.WithCancel(context.Background())
+	refresh(firstCtx, 0)
+	require.Eventually(t, func() bool { return calls.Load() == 1 }, 3*time.Second, 5*time.Millisecond)
+	for i := 1; i < callers; i++ {
+		refresh(context.Background(), i)
+	}
+	time.Sleep(50 * time.Millisecond) // let every caller join the call in flight
+	cancelFirst()
+	close(release)
+	wg.Wait()
+
+	assert.Equal(t, int32(1), calls.Load())
+	for i := range callers {
+		require.NoError(t, errs[i])
+		assert.Equal(t, "rt-2", results[i].RefreshToken)
+	}
+
+	// Once the call is done, a later refresh goes to the provider again.
+	_, err = svc.Refresh(context.Background(), meta.TokenEndpoint, client, "rt-2")
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), calls.Load())
 }
