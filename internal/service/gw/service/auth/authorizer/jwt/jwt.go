@@ -65,6 +65,9 @@ func (a *Jwt) Authorize(req *model.AuthRequest) model.Result {
 		fromCookie = true
 	}
 	if jwtToken == "" {
+		if fromCookie {
+			req.MarkStaleCookie(a.cookieName)
+		}
 		return model.NoCredentials
 	}
 
@@ -89,6 +92,11 @@ func (a *Jwt) Authorize(req *model.AuthRequest) model.Result {
 		},
 	)
 	if err != nil || parsed == nil || !parsed.Valid {
+		// The signature is checked before the claims, so an expired token
+		// here is a genuine one of the provider.
+		if fromCookie && errors.Is(err, jwtv5.ErrTokenExpired) {
+			req.MarkStaleCookie(a.cookieName)
+		}
 		return model.InvalidCredentials
 	}
 

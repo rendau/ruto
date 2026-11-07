@@ -245,7 +245,13 @@ func (c *cacheControlWriter) WriteHeader(status int) {
 
 	header := c.ResponseWriter.Header()
 	if status == http.StatusOK && (c.override || header.Get("Cache-Control") == "") {
-		header.Set("Cache-Control", c.value)
+		value := c.value
+		// A response that sets cookies (a session renewed on the way) is
+		// the user's own: a shared cache must not keep and hand it out.
+		if header.Get("Set-Cookie") != "" {
+			value = privateCacheControl(value)
+		}
+		header.Set("Cache-Control", value)
 		if c.override {
 			header.Del("Expires")
 			header.Del("Pragma")
@@ -253,6 +259,16 @@ func (c *cacheControlWriter) WriteHeader(status int) {
 	}
 
 	c.ResponseWriter.WriteHeader(status)
+}
+
+// privateCacheControl turns "public, max-age=N" into "private, max-age=N";
+// "private" and "no-store" stay as they are.
+func privateCacheControl(value string) string {
+	scope, rest, _ := strings.Cut(value, ",")
+	if strings.EqualFold(strings.TrimSpace(scope), constant.CacheScopePublic) {
+		return constant.CacheScopePrivate + "," + rest
+	}
+	return value
 }
 
 func (c *cacheControlWriter) Write(p []byte) (int, error) {

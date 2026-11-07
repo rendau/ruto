@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"net/http"
 	"testing"
+	"time"
 
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
@@ -101,6 +102,19 @@ func TestAuthorize(t *testing.T) {
 		privateKey,
 	)
 
+	expiredToken := signToken(
+		jwtv5.SigningMethodRS256,
+		itemKid,
+		jwtv5.MapClaims{"sub": "u1", "exp": time.Now().Add(-time.Minute).Unix()},
+		privateKey,
+	)
+	expiredForgedToken := signToken(
+		jwtv5.SigningMethodRS256,
+		itemKid,
+		jwtv5.MapClaims{"sub": "u1", "exp": time.Now().Add(-time.Minute).Unix()},
+		wrongKey,
+	)
+
 	hsToken := signToken(
 		jwtv5.SigningMethodHS256,
 		itemKid,
@@ -129,6 +143,7 @@ func TestAuthorize(t *testing.T) {
 		jwkGetter  jwk.PublicKeyGetter
 		want       model.Result
 		fromCookie bool // the accepted token came from the cookie
+		stale      bool // the session behind the cookie may be renewed
 	}{
 		{
 			name:       "token from the provider cookie",
@@ -144,6 +159,29 @@ func TestAuthorize(t *testing.T) {
 			cookie:    "ruto_clients=" + validToken,
 			jwkGetter: testJWKGetter,
 			want:      model.NoCredentials,
+			stale:     true,
+		},
+		{
+			name:      "expired cookie token is stale",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp"},
+			cookie:    "ruto_corp=" + expiredToken,
+			jwkGetter: testJWKGetter,
+			want:      model.InvalidCredentials,
+			stale:     true,
+		},
+		{
+			name:      "expired token with a wrong signature is not stale",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp"},
+			cookie:    "ruto_corp=" + expiredForgedToken,
+			jwkGetter: testJWKGetter,
+			want:      model.InvalidCredentials,
+		},
+		{
+			name:      "expired header token does not make the cookie stale",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp"},
+			token:     "Bearer " + expiredToken,
+			jwkGetter: testJWKGetter,
+			want:      model.InvalidCredentials,
 		},
 		{
 			name:      "method without provider reads no cookie",
@@ -328,6 +366,7 @@ func TestAuthorize(t *testing.T) {
 			} else {
 				require.Empty(t, req.CookieToken())
 			}
+			require.Equal(t, tt.stale, req.CookieStale("ruto_corp"))
 		})
 	}
 }

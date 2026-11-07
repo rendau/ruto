@@ -161,3 +161,30 @@ func TestNewTransport_ClosesIdleConnFirst(t *testing.T) {
 
 	require.Eventually(t, func() bool { return closed.Load() == 1 }, 2*time.Second, 10*time.Millisecond)
 }
+
+func TestStripGatewayCookies(t *testing.T) {
+	tests := []struct {
+		name   string
+		cookie []string
+		want   []string
+	}{
+		{name: "no cookie", cookie: nil, want: nil},
+		{name: "nothing of the gateway", cookie: []string{"a=1; ruto_corp=at"}, want: []string{"a=1; ruto_corp=at"}},
+		{
+			name:   "refresh and login cookies go, the access cookie stays",
+			cookie: []string{"a=1; ruto-rt_corp=rt; ruto_corp=at; __Host-ruto-login_corp=st", "ruto-rt_corp_shop.api=rt2; b=2"},
+			want:   []string{"a=1; ruto_corp=at; b=2"},
+		},
+		{name: "only the gateway's", cookie: []string{"ruto-rt_corp=rt; ruto-login_corp=st"}, want: nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			header := http.Header{}
+			for _, line := range tt.cookie {
+				header.Add("Cookie", line)
+			}
+			stripGatewayCookies(header)
+			assert.Equal(t, tt.want, header.Values("Cookie"))
+		})
+	}
+}

@@ -116,7 +116,9 @@ function cleanProvider(item: RootJwt): RootJwt {
     issuer: item.issuer.trim(),
     internal_url: item.internal_url.trim(),
     public_url: item.public_url.trim(),
-    client
+    client,
+    // The switch is hidden without an issuer; the server refuses it there.
+    transparent_refresh: !!item.issuer.trim() && item.transparent_refresh
   };
 }
 
@@ -279,6 +281,10 @@ onMounted(load);
                     Default login client (shared login for every app naming this provider)
                   </NCheckbox>
                   <JwtClientEditor v-if="value.client" v-model="value.client" />
+                  <NCheckbox v-model:checked="value.transparent_refresh">
+                    Renew expired sessions inside requests (no 401 for the front; the refresh
+                    cookie then comes with every request, the gateway keeps it from backends)
+                  </NCheckbox>
                 </template>
               </div>
             </template>

@@ -10,10 +10,12 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/rendau/ruto/internal/constant"
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxyerr"
 )
@@ -45,6 +47,7 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 		rewriteFunc = func(r *httputil.ProxyRequest) {
 			r.SetURL(backendUrl)
 			setXForwarded(r)
+			stripGatewayCookies(r.Out.Header)
 
 			r.Out.URL.Path = backendUrl.JoinPath(customPath).Path
 			if !strings.HasPrefix(r.Out.URL.Path, "/") {
@@ -55,6 +58,7 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 		rewriteFunc = func(r *httputil.ProxyRequest) {
 			r.SetURL(backendUrl)
 			setXForwarded(r)
+			stripGatewayCookies(r.Out.Header)
 		}
 	}
 
@@ -100,6 +104,39 @@ func setXForwarded(r *httputil.ProxyRequest) {
 			r.Out.Header[name] = values
 		}
 	}
+}
+
+// stripGatewayCookies keeps the gateway's own login cookies from a backend:
+// the refresh cookie (it carries the refresh and id tokens and, with
+// transparent refresh, comes with every request) and the login state cookie.
+// The access cookie is left: a backend may read the token from it.
+func stripGatewayCookies(header http.Header) {
+	lines := header.Values("Cookie")
+	if !slices.ContainsFunc(lines, func(line string) bool {
+		return strings.Contains(line, constant.JwtRefreshCookiePrefix) || strings.Contains(line, constant.JwtLoginCookiePrefix)
+	}) {
+		return
+	}
+
+	kept := make([]string, 0, 8)
+	for _, line := range lines {
+		for pair := range strings.SplitSeq(line, ";") {
+			pair = strings.TrimSpace(pair)
+			name, _, _ := strings.Cut(pair, "=")
+			name = strings.TrimPrefix(name, "__Host-")
+			if pair == "" ||
+				strings.HasPrefix(name, constant.JwtRefreshCookiePrefix) ||
+				strings.HasPrefix(name, constant.JwtLoginCookiePrefix) {
+				continue
+			}
+			kept = append(kept, pair)
+		}
+	}
+	if len(kept) == 0 {
+		header.Del("Cookie")
+		return
+	}
+	header.Set("Cookie", strings.Join(kept, "; "))
 }
 
 // rewriteLocation maps a backend redirect onto the gateway, like nginx's

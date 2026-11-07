@@ -140,6 +140,8 @@ export interface RootJwt {
   internal_url: string;
   public_url: string;
   client?: JwtClient;
+  // Renew an expired session inside an app request instead of answering 401.
+  transparent_refresh: boolean;
 }
 
 export interface RootTransform {

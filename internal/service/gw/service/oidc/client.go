@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 )
@@ -30,10 +31,13 @@ func (s *Service) Exchange(
 }
 
 // Refresh trades a refresh token for a new token pair (RFC 6749 §6).
-// Simultaneous refreshes of one token in this process (several tabs that got a
-// 401 at once) share one call to the provider: one that rotates refresh tokens
-// would refuse all but the first. The call outlives a caller that gives up, so
-// the others still get the answer.
+//
+// Refreshes of one token in this process share one call to the provider:
+// those that come while it is in flight (several tabs got a 401 at once) and,
+// for RefreshGrace after it, those the browser sent before it got the new
+// cookies. A provider that rotates refresh tokens would refuse all of them but
+// the first. The call outlives a caller that gives up, so the others still
+// get the answer. The shared answer must not be modified.
 func (s *Service) Refresh(
 	ctx context.Context,
 	tokenEndpoint string,
@@ -41,17 +45,52 @@ func (s *Service) Refresh(
 	refreshToken string,
 ) (*TokenResponse, error) {
 	key := tokenEndpoint + "\x00" + client.Id + "\x00" + refreshToken
+	if rep := s.recentRefresh(key); rep != nil {
+		return rep, nil
+	}
 	rep, err, _ := s.refreshes.Do(key, func() (any, error) {
 		form := url.Values{
 			"grant_type":    {"refresh_token"},
 			"refresh_token": {refreshToken},
 		}
-		return s.token(context.WithoutCancel(ctx), tokenEndpoint, client, form)
+		rep, err := s.token(context.WithoutCancel(ctx), tokenEndpoint, client, form)
+		if err == nil {
+			s.rememberRefresh(key, rep)
+		}
+		return rep, err
 	})
 	if err != nil {
 		return nil, err
 	}
 	return rep.(*TokenResponse), nil
+}
+
+type recentRefresh struct {
+	rep *TokenResponse
+	at  time.Time
+}
+
+func (s *Service) recentRefresh(key string) *TokenResponse {
+	s.recentMu.Lock()
+	defer s.recentMu.Unlock()
+	if item, ok := s.recent[key]; ok && time.Since(item.at) < RefreshGrace {
+		return item.rep
+	}
+	return nil
+}
+
+// rememberRefresh keeps an answer for RefreshGrace; the outdated ones are
+// dropped on the way, there are only as many as refreshes in that window.
+func (s *Service) rememberRefresh(key string, rep *TokenResponse) {
+	s.recentMu.Lock()
+	defer s.recentMu.Unlock()
+	now := time.Now()
+	for k, item := range s.recent {
+		if now.Sub(item.at) >= RefreshGrace {
+			delete(s.recent, k)
+		}
+	}
+	s.recent[key] = recentRefresh{rep: rep, at: now}
 }
 
 // token posts form to the token endpoint as a confidential client

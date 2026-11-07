@@ -49,7 +49,7 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 
 	// The gateway's own login routes go first; no app may own the /_auth
 	// prefix, so they never compete with an app route.
-	authflow.Register(router, snapshot)
+	sessions := authflow.Register(router, snapshot)
 
 	for _, app := range snapshot.ActiveApps() {
 		endpoints := app.ActiveEndpoints()
@@ -89,7 +89,7 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 				middleware.NewMetrics(app, ep, routePath),
 				middleware.NewSeenPaths(app, ep),
 				middleware.NewRequestLog(app, ep, routePath, snapshot.LogOwnResponseErrors),
-				middleware.NewAuth(ep),
+				middleware.NewAuth(ep, sessions),
 				middleware.NewBrowserCache(ep),
 				middleware.NewServerCache(app, ep, store),
 				middleware.NewBackendRequestParams(ep),

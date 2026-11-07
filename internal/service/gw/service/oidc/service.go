@@ -22,7 +22,10 @@ import (
 const (
 	// MetadataTTL is how long a discovery document is trusted before it is
 	// read again; providers change their endpoints about never.
-	MetadataTTL      = time.Hour
+	MetadataTTL = time.Hour
+	// RefreshGrace is how long the answer to a refresh is given again for the
+	// same refresh token without asking the provider.
+	RefreshGrace     = 10 * time.Second
 	discoveryPath    = "/.well-known/openid-configuration"
 	requestTimeout   = 10 * time.Second
 	maxResponseBytes = 1 << 20
@@ -39,6 +42,8 @@ type Service struct {
 	mu         sync.Mutex
 	entries    map[string]*entry // by discovery url
 	refreshes  singleflight.Group
+	recentMu   sync.Mutex
+	recent     map[string]recentRefresh // by refresh key, see Refresh
 }
 
 type entry struct {
@@ -51,6 +56,7 @@ func New() *Service {
 	return &Service{
 		httpClient: httpx.New(httpx.Config{Timeout: requestTimeout}),
 		entries:    make(map[string]*entry),
+		recent:     make(map[string]recentRefresh),
 	}
 }
 

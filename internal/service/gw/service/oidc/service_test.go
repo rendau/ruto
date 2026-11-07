@@ -177,8 +177,18 @@ func TestRefreshSharesSimultaneousCalls(t *testing.T) {
 		assert.Equal(t, "rt-2", results[i].RefreshToken)
 	}
 
-	// Once the call is done, a later refresh goes to the provider again.
+	// A request the browser sent before it got the new cookies comes right
+	// after the call with the same token: it gets the same answer.
+	late, err := svc.Refresh(context.Background(), meta.TokenEndpoint, client, "rt-1")
+	require.NoError(t, err)
+	assert.Same(t, results[0], late)
+	assert.Equal(t, int32(1), calls.Load())
+
+	// Another token, or another client with the same token, goes to the
+	// provider.
 	_, err = svc.Refresh(context.Background(), meta.TokenEndpoint, client, "rt-2")
 	require.NoError(t, err)
-	assert.Equal(t, int32(2), calls.Load())
+	_, err = svc.Refresh(context.Background(), meta.TokenEndpoint, &authModel.JwtClient{Id: "other", Secret: "s"}, "rt-1")
+	require.NoError(t, err)
+	assert.Equal(t, int32(3), calls.Load())
 }

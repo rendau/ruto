@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/samber/lo"
@@ -21,6 +22,7 @@ type AuthRequest struct {
 	apiKeyByHeader map[string]string
 	cookies        authCookies
 	cookieToken    string
+	staleCookies   []string
 	remoteIP       netip.Addr
 	ipAddrs        authIPs
 }
@@ -118,6 +120,16 @@ func (r *AuthRequest) MarkCookieToken(token string) {
 
 func (r *AuthRequest) CookieToken() string {
 	return r.cookieToken
+}
+
+// MarkStaleCookie records that a jwt method found no token in the named cookie
+// or an expired one: a session the gateway may renew from its refresh cookie.
+func (r *AuthRequest) MarkStaleCookie(name string) {
+	r.staleCookies = append(r.staleCookies, name)
+}
+
+func (r *AuthRequest) CookieStale(name string) bool {
+	return slices.Contains(r.staleCookies, name)
 }
 
 func (r *AuthRequest) ExtractBasic() (finalUsername string, finalPassword string) {

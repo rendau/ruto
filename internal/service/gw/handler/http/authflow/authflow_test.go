@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -424,4 +425,55 @@ func TestHttpGatewayGetsPlainCookies(t *testing.T) {
 	loginCookie := cookieByName(t, rec, "ruto-login_corp")
 	assert.False(t, loginCookie.Secure, "no Secure on plain http, or the browser drops the cookie")
 	assert.False(t, strings.HasPrefix(loginCookie.Name, "__Host-"))
+}
+
+func TestTransparentRefreshCookiePath(t *testing.T) {
+	op := newFakeOP(t)
+	snapshot := rootModel.NewEmpty()
+	p := op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s"})
+	p.TransparentRefresh = true
+	snapshot.Jwt = []rootModel.RootJwt{p}
+	snapshot.Apps = []*appModel.App{{
+		Active:     true,
+		Name:       "shop",
+		PathPrefix: "shop",
+		Backend:    appModel.Backend{Url: "http://shop:8080"},
+		Jwt:        []appModel.AppJwt{{Provider: "corp", Client: authModel.JwtClient{Id: "shop-client", Secret: "s"}}},
+	}}
+	require.NoError(t, snapshot.Normalize())
+	snapshot.InheritDown()
+	router := chi.NewRouter()
+	sessions := Register(router, snapshot)
+
+	assert.Equal(t, "ruto-rt_corp", sessions.RefreshCookie("ruto_corp"))
+	assert.Equal(t, "ruto-rt_corp_shop", sessions.RefreshCookie("ruto_corp_shop"))
+	assert.Empty(t, sessions.RefreshCookie("ruto_other"))
+
+	// the refresh cookie goes to "/", a cookie left on the unit's routes by
+	// the previous setting is dropped
+	rec := do(router, http.MethodPost, "/_auth/corp/refresh",
+		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-1"}))
+	require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+	var paths []string
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == "ruto-rt_corp" {
+			paths = append(paths, fmt.Sprintf("%s:%d", c.Path, c.MaxAge))
+		}
+	}
+	assert.Equal(t, []string{"/:1700", "/_auth/corp:-1"}, paths)
+
+	// logout drops it on both paths
+	rec = do(router, http.MethodGet, "/_auth/corp/logout")
+	paths = nil
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == "ruto-rt_corp" {
+			paths = append(paths, fmt.Sprintf("%s:%d", c.Path, c.MaxAge))
+		}
+	}
+	assert.Equal(t, []string{"/:-1", "/_auth/corp:-1"}, paths)
+
+	// without the flag no unit renews inside requests
+	p.TransparentRefresh = false
+	snapshot.Jwt = []rootModel.RootJwt{p}
+	assert.Empty(t, Register(chi.NewRouter(), snapshot).RefreshCookie("ruto_corp"))
 }

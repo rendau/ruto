@@ -37,7 +37,7 @@ func TestAuthStatusCodes(t *testing.T) {
 		},
 	}
 
-	handler := NewAuth(ep)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	handler := NewAuth(ep, nil)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -105,7 +105,7 @@ func TestAuthCookieTokenGoesToBackend(t *testing.T) {
 	}
 
 	var seen http.Header
-	handler := NewAuth(ep)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := NewAuth(ep, nil)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seen = r.Header.Clone()
 		w.WriteHeader(http.StatusOK)
 	}))
