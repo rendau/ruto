@@ -15,6 +15,7 @@ func (m *Root) InheritDown() {
 
 func (m *Root) inheritToApp(app *appModel.App, _ int) {
 	app.Auth = authModel.Merge(m.Auth, app.Auth)
+	app.SetJwtCookieNames(&app.Auth)
 	app.Logging = loggingModel.Merge(m.Logging, app.Logging)
 	app.Compression = compressionModel.Merge(m.Compression, app.Compression)
 	app.Variables.FillMissing(m.Variables)

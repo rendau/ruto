@@ -3,9 +3,12 @@ package model
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
 func TestAppNormalize_RejectWildcardInPathPrefix(t *testing.T) {
@@ -177,4 +180,60 @@ func TestAppNormalize_WildcardEndpointNeedsAllowWildcard(t *testing.T) {
 
 	require.EqualError(t, newApp(false).Normalize(), "endpoints[1]: http: path: wildcard '*' is not allowed for this app")
 	require.NoError(t, newApp(true).Normalize())
+}
+
+func TestAppNormalize_RejectReservedAuthPrefix(t *testing.T) {
+	for _, prefix := range []string{"_auth", "/_auth/", "_auth/corp"} {
+		item := &App{
+			PathPrefix: prefix,
+			Backend:    Backend{Url: "http://example.local/svc"},
+		}
+		require.EqualError(t, item.Normalize(), "path_prefix: /_auth is reserved for the gateway login routes", prefix)
+	}
+
+	item := &App{
+		PathPrefix: "_authors",
+		Backend:    Backend{Url: "http://example.local/svc"},
+	}
+	require.NoError(t, item.Normalize())
+}
+
+func TestAppNormalize_Jwt(t *testing.T) {
+	item := &App{
+		PathPrefix: "shop",
+		Backend:    Backend{Url: "http://example.local/svc"},
+		Jwt: []AppJwt{
+			{Provider: " corp ", Client: authModel.JwtClient{Id: "shop", Secret: "s", Scopes: []string{"email"}}},
+		},
+	}
+	require.NoError(t, item.Normalize())
+	assert.Equal(t, "corp", item.Jwt[0].Provider)
+	assert.Equal(t, []string{"openid", "email"}, item.Jwt[0].Client.Scopes)
+	assert.Equal(t, "ruto_corp_shop", item.JwtCookieName("corp"))
+	assert.Equal(t, "ruto_other", item.JwtCookieName("other"))
+
+	item.Jwt = append(item.Jwt, AppJwt{Provider: "corp", Client: authModel.JwtClient{Id: "x", Secret: "y"}})
+	require.EqualError(t, item.Normalize(), `jwt[1]: provider: duplicate "corp"`)
+
+	item.Jwt = []AppJwt{{Provider: "corp", Client: authModel.JwtClient{Id: "shop"}}}
+	require.EqualError(t, item.Normalize(), "jwt[0]: client: secret: empty")
+
+	item.Jwt = []AppJwt{{Client: authModel.JwtClient{Id: "shop", Secret: "s"}}}
+	require.EqualError(t, item.Normalize(), "jwt[0]: provider: empty")
+
+	item.Jwt = nil
+	require.NoError(t, item.Normalize())
+	assert.NotNil(t, item.Jwt)
+}
+
+func TestAppRedacted_JwtClientSecret(t *testing.T) {
+	item := &App{
+		PathPrefix: "shop",
+		Backend:    Backend{Url: "http://example.local/svc"},
+		Jwt:        []AppJwt{{Provider: "corp", Client: authModel.JwtClient{Id: "shop", Secret: "s3cret", Scopes: []string{"openid"}}}},
+	}
+	redacted := item.Redacted()
+	assert.Equal(t, varsModel.RedactedPlaceholder, redacted.Jwt[0].Client.Secret)
+	assert.Equal(t, "shop", redacted.Jwt[0].Client.Id)
+	assert.Equal(t, "s3cret", item.Jwt[0].Client.Secret, "the receiver is left untouched")
 }

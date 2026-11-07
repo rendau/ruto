@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/samber/lo"
+
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 )
 
@@ -12,28 +14,20 @@ func NewCors(conf rootModel.RootCors) Middleware {
 		return func(next http.Handler) http.Handler { return next }
 	}
 
-	allowedOrigins := make(map[string]struct{}, len(conf.AllowOrigins))
-	allowAnyOrigin := false
-	for _, origin := range conf.AllowOrigins {
-		if origin == "*" {
-			allowAnyOrigin = true
-			continue
-		}
-		allowedOrigins[origin] = struct{}{}
-	}
+	origins := rootModel.NewOriginMatcher(conf.AllowOrigins)
 
+	// With credentials a browser takes "*" literally, so "*" means: echo what
+	// the preflight asks for.
+	anyMethod := lo.Contains(conf.AllowMethods, rootModel.AnyOrigin)
+	anyHeader := lo.Contains(conf.AllowHeaders, rootModel.AnyOrigin)
 	allowMethods := strings.Join(conf.AllowMethods, ", ")
 	allowHeaders := strings.Join(conf.AllowHeaders, ", ")
+	maxAge := conf.MaxAgeSeconds()
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
-			allowedOrigin, originIsAllowed := resolveAllowedOrigin(
-				origin,
-				conf.AllowCredentials,
-				allowAnyOrigin,
-				allowedOrigins,
-			)
+			allowedOrigin, originIsAllowed := resolveAllowedOrigin(origin, conf.AllowCredentials, origins)
 			if originIsAllowed {
 				h := w.Header()
 				h.Add("Vary", "Origin")
@@ -52,20 +46,24 @@ func NewCors(conf rootModel.RootCors) Middleware {
 				h := w.Header()
 				h.Add("Vary", "Access-Control-Request-Method")
 				h.Add("Vary", "Access-Control-Request-Headers")
-				if allowMethods != "" {
+				requestMethod := r.Header.Get("Access-Control-Request-Method")
+				switch {
+				case anyMethod && requestMethod != "":
+					h.Set("Access-Control-Allow-Methods", requestMethod)
+				case allowMethods != "":
 					h.Set("Access-Control-Allow-Methods", allowMethods)
 				}
 
 				requestHeaders := r.Header.Get("Access-Control-Request-Headers")
 				switch {
+				case requestHeaders != "" && (anyHeader || allowHeaders == ""):
+					h.Set("Access-Control-Allow-Headers", requestHeaders)
 				case allowHeaders != "":
 					h.Set("Access-Control-Allow-Headers", allowHeaders)
-				case requestHeaders != "":
-					h.Set("Access-Control-Allow-Headers", requestHeaders)
 				}
 
-				if conf.MaxAge != "" {
-					h.Set("Access-Control-Max-Age", conf.MaxAge)
+				if maxAge != "" {
+					h.Set("Access-Control-Max-Age", maxAge)
 				}
 
 				w.WriteHeader(http.StatusNoContent)
@@ -78,21 +76,21 @@ func NewCors(conf rootModel.RootCors) Middleware {
 	}
 }
 
-func resolveAllowedOrigin(origin string, allowCredentials bool, allowAnyOrigin bool, allowedOrigins map[string]struct{}) (string, bool) {
+// resolveAllowedOrigin returns the Access-Control-Allow-Origin value for the
+// request origin. "*" is echoed as the request origin when credentials are
+// allowed, since a browser rejects a literal "*" with cookies.
+func resolveAllowedOrigin(origin string, allowCredentials bool, origins *rootModel.OriginMatcher) (string, bool) {
 	if origin == "" {
 		return "", false
 	}
-
-	if allowAnyOrigin {
+	if origins.Any() {
 		if allowCredentials {
 			return origin, true
 		}
-		return "*", true
+		return rootModel.AnyOrigin, true
 	}
-
-	if _, ok := allowedOrigins[origin]; ok {
+	if origins.Listed(origin) {
 		return origin, true
 	}
-
 	return "", false
 }

@@ -75,6 +75,16 @@ func TestAuthorize(t *testing.T) {
 		privateKey,
 	)
 
+	keycloakRealmAccessToken := signToken(
+		jwtv5.SigningMethodRS256,
+		itemKid,
+		jwtv5.MapClaims{
+			"sub":          "u1",
+			"realm_access": map[string]any{"roles": []any{"auditor"}},
+		},
+		privateKey,
+	)
+
 	wrongKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	require.NoError(t, err)
 	badSignatureToken := signToken(
@@ -154,6 +164,41 @@ func TestAuthorize(t *testing.T) {
 			name:      "cookie token without the required role",
 			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"super-admin"}},
 			cookie:    "ruto_corp=" + validToken,
+			jwkGetter: testJWKGetter,
+			want:      model.DeniedAuthenticated,
+		},
+		{
+			name:      "client role: found at that client",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"ruto:admin"}},
+			token:     "Bearer " + keycloakResourceAccessToken,
+			jwkGetter: testJWKGetter,
+			want:      model.Allowed,
+		},
+		{
+			name:      "client role: the same role at another client does not count",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"shop:admin"}},
+			token:     "Bearer " + keycloakResourceAccessToken,
+			jwkGetter: testJWKGetter,
+			want:      model.DeniedAuthenticated,
+		},
+		{
+			name:      "bare role still matches any client's roles",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"admin"}},
+			token:     "Bearer " + keycloakResourceAccessToken,
+			jwkGetter: testJWKGetter,
+			want:      model.Allowed,
+		},
+		{
+			name:      "realm role",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"auditor"}},
+			token:     "Bearer " + keycloakRealmAccessToken,
+			jwkGetter: testJWKGetter,
+			want:      model.Allowed,
+		},
+		{
+			name:      "client role is not satisfied by a realm role",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"ruto:auditor"}},
+			token:     "Bearer " + keycloakRealmAccessToken,
 			jwkGetter: testJWKGetter,
 			want:      model.DeniedAuthenticated,
 		},

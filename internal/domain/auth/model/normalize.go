@@ -115,6 +115,29 @@ func (m *AuthMethodJWT) Normalize() error {
 	return nil
 }
 
+// Normalize checks a login client: id and secret are required (the gateway is a
+// confidential client), scopes always include openid, as OpenID Connect
+// requires.
+func (m *JwtClient) Normalize() error {
+	m.Id = strings.TrimSpace(m.Id)
+	if m.Id == "" {
+		return fmt.Errorf("id: empty")
+	}
+	m.Secret = strings.TrimSpace(m.Secret)
+	if m.Secret == "" {
+		return fmt.Errorf("secret: empty")
+	}
+	m.Scopes = lo.FilterMap(m.Scopes, func(v string, _ int) (string, bool) {
+		v = strings.TrimSpace(v)
+		return v, v != ""
+	})
+	if !lo.Contains(m.Scopes, constant.OidcScopeOpenid) {
+		m.Scopes = append([]string{constant.OidcScopeOpenid}, m.Scopes...)
+	}
+	m.Scopes = lo.Uniq(m.Scopes)
+	return nil
+}
+
 func (m *AuthMethodIPValidation) Normalize() error {
 	m.AllowedIps = lo.FilterMap(m.AllowedIps, func(v AuthMethodIPValidationItem, _ int) (AuthMethodIPValidationItem, bool) {
 		v.Name = strings.TrimSpace(v.Name)

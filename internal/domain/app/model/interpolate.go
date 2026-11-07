@@ -8,6 +8,9 @@ func (m *App) Interpolate() {
 	if len(m.Variables) > 0 {
 		m.Backend.Interpolate(m.Variables)
 		m.Auth.Interpolate(m.Variables)
+		for i := range m.Jwt {
+			m.Jwt[i].Client.Interpolate(m.Variables)
+		}
 	}
 
 	for _, ep := range m.Endpoints {

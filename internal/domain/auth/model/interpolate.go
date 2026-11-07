@@ -49,6 +49,10 @@ func (m *AuthMethodJWT) Interpolate(vars varsModel.Vars) {
 	m.Roles = vars.InterpolateStrings(m.Roles)
 }
 
+func (m *JwtClient) Interpolate(vars varsModel.Vars) {
+	m.Secret = vars.InterpolateString(m.Secret)
+}
+
 func (m *AuthMethodIPValidation) Interpolate(vars varsModel.Vars) {
 	for i := range m.AllowedIps {
 		m.AllowedIps[i].Ip = vars.InterpolateString(m.AllowedIps[i].Ip)

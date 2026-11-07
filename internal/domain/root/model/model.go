@@ -45,9 +45,30 @@ type RootCors struct {
 // RootJwt is a JWT provider: a JWKS endpoint whose keys the gateway trusts.
 // Name is what auth methods refer to; a provider without a name only serves
 // methods that pin no provider.
+//
+// With Issuer set the provider is an OpenID Connect server: its endpoints come
+// from discovery (JwkUrl may then be left empty) and the gateway can log users
+// in on behalf of Client, the default login client. An app may bring its own
+// client instead (App.Jwt).
 type RootJwt struct {
 	Name   string `json:"name"`
 	JwkUrl string `json:"jwk_url"`
+	// Issuer is the public address of the OpenID provider, the "iss" of its
+	// tokens and the base of its discovery document.
+	Issuer string `json:"issuer"`
+	// InternalUrl, when set, replaces the Issuer prefix of the endpoints the
+	// gateway itself calls (token, keys): the way in from inside the cluster.
+	InternalUrl string `json:"internal_url"`
+	// PublicUrl is the gateway address the provider sends the browser back to;
+	// empty means Root.BaseUrl.
+	PublicUrl string               `json:"public_url"`
+	Client    *authModel.JwtClient `json:"client,omitempty"`
+}
+
+// LoginEnabled reports whether the gateway can log users in through this
+// provider at all (an app client still needs it).
+func (m *RootJwt) LoginEnabled() bool {
+	return m.Issuer != ""
 }
 
 func NewEmpty() *Root {
@@ -55,7 +76,7 @@ func NewEmpty() *Root {
 		Cors: RootCors{
 			Enabled:          false,
 			AllowCredentials: false,
-			MaxAge:           "864000",
+			MaxAge:           "240h",
 			AllowOrigins:     []string{"*"},
 			AllowMethods:     []string{"*"},
 			AllowHeaders:     []string{"*"},

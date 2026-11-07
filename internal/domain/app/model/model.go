@@ -26,8 +26,16 @@ type App struct {
 	Logging            loggingModel.Logging         `json:"logging"`
 	Variables          varsModel.Vars               `json:"variables"`
 	Compression        compressionModel.Compression `json:"compression"`
+	// Jwt lists the providers the app logs users in through its own client
+	// (own cookie, own login routes) instead of the provider's default one.
+	Jwt []AppJwt `json:"jwt"`
 
 	Endpoints []*endpointModel.Endpoint `json:"endpoints"` // not stored in db
+}
+
+type AppJwt struct {
+	Provider string              `json:"provider"`
+	Client   authModel.JwtClient `json:"client"`
 }
 
 type Backend struct {

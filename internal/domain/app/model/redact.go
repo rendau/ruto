@@ -18,6 +18,11 @@ func (m *App) Redacted() *App {
 	result.Variables = varsModel.RedactedValues(m.Variables)
 	result.Backend.Headers = varsModel.RedactedValues(m.Backend.Headers)
 	result.Backend.QueryParams = varsModel.RedactedValues(m.Backend.QueryParams)
+	result.Jwt = lo.Map(m.Jwt, func(v AppJwt, _ int) AppJwt {
+		v.Client = *v.Client.Clone()
+		v.Client.Secret = varsModel.RedactedPlaceholder
+		return v
+	})
 
 	if len(m.Endpoints) > 0 {
 		result.Endpoints = lo.Map(m.Endpoints, func(ep *endpointModel.Endpoint, _ int) *endpointModel.Endpoint {

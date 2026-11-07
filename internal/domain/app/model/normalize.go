@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/rendau/ruto/internal/constant"
 )
 
 var (
@@ -21,12 +23,28 @@ func (m *App) Normalize() error {
 	if !pathPrefixPattern.MatchString(m.PathPrefix) {
 		return fmt.Errorf("path_prefix: invalid format")
 	}
+	if first, _, _ := strings.Cut(m.PathPrefix, "/"); first == constant.AuthRoutePrefix {
+		return fmt.Errorf("path_prefix: /%s is reserved for the gateway login routes", constant.AuthRoutePrefix)
+	}
 	m.PathPrefix = "/" + m.PathPrefix
 	if err := m.Backend.Normalize(); err != nil {
 		return fmt.Errorf("backend: %w", err)
 	}
 	if err := m.Auth.Normalize(); err != nil {
 		return fmt.Errorf("auth: %w", err)
+	}
+	if m.Jwt == nil {
+		m.Jwt = []AppJwt{}
+	}
+	providers := make(map[string]struct{}, len(m.Jwt))
+	for i := range m.Jwt {
+		if err := m.Jwt[i].Normalize(); err != nil {
+			return fmt.Errorf("jwt[%d]: %w", i, err)
+		}
+		if _, ok := providers[m.Jwt[i].Provider]; ok {
+			return fmt.Errorf("jwt[%d]: provider: duplicate %q", i, m.Jwt[i].Provider)
+		}
+		providers[m.Jwt[i].Provider] = struct{}{}
 	}
 	if err := m.Logging.Normalize(); err != nil {
 		return fmt.Errorf("logging: %w", err)
@@ -115,4 +133,15 @@ func validateGrpcTarget(target string) error {
 
 	_, _, err := net.SplitHostPort(target)
 	return err
+}
+
+func (m *AppJwt) Normalize() error {
+	m.Provider = strings.TrimSpace(m.Provider)
+	if m.Provider == "" {
+		return fmt.Errorf("provider: empty")
+	}
+	if err := m.Client.Normalize(); err != nil {
+		return fmt.Errorf("client: %w", err)
+	}
+	return nil
 }

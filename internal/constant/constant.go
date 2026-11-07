@@ -1,5 +1,7 @@
 package constant
 
+import "strings"
+
 const (
 	ServiceName = "ruto"
 )
@@ -18,12 +20,41 @@ const AuthAPIKeyDefaultHeader = "x-api-key"
 
 // JwtCookiePrefix starts the name of the cookie that holds a provider's JWT:
 // one cookie per provider, so logins of different providers live side by side
-// on the same host.
+// on the same host. An app with its own login client gets its own cookie,
+// named after the provider and the app's path prefix.
 const JwtCookiePrefix = "ruto_"
+
+// JwtRefreshCookiePrefix and JwtLoginCookiePrefix start the names of the
+// refresh cookie and of the short-lived login (state + PKCE) cookie of a login
+// unit. Their "-" keeps them apart from any access cookie name.
+const (
+	JwtRefreshCookiePrefix = "ruto-rt_"
+	JwtLoginCookiePrefix   = "ruto-login_"
+)
 
 func JwtCookieName(provider string) string {
 	return JwtCookiePrefix + provider
 }
+
+// JwtAppCookieName names the access cookie of an app's own login client:
+// "ruto_<provider>_<prefix>", the prefix slashes replaced, since a cookie name
+// may not contain "/".
+func JwtAppCookieName(provider, appPathPrefix string) string {
+	return JwtCookiePrefix + provider + "_" + LoginUnitSlug(appPathPrefix)
+}
+
+// LoginUnitSlug turns an app path prefix ("/shop/api") into a cookie-safe
+// suffix ("shop.api").
+func LoginUnitSlug(appPathPrefix string) string {
+	return strings.ReplaceAll(strings.Trim(appPathPrefix, "/"), "/", ".")
+}
+
+// AuthRoutePrefix is the first path segment of the gateway's own login routes
+// (/_auth/<provider>[/<app prefix>]/login|callback|logout); no app may take it.
+const AuthRoutePrefix = "_auth"
+
+// OidcScopeOpenid is the scope every OpenID Connect login must ask for.
+const OidcScopeOpenid = "openid"
 
 const (
 	LoggingModeExtend  = "extend"

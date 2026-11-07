@@ -14,7 +14,14 @@ import {
 } from "naive-ui";
 import { SaveOutline } from "@vicons/ionicons5";
 import { getRoot, setRoot } from "@/api/root";
-import { emptyAuth, emptyCompression, emptyLogging } from "@/api/normalize";
+import {
+  emptyAuth,
+  emptyCompression,
+  emptyJwtClient,
+  emptyLogging,
+  emptyRootJwt,
+  normalizeRootJwt
+} from "@/api/normalize";
 import { apiErrorMessage } from "@/api/http";
 import { useRootStore } from "@/stores/root";
 import { useAuthStore } from "@/stores/auth";
@@ -24,6 +31,7 @@ import SectionCard from "@/components/common/SectionCard.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
+import JwtClientEditor from "@/components/editors/JwtClientEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import type { RootJwt, RootMain } from "@/api/types";
@@ -71,7 +79,7 @@ async function load(): Promise<void> {
   try {
     const root = await getRoot();
     Object.assign(model, JSON.parse(JSON.stringify(root)) as RootMain);
-    jwtProviders.value = model.jwt.map((item) => ({ ...item }));
+    jwtProviders.value = model.jwt.map((item) => normalizeRootJwt(item));
     corsText.origins = arrayToLines(model.cors.allow_origins);
     corsText.methods = arrayToLines(model.cors.allow_methods);
     corsText.headers = arrayToLines(model.cors.allow_headers);
@@ -85,11 +93,31 @@ async function load(): Promise<void> {
 }
 
 function jwtProviderUrls(): string[] {
-  return jwtProviders.value.map((item) => item.jwk_url);
+  return jwtProviders.value.map((item) => item.jwk_url).filter(Boolean);
 }
 
 function newJwtProvider(): RootJwt {
-  return { name: "", jwk_url: "" };
+  return emptyRootJwt();
+}
+
+// The default login client is optional: without it the provider only serves
+// apps that bring their own client.
+function toggleDefaultClient(provider: RootJwt, enabled: boolean): void {
+  provider.client = enabled ? emptyJwtClient() : undefined;
+}
+
+function cleanProvider(item: RootJwt): RootJwt {
+  const client = item.client
+    ? { id: item.client.id.trim(), secret: item.client.secret.trim(), scopes: item.client.scopes }
+    : undefined;
+  return {
+    name: item.name.trim(),
+    jwk_url: item.jwk_url.trim(),
+    issuer: item.issuer.trim(),
+    internal_url: item.internal_url.trim(),
+    public_url: item.public_url.trim(),
+    client
+  };
 }
 
 let kidTimer: ReturnType<typeof setTimeout> | undefined;
@@ -107,9 +135,7 @@ async function save(): Promise<void> {
   try {
     const payload: RootMain = {
       ...model,
-      jwt: jwtProviders.value
-        .map((item) => ({ name: item.name.trim(), jwk_url: item.jwk_url.trim() }))
-        .filter((item) => item.jwk_url),
+      jwt: jwtProviders.value.map(cleanProvider).filter((item) => item.jwk_url || item.issuer),
       cors: {
         ...model.cors,
         allow_origins: linesToArray(corsText.origins),
@@ -183,7 +209,7 @@ onMounted(load);
             </label>
             <div class="cors__grid">
               <label class="field">
-                <span class="field__label">Allow origins (one per line, * for any)</span>
+                <span class="field__label">Allow origins (one per line: https://app.example.com, https://*.example.com for its subdomains, * for any)</span>
                 <NInput
                   v-model:value="corsText.origins"
                   type="textarea"
@@ -215,17 +241,45 @@ onMounted(load);
 
         <SectionCard
           title="JWT providers"
-          description="JWKS endpoints whose keys JWT auth trusts. Auth methods refer to a provider by name; a provider without a name serves only methods with no provider set"
+          description="Who signs the tokens JWT auth trusts. Auth methods refer to a provider by name; a provider without a name serves only methods with no provider set. With an issuer the gateway reads the provider's OpenID discovery document and can log users in itself (/_auth/<name>/login)"
         >
           <NDynamicInput v-model:value="jwtProviders" :min="0" :on-create="newJwtProvider">
             <template #default="{ value }">
-              <div class="provider-row">
-                <NInput
-                  v-model:value="value.name"
-                  class="provider-row__name"
-                  placeholder="name, e.g. corp"
-                />
-                <NInput v-model:value="value.jwk_url" placeholder="https://issuer/.well-known/jwks.json" />
+              <div class="provider">
+                <div class="provider-row">
+                  <NInput
+                    v-model:value="value.name"
+                    class="provider-row__name"
+                    placeholder="name, e.g. corp"
+                  />
+                  <NInput
+                    v-model:value="value.jwk_url"
+                    placeholder="JWKS url (optional with an issuer), e.g. https://issuer/.well-known/jwks.json"
+                  />
+                </div>
+                <div class="provider-row">
+                  <NInput
+                    v-model:value="value.issuer"
+                    placeholder="issuer (login), e.g. https://id.example.com/realms/corp"
+                  />
+                  <NInput
+                    v-model:value="value.internal_url"
+                    placeholder="internal url for the gateway's own calls, e.g. http://keycloak:8080/realms/corp"
+                  />
+                </div>
+                <template v-if="value.issuer.trim()">
+                  <NInput
+                    v-model:value="value.public_url"
+                    placeholder="gateway public url for the return address (default: base URL)"
+                  />
+                  <NCheckbox
+                    :checked="!!value.client"
+                    @update:checked="(checked: boolean) => toggleDefaultClient(value, checked)"
+                  >
+                    Default login client (shared login for every app naming this provider)
+                  </NCheckbox>
+                  <JwtClientEditor v-if="value.client" v-model="value.client" />
+                </template>
               </div>
             </template>
           </NDynamicInput>
@@ -345,6 +399,16 @@ onMounted(load);
 
 .kids__label {
   font-size: 12px;
+}
+
+.provider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
 }
 
 .provider-row {

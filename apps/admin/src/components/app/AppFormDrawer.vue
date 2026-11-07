@@ -12,8 +12,10 @@ import {
   NForm,
   NFormItem,
   NIcon,
+  NDynamicInput,
   NInput,
   NInputGroup,
+  NSelect,
   useMessage,
   type FormItemRule
 } from "naive-ui";
@@ -21,6 +23,7 @@ import { SearchOutline } from "@vicons/ionicons5";
 import { createApp, getAppSwaggerUrlByBackendUrl, updateApp } from "@/api/app";
 import { apiErrorMessage } from "@/api/http";
 import { emptyApp, hasCompressionOverrides } from "@/lib/entities";
+import { emptyJwtClient } from "@/api/normalize";
 import { useAppForm } from "@/composables/useAppForm";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useIsMobile } from "@/composables/useIsMobile";
@@ -29,11 +32,12 @@ import { useAuthStore } from "@/stores/auth";
 import { useRootStore } from "@/stores/root";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
+import JwtClientEditor from "@/components/editors/JwtClientEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import KeyValueTextarea from "@/components/editors/KeyValueTextarea.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
-import type { AppCreateRep, AppMain } from "@/api/types";
+import type { AppCreateRep, AppJwt, AppMain } from "@/api/types";
 
 const router = useRouter();
 const message = useMessage();
@@ -70,8 +74,19 @@ function nonDefaultSections(): string[] {
   if (hasCompressionOverrides(model.compression)) {
     names.push("compression");
   }
+  if (model.jwt?.length) {
+    names.push("jwt");
+  }
   return names;
 }
+
+function newAppJwt(): AppJwt {
+  return { provider: "", client: emptyJwtClient() };
+}
+
+const loginProviderOptions = computed(() =>
+  rootStore.loginProviderNames.map((name) => ({ label: name, value: name }))
+);
 
 const groupOptions = computed(() => {
   const query = model.group.trim().toLowerCase();
@@ -240,6 +255,30 @@ async function detectSwagger(): Promise<void> {
             </p>
             <VariableEditor v-model="model.variables" :available-variables="inheritedVariables" />
           </NCollapseItem>
+          <NCollapseItem title="Own login clients" name="jwt">
+            <p class="muted form-hint">
+              By default the app shares the provider's login and cookie. With its own client the app gets
+              a separate login (<code>/_auth/&lt;provider&gt;{{ model.path_prefix ? "/" + model.path_prefix.replace(/^\/+/, "") : "/<prefix>" }}/login</code>),
+              its own cookie scoped to its path and tokens issued to this client.
+            </p>
+            <NDynamicInput v-model:value="model.jwt" :min="0" :on-create="newAppJwt">
+              <template #default="{ value }">
+                <div class="stacked login-client">
+                  <label class="field">
+                    <span class="field__label">Provider (a root provider with an issuer)</span>
+                    <NSelect
+                      v-model:value="value.provider"
+                      filterable
+                      tag
+                      placeholder="Provider name"
+                      :options="loginProviderOptions"
+                    />
+                  </label>
+                  <JwtClientEditor v-model="value.client" />
+                </div>
+              </template>
+            </NDynamicInput>
+          </NCollapseItem>
         </NCollapse>
       </NForm>
 
@@ -311,6 +350,13 @@ async function detectSwagger(): Promise<void> {
 .form-hint code {
   font-family: var(--font-mono);
   color: var(--c-text-2);
+}
+
+.login-client {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
 }
 
 @media (max-width: 560px) {

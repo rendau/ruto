@@ -65,10 +65,18 @@ export interface AuthMethodApiKey {
 }
 
 // provider: name of a root JWT provider (empty = any); kid: optional pin to one key.
+// A role written as "client:role" is looked up only among that client's roles.
 export interface AuthMethodJwt {
   provider: string;
   kid: string;
   roles: string[];
+}
+
+// A registered OAuth client of a provider the gateway logs users in with.
+export interface JwtClient {
+  id: string;
+  secret: string;
+  scopes: string[];
 }
 
 export interface AuthMethodIpValidationItem {
@@ -122,9 +130,16 @@ export interface RootCors {
   allow_headers: string[];
 }
 
+// A JWT provider. With issuer set it is an OpenID Connect server: the gateway
+// reads its discovery document (jwk_url may stay empty) and logs users in with
+// client, the default login client; an app may bring its own (AppJwt).
 export interface RootJwt {
   name: string;
   jwk_url: string;
+  issuer: string;
+  internal_url: string;
+  public_url: string;
+  client?: JwtClient;
 }
 
 export interface RootTransform {
@@ -180,6 +195,14 @@ export interface AppMain {
   logging: Logging;
   variables: Variable[];
   compression: Compression;
+  // Providers the app logs users in through its own client instead of the
+  // provider's default one: own cookie, own /_auth/<provider>/<prefix>/ routes.
+  jwt: AppJwt[];
+}
+
+export interface AppJwt {
+  provider: string;
+  client: JwtClient;
 }
 
 export interface AppListRep {

@@ -20,7 +20,8 @@ export function emptyApp(): AppMain {
     auth: defaultAuth(),
     logging: emptyLogging(),
     variables: [],
-    compression: emptyCompression()
+    compression: emptyCompression(),
+    jwt: []
   };
 }
 

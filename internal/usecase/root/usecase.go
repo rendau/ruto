@@ -16,6 +16,7 @@ import (
 	"github.com/rendau/ruto/internal/domain/root/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/internal/infra/httpx"
 )
 
 type Usecase struct {
@@ -28,7 +29,7 @@ func New(srv ServiceI, sessionSvc SessionServiceI) *Usecase {
 	return &Usecase{
 		svc:        srv,
 		sessionSvc: sessionSvc,
-		httpClient: &http.Client{Timeout: 5 * time.Second},
+		httpClient: httpx.New(httpx.Config{Timeout: 5 * time.Second, DisableKeepAlives: true}),
 	}
 }
 

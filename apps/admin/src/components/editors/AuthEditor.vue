@@ -489,7 +489,7 @@ function jwtSelectOptions(known: string[], current: string) {
             />
           </label>
           <label class="field">
-            <span class="field__label">Roles (one per line, optional)</span>
+            <span class="field__label">Roles (one per line, optional; "client:role" looks only among that client's roles)</span>
             <VariableInput
               :model-value="jwtRolesText[methodIndex] || ''"
               :variables="variableOptions"

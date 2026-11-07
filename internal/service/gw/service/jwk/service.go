@@ -3,11 +3,9 @@ package jwk
 import (
 	"context"
 	"crypto/rsa"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -18,6 +16,8 @@ import (
 	"github.com/rendau/ruto/internal/constant"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/internal/infra/httpx"
+	"github.com/rendau/ruto/internal/service/gw/service/oidc"
 )
 
 const (
@@ -58,19 +58,9 @@ func init() {
 		ctx:       ctx,
 		ctxCancel: ctxCancel,
 		trigger:   make(chan struct{}, 1),
-		httpClient: &http.Client{
-			Timeout: 5 * time.Second,
-			Transport: &http.Transport{
-				DialContext: (&net.Dialer{
-					Timeout: 2 * time.Second,
-				}).DialContext,
-				TLSHandshakeTimeout: 2 * time.Second,
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
-				// Опрос раз в ScrapeInterval: сервер закроет простаивающее соединение
-				// раньше, чем оно понадобится снова, поэтому держать его незачем.
-				DisableKeepAlives: true,
-			},
-		},
+		// Опрос раз в ScrapeInterval: сервер закроет простаивающее соединение
+		// раньше, чем оно понадобится снова, поэтому держать его незачем.
+		httpClient: httpx.New(httpx.Config{Timeout: 5 * time.Second, DisableKeepAlives: true}),
 	}
 
 	go instance.worker()
@@ -193,16 +183,24 @@ func (s *Service) load() {
 			return
 		}
 
+		uri, key := s.resolveUri(ctx, &provider)
+		if uri == "" {
+			// Discovery failed: keep the keys of the last successful poll under
+			// the provider's key and retry soon.
+			failed = true
+			urlItems[key] = s.urlItems[key]
+		}
+
 		// Один URL у нескольких провайдеров опрашивается один раз.
-		items, loaded := urlItems[provider.JwkUrl]
+		items, loaded := urlItems[key]
 		if !loaded {
 			var ok bool
-			items, ok = s.loadItems(ctx, provider.JwkUrl)
+			items, ok = s.loadItems(ctx, key, uri)
 			if ctx.Err() != nil {
 				return
 			}
 			failed = failed || !ok
-			urlItems[provider.JwkUrl] = items
+			urlItems[key] = items
 		}
 
 		for _, item := range items {
@@ -225,10 +223,33 @@ func (s *Service) load() {
 	s.setItems(result)
 }
 
+// resolveUri returns the JWKS address of provider and the key its keys are
+// cached under: the explicit jwk_url, or the jwks_uri of the provider's
+// discovery document, cached under "oidc:<issuer>" since the address itself
+// is only known once discovery succeeds. An empty uri means discovery failed.
+func (s *Service) resolveUri(ctx context.Context, provider *rootModel.RootJwt) (uri, key string) {
+	if provider.JwkUrl != "" {
+		return provider.JwkUrl, provider.JwkUrl
+	}
+	key = "oidc:" + provider.Issuer
+	meta, err := oidc.Ins().Metadata(ctx, provider.Issuer, provider.InternalUrl)
+	if err != nil {
+		if ctx.Err() == nil {
+			slog.Error(
+				"jwk-scrapper: discovery failed",
+				"error", err,
+				"provider", provider.Name,
+			)
+		}
+		return "", key
+	}
+	return meta.JwksUri, key
+}
+
 // loadItems returns the usable keys of uri. On a failed poll ok is false and
-// the keys of the last successful poll are returned: a one-off failure must not
-// revoke working keys.
-func (s *Service) loadItems(ctx context.Context, uri string) (_ []*Item, ok bool) {
+// the keys of the last successful poll (cached under key) are returned: a
+// one-off failure must not revoke working keys.
+func (s *Service) loadItems(ctx context.Context, key, uri string) (_ []*Item, ok bool) {
 	itemSet, err := s.loadForUri(ctx, uri)
 	if err != nil {
 		if ctx.Err() == nil {
@@ -238,7 +259,7 @@ func (s *Service) loadItems(ctx context.Context, uri string) (_ []*Item, ok bool
 				"uri", uri,
 			)
 		}
-		return s.urlItems[uri], false
+		return s.urlItems[key], false
 	}
 
 	items := make([]*Item, 0, len(itemSet.Keys))

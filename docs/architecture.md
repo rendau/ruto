@@ -39,12 +39,14 @@ internal/service/gw/
   server/http/          обёртка http.Server с горячей заменой handler'а
   server/grpc/          обёртка grpc-прокси-сервера с горячей заменой handler'а
   handler/http/         сборка chi-роутера из snapshot
+    authflow/           собственные маршруты входа /_auth/…: login, callback, logout (OpenID Connect + PKCE, куки)
     middleware/         cors, compression, auth, cache, backend_request_params, metrics, request_log, chain
     proxy/              httputil.ReverseProxy на backend
   handler/grpc/         маршрутизация gRPC по (x-ruto-app-name + method path) → backend
   service/auth/         движок авторизации (методы basic/api_key/jwt/ip_validation)
     authorizer/         реализации каждого метода проверки
   service/jwk/          загрузка и кэш JWK (ключи для JWT)
+  service/oidc/         OpenID-провайдеры: discovery с кэшем, обмен кода и refresh на token endpoint
   service/cache/        хранилище ответов для кэша endpoint'ов (в памяти, фоновая очистка)
   service/compress/     пулы кодировщиков br / zstd / gzip для сжатия ответов
   service/log, metrics  кросс-срезовые сервисы
@@ -70,6 +72,8 @@ internal/service/gw/
 Сборка роутера — `gw/handler/http/service.go:buildHandler`: для каждого активного App берётся `PathPrefix`, для каждого активного HTTP-endpoint строится путь `path_prefix[/http.path]`, оборачивается в цепочку middleware и регистрируется в chi (метод `*` → любой метод). Сверху навешивается CORS из `Root.Cors`.
 
 **Токен из куки.** Метод `jwt` с `provider` читает токен и из куки `ruto_<provider>`, если в запросе нет `Authorization: Bearer` и `auth_token`. Принятый из куки токен middleware Auth дописывает в запрос как `Authorization: Bearer …` (только если клиент не прислал свой `Authorization`), а куку оставляет: backend'ы на заголовке и backend'ы на куке работают одинаково. Auth стоит раньше ServerCache, поэтому ключ кэша видит подставленный заголовок и различает пользователей и по куке. Заголовок `Cookie` в access-логе маскируется. В gRPC кука в метаданных так же проходит проверку, но `authorization` в метаданные backend'а не добавляется.
+
+**Вход через провайдера.** Провайдер с `issuer` — это OpenID Connect сервер: его адреса gateway берёт из discovery (`<issuer>/.well-known/openid-configuration`, модуль `gw/service/oidc`, документ кэшируется час; при заданном `internal_url` серверные ручки — token endpoint и ключи — переносятся на внутренний адрес, браузерные остаются публичными). Для каждой **единицы входа** — провайдер с клиентом по умолчанию (`Root.jwt[].client`) или приложение со своим клиентом (`App.jwt[]`) — `buildHandler` регистрирует до маршрутов приложений три маршрута (`gw/handler/http/authflow`): `/_auth/<провайдер>[/<префикс приложения>]/login|callback|logout`. `login` кладёт `state` и PKCE verifier в короткую куку (`__Host-ruto-login_…` на https) и уводит браузер на `authorization_endpoint`; `callback` сверяет `state`, меняет код на токены (`client_secret_basic`), проверяет подпись, `iss` и `exp` access-токена по ключам провайдера и ставит две куки: access-куку с JWT как есть (`ruto_<провайдер>` на `Path=/` для общего входа, `ruto_<провайдер>_<префикс>` на `Path=<префикс>` для клиента приложения) и refresh-куку `ruto-rt_…` (base64url от JSON с refresh- и ID-токеном, пока без шифрования), ограниченную `Path=/_auth/…`; `logout` гасит куки и уводит на `end_session_endpoint` с `id_token_hint`. Имя куки, которую читает метод `jwt`, вычисляется при наследовании (`App.SetJwtCookieNames` → `AuthMethodJWT.CookieName`): приложение со своим клиентом читает только свою куку. Адрес возврата (`?redirect=`) принимается только относительный, на `public_url` шлюза или на origin, названный в `cors.allow_origins` точно или шаблоном поддомена (`https://*.example.com`); `*` там не считается. Разбор записей `allow_origins` и проверка origin — `rootModel.OriginMatcher`, общий для CORS и входа. Префикс `/_auth` зарезервирован, приложение с таким `path_prefix` не создать. Горячий путь входом не затрагивается.
 
 **Заголовки X-Forwarded-\*.** Прокси (`gw/handler/http/proxy`) ставит их для всех приложений одинаково, без настройки — как nginx с `$proxy_add_x_forwarded_for`:
 - `X-Forwarded-For` — входящий `X-Forwarded-For` (если был) + IP того, кто прислал запрос в ruto: `198.51.100.1, 10.0.0.5`;
@@ -146,7 +150,7 @@ conf.InheritDown()   // Root.auth/vars → App → Endpoint (Merge + FillMissing
 conf.Interpolate()   // подставить переменные в заголовки/query/auth
 ```
 
-Затем из готового `Root` собираются новые http- и grpc-handler'ы и атомарно ставятся в серверы; `ready` → `true` (это видит `/healthcheck`). JWT-провайдеры из конфига (`Root.jwt`: имя + адрес JWK) передаются в `jwk`-сервис, который держит ключи в двух индексах: по kid для методов без провайдера и по имени провайдера для методов с ним.
+Затем из готового `Root` собираются новые http- и grpc-handler'ы и атомарно ставятся в серверы; `ready` → `true` (это видит `/healthcheck`). JWT-провайдеры из конфига (`Root.jwt`: имя + адрес JWK или `issuer`) передаются в `jwk`-сервис, который держит ключи в двух индексах: по kid для методов без провайдера и по имени провайдера для методов с ним. У провайдера без `jwk_url` адрес ключей берётся из discovery (`jwks_uri`) через `oidc`-сервис.
 
 > Тот же триптих `Normalize → InheritDown → Interpolate` определён на доменных моделях (`root`, `app`, `endpoint`) и переиспользуется. Наследование auth — через `auth.Merge(parent, child)` с учётом режима `extend`/`replace`; наследование переменных — через `Vars.FillMissing(parent)`.
 

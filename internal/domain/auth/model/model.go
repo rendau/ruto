@@ -43,11 +43,26 @@ type AuthMethodAPIKeyItem struct {
 }
 
 // AuthMethodJWT accepts tokens signed by a key of Provider (a Root jwt
-// provider name; empty — any provider). Kid optionally pins one key.
+// provider name; empty — any provider). Kid optionally pins one key. A role
+// written as "client:role" is looked up only among that client's roles
+// (resource_access.<client>.roles); a bare role anywhere roles live.
 type AuthMethodJWT struct {
 	Provider string   `json:"provider"`
 	Kid      string   `json:"kid"`
 	Roles    []string `json:"roles"`
+	// CookieName is the cookie the token may be read from: the provider's
+	// cookie, or the cookie of the app's own login client. Set when the
+	// config is inherited down, so it is never stored.
+	CookieName string `json:"-"`
+}
+
+// JwtClient is a registered OAuth client of a provider: the gateway logs the
+// user in on its behalf. A provider carries the default one, an app may bring
+// its own.
+type JwtClient struct {
+	Id     string   `json:"id"`
+	Secret string   `json:"secret"`
+	Scopes []string `json:"scopes"`
 }
 
 type AuthMethodIPValidation struct {
@@ -136,9 +151,21 @@ func (m *AuthMethodJWT) Clone() *AuthMethodJWT {
 	}
 
 	return &AuthMethodJWT{
-		Provider: m.Provider,
-		Kid:      m.Kid,
-		Roles:    append([]string(nil), m.Roles...),
+		Provider:   m.Provider,
+		Kid:        m.Kid,
+		Roles:      append([]string(nil), m.Roles...),
+		CookieName: m.CookieName,
+	}
+}
+
+func (m *JwtClient) Clone() *JwtClient {
+	if m == nil {
+		return nil
+	}
+	return &JwtClient{
+		Id:     m.Id,
+		Secret: m.Secret,
+		Scopes: append([]string(nil), m.Scopes...),
 	}
 }
 

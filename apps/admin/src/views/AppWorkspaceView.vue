@@ -494,6 +494,14 @@ onBeforeUnmount(() => {
 
             <SectionCard title="Authentication">
               <AuthSummary :auth="app.auth" />
+              <div v-if="app.jwt.length" class="login-clients">
+                <div class="login-clients__title">Own login clients</div>
+                <div v-for="item in app.jwt" :key="item.provider" class="login-clients__item">
+                  <NTag size="tiny" type="info" :bordered="false">{{ item.provider }}</NTag>
+                  <span class="mono">client {{ item.client.id }}</span>
+                  <span class="muted mono">/_auth/{{ item.provider }}{{ app.path_prefix }}/login</span>
+                </div>
+              </div>
             </SectionCard>
 
             <SectionCard title="Logging">
@@ -767,6 +775,26 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.login-clients {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.login-clients__title {
+  font-size: 12px;
+  color: var(--c-text-3);
+}
+.login-clients__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
 .workspace {
   display: flex;
   flex-direction: column;

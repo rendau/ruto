@@ -36,10 +36,11 @@ func (s *Service) Set(ctx context.Context, obj *model.Root) error {
 		obj.Apps = apps
 	}()
 
-	if err := obj.Compression.Normalize(); err != nil {
-		return fmt.Errorf("compression: %w", err)
+	// Normalize here, not only when the snapshot is built: a bad entry must be
+	// refused at save time, not surface later as a failed deploy.
+	if err := obj.Normalize(); err != nil {
+		return fmt.Errorf("normalize: %w", err)
 	}
-	obj.Compression = compressionModel.Merge(compressionModel.Default(), obj.Compression)
 
 	if err := s.repoDb.Set(ctx, obj); err != nil {
 		return fmt.Errorf("repoDb.Set: %w", err)

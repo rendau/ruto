@@ -22,7 +22,7 @@ import (
 func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_root",
-		Description: "Root configuration (gateway-wide CORS, JWT keys, auth, logging, variables, compression defaults) with secrets masked, plus its version for update_root.",
+		Description: "Root configuration (gateway-wide CORS, JWT providers with their login settings, auth, logging, variables, compression defaults) with secrets masked, plus its version for update_root.",
 	}, s.getRoot)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
