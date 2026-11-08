@@ -138,12 +138,16 @@
   браузерные остаются публичными. Документ кэшируется, при ошибке живёт прошлый;
 - маршруты на каждую единицу входа (провайдер с клиентом по умолчанию —
   `/_auth/<провайдер>/…`, клиент приложения — `/_auth/<провайдер>/<префикс>/…`):
-  - `login?redirect=…`: случайные `state` и PKCE verifier кладутся в куку входа
-    `ruto-login_<…>` (`__Host-` при https, httpOnly, `SameSite=Lax`, 10 минут),
-    браузер уходит на `authorization_endpoint` с `code_challenge` S256;
+  - `login?redirect=…`: случайные `state`, `nonce` и PKCE verifier кладутся в
+    куку входа `ruto-login_<…>` (`__Host-` при https, httpOnly, `SameSite=Lax`,
+    10 минут), браузер уходит на `authorization_endpoint` с `code_challenge`
+    S256 и `nonce`;
   - `callback`: сверяет `state`, меняет код на токены одним запросом
-    (`client_secret_basic`, `code_verifier`), проверяет подпись, `iss` и `exp`
-    access-токена по ключам провайдера, ставит access-куку (JWT как есть) и
+    (`client_secret_basic`, `code_verifier`), проверяет ID-токен так, как
+    требует OpenID Connect Core §3.1.3.7 (подпись ключом провайдера, `iss`,
+    `aud` и `azp` — наш клиент, `exp`, `nonce` из куки входа; без ID-токена
+    вход отклоняется, scope `openid` запрошен всегда), проверяет подпись, `iss`
+    и `exp` access-токена по ключам провайдера, ставит access-куку (JWT как есть) и
     refresh-куку `ruto-rt_<…>` на `Path=/_auth/<…>` с refresh-токеном и
     ID-токеном (base64url от JSON), перенаправляет на адрес возврата;
   - `logout?redirect=…`: гасит обе куки и уводит на `end_session_endpoint` с

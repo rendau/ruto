@@ -59,6 +59,7 @@ func (u *unit) login(w http.ResponseWriter, r *http.Request) {
 	st := &loginState{
 		state:    randomToken(16),
 		verifier: randomToken(32),
+		nonce:    randomToken(16),
 		redirect: redirect,
 	}
 	u.setCookie(w, u.loginCookieName(), st.encode(), "/", loginCookieMaxAge)
@@ -75,6 +76,7 @@ func (u *unit) login(w http.ResponseWriter, r *http.Request) {
 	query.Set("redirect_uri", u.redirectUri())
 	query.Set("scope", strings.Join(u.client.Scopes, " "))
 	query.Set("state", st.state)
+	query.Set("nonce", st.nonce)
 	query.Set("code_challenge", pkceChallenge(st.verifier))
 	query.Set("code_challenge_method", "S256")
 	authUrl.RawQuery = query.Encode()
@@ -137,6 +139,11 @@ func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = u.verifyIdToken(tokens.IdToken, st.nonce); err != nil {
+		u.logWarn("id token from the provider is not acceptable", err, r)
+		http.Error(w, "login provider returned an id token this gateway cannot verify", http.StatusBadGateway)
+		return
+	}
 	if err = u.verifyAccessToken(tokens.AccessToken); err != nil {
 		u.logWarn("access token from the provider is not acceptable", err, r)
 		http.Error(w, "login provider returned a token this gateway cannot verify", http.StatusBadGateway)
@@ -258,27 +265,61 @@ func (u *unit) readSession(r *http.Request) sessionCookie {
 	return decodeSessionCookie(cookie.Value)
 }
 
+// verifyIdToken validates the id token as OpenID Connect Core §3.1.3.7 asks a
+// client to: signed by a key of this provider, issued by the configured
+// issuer, meant for our client (aud, and azp when present), not expired, and
+// carrying the nonce this login started with. The scope always includes
+// openid, so the provider must have sent one.
+func (u *unit) verifyIdToken(token, nonce string) error {
+	if token == "" {
+		return errors.New("no id_token in the token response")
+	}
+
+	claims := jwtv5.MapClaims{}
+	if _, err := jwtv5.ParseWithClaims(token, claims, u.providerKey,
+		jwtv5.WithIssuer(u.provider.Issuer),
+		jwtv5.WithAudience(u.client.Id),
+		jwtv5.WithExpirationRequired(),
+	); err != nil {
+		return err
+	}
+
+	if azp, ok := claims["azp"].(string); ok && azp != "" && azp != u.client.Id {
+		return fmt.Errorf("azp %q is not our client", azp)
+	}
+
+	got, _ := claims["nonce"].(string)
+	if subtle.ConstantTimeCompare([]byte(got), []byte(nonce)) != 1 {
+		return errors.New("nonce does not match the login in progress")
+	}
+
+	return nil
+}
+
 // verifyAccessToken makes sure the provider handed us a token the jwt auth
 // method will accept later: signed by a known key of this provider, issued by
 // the configured issuer, with an expiry.
 func (u *unit) verifyAccessToken(token string) error {
-	_, err := jwtv5.Parse(token,
-		func(tokenObj *jwtv5.Token) (any, error) {
-			kid, _ := tokenObj.Header["kid"].(string)
-			if kid == "" {
-				return nil, errors.New("token has no kid")
-			}
-			key, alg := jwk.Ins().GetPublicKey(u.provider.Name, kid)
-			if key == nil {
-				return nil, fmt.Errorf("unknown key %q", kid)
-			}
-			if tokenObj.Method.Alg() != alg {
-				return nil, fmt.Errorf("token alg %q does not match the key's %q", tokenObj.Method.Alg(), alg)
-			}
-			return key, nil
-		},
+	_, err := jwtv5.Parse(token, u.providerKey,
 		jwtv5.WithIssuer(u.provider.Issuer),
 		jwtv5.WithExpirationRequired(),
 	)
 	return err
+}
+
+// providerKey resolves the token's kid to a key of this provider and checks
+// the token's alg against the key's.
+func (u *unit) providerKey(tokenObj *jwtv5.Token) (any, error) {
+	kid, _ := tokenObj.Header["kid"].(string)
+	if kid == "" {
+		return nil, errors.New("token has no kid")
+	}
+	key, alg := jwk.Ins().GetPublicKey(u.provider.Name, kid)
+	if key == nil {
+		return nil, fmt.Errorf("unknown key %q", kid)
+	}
+	if tokenObj.Method.Alg() != alg {
+		return nil, fmt.Errorf("token alg %q does not match the key's %q", tokenObj.Method.Alg(), alg)
+	}
+	return key, nil
 }

@@ -81,25 +81,26 @@ func (u *unit) clearCookie(w http.ResponseWriter, name, path string) {
 type loginState struct {
 	state    string
 	verifier string
+	nonce    string // must come back inside the id token
 	redirect string
 }
 
-// encode joins the three values with "." — none of them contains one: the
-// first two are base64url, the address is base64url-encoded too.
+// encode joins the four values with "." — none of them contains one: the
+// first three are base64url, the address is base64url-encoded too.
 func (s *loginState) encode() string {
-	return s.state + "." + s.verifier + "." + base64.RawURLEncoding.EncodeToString([]byte(s.redirect))
+	return s.state + "." + s.verifier + "." + s.nonce + "." + base64.RawURLEncoding.EncodeToString([]byte(s.redirect))
 }
 
 func decodeLoginState(raw string) (*loginState, bool) {
 	parts := strings.Split(raw, ".")
-	if len(parts) != 3 || parts[0] == "" || parts[1] == "" {
+	if len(parts) != 4 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
 		return nil, false
 	}
-	redirect, err := base64.RawURLEncoding.DecodeString(parts[2])
+	redirect, err := base64.RawURLEncoding.DecodeString(parts[3])
 	if err != nil {
 		return nil, false
 	}
-	return &loginState{state: parts[0], verifier: parts[1], redirect: string(redirect)}, true
+	return &loginState{state: parts[0], verifier: parts[1], nonce: parts[2], redirect: string(redirect)}, true
 }
 
 func randomToken(bytes int) string {

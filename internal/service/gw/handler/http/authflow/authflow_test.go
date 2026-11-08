@@ -35,15 +35,22 @@ const (
 // that checks the PKCE verifier against the challenge the test saw in the
 // login redirect.
 type fakeOP struct {
-	t          *testing.T
-	server     *httptest.Server
-	privateKey *rsa.PrivateKey
-	issuer     string
-	challenge  string // set by the test from the /login redirect
-	tokenCalls int
-	lastForm   url.Values
-	lastUser   string
-	lastPass   string
+	t           *testing.T
+	server      *httptest.Server
+	privateKey  *rsa.PrivateKey
+	issuer      string
+	challenge   string // set by the test from the /login redirect
+	nonce       string // same
+	tokenCalls  int
+	lastForm    url.Values
+	lastUser    string
+	lastPass    string
+	lastIdToken string
+	// Misbehaviour knobs for the id token: another audience, another nonce,
+	// or none at all.
+	idAud     string
+	idNonce   string
+	noIdToken bool
 }
 
 func newFakeOP(t *testing.T) *fakeOP {
@@ -88,10 +95,22 @@ func newFakeOP(t *testing.T) *fakeOP {
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid_grant"})
 			return
 		}
+		exp := time.Now().Add(5 * time.Minute).Unix()
+		aud, nonce := op.lastUser, op.nonce
+		if op.idAud != "" {
+			aud = op.idAud
+		}
+		if op.idNonce != "" {
+			nonce = op.idNonce
+		}
+		op.lastIdToken = ""
+		if !op.noIdToken {
+			op.lastIdToken = op.sign(jwtv5.MapClaims{"sub": "u1", "iss": op.issuer, "exp": exp, "aud": aud, "azp": aud, "nonce": nonce})
+		}
 		_ = json.NewEncoder(w).Encode(oidc.TokenResponse{
-			AccessToken:      op.sign(jwtv5.MapClaims{"sub": "u1", "iss": op.issuer, "exp": time.Now().Add(5 * time.Minute).Unix()}),
+			AccessToken:      op.sign(jwtv5.MapClaims{"sub": "u1", "iss": op.issuer, "exp": exp}),
 			RefreshToken:     "refresh-1",
-			IdToken:          "id-token-1",
+			IdToken:          op.lastIdToken,
 			ExpiresIn:        300,
 			RefreshExpiresIn: 1800,
 		})
@@ -201,6 +220,8 @@ func TestSharedLoginFlow(t *testing.T) {
 	assert.NotEmpty(t, q.Get("state"))
 	op.challenge = q.Get("code_challenge")
 	require.NotEmpty(t, op.challenge)
+	op.nonce = q.Get("nonce")
+	require.NotEmpty(t, op.nonce)
 
 	loginCookie := cookieByName(t, rec, "__Host-ruto-login_corp")
 	assert.True(t, loginCookie.HttpOnly)
@@ -243,7 +264,7 @@ func TestSharedLoginFlow(t *testing.T) {
 
 	refresh := cookieByName(t, rec, "ruto-rt_corp")
 	assert.Equal(t, "/_auth/corp", refresh.Path)
-	assert.Equal(t, sessionCookie{RefreshToken: "refresh-1", IdToken: "id-token-1"}, decodeSessionCookie(refresh.Value))
+	assert.Equal(t, sessionCookie{RefreshToken: "refresh-1", IdToken: op.lastIdToken}, decodeSessionCookie(refresh.Value))
 	assert.Equal(t, 1800, refresh.MaxAge)
 
 	cleared := cookieByName(t, rec, "__Host-ruto-login_corp")
@@ -255,7 +276,7 @@ func TestSharedLoginFlow(t *testing.T) {
 	endUrl, err := url.Parse(rec.Header().Get("Location"))
 	require.NoError(t, err)
 	assert.Equal(t, op.issuer+"/logout", endUrl.Scheme+"://"+endUrl.Host+endUrl.Path)
-	assert.Equal(t, "id-token-1", endUrl.Query().Get("id_token_hint"))
+	assert.Equal(t, op.lastIdToken, endUrl.Query().Get("id_token_hint"))
 	assert.Equal(t, publicUrl+"/bye", endUrl.Query().Get("post_logout_redirect_uri"))
 	assert.Equal(t, "ruto", endUrl.Query().Get("client_id"))
 	assert.Equal(t, -1, cookieByName(t, rec, "ruto_corp").MaxAge)
@@ -389,6 +410,7 @@ func TestAppOwnClientUnit(t *testing.T) {
 	assert.Equal(t, "shop-client", q.Get("client_id"))
 	assert.Equal(t, publicUrl+"/_auth/corp/shop/api/callback", q.Get("redirect_uri"))
 	op.challenge = q.Get("code_challenge")
+	op.nonce = q.Get("nonce")
 	loginCookie := cookieByName(t, rec, "__Host-ruto-login_corp_shop.api")
 
 	rec = do(router, http.MethodGet, "/_auth/corp/shop/api/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
@@ -409,6 +431,42 @@ func TestAppOwnClientUnit(t *testing.T) {
 
 	// the jwt method of the app reads exactly this cookie
 	assert.Equal(t, "ruto_corp_shop.api", snapshot.Apps[0].JwtCookieName("corp"))
+}
+
+func TestIdTokenIsChecked(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(op *fakeOP)
+	}{
+		{"no id token", func(op *fakeOP) { op.noIdToken = true }},
+		{"another audience", func(op *fakeOP) { op.idAud = "other-client" }},
+		{"another nonce", func(op *fakeOP) { op.idNonce = "replayed" }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			op := newFakeOP(t)
+			tc.setup(op)
+			snapshot := rootModel.NewEmpty()
+			snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s"})}
+			router := buildRouter(t, snapshot)
+
+			rec := do(router, http.MethodGet, "/_auth/corp/login")
+			require.Equal(t, http.StatusFound, rec.Code)
+			q, err := url.ParseQuery(strings.SplitN(rec.Header().Get("Location"), "?", 2)[1])
+			require.NoError(t, err)
+			op.challenge = q.Get("code_challenge")
+			op.nonce = q.Get("nonce")
+			loginCookie := cookieByName(t, rec, "__Host-ruto-login_corp")
+
+			rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
+			assert.Equal(t, http.StatusBadGateway, rec.Code, rec.Body.String())
+			assert.Equal(t, 1, op.tokenCalls)
+			for _, c := range rec.Result().Cookies() {
+				assert.NotEqual(t, "ruto_corp", c.Name, "no session on a bad id token")
+				assert.NotEqual(t, "ruto-rt_corp", c.Name, "no session on a bad id token")
+			}
+		})
+	}
 }
 
 func TestHttpGatewayGetsPlainCookies(t *testing.T) {
