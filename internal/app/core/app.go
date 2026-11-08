@@ -492,11 +492,17 @@ func (a *App) Exit() {
 }
 
 // gatewaySettings are the runtime settings handed to the gateways: their own
-// Redis when one is configured, core's Redis otherwise.
+// Redis when one is configured, core's Redis otherwise; the refresh-cookie key
+// from its own secret, the admin JWT secret otherwise.
 func gatewaySettings() domainSnapshotModelP.GatewaySettings {
 	conf := &configCore.Conf
+	settings := domainSnapshotModelP.GatewaySettings{RedisAddr: conf.RedisAddr, RedisPassword: conf.RedisPassword, RedisDB: conf.RedisDB}
 	if conf.GwRedisAddr != "" {
-		return domainSnapshotModelP.GatewaySettings{RedisAddr: conf.GwRedisAddr, RedisPassword: conf.GwRedisPassword, RedisDB: conf.GwRedisDB}
+		settings = domainSnapshotModelP.GatewaySettings{RedisAddr: conf.GwRedisAddr, RedisPassword: conf.GwRedisPassword, RedisDB: conf.GwRedisDB}
 	}
-	return domainSnapshotModelP.GatewaySettings{RedisAddr: conf.RedisAddr, RedisPassword: conf.RedisPassword, RedisDB: conf.RedisDB}
+	settings.CookieKey = domainSnapshotModelP.CookieKeyFrom(conf.GwCookieSecret)
+	if settings.CookieKey == nil {
+		settings.CookieKey = domainSnapshotModelP.CookieKeyFrom(conf.AdminJWTSecret)
+	}
+	return settings
 }

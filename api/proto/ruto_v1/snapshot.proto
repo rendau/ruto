@@ -41,4 +41,7 @@ message GatewaySettings {
   string redis_addr = 1;
   string redis_password = 2;
   int32 redis_db = 3;
+  // Key the gateways seal the refresh cookie of a login session with (AES-256,
+  // 32 bytes), the same on every pod. Empty: no refresh cookie is issued.
+  bytes cookie_key = 4;
 }

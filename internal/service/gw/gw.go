@@ -8,9 +8,11 @@ import (
 	"time"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	snapshotModel "github.com/rendau/ruto/internal/domain/snapshot/model"
 	"github.com/rendau/ruto/internal/service/gw/core_client"
 	handlerGrpc "github.com/rendau/ruto/internal/service/gw/handler/grpc"
 	handlerHttp "github.com/rendau/ruto/internal/service/gw/handler/http"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/authflow"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 	localGrpc "github.com/rendau/ruto/internal/service/gw/server/grpc"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
@@ -52,7 +54,7 @@ func New(
 	}
 	service.ready.Store(false)
 
-	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig, oidc.Ins().SetRedis)
+	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig, applySettings)
 	if err != nil {
 		return nil, fmt.Errorf("config_client.New: %w", err)
 	}
@@ -79,6 +81,13 @@ func (s *Service) Stop(timeout time.Duration) error {
 		}
 	}
 	return nil
+}
+
+// applySettings hands the gateway settings from core to the parts that use
+// them; the handlers are not rebuilt for that.
+func applySettings(settings *snapshotModel.GatewaySettings) {
+	oidc.Ins().SetRedis(settings)
+	authflow.SetCookieKey(settings.CookieKey)
 }
 
 func (s *Service) SetConfig(conf *rootModel.Root) error {

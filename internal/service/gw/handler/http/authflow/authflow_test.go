@@ -22,6 +22,7 @@ import (
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	snapshotModel "github.com/rendau/ruto/internal/domain/snapshot/model"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 	"github.com/rendau/ruto/internal/service/gw/service/oidc"
 )
@@ -189,6 +190,8 @@ func (op *fakeOP) provider(t *testing.T, client *authModel.JwtClient) rootModel.
 }
 
 func buildRouter(t *testing.T, snapshot *rootModel.Root) http.Handler {
+	SetCookieKey(snapshotModel.CookieKeyFrom("test-admin-secret"))
+	t.Cleanup(func() { SetCookieKey(nil) })
 	require.NoError(t, snapshot.Normalize())
 	snapshot.InheritDown()
 	router := chi.NewRouter()
@@ -283,7 +286,7 @@ func TestSharedLoginFlow(t *testing.T) {
 
 	refresh := cookieByName(t, rec, "ruto-rt_corp")
 	assert.Equal(t, "/_auth/corp", refresh.Path)
-	assert.Equal(t, sessionCookie{RefreshToken: "refresh-1", IdToken: op.lastIdToken}, decodeSessionCookie(refresh.Value))
+	assert.Equal(t, sessionCookie{RefreshToken: "refresh-1", IdToken: op.lastIdToken}, decodeSessionCookie(refresh.Name, refresh.Value))
 	assert.Equal(t, 1800, refresh.MaxAge)
 
 	cleared := cookieByName(t, rec, "__Host-ruto-login_corp")
@@ -308,7 +311,11 @@ func TestSharedLoginFlow(t *testing.T) {
 }
 
 func sessionCookieOf(name, path string, session sessionCookie) *http.Cookie {
-	return &http.Cookie{Name: name, Path: path, Value: session.encode()}
+	value, ok := session.encode(name)
+	if !ok {
+		panic("no cookie key in the test")
+	}
+	return &http.Cookie{Name: name, Path: path, Value: value}
 }
 
 func TestRefresh(t *testing.T) {
@@ -350,7 +357,7 @@ func TestRefresh(t *testing.T) {
 	assert.Equal(t, "/_auth/corp", refresh.Path)
 	assert.Equal(t, 1700, refresh.MaxAge)
 	require.NotEmpty(t, op.lastIdToken)
-	assert.Equal(t, sessionCookie{RefreshToken: "refresh-2", IdToken: op.lastIdToken}, decodeSessionCookie(refresh.Value))
+	assert.Equal(t, sessionCookie{RefreshToken: "refresh-2", IdToken: op.lastIdToken}, decodeSessionCookie(refresh.Name, refresh.Value))
 
 	// a renewed id token for another user or another client is refused, the
 	// cookies are left alone
@@ -376,7 +383,7 @@ func TestRefresh(t *testing.T) {
 		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "sticky", IdToken: "id-token-1"}))
 	require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
 	refresh = cookieByName(t, rec, "ruto-rt_corp")
-	assert.Equal(t, sessionCookie{RefreshToken: "sticky", IdToken: "id-token-1"}, decodeSessionCookie(refresh.Value))
+	assert.Equal(t, sessionCookie{RefreshToken: "sticky", IdToken: "id-token-1"}, decodeSessionCookie(refresh.Name, refresh.Value))
 	assert.Equal(t, defaultSessionMaxAge, refresh.MaxAge)
 
 	// the session is over: 401, and the cookies are not touched, a parallel
@@ -507,6 +514,38 @@ func TestIdTokenIsChecked(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNoCookieKeyNoRefreshCookie(t *testing.T) {
+	op := newFakeOP(t)
+	snapshot := rootModel.NewEmpty()
+	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s"})}
+	router := buildRouter(t, snapshot)
+	SetCookieKey(nil) // an old core that sends no key
+
+	rec := do(router, http.MethodGet, "/_auth/corp/login")
+	require.Equal(t, http.StatusFound, rec.Code)
+	q, err := url.ParseQuery(strings.SplitN(rec.Header().Get("Location"), "?", 2)[1])
+	require.NoError(t, err)
+	op.challenge = q.Get("code_challenge")
+	op.nonce = q.Get("nonce")
+	loginCookie := cookieByName(t, rec, "__Host-ruto-login_corp")
+
+	// the login still works: the access cookie is set, the refresh cookie is not
+	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
+	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	cookieByName(t, rec, "ruto_corp")
+	for _, c := range rec.Result().Cookies() {
+		assert.NotEqual(t, "ruto-rt_corp", c.Name, "no key, no refresh cookie")
+	}
+
+	// a refresh cookie from before (another key) is an empty session
+	SetCookieKey(snapshotModel.CookieKeyFrom("old-key"))
+	stale := sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-1"})
+	SetCookieKey(snapshotModel.CookieKeyFrom("new-key"))
+	rec = do(router, http.MethodPost, "/_auth/corp/refresh", stale)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "time to log in again")
+	assert.Equal(t, 1, op.tokenCalls, "the provider is not asked")
 }
 
 func TestHttpGatewayGetsPlainCookies(t *testing.T) {

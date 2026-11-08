@@ -2467,6 +2467,27 @@
         }
       }
     },
+    "ruto_v1GatewaySettings": {
+      "type": "object",
+      "properties": {
+        "redis_addr": {
+          "type": "string",
+          "description": "Redis the gateways share login session refreshes through; empty addr —\nnone, each gateway refreshes on its own."
+        },
+        "redis_password": {
+          "type": "string"
+        },
+        "redis_db": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "cookie_key": {
+          "type": "string",
+          "format": "byte",
+          "description": "Key the gateways seal the refresh cookie of a login session with (AES-256,\n32 bytes), the same on every pod. Empty: no refresh cookie is issued."
+        }
+      }
+    },
     "ruto_v1GatewayStateItem": {
       "type": "object",
       "properties": {
@@ -2882,6 +2903,10 @@
       "properties": {
         "data": {
           "type": "object"
+        },
+        "gateway": {
+          "$ref": "#/definitions/ruto_v1GatewaySettings",
+          "description": "Runtime settings of the gateways, from core's environment: not part of\nthe published config and not stored."
         }
       }
     },

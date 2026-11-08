@@ -2,7 +2,6 @@ package authflow
 
 import (
 	"crypto/subtle"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,23 +17,25 @@ import (
 )
 
 // sessionCookie is the content of the refresh cookie: the refresh token for
-// later renewals and the id token the provider wants back on logout. Stored as
-// base64url(json); httpOnly keeps it from page scripts, encrypting it is left
-// for later.
+// later renewals and the id token the provider wants back on logout. Stored
+// as JSON sealed with the cookie key from core (see sealed.go): httpOnly keeps
+// it from page scripts, the seal from everything that can read the cookie.
 type sessionCookie struct {
 	RefreshToken string `json:"rt,omitempty"`
 	IdToken      string `json:"idt,omitempty"`
 }
 
-func (c *sessionCookie) encode() string {
+// encode seals the session for the cookie called name; false without a key.
+func (c *sessionCookie) encode(name string) (string, bool) {
 	raw, _ := json.Marshal(c)
-	return base64.RawURLEncoding.EncodeToString(raw)
+	return seal(name, raw)
 }
 
-func decodeSessionCookie(value string) sessionCookie {
+// decodeSessionCookie opens the value of the cookie called name; anything not
+// sealed for it with the current key is an empty session.
+func decodeSessionCookie(name, value string) sessionCookie {
 	var session sessionCookie
-	raw, err := base64.RawURLEncoding.DecodeString(value)
-	if err == nil {
+	if raw, ok := open(name, value); ok {
 		_ = json.Unmarshal(raw, &session)
 	}
 	return session
@@ -228,7 +229,12 @@ func (u *unit) setSession(w http.ResponseWriter, tokens *oidc.TokenResponse) {
 	u.setCookie(w, u.cookieName, tokens.AccessToken, u.cookiePath, maxAge)
 	if tokens.RefreshToken != "" || tokens.IdToken != "" {
 		session := sessionCookie{RefreshToken: tokens.RefreshToken, IdToken: tokens.IdToken}
-		u.setCookie(w, u.refreshCookieName(), session.encode(), u.basePath, maxAge)
+		name := u.refreshCookieName()
+		if value, ok := session.encode(name); ok {
+			u.setCookie(w, name, value, u.basePath, maxAge)
+		} else {
+			slog.Warn("authflow: no cookie key, the session is issued without a refresh cookie", "unit", u.name)
+		}
 	}
 }
 
@@ -266,11 +272,12 @@ func (u *unit) logout(w http.ResponseWriter, r *http.Request) {
 // readSession decodes the refresh cookie; a missing or malformed one is an
 // empty session.
 func (u *unit) readSession(r *http.Request) sessionCookie {
-	cookie, err := r.Cookie(u.refreshCookieName())
+	name := u.refreshCookieName()
+	cookie, err := r.Cookie(name)
 	if err != nil {
 		return sessionCookie{}
 	}
-	return decodeSessionCookie(cookie.Value)
+	return decodeSessionCookie(name, cookie.Value)
 }
 
 // verifyIdToken validates the id token as OpenID Connect Core §3.1.3.7 asks a
