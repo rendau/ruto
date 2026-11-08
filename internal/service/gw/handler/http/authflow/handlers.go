@@ -269,6 +269,35 @@ func (u *unit) logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirect, http.StatusFound)
 }
 
+// me tells a front who the access cookie of this unit belongs to: the claims
+// of the access token, as they are. The gateway does not pick or rename them,
+// providers put the username and the roles in different places and a front
+// may need a claim of its own; what matters is that the token itself stays in
+// the httpOnly cookie, since claims without a signature cannot be presented
+// anywhere. Only the cookie is read, not the Authorization header: a client
+// that holds a bearer token has the claims already. A missing, foreign or
+// expired cookie is 401, which a front treats like any other 401: refresh,
+// then repeat. The route lives under the cookie's path (mePath), or the
+// browser would not send the cookie along.
+func (u *unit) me(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+
+	cookie, err := r.Cookie(u.cookieName)
+	if err != nil || cookie.Value == "" {
+		http.Error(w, "no session: log in", http.StatusUnauthorized)
+		return
+	}
+
+	claims, err := u.parseAccessToken(cookie.Value)
+	if err != nil {
+		http.Error(w, "session is not valid: refresh or log in", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(claims)
+}
+
 // readSession decodes the refresh cookie; a missing or malformed one is an
 // empty session.
 func (u *unit) readSession(r *http.Request) sessionCookie {
@@ -354,11 +383,20 @@ func (u *unit) parseIdToken(token string) (jwtv5.MapClaims, error) {
 // method will accept later: signed by a known key of this provider, issued by
 // the configured issuer, with an expiry.
 func (u *unit) verifyAccessToken(token string) error {
-	_, err := jwtv5.Parse(token, u.providerKey,
+	_, err := u.parseAccessToken(token)
+	return err
+}
+
+// parseAccessToken runs the checks of verifyAccessToken and returns the claims.
+func (u *unit) parseAccessToken(token string) (jwtv5.MapClaims, error) {
+	claims := jwtv5.MapClaims{}
+	if _, err := jwtv5.ParseWithClaims(token, claims, u.providerKey,
 		jwtv5.WithIssuer(u.provider.Issuer),
 		jwtv5.WithExpirationRequired(),
-	)
-	return err
+	); err != nil {
+		return nil, err
+	}
+	return claims, nil
 }
 
 // providerKey resolves the token's kid to a key of this provider and checks

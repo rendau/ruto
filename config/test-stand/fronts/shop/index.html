@@ -1,0 +1,80 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shop front (shared login)</title>
+<style>body{font:14px/1.4 -apple-system,sans-serif;margin:24px;max-width:900px}button{margin:4px 6px 4px 0;padding:6px 12px}
+pre{background:#f4f4f4;padding:8px;white-space:pre-wrap;word-break:break-all}#user{font-weight:600}#log{max-height:320px;overflow:auto}</style></head>
+<body>
+<h2>Shop front (shared login)</h2>
+<p>Me: <code>/_auth/corp/me</code> · Unit: <code>/_auth/corp</code> · API: <code>/shop/hello</code></p>
+<p>Status: <span id="user">…</span></p>
+<p>
+<button id="login">Login</button>
+<button id="me">Me</button>
+<button id="call">Call API</button>
+<button id="refresh">Refresh</button>
+<button id="logout">Logout</button>
+</p>
+<pre id="claims"></pre>
+<pre id="log"></pre>
+<script>
+const GW = 'http://localhost:8088';
+const UNIT = GW + '/_auth/corp';
+const ME = GW + '/_auth/corp/me';
+const API = GW + '/shop/hello';
+const log = (...a) => { const el = document.getElementById('log'); el.textContent = new Date().toISOString().slice(11,19) + ' ' + a.join(' ') + '\n' + el.textContent; };
+const login = () => { location.href = UNIT + '/login?redirect=' + encodeURIComponent(location.href); };
+const logout = () => { location.href = UNIT + '/logout?redirect=' + encodeURIComponent(location.origin + '/'); };
+
+let refreshing = null;
+const refresh = () => {
+  // one refresh per tab, one per browser across tabs
+  if (!refreshing) {
+    refreshing = navigator.locks.request('ruto-refresh', () => fetch(UNIT + '/refresh', { method: 'POST', credentials: 'include' }).then(r => r.status))
+      .finally(() => { refreshing = null; });
+  }
+  return refreshing;
+};
+
+// fetch with a cookie session: on 401 refresh once and repeat
+async function authFetch(url, init = {}) {
+  init.credentials = 'include';
+  let r = await fetch(url, init);
+  if (r.status !== 401) return r;
+  const st = await refresh();
+  log('refresh ->', st);
+  if (st === 204) return fetch(url, init);
+  return r;
+}
+
+async function me() {
+  const r = await authFetch(ME);
+  log('me ->', r.status);
+  if (r.status === 200) {
+    const c = await r.json();
+    window.__me = c;
+    document.getElementById('user').textContent = 'logged in as ' + (c.preferred_username || c.sub) + ' (exp ' + new Date(c.exp * 1000).toLocaleTimeString() + ')';
+    document.getElementById('claims').textContent = JSON.stringify(c, null, 2);
+  } else {
+    window.__me = null;
+    document.getElementById('user').textContent = 'not logged in (' + r.status + ')';
+    document.getElementById('claims').textContent = await r.text();
+  }
+  return r.status;
+}
+
+async function call() {
+  const r = await authFetch(API);
+  const t = await r.text();
+  log('api ->', r.status, t);
+  window.__api = { status: r.status, body: t };
+  return r.status;
+}
+
+document.getElementById('login').onclick = login;
+document.getElementById('logout').onclick = logout;
+document.getElementById('me').onclick = me;
+document.getElementById('call').onclick = call;
+document.getElementById('refresh').onclick = async () => log('refresh ->', await refresh());
+window.__ruto = { me, call, refresh, login, logout };
+me();
+</script>
+</body></html>

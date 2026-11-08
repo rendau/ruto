@@ -50,7 +50,9 @@ func LoginUnitSlug(appPathPrefix string) string {
 }
 
 // AuthRoutePrefix is the first path segment of the gateway's own login routes
-// (/_auth/<provider>[/<app prefix>]/login|callback|refresh|logout); no app may take it.
+// (/_auth/<provider>[/<app prefix>]/login|callback|refresh|logout and
+// [/<app prefix>]/_auth/<provider>/me); no app prefix and no endpoint path may
+// start with it.
 const AuthRoutePrefix = "_auth"
 
 // OidcScopeOpenid is the scope every OpenID Connect login must ask for.

@@ -562,3 +562,73 @@ func TestHttpGatewayGetsPlainCookies(t *testing.T) {
 	assert.False(t, loginCookie.Secure, "no Secure on plain http, or the browser drops the cookie")
 	assert.False(t, strings.HasPrefix(loginCookie.Name, "__Host-"))
 }
+
+func TestMe(t *testing.T) {
+	op := newFakeOP(t)
+	snapshot := rootModel.NewEmpty()
+	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
+	snapshot.Apps = []*appModel.App{{
+		Active:     true,
+		Name:       "shop",
+		PathPrefix: "shop/api",
+		Backend:    appModel.Backend{Url: "http://shop:8080"},
+		Jwt:        []appModel.AppJwt{{Provider: "corp", Client: authModel.JwtClient{Id: "shop-client", Secret: "s"}}},
+	}}
+	router := buildRouter(t, snapshot)
+	const target = "/_auth/corp/me"
+
+	exp := time.Now().Add(5 * time.Minute).Unix()
+	claims := jwtv5.MapClaims{
+		"sub":                "u1",
+		"iss":                op.issuer,
+		"exp":                exp,
+		"preferred_username": "dauren",
+		"realm_access":       map[string]any{"roles": []any{"auditor"}},
+		"resource_access":    map[string]any{"shop": map[string]any{"roles": []any{"manager"}}},
+		"tenant_id":          "t-42",
+	}
+	token := op.sign(claims)
+
+	rec := do(router, http.MethodGet, target)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "no cookie")
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+
+	rec = do(router, http.MethodGet, target, &http.Cookie{Name: "ruto_corp", Value: "garbage"})
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "not a token")
+
+	expired := op.sign(jwtv5.MapClaims{"sub": "u1", "iss": op.issuer, "exp": time.Now().Add(-time.Minute).Unix()})
+	rec = do(router, http.MethodGet, target, &http.Cookie{Name: "ruto_corp", Value: expired})
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "expired: time to refresh")
+
+	foreign := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, jwtv5.MapClaims{"sub": "u1", "iss": op.issuer, "exp": exp})
+	foreign.Header["kid"] = testKid
+	foreignToken, err := foreign.SignedString([]byte("secret"))
+	require.NoError(t, err)
+	rec = do(router, http.MethodGet, target, &http.Cookie{Name: "ruto_corp", Value: foreignToken})
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "not signed by the provider")
+
+	// the Authorization header is not a session
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "bearer token is not read")
+
+	// the real thing: the claims, as they are, custom ones included
+	rec = do(router, http.MethodGet, target, &http.Cookie{Name: "ruto_corp", Value: token})
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	want, err := json.Marshal(claims)
+	require.NoError(t, err)
+	assert.JSONEq(t, string(want), rec.Body.String())
+
+	// the app's unit serves /me inside the app's prefix, where the app cookie
+	// (Path=<prefix>) travels, and reads its own cookie, not the shared one
+	assert.Equal(t, http.StatusNotFound, do(router, http.MethodGet, "/_auth/corp/shop/api/me", &http.Cookie{Name: "ruto_corp_shop.api", Value: token}).Code,
+		"the app cookie would never reach /_auth/…: no /me there")
+	rec = do(router, http.MethodGet, "/shop/api/_auth/corp/me", &http.Cookie{Name: "ruto_corp", Value: token})
+	assert.Equal(t, http.StatusUnauthorized, rec.Code, "the shared cookie is not the app's session")
+	rec = do(router, http.MethodGet, "/shop/api/_auth/corp/me", &http.Cookie{Name: "ruto_corp_shop.api", Value: token})
+	assert.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+}

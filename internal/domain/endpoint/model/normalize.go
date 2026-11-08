@@ -148,6 +148,10 @@ func (m *Http) Normalize() error {
 	}
 
 	m.Path = strings.Trim(strings.TrimSpace(m.Path), "/")
+	// /<app prefix>/_auth/… is where the gateway serves the app's own /me.
+	if first, _, _ := strings.Cut(m.Path, "/"); first == constant.AuthRoutePrefix {
+		return fmt.Errorf("path: %s is reserved for the gateway login routes", constant.AuthRoutePrefix)
+	}
 	// The router accepts '*' only as the whole last segment and panics otherwise.
 	if strings.Contains(m.Path, "*") && m.Path != "*" &&
 		(!strings.HasSuffix(m.Path, "/*") || strings.Count(m.Path, "*") != 1) {

@@ -1,8 +1,10 @@
 // Package authflow serves the gateway's own login routes,
-// /_auth/<provider>[/<app prefix>]/login|callback|refresh|logout: the OpenID
-// Connect authorization code flow with PKCE, ending in the access and refresh
-// cookies that the jwt auth method reads on every other request, and the
-// renewal of those cookies with the refresh token.
+// /_auth/<provider>[/<app prefix>]/login|callback|refresh|logout and
+// [/<app prefix>]/_auth/<provider>/me: the OpenID Connect authorization code
+// flow with PKCE, ending in the access and refresh cookies that the jwt auth
+// method reads on every other request, the renewal of those cookies with the
+// refresh token, and a front's view of the session (who is logged in, with
+// what roles).
 //
 // A login unit is a provider plus a client: the provider's default client
 // (shared by every app that names the provider) or an app's own client (its own
@@ -117,6 +119,15 @@ func (u *unit) register(router chi.Router) {
 	// so another site cannot make the browser renew the session.
 	router.Post(u.basePath+"/refresh", u.refresh)
 	router.Get(u.basePath+"/logout", u.logout)
+	router.Get(u.mePath(), u.me)
+}
+
+// mePath is where /me lives: under the path of the access cookie, the one
+// route that needs it. For the shared login that is the unit's own base; an
+// app's cookie is scoped to the app's prefix and never reaches /_auth/…, so
+// the app unit's /me sits inside the prefix: /<prefix>/_auth/<provider>/me.
+func (u *unit) mePath() string {
+	return strings.TrimSuffix(u.cookiePath, "/") + "/" + constant.AuthRoutePrefix + "/" + u.provider.Name + "/me"
 }
 
 // originOf returns "scheme://host[:port]" of an absolute http(s) url, lower

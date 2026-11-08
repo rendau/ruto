@@ -208,3 +208,13 @@ func TestEndpointNormalize_Cache(t *testing.T) {
 	require.NoError(t, grpc.Normalize())
 	require.False(t, grpc.Cache.Server.Enabled, "cache is http only")
 }
+
+func TestEndpointNormalize_RejectReservedAuthPath(t *testing.T) {
+	for _, path := range []string{"_auth", "/_auth/", "_auth/corp/me"} {
+		item := &Endpoint{Http: Http{Method: "GET", Path: path}}
+		require.ErrorContains(t, item.Normalize(), "path: _auth is reserved for the gateway login routes", path)
+	}
+
+	item := &Endpoint{Http: Http{Method: "GET", Path: "_authors/_auth"}}
+	require.NoError(t, item.Normalize())
+}
