@@ -15,8 +15,8 @@ pre{background:#f4f4f4;padding:8px;white-space:pre-wrap;word-break:break-all}#us
 </p>
 <pre id="claims"></pre>
 <pre id="log"></pre>
-<!-- symlink to sdk/js/dist/ruto-auth.iife.js: run `make build-sdk` first -->
-<script src="/ruto-auth.iife.js"></script>
+<!-- the gateway serves the SDK bundle itself (sdk/js, built by `make build-sdk`) -->
+<script src="http://localhost:8088/_auth/ruto-auth.js"></script>
 <script>
 const GW = 'http://localhost:8088';
 const API = GW + '/orders/hello';

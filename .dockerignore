@@ -15,3 +15,6 @@ apps/admin-prev
 
 # Keep templates
 !**/.env.example
+
+# JS SDK build (rebuilt inside the gateway image)
+sdk/js/dist

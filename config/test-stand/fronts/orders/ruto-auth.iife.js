@@ -1,1 +1,0 @@
-../../../../sdk/js/dist/ruto-auth.iife.js

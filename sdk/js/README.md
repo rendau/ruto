@@ -25,8 +25,11 @@ pnpm add "github:rendau/ruto#path:/sdk/js"
 
 (для npm: `npm i "github:rendau/ruto#path:/sdk/js"`). Собранного `dist` в git
 нет: при установке из git pnpm и npm сами запускают `prepare`, то есть сборку.
-Для страницы без сборщика — файл `dist/ruto-auth.iife.js` после `pnpm build`,
-всё лежит в глобальном объекте `RutoAuth`.
+
+Для страницы без сборщика ничего ставить не нужно: шлюз сам отдаёт браузерную
+сборку на `<gateway>/_auth/ruto-auth.js` (сжатую, с кэшированием на 5 минут и
+проверкой по `ETag`), всё лежит в глобальном объекте `RutoAuth`. Версия скрипта
+при этом всегда совпадает с версией шлюза, на который ходит страница.
 
 ## Что нужно на стороне шлюза
 
@@ -140,7 +143,7 @@ const data = await auth.run(() => myClient.get('/orders'))
 ### Страница без сборщика
 
 ```html
-<script src="/ruto-auth.iife.js"></script>
+<script src="https://api.mdev.kz/_auth/ruto-auth.js"></script>
 <script>
   const auth = RutoAuth.createRutoAuth({ gateway: 'https://api.mdev.kz', provider: 'corp' })
   auth.me().then((me) => me ? show(RutoAuth.usernameOf(me)) : auth.login())
@@ -193,6 +196,10 @@ pnpm install
 pnpm test        # vitest: ядро, роли, адаптеры axios / ofetch / ky
 pnpm build       # dist/: ESM + .d.ts, dist/ruto-auth.iife.js
 ```
+
+`dist/ruto-auth.iife.js` попадает в образ шлюза (`docker/Dockerfile.gateway`)
+и отдаётся им на `/_auth/ruto-auth.js`; локально шлюзу путь к файлу задаёт
+`SDK_JS_FILE`.
 
 Живая проверка — тестовый стенд репозитория (раздел «Тестовый стенд» в
 `CLAUDE.md`): фронты `config/test-stand/fronts/*` собраны на этом SDK.

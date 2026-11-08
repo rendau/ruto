@@ -1,3 +1,16 @@
+FROM node:22-alpine AS sdk-builder
+
+WORKDIR /src/sdk/js
+
+RUN npm install -g pnpm@11
+
+COPY sdk/js/package.json sdk/js/pnpm-lock.yaml sdk/js/pnpm-workspace.yaml ./
+# --ignore-scripts: the prepare script would build before the sources are copied
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
+COPY sdk/js ./
+RUN pnpm build
+
 FROM golang:1.27-alpine AS gateway-builder
 
 WORKDIR /src
@@ -15,5 +28,7 @@ RUN apk add --no-cache --upgrade ca-certificates tzdata curl
 WORKDIR /app
 
 COPY --from=gateway-builder /out/gateway ./gateway
+# the JS SDK the gateway serves at /_auth/ruto-auth.js
+COPY --from=sdk-builder /src/sdk/js/dist/ruto-auth.iife.js ./sdk-dist/ruto-auth.iife.js
 
 CMD ["./gateway"]

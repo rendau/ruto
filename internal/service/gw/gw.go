@@ -3,6 +3,7 @@ package gw
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -14,6 +15,7 @@ import (
 	handlerHttp "github.com/rendau/ruto/internal/service/gw/handler/http"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/authflow"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/sdkjs"
 	localGrpc "github.com/rendau/ruto/internal/service/gw/server/grpc"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
@@ -39,8 +41,20 @@ func New(
 	backendIdleConnTimeout time.Duration,
 	cacheMaxSize int64,
 	cacheSweepInterval time.Duration,
+	sdkJsFile string,
 ) (*Service, error) {
 	var err error
+
+	// the bundle is optional: a gateway without it only loses /_auth/ruto-auth.js
+	sdkJs, err := sdkjs.Load(sdkJsFile)
+	switch {
+	case err == nil:
+		sdkjs.Set(sdkJs)
+	case sdkJsFile != "":
+		return nil, fmt.Errorf("sdkjs.Load(%s): %w", sdkJsFile, err)
+	default:
+		slog.Warn("js sdk bundle not found, /_auth/ruto-auth.js answers 404", "error", err)
+	}
 
 	service := &Service{
 		globalCtx:     globalCtx,

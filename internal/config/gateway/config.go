@@ -29,6 +29,10 @@ var Conf = struct {
 	// memory ceiling for responses of endpoints with server cache, see gw/service/cache
 	CacheMaxSizeMb     int           `env:"CACHE_MAX_SIZE_MB" envDefault:"256"`
 	CacheSweepInterval time.Duration `env:"CACHE_SWEEP_INTERVAL" envDefault:"30s"`
+
+	// browser bundle of the JS SDK served at /_auth/ruto-auth.js; empty — the
+	// usual places (see gw/handler/http/sdkjs), none there — the route answers 404
+	SdkJsFile string `env:"SDK_JS_FILE"`
 }{}
 
 func init() {
