@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"sync"
 
 	"github.com/mwitkow/grpc-proxy/proxy"
 	gogrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
@@ -23,14 +21,16 @@ import (
 )
 
 type Service struct {
-	conns             sync.Map
+	conns             *Conns
 	routes            map[string]*route
 	reflectionRoutes  map[string]*reflectionRoute
 	transparentHandle gogrpc.StreamHandler
 }
 
-func New(snapshot *domRootModel.Root) (*Service, error) {
-	service := &Service{}
+// New builds the handler for a snapshot. conns is owned by the caller and
+// outlives the handler, see Conns.
+func New(snapshot *domRootModel.Root, conns *Conns) (*Service, error) {
+	service := &Service{conns: conns}
 	service.transparentHandle = proxy.TransparentHandler(service.director)
 
 	routes, err := service.buildRoutes(snapshot)
@@ -127,7 +127,7 @@ func (s *Service) director(ctx context.Context, _ string) (context.Context, gogr
 		return nil, nil, status.Error(codes.NotFound, "route not found")
 	}
 
-	conn, err := s.getConn(rt.targetGrpcAddress)
+	conn, err := s.conns.Get(rt.targetGrpcAddress)
 	if err != nil {
 		return nil, nil, status.Errorf(codes.Unavailable, "dial backend: %v", err)
 	}
@@ -159,23 +159,13 @@ func (s *Service) resolveRoute(md metadata.MD, fullMethod string) *route {
 	return rt
 }
 
-func (s *Service) getConn(target string) (*gogrpc.ClientConn, error) {
-	if conn, ok := s.conns.Load(target); ok {
-		return conn.(*gogrpc.ClientConn), nil
+// Targets lists the backend addresses the routes of this handler lead to.
+func (s *Service) Targets() map[string]struct{} {
+	result := make(map[string]struct{}, len(s.routes))
+	for _, rt := range s.routes {
+		result[rt.targetGrpcAddress] = struct{}{}
 	}
-
-	newConn, err := gogrpc.NewClient(target, gogrpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fmt.Errorf("gogrpc.NewClient: %w", err)
-	}
-
-	actual, loaded := s.conns.LoadOrStore(target, newConn)
-	if loaded {
-		_ = newConn.Close()
-		return actual.(*gogrpc.ClientConn), nil
-	}
-
-	return newConn, nil
+	return result
 }
 
 func composeRouteKey(appName, method string) string {

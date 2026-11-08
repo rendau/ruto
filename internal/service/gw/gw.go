@@ -30,6 +30,7 @@ type Service struct {
 	cache         *cache.Service
 	cacheSweep    time.Duration
 	grpcServer    *localGrpc.Service
+	grpcConns     *handlerGrpc.Conns
 	coreClient    *core_client.Service
 	ready         atomic.Bool
 }
@@ -65,6 +66,7 @@ func New(
 	}
 	if grpcPort > 0 {
 		service.grpcServer = localGrpc.New(grpcPort)
+		service.grpcConns = handlerGrpc.NewConns()
 	}
 	service.ready.Store(false)
 
@@ -93,6 +95,7 @@ func (s *Service) Stop(timeout time.Duration) error {
 		if err := s.grpcServer.Stop(timeout); err != nil {
 			return err
 		}
+		s.grpcConns.Close()
 	}
 	return nil
 }
@@ -128,11 +131,14 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	s.httpServer.SetHandler(httpHandler)
 
 	if s.grpcServer != nil {
-		grpcHandler, grpcErr := handlerGrpc.New(conf)
+		grpcHandler, grpcErr := handlerGrpc.New(conf, s.grpcConns)
 		if grpcErr != nil {
 			return fmt.Errorf("handlerGrpc.New: %w", grpcErr)
 		}
 		s.grpcServer.SetHandler(grpcHandler)
+		// Once the new handler serves, the backends that left the config are
+		// let go; the ones that stayed keep their connections.
+		s.grpcConns.Retain(grpcHandler.Targets())
 	}
 
 	s.ready.Store(true)
