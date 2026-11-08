@@ -47,9 +47,10 @@ type fakeOP struct {
 	lastPass    string
 	lastIdToken string
 	// Misbehaviour knobs for the id token: another audience, another nonce,
-	// or none at all.
+	// or none at all; on a refresh, another subject.
 	idAud     string
 	idNonce   string
+	idSub     string
 	noIdToken bool
 }
 
@@ -126,11 +127,29 @@ func newFakeOP(t *testing.T) *fakeOP {
 // "sticky" stays valid and is not sent back, "unavailable" is a provider in
 // trouble, anything else is a session that is over.
 func (op *fakeOP) refreshGrant(w http.ResponseWriter, refreshToken string) {
-	access := op.sign(jwtv5.MapClaims{"sub": "u1", "iss": op.issuer, "gen": 2, "exp": time.Now().Add(5 * time.Minute).Unix()})
+	exp := time.Now().Add(5 * time.Minute).Unix()
+	access := op.sign(jwtv5.MapClaims{"sub": "u1", "iss": op.issuer, "gen": 2, "exp": exp})
+	if strings.HasPrefix(refreshToken, "refresh-1") {
+		// The gateway answers a repeated refresh of one token from its cache,
+		// so a test that needs a fresh exchange uses a "refresh-1…" variant.
+		refreshToken = "refresh-1"
+	}
 	switch refreshToken {
 	case "refresh-1":
+		// Keycloak sends a fresh id token along with the rotated pair.
+		aud, sub := op.lastUser, "u1"
+		if op.idAud != "" {
+			aud = op.idAud
+		}
+		if op.idSub != "" {
+			sub = op.idSub
+		}
+		op.lastIdToken = ""
+		if !op.noIdToken {
+			op.lastIdToken = op.sign(jwtv5.MapClaims{"sub": sub, "iss": op.issuer, "exp": exp, "aud": aud, "azp": aud})
+		}
 		_ = json.NewEncoder(w).Encode(oidc.TokenResponse{
-			AccessToken: access, RefreshToken: "refresh-2", ExpiresIn: 300, RefreshExpiresIn: 1700,
+			AccessToken: access, RefreshToken: "refresh-2", IdToken: op.lastIdToken, ExpiresIn: 300, RefreshExpiresIn: 1700,
 		})
 	case "sticky":
 		_ = json.NewEncoder(w).Encode(oidc.TokenResponse{AccessToken: access, ExpiresIn: 300})
@@ -306,9 +325,11 @@ func TestRefresh(t *testing.T) {
 	assert.Equal(t, 0, op.tokenCalls)
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 
-	// a rotated pair: new access cookie, new refresh token, the id token kept for logout
+	// a rotated pair: new access cookie, new refresh token, the fresh id token
+	// replaces the one from login
+	loginIdToken := op.sign(jwtv5.MapClaims{"sub": "u1", "iss": op.issuer, "exp": time.Now().Add(5 * time.Minute).Unix(), "aud": "ruto"})
 	rec = do(router, http.MethodPost, target,
-		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-1", IdToken: "id-token-1"}))
+		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-1", IdToken: loginIdToken}))
 	require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 	assert.Equal(t, "refresh_token", op.lastForm.Get("grant_type"))
@@ -328,7 +349,26 @@ func TestRefresh(t *testing.T) {
 	refresh := cookieByName(t, rec, "ruto-rt_corp")
 	assert.Equal(t, "/_auth/corp", refresh.Path)
 	assert.Equal(t, 1700, refresh.MaxAge)
-	assert.Equal(t, sessionCookie{RefreshToken: "refresh-2", IdToken: "id-token-1"}, decodeSessionCookie(refresh.Value))
+	require.NotEmpty(t, op.lastIdToken)
+	assert.Equal(t, sessionCookie{RefreshToken: "refresh-2", IdToken: op.lastIdToken}, decodeSessionCookie(refresh.Value))
+
+	// a renewed id token for another user or another client is refused, the
+	// cookies are left alone
+	for _, tc := range []struct {
+		name, refreshToken string
+		setup              func()
+	}{
+		{"another subject", "refresh-1-sub", func() { op.idSub = "u2" }},
+		{"another audience", "refresh-1-aud", func() { op.idAud = "other-client" }},
+	} {
+		op.idSub, op.idAud = "", ""
+		tc.setup()
+		rec = do(router, http.MethodPost, target,
+			sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: tc.refreshToken, IdToken: loginIdToken}))
+		assert.Equal(t, http.StatusBadGateway, rec.Code, tc.name)
+		assert.Empty(t, rec.Header().Values("Set-Cookie"), tc.name)
+	}
+	op.idSub, op.idAud = "", ""
 
 	// a provider that does not rotate: the refresh token stays, the session
 	// length falls back to the default

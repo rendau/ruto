@@ -194,6 +194,14 @@ func (u *unit) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if tokens.IdToken != "" {
+		if err = u.verifyRenewedIdToken(tokens.IdToken, session.IdToken); err != nil {
+			u.logWarn("renewed id token from the provider is not acceptable", err, r)
+			http.Error(w, "login provider returned an id token this gateway cannot verify", http.StatusBadGateway)
+			return
+		}
+	}
+
 	// A provider that does not rotate refresh tokens leaves them out of the
 	// answer, and the id token is optional on a refresh: keep what we had. The
 	// answer may be shared with other refreshes of the token, so fill a copy.
@@ -275,17 +283,9 @@ func (u *unit) verifyIdToken(token, nonce string) error {
 		return errors.New("no id_token in the token response")
 	}
 
-	claims := jwtv5.MapClaims{}
-	if _, err := jwtv5.ParseWithClaims(token, claims, u.providerKey,
-		jwtv5.WithIssuer(u.provider.Issuer),
-		jwtv5.WithAudience(u.client.Id),
-		jwtv5.WithExpirationRequired(),
-	); err != nil {
+	claims, err := u.parseIdToken(token)
+	if err != nil {
 		return err
-	}
-
-	if azp, ok := claims["azp"].(string); ok && azp != "" && azp != u.client.Id {
-		return fmt.Errorf("azp %q is not our client", azp)
 	}
 
 	got, _ := claims["nonce"].(string)
@@ -294,6 +294,53 @@ func (u *unit) verifyIdToken(token, nonce string) error {
 	}
 
 	return nil
+}
+
+// verifyRenewedIdToken validates an id token that came with a refresh
+// (OpenID Connect Core §12.2): the same checks as at login but for the
+// nonce, and the same subject as the id token of the session. previous was
+// verified at login; it is read as is, since a cookie its owner broke only
+// hurts its owner.
+func (u *unit) verifyRenewedIdToken(token, previous string) error {
+	claims, err := u.parseIdToken(token)
+	if err != nil {
+		return err
+	}
+
+	if previous == "" {
+		return nil
+	}
+	prev, _, err := jwtv5.NewParser().ParseUnverified(previous, jwtv5.MapClaims{})
+	if err != nil {
+		return nil
+	}
+	prevSub, _ := prev.Claims.(jwtv5.MapClaims)["sub"].(string)
+	sub, _ := claims["sub"].(string)
+	if sub != prevSub {
+		return fmt.Errorf("sub %q differs from the session's %q", sub, prevSub)
+	}
+
+	return nil
+}
+
+// parseIdToken checks the signature by a key of this provider, iss, aud and
+// azp against our client, and exp; the claims are returned for the checks
+// that depend on the flow.
+func (u *unit) parseIdToken(token string) (jwtv5.MapClaims, error) {
+	claims := jwtv5.MapClaims{}
+	if _, err := jwtv5.ParseWithClaims(token, claims, u.providerKey,
+		jwtv5.WithIssuer(u.provider.Issuer),
+		jwtv5.WithAudience(u.client.Id),
+		jwtv5.WithExpirationRequired(),
+	); err != nil {
+		return nil, err
+	}
+
+	if azp, ok := claims["azp"].(string); ok && azp != "" && azp != u.client.Id {
+		return nil, fmt.Errorf("azp %q is not our client", azp)
+	}
+
+	return claims, nil
 }
 
 // verifyAccessToken makes sure the provider handed us a token the jwt auth
