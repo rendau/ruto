@@ -6,13 +6,15 @@
   },
   "tags": [
     {
-      "name": "ApiKey"
+      "name": "ApiKey",
+      "description": "ApiKey manages the caller's keys for the built-in MCP server. Admins only,\nfrom an admin login."
     },
     {
       "name": "App"
     },
     {
-      "name": "ChangeRequest"
+      "name": "ChangeRequest",
+      "description": "ChangeRequest: configuration changes proposed by an agent over MCP. An admin\nreviews each request and applies or rejects it."
     },
     {
       "name": "Endpoint"
@@ -24,13 +26,15 @@
       "name": "Monitoring"
     },
     {
-      "name": "OAuth"
+      "name": "OAuth",
+      "description": "OAuth backs the consent page of the built-in MCP server's OAuth flow and\nthe list of connected clients. Admins only, from an admin login."
     },
     {
       "name": "Root"
     },
     {
-      "name": "SeenPath"
+      "name": "SeenPath",
+      "description": "SeenPath reports which concrete paths were served by wildcard endpoints."
     },
     {
       "name": "Snapshot"
@@ -1959,7 +1963,7 @@
           "type": "string"
         }
       },
-      "additionalProperties": {}
+      "additionalProperties": true
     },
     "protobufNullValue": {
       "type": "string",
@@ -2426,68 +2430,6 @@
         }
       }
     },
-    "ruto_v1GatewayNotification": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "type of notification, e.g. \"check_version\"."
-        }
-      }
-    },
-    "ruto_v1GatewaySeenPath": {
-      "type": "object",
-      "properties": {
-        "app_id": {
-          "type": "string"
-        },
-        "endpoint_id": {
-          "type": "string"
-        },
-        "method": {
-          "type": "string"
-        },
-        "path": {
-          "type": "string"
-        },
-        "hits": {
-          "type": "string",
-          "format": "int64"
-        },
-        "hits_not_found": {
-          "type": "string",
-          "format": "int64"
-        },
-        "last_seen_at_unix": {
-          "type": "string",
-          "format": "int64"
-        },
-        "sample": {
-          "type": "string"
-        }
-      }
-    },
-    "ruto_v1GatewaySettings": {
-      "type": "object",
-      "properties": {
-        "redis_addr": {
-          "type": "string",
-          "description": "Redis the gateways share login session refreshes through; empty addr —\nnone, each gateway refreshes on its own."
-        },
-        "redis_password": {
-          "type": "string"
-        },
-        "redis_db": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "cookie_key": {
-          "type": "string",
-          "format": "byte",
-          "description": "Key the gateways seal the refresh cookie of a login session with (AES-256,\n32 bytes), the same on every pod. Empty: no refresh cookie is issued."
-        }
-      }
-    },
     "ruto_v1GatewayStateItem": {
       "type": "object",
       "properties": {
@@ -2895,18 +2837,6 @@
         },
         "sample": {
           "type": "string"
-        }
-      }
-    },
-    "ruto_v1SnapshotResponse": {
-      "type": "object",
-      "properties": {
-        "data": {
-          "type": "object"
-        },
-        "gateway": {
-          "$ref": "#/definitions/ruto_v1GatewaySettings",
-          "description": "Runtime settings of the gateways, from core's environment: not part of\nthe published config and not stored."
         }
       }
     },

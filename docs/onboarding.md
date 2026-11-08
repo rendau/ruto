@@ -54,6 +54,21 @@ make build-prod     # всё вместе
 go test ./...       # все тесты
 ```
 
+### Генерация proto
+
+```bash
+make generate-proto   # ставит тулчейн в bin/ и перегенерирует pkg/proto + docs/api.swagger.json
+```
+
+Инструменты генерации (`protoc` и плагины `protoc-gen-go`, `protoc-gen-go-grpc`,
+`protoc-gen-grpc-gateway`, `protoc-gen-openapiv2`) **руками не ставятся**: `make proto-tools`
+кладёт их в `bin/` проекта (каталог в `.gitignore`), а `generate-proto` вызывает его сам.
+Версии закреплены: `protoc` — `PROTOC_VERSION` в `Makefile`, `protoc-gen-go-grpc` —
+`PROTOC_GEN_GO_GRPC_VERSION` там же, `protoc-gen-go` и grpc-gateway — версий библиотек из
+`go.mod`, поэтому сгенерированный код совпадает с тем, с чем собирается сервис, и одинаков у всех.
+Глобальные `protoc`/плагины из `PATH` не используются. Поднимать версии — правкой `Makefile`/`go.mod`
+с перегенерацией. Посмотреть установленные версии: `make proto-tools-version`.
+
 ## Рецепт: добавить новый gRPC/REST метод в core
 
 1. Опиши rpc и сообщения в `api/proto/ruto_v1/<service>.proto` (HTTP-биндинг через `option (google.api.http)`).
