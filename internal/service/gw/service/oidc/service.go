@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/rendau/ruto/internal/infra/httpx"
@@ -25,7 +26,7 @@ const (
 	MetadataTTL = time.Hour
 	// RefreshGrace is how long the answer to a refresh is given again for the
 	// same refresh token without asking the provider.
-	RefreshGrace     = 10 * time.Second
+	RefreshGrace     = 15 * time.Second
 	discoveryPath    = "/.well-known/openid-configuration"
 	requestTimeout   = 10 * time.Second
 	maxResponseBytes = 1 << 20
@@ -44,6 +45,8 @@ type Service struct {
 	refreshes  singleflight.Group
 	recentMu   sync.Mutex
 	recent     map[string]recentRefresh // by refresh key, see Refresh
+	redisMu    sync.RWMutex
+	redis      *redis.Client // shared refreshes, see SetRedis; nil — none
 }
 
 type entry struct {

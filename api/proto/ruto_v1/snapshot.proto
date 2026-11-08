@@ -23,8 +23,22 @@ service Snapshot {
 
 message SnapshotResponse {
   google.protobuf.Struct data = 1;
+  // Runtime settings of the gateways, from core's environment: not part of
+  // the published config and not stored.
+  GatewaySettings gateway = 2;
 }
 
 message SnapshotVersion {
   string version = 1;
+  // Changes when the gateway settings change; a keyed hash, so it tells
+  // nothing about them. Empty when there are none.
+  string settings_version = 2;
+}
+
+message GatewaySettings {
+  // Redis the gateways share login session refreshes through; empty addr —
+  // none, each gateway refreshes on its own.
+  string redis_addr = 1;
+  string redis_password = 2;
+  int32 redis_db = 3;
 }

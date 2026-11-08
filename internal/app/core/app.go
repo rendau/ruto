@@ -34,6 +34,7 @@ import (
 	domainSeenPathServiceP "github.com/rendau/ruto/internal/domain/seenpath/service"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	domainSessionServiceP "github.com/rendau/ruto/internal/domain/session/service"
+	domainSnapshotModelP "github.com/rendau/ruto/internal/domain/snapshot/model"
 	domainSnapshotRepoDbP "github.com/rendau/ruto/internal/domain/snapshot/repo/db"
 	domainSnapshotServiceP "github.com/rendau/ruto/internal/domain/snapshot/service"
 	domainUsrRepoDbP "github.com/rendau/ruto/internal/domain/usr/repo/db"
@@ -178,7 +179,7 @@ func (a *App) Init() error {
 	// snapshot
 	domainSnapshotRepoDb := domainSnapshotRepoDbP.New(a.pgpool)
 	domainSnapshotService := domainSnapshotServiceP.New(domainSnapshotRepoDb)
-	usecaseSnapshot := usecaseSnapshotP.New(domainSnapshotService, domainRootService, domainAppService, domainEndpointService, gatewaysService, sessionService)
+	usecaseSnapshot := usecaseSnapshotP.New(domainSnapshotService, domainRootService, domainAppService, domainEndpointService, gatewaysService, sessionService, gatewaySettings(), configCore.Conf.AdminJWTSecret)
 	handlerGrpcSnapshot := handlerGrpcP.NewSnapshot(usecaseSnapshot)
 
 	// stats
@@ -488,4 +489,14 @@ func (a *App) Exit() {
 	if a.exitCode != 0 {
 		slog.Error("core finished with errors", "exit_code", a.exitCode)
 	}
+}
+
+// gatewaySettings are the runtime settings handed to the gateways: their own
+// Redis when one is configured, core's Redis otherwise.
+func gatewaySettings() domainSnapshotModelP.GatewaySettings {
+	conf := &configCore.Conf
+	if conf.GwRedisAddr != "" {
+		return domainSnapshotModelP.GatewaySettings{RedisAddr: conf.GwRedisAddr, RedisPassword: conf.GwRedisPassword, RedisDB: conf.GwRedisDB}
+	}
+	return domainSnapshotModelP.GatewaySettings{RedisAddr: conf.RedisAddr, RedisPassword: conf.RedisPassword, RedisDB: conf.RedisDB}
 }

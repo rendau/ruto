@@ -16,6 +16,7 @@ import (
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
+	"github.com/rendau/ruto/internal/service/gw/service/oidc"
 )
 
 type Service struct {
@@ -51,7 +52,7 @@ func New(
 	}
 	service.ready.Store(false)
 
-	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig)
+	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig, oidc.Ins().SetRedis)
 	if err != nil {
 		return nil, fmt.Errorf("config_client.New: %w", err)
 	}

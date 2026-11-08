@@ -120,7 +120,7 @@ func TestUsecase_Deploy(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			snapshotSvc := newStoredSnapshot(t)
 			notifier := &testGatewaysNotifier{}
-			uc := New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, &testSessionService{session: tt.session})
+			uc := New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, &testSessionService{session: tt.session}, snapshotModel.GatewaySettings{}, "")
 
 			err := uc.Deploy(context.Background())
 			if tt.wantErr != nil {
@@ -142,14 +142,14 @@ func TestUsecase_EnsureKeepsPublishedVersion(t *testing.T) {
 	notifier := &testGatewaysNotifier{}
 	session := &testSessionService{session: &sessionModel.Session{Id: 1, Admin: true}}
 
-	uc := New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, session)
+	uc := New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, session, snapshotModel.GatewaySettings{}, "")
 	require.Zero(t, snapshotSvc.setCalls)
 
 	require.NoError(t, uc.Deploy(context.Background()))
 	published := snapshotSvc.stored.Hash
 
 	// a core restart reads the snapshot it published itself
-	New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, session)
+	New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, session, snapshotModel.GatewaySettings{}, "")
 	require.Equal(t, 1, snapshotSvc.setCalls)
 	require.Equal(t, published, snapshotSvc.stored.Hash)
 }
@@ -159,7 +159,7 @@ func TestUsecase_EnsureRecomputesEditedSnapshot(t *testing.T) {
 	notifier := &testGatewaysNotifier{}
 	session := &testSessionService{session: &sessionModel.Session{Id: 1, Admin: true}}
 
-	uc := New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, session)
+	uc := New(snapshotSvc, &testRootService{}, &testAppService{}, &testEndpointService{}, notifier, session, snapshotModel.GatewaySettings{}, "")
 	require.NoError(t, uc.Deploy(context.Background()))
 	published := snapshotSvc.stored.Hash
 
@@ -175,7 +175,7 @@ func TestUsecase_EnsureRecomputesEditedSnapshot(t *testing.T) {
 	snapshotSvc.stored.Data = edited
 
 	migrated := &testEndpointService{trackPaths: true}
-	uc = New(snapshotSvc, &testRootService{}, &testAppService{}, migrated, notifier, session)
+	uc = New(snapshotSvc, &testRootService{}, &testAppService{}, migrated, notifier, session, snapshotModel.GatewaySettings{}, "")
 
 	require.Equal(t, 2, snapshotSvc.setCalls)
 	require.NotEqual(t, published, snapshotSvc.stored.Hash, "gateways must see a new version")

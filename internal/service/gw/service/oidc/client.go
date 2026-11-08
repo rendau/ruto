@@ -35,7 +35,7 @@ func (s *Service) Exchange(
 // Refreshes of one token in this process share one call to the provider:
 // those that come while it is in flight (several tabs got a 401 at once) and,
 // for RefreshGrace after it, those the browser sent before it got the new
-// cookies. A provider that rotates refresh tokens would refuse all of them but
+// cookies. With Redis set (SetRedis) the call is shared by all gateway pods. A provider that rotates refresh tokens would refuse all of them but
 // the first. The call outlives a caller that gives up, so the others still
 // get the answer. The shared answer must not be modified.
 func (s *Service) Refresh(
@@ -49,11 +49,21 @@ func (s *Service) Refresh(
 		return rep, nil
 	}
 	rep, err, _ := s.refreshes.Do(key, func() (any, error) {
-		form := url.Values{
-			"grant_type":    {"refresh_token"},
-			"refresh_token": {refreshToken},
+		call := func() (*TokenResponse, error) {
+			form := url.Values{
+				"grant_type":    {"refresh_token"},
+				"refresh_token": {refreshToken},
+			}
+			return s.token(context.WithoutCancel(ctx), tokenEndpoint, client, form)
 		}
-		rep, err := s.token(context.WithoutCancel(ctx), tokenEndpoint, client, form)
+
+		var rep *TokenResponse
+		var err error
+		if shared := s.redisClient(); shared != nil {
+			rep, err = s.sharedRefresh(shared, key, call)
+		} else {
+			rep, err = call()
+		}
 		if err == nil {
 			s.rememberRefresh(key, rep)
 		}
