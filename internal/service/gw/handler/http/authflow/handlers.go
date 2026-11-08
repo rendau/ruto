@@ -49,6 +49,11 @@ func (u *unit) login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "redirect is not allowed: not this gateway and not a CORS origin", http.StatusBadRequest)
 		return
 	}
+	prompt, ok := parsePrompt(r.URL.Query().Get("prompt"))
+	if !ok {
+		http.Error(w, "prompt is not valid: none, login, consent or select_account, space separated, none alone", http.StatusBadRequest)
+		return
+	}
 
 	meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
 	if err != nil {
@@ -80,21 +85,51 @@ func (u *unit) login(w http.ResponseWriter, r *http.Request) {
 	query.Set("nonce", st.nonce)
 	query.Set("code_challenge", pkceChallenge(st.verifier))
 	query.Set("code_challenge_method", "S256")
+	if prompt != "" {
+		query.Set("prompt", prompt)
+	}
 	authUrl.RawQuery = query.Encode()
 
 	http.Redirect(w, r, authUrl.String(), http.StatusFound)
 }
 
+// promptValues are the values OpenID Connect Core §3.1.2.1 defines for the
+// prompt parameter. A front passes prompt through login as it is: "login"
+// asks the provider for the credentials again even with a live SSO session
+// (another person wants to log in after an access denial), "select_account"
+// for an account picker, "consent" for the consent screen, "none" for no
+// interaction at all.
+var promptValues = map[string]bool{"none": true, "login": true, "consent": true, "select_account": true}
+
+// parsePrompt validates a prompt query value: standard values separated by
+// spaces, "none" only alone. Empty means no prompt.
+func parsePrompt(raw string) (string, bool) {
+	values := strings.Fields(raw)
+	for _, value := range values {
+		if !promptValues[value] || (value == "none" && len(values) > 1) {
+			return "", false
+		}
+	}
+	return strings.Join(values, " "), true
+}
+
 // callback finishes the flow: checks the state against the login cookie,
 // exchanges the code, verifies the access token and sets the session cookies.
+// A failure goes back to the front with an error code (see loginFailed).
 func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	loginCookieName := u.loginCookieName()
 
 	if code := query.Get("error"); code != "" {
+		redirect := ""
+		if cookie, err := r.Cookie(loginCookieName); err == nil {
+			if st, ok := decodeLoginState(cookie.Value); ok {
+				redirect, _ = u.returnUrl(st.redirect)
+			}
+		}
 		u.clearCookie(w, loginCookieName, "/")
 		u.logWarn("provider returned an error", fmt.Errorf("%s: %s", code, query.Get("error_description")), r)
-		http.Error(w, "login failed: "+code, http.StatusUnauthorized)
+		u.loginFailed(w, r, redirect, errorCode(code), http.StatusUnauthorized, "login failed: "+code)
 		return
 	}
 
@@ -111,7 +146,7 @@ func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
 	}
 	st, ok := decodeLoginState(cookie.Value)
 	u.clearCookie(w, loginCookieName, "/")
-	if !ok || subtle.ConstantTimeCompare([]byte(st.state), []byte(state)) != 1 {
+	if !ok {
 		http.Error(w, "state does not match the login in progress", http.StatusBadRequest)
 		return
 	}
@@ -121,11 +156,15 @@ func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "redirect is not allowed", http.StatusBadRequest)
 		return
 	}
+	if subtle.ConstantTimeCompare([]byte(st.state), []byte(state)) != 1 {
+		u.loginFailed(w, r, redirect, "state_mismatch", http.StatusBadRequest, "state does not match the login in progress")
+		return
+	}
 
 	meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
 	if err != nil {
 		u.logWarn("provider discovery failed", err, r)
-		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
+		u.loginFailed(w, r, redirect, "temporarily_unavailable", http.StatusBadGateway, "login provider is unavailable")
 		return
 	}
 
@@ -133,26 +172,66 @@ func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		u.logWarn("code exchange failed", err, r)
 		if refusal, ok := errors.AsType[*oidc.Error](err); ok {
-			http.Error(w, "login failed: "+refusal.Code, http.StatusUnauthorized)
+			u.loginFailed(w, r, redirect, errorCode(refusal.Code), http.StatusUnauthorized, "login failed: "+refusal.Code)
 			return
 		}
-		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
+		u.loginFailed(w, r, redirect, "temporarily_unavailable", http.StatusBadGateway, "login provider is unavailable")
 		return
 	}
 
 	if err = u.verifyIdToken(tokens.IdToken, st.nonce); err != nil {
 		u.logWarn("id token from the provider is not acceptable", err, r)
-		http.Error(w, "login provider returned an id token this gateway cannot verify", http.StatusBadGateway)
+		u.loginFailed(w, r, redirect, "invalid_token", http.StatusBadGateway, "login provider returned an id token this gateway cannot verify")
 		return
 	}
 	if err = u.verifyAccessToken(tokens.AccessToken); err != nil {
 		u.logWarn("access token from the provider is not acceptable", err, r)
-		http.Error(w, "login provider returned a token this gateway cannot verify", http.StatusBadGateway)
+		u.loginFailed(w, r, redirect, "invalid_token", http.StatusBadGateway, "login provider returned a token this gateway cannot verify")
 		return
 	}
 
 	u.setSession(w, tokens)
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
+}
+
+// loginFailed ends a login that did not happen. When the return address of
+// the login is known (the login cookie was there and valid), the browser goes
+// back to it with `auth_error=<code>` in the query, so the front can tell the
+// person what happened and offer to try again instead of leaving them on a
+// bare gateway page; the standard covers only how the provider reports an
+// error to the gateway, this leg is ours, with the standard's codes where
+// they exist (access_denied, invalid_grant, temporarily_unavailable, …) and
+// state_mismatch / invalid_token for the gateway's own checks. Without a
+// return address the text answer stays: there is nowhere to go.
+func (u *unit) loginFailed(w http.ResponseWriter, r *http.Request, redirect, code string, status int, text string) {
+	if redirect == "" {
+		http.Error(w, text, status)
+		return
+	}
+	target, err := url.Parse(redirect)
+	if err != nil {
+		http.Error(w, text, status)
+		return
+	}
+	query := target.Query()
+	query.Set("auth_error", code)
+	target.RawQuery = query.Encode()
+	http.Redirect(w, r, target.String(), http.StatusSeeOther)
+}
+
+// errorCode keeps a provider's error code as it is when it looks like one
+// (a token such as access_denied or login_required) and hides anything else
+// behind server_error: the value ends up in a front's address bar.
+func errorCode(raw string) string {
+	if raw == "" || len(raw) > 64 {
+		return "server_error"
+	}
+	for _, c := range raw {
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '-' || c == '.') {
+			return "server_error"
+		}
+	}
+	return raw
 }
 
 // refresh renews the session with the refresh token from the refresh cookie

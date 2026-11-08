@@ -4,7 +4,7 @@
 pre{background:#f4f4f4;padding:8px;white-space:pre-wrap;word-break:break-all}#user{font-weight:600}#log{max-height:320px;overflow:auto}</style></head>
 <body>
 <h2>Orders front (own client)</h2>
-<p>Me: <code>/orders/_auth/corp/me</code> · Unit: <code>/_auth/corp/orders</code> · API: <code>/orders/hello</code></p>
+<p>Me: <code>/orders/_auth/corp/me</code> · Unit: <code>/_auth/corp/orders</code> · API: <code>/orders/hello</code> · SDK: <code>@rendau/ruto-auth</code> (browser bundle)</p>
 <p>Status: <span id="user">…</span></p>
 <p>
 <button id="login">Login</button>
@@ -15,66 +15,52 @@ pre{background:#f4f4f4;padding:8px;white-space:pre-wrap;word-break:break-all}#us
 </p>
 <pre id="claims"></pre>
 <pre id="log"></pre>
+<!-- symlink to sdk/js/dist/ruto-auth.iife.js: run `make build-sdk` first -->
+<script src="/ruto-auth.iife.js"></script>
 <script>
 const GW = 'http://localhost:8088';
-const UNIT = GW + '/_auth/corp/orders';
-const ME = GW + '/orders/_auth/corp/me';
 const API = GW + '/orders/hello';
 const log = (...a) => { const el = document.getElementById('log'); el.textContent = new Date().toISOString().slice(11,19) + ' ' + a.join(' ') + '\n' + el.textContent; };
-const login = () => { location.href = UNIT + '/login?redirect=' + encodeURIComponent(location.href); };
-const logout = () => { location.href = UNIT + '/logout?redirect=' + encodeURIComponent(location.origin + '/'); };
 
-let refreshing = null;
-const refresh = () => {
-  // one refresh per tab, one per browser across tabs
-  if (!refreshing) {
-    refreshing = navigator.locks.request('ruto-refresh', () => fetch(UNIT + '/refresh', { method: 'POST', credentials: 'include' }).then(r => r.status))
-      .finally(() => { refreshing = null; });
-  }
-  return refreshing;
-};
-
-// fetch with a cookie session: on 401 refresh once and repeat
-async function authFetch(url, init = {}) {
-  init.credentials = 'include';
-  let r = await fetch(url, init);
-  if (r.status !== 401) return r;
-  const st = await refresh();
-  log('refresh ->', st);
-  if (st === 204) return fetch(url, init);
-  return r;
-}
+// The app's own client: `app` is its path prefix, the SDK derives the unit and me routes.
+const auth = RutoAuth.createRutoAuth({
+  gateway: GW,
+  provider: 'corp',
+  app: '/orders',
+  onLoginRequired: () => { log('login required'); window.__loginRequired = (window.__loginRequired || 0) + 1; },
+});
 
 async function me() {
-  const r = await authFetch(ME);
-  log('me ->', r.status);
-  if (r.status === 200) {
-    const c = await r.json();
-    window.__me = c;
-    document.getElementById('user').textContent = 'logged in as ' + (c.preferred_username || c.sub) + ' (exp ' + new Date(c.exp * 1000).toLocaleTimeString() + ')';
-    document.getElementById('claims').textContent = JSON.stringify(c, null, 2);
-  } else {
-    window.__me = null;
-    document.getElementById('user').textContent = 'not logged in (' + r.status + ')';
-    document.getElementById('claims').textContent = await r.text();
+  let claims;
+  try { claims = await auth.me(); } catch (e) { log('me failed:', e.message); return 0; }
+  window.__me = claims;
+  if (claims) {
+    log('me -> 200');
+    document.getElementById('user').textContent = 'logged in as ' + RutoAuth.usernameOf(claims) + ' (exp ' + new Date(claims.exp * 1000).toLocaleTimeString() + ', manager: ' + RutoAuth.hasRole(claims, 'shop:manager') + ')';
+    document.getElementById('claims').textContent = JSON.stringify(claims, null, 2);
+    return 200;
   }
-  return r.status;
+  log('me -> 401');
+  document.getElementById('user').textContent = 'not logged in';
+  document.getElementById('claims').textContent = '';
+  return 401;
 }
 
 async function call() {
-  const r = await authFetch(API);
+  const r = await auth.fetch(API);
   const t = await r.text();
   log('api ->', r.status, t);
   window.__api = { status: r.status, body: t };
   return r.status;
 }
 
-document.getElementById('login').onclick = login;
-document.getElementById('logout').onclick = logout;
+const refresh = async () => { const st = await auth.refresh(); log('refresh ->', st); return st; };
+document.getElementById('login').onclick = () => auth.login();
+document.getElementById('logout').onclick = () => auth.logout(location.origin + '/');
 document.getElementById('me').onclick = me;
 document.getElementById('call').onclick = call;
-document.getElementById('refresh').onclick = async () => log('refresh ->', await refresh());
-window.__ruto = { me, call, refresh, login, logout };
+document.getElementById('refresh').onclick = refresh;
+window.__ruto = { me, call, refresh, login: () => auth.login(), logout: () => auth.logout(location.origin + '/'), auth };
 me();
 </script>
 </body></html>

@@ -1,0 +1,4 @@
+# Not a multi-package workspace — pnpm 10+ reads project settings from here.
+# Approves the build script of esbuild so installs run it without prompting.
+allowBuilds:
+  esbuild: true

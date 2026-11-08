@@ -82,6 +82,7 @@ config/               *.env.example шаблоны
 docker/               Dockerfile'ы для core и gateway
 docs/                 эта документация
 apps/admin/           Vue 3 SPA
+sdk/js/               @rendau/ruto-auth — браузерный SDK входа через шлюз (куки, refresh после 401, me)
 ```
 
 ## Технологический стек

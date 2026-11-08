@@ -13,10 +13,11 @@ func TestSealedCookie(t *testing.T) {
 	SetCookieKey(snapshotModel.CookieKeyFrom("k1"))
 	t.Cleanup(func() { SetCookieKey(nil) })
 
-	session := sessionCookie{RefreshToken: "rt", IdToken: "idt"}
+	// Long enough not to show up by chance in the base64 of the ciphertext.
+	session := sessionCookie{RefreshToken: "refresh-token-value", IdToken: "id-token-value"}
 	value, ok := session.encode("ruto-rt_corp")
 	require.True(t, ok)
-	assert.NotContains(t, value, "rt", "nothing readable in the cookie")
+	assert.NotContains(t, value, "token-value", "nothing readable in the cookie")
 
 	assert.Equal(t, session, decodeSessionCookie("ruto-rt_corp", value))
 

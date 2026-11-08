@@ -1,0 +1,48 @@
+{
+  "name": "@rendau/ruto-auth",
+  "version": "0.1.0",
+  "description": "Browser SDK for the ruto gateway login: cookie session, refresh on 401, who is logged in",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "packageManager": "pnpm@11.1.3",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./axios": {
+      "types": "./dist/axios.d.ts",
+      "default": "./dist/axios.js"
+    },
+    "./ofetch": {
+      "types": "./dist/ofetch.d.ts",
+      "default": "./dist/ofetch.js"
+    },
+    "./ky": {
+      "types": "./dist/ky.d.ts",
+      "default": "./dist/ky.js"
+    },
+    "./browser": "./dist/ruto-auth.iife.js"
+  },
+  "scripts": {
+    "prepare": "pnpm run build",
+    "build":"rm -rf dist && tsc -p tsconfig.build.json && esbuild src/browser.ts --bundle --format=iife --global-name=RutoAuth --target=es2020 --outfile=dist/ruto-auth.iife.js",
+    "test": "vitest run",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "axios": "^1.21.0",
+    "esbuild": "^0.28.2",
+    "ky": "^2.2.0",
+    "ofetch": "^1.5.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

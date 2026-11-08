@@ -252,19 +252,21 @@ func TestSharedLoginFlow(t *testing.T) {
 	assert.Equal(t, http.SameSiteLaxMode, loginCookie.SameSite)
 	assert.Equal(t, loginCookieMaxAge, loginCookie.MaxAge)
 
-	// callback with a wrong state is refused before any call to the provider
+	// callback with a wrong state is refused before any call to the provider;
+	// the front learns about it from the address it is sent back to
 	rec = do(router, http.MethodGet, "/_auth/corp/callback?state=wrong&code=good-code", loginCookie)
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "https://app.example.test/home?auth_error=state_mismatch", rec.Header().Get("Location"))
 	assert.Equal(t, 0, op.tokenCalls)
 
-	// callback without the login cookie
+	// callback without the login cookie: nowhere to go back to
 	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code")
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 
 	// the provider refused
 	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=bad", loginCookie)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.Contains(t, rec.Body.String(), "invalid_grant")
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "https://app.example.test/home?auth_error=invalid_grant", rec.Header().Get("Location"))
 
 	// the real thing
 	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
@@ -427,6 +429,86 @@ func TestReturnUrlIsChecked(t *testing.T) {
 	}
 }
 
+func TestLoginPrompt(t *testing.T) {
+	op := newFakeOP(t)
+	snapshot := rootModel.NewEmpty()
+	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
+	router := buildRouter(t, snapshot)
+
+	providerPrompt := func(t *testing.T, rec *httptest.ResponseRecorder) string {
+		require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
+		authUrl, err := url.Parse(rec.Header().Get("Location"))
+		require.NoError(t, err)
+		return authUrl.Query().Get("prompt")
+	}
+
+	// no prompt: the parameter is not sent at all
+	rec := do(router, http.MethodGet, "/_auth/corp/login?redirect=/home")
+	assert.Equal(t, "", providerPrompt(t, rec))
+	assert.NotContains(t, rec.Header().Get("Location"), "prompt=")
+
+	// standard values go to the provider as they are, several at once too
+	for _, prompt := range []string{"login", "select_account", "consent", "none", "login consent"} {
+		rec = do(router, http.MethodGet, "/_auth/corp/login?redirect=/home&prompt="+url.QueryEscape(prompt))
+		assert.Equal(t, prompt, providerPrompt(t, rec), prompt)
+	}
+
+	// anything outside the standard, and none with company, is refused before the provider is involved
+	for _, prompt := range []string{"password", "login,consent", "none login", "LOGIN"} {
+		rec = do(router, http.MethodGet, "/_auth/corp/login?redirect=/home&prompt="+url.QueryEscape(prompt))
+		assert.Equal(t, http.StatusBadRequest, rec.Code, prompt)
+	}
+}
+
+func TestLoginFailureGoesBackToTheFront(t *testing.T) {
+	op := newFakeOP(t)
+	snapshot := rootModel.NewEmpty()
+	snapshot.Cors.AllowOrigins = []string{"https://app.example.test"}
+	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
+	router := buildRouter(t, snapshot)
+
+	start := func(t *testing.T, redirect string) *http.Cookie {
+		rec := do(router, http.MethodGet, "/_auth/corp/login?redirect="+url.QueryEscape(redirect))
+		require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
+		return cookieByName(t, rec, "__Host-ruto-login_corp")
+	}
+
+	// the provider said no (the person cancelled, or has no access): back to
+	// the front with the provider's own code, the login cookie is dropped
+	loginCookie := start(t, "https://app.example.test/login?return_to=%2Fdesk")
+	rec := do(router, http.MethodGet, "/_auth/corp/callback?error=access_denied&error_description=User+cancelled&state=x", loginCookie)
+	assert.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	assert.Equal(t, "https://app.example.test/login?auth_error=access_denied&return_to=%2Fdesk", rec.Header().Get("Location"))
+	assert.Less(t, cookieByName(t, rec, "__Host-ruto-login_corp").MaxAge, 0, "login cookie dropped")
+	assert.Equal(t, 0, op.tokenCalls)
+
+	// a hash-router front keeps its fragment, the error goes into the query
+	loginCookie = start(t, "https://app.example.test/#/orders")
+	rec = do(router, http.MethodGet, "/_auth/corp/callback?error=login_required", loginCookie)
+	assert.Equal(t, http.StatusSeeOther, rec.Code)
+	assert.Equal(t, "https://app.example.test/?auth_error=login_required#/orders", rec.Header().Get("Location"))
+
+	// a code that does not look like one is not echoed into the address bar
+	loginCookie = start(t, "https://app.example.test/")
+	rec = do(router, http.MethodGet, "/_auth/corp/callback?error="+url.QueryEscape("<script>alert(1)</script>"), loginCookie)
+	assert.Equal(t, "https://app.example.test/?auth_error=server_error", rec.Header().Get("Location"))
+
+	// no login cookie: the gateway does not know where the person came from
+	rec = do(router, http.MethodGet, "/_auth/corp/callback?error=access_denied")
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Contains(t, rec.Body.String(), "access_denied")
+
+	// the provider is down during the code exchange
+	rec = do(router, http.MethodGet, "/_auth/corp/login?redirect=/ui")
+	q, err := url.ParseQuery(strings.SplitN(rec.Header().Get("Location"), "?", 2)[1])
+	require.NoError(t, err)
+	loginCookie = cookieByName(t, rec, "__Host-ruto-login_corp")
+	op.server.Close()
+	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
+	assert.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	assert.Equal(t, publicUrl+"/ui?auth_error=temporarily_unavailable", rec.Header().Get("Location"))
+}
+
 func TestAppOwnClientUnit(t *testing.T) {
 	op := newFakeOP(t)
 	snapshot := rootModel.NewEmpty()
@@ -506,7 +588,8 @@ func TestIdTokenIsChecked(t *testing.T) {
 			loginCookie := cookieByName(t, rec, "__Host-ruto-login_corp")
 
 			rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
-			assert.Equal(t, http.StatusBadGateway, rec.Code, rec.Body.String())
+			assert.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+			assert.Equal(t, publicUrl+"/?auth_error=invalid_token", rec.Header().Get("Location"))
 			assert.Equal(t, 1, op.tokenCalls)
 			for _, c := range rec.Result().Cookies() {
 				assert.NotEqual(t, "ruto_corp", c.Name, "no session on a bad id token")
