@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -63,8 +64,9 @@ func NewProxy(app *appModel.App, customPath string, transport http.RoundTripper)
 	}
 
 	proxy := &httputil.ReverseProxy{
-		Transport: transport,
-		Rewrite:   rewriteFunc,
+		Transport:  transport,
+		BufferPool: buffers,
+		Rewrite:    rewriteFunc,
 		ModifyResponse: func(resp *http.Response) error {
 			location := resp.Header.Get("Location")
 			if location == "" {
@@ -210,4 +212,35 @@ func classifyProxyError(err error) string {
 	}
 
 	return "backend request failed"
+}
+
+// copyBufferSize matches the buffer ReverseProxy allocates itself when it has
+// no pool.
+const copyBufferSize = 32 * 1024
+
+// buffers hands ReverseProxy the buffers it copies response bodies with, so a
+// request reuses one instead of allocating its own and leaving it to the GC.
+// Shared by every proxy: a buffer is held from Get to Put by one request only.
+var buffers = &bufferPool{
+	pool: sync.Pool{New: func() any {
+		return new(make([]byte, copyBufferSize))
+	}},
+}
+
+// bufferPool keeps pointers to the slices: putting a slice itself into
+// sync.Pool would allocate on every Put.
+type bufferPool struct {
+	pool sync.Pool
+}
+
+func (p *bufferPool) Get() []byte {
+	return *p.pool.Get().(*[]byte)
+}
+
+func (p *bufferPool) Put(b []byte) {
+	if cap(b) < copyBufferSize {
+		return
+	}
+	b = b[:copyBufferSize]
+	p.pool.Put(&b)
 }
