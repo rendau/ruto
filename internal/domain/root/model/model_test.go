@@ -38,11 +38,6 @@ func TestRootJwtNormalize(t *testing.T) {
 			wantErr: "issuer: empty, but login settings are set",
 		},
 		{
-			name:    "transparent refresh without an issuer",
-			item:    RootJwt{Name: "corp", JwkUrl: "http://jwts/jwk/set", TransparentRefresh: true},
-			wantErr: "issuer: empty, but login settings are set",
-		},
-		{
 			name:    "issuer requires a name",
 			item:    RootJwt{Issuer: "https://id.example.com/realms/corp"},
 			wantErr: "name: empty, required with issuer",

@@ -246,7 +246,7 @@ export function normalizeJwtClient(value?: JwtClient | null): JwtClient | undefi
 }
 
 export function emptyRootJwt(): RootJwt {
-  return { name: "", jwk_url: "", issuer: "", internal_url: "", public_url: "", transparent_refresh: false };
+  return { name: "", jwk_url: "", issuer: "", internal_url: "", public_url: "" };
 }
 
 export function normalizeRootJwt(value?: Partial<RootJwt> | null): RootJwt {
@@ -256,8 +256,7 @@ export function normalizeRootJwt(value?: Partial<RootJwt> | null): RootJwt {
     issuer: value?.issuer || "",
     internal_url: value?.internal_url || "",
     public_url: value?.public_url || "",
-    client: normalizeJwtClient(value?.client),
-    transparent_refresh: !!value?.transparent_refresh
+    client: normalizeJwtClient(value?.client)
   };
 }
 

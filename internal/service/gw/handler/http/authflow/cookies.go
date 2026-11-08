@@ -37,17 +37,6 @@ func (u *unit) refreshCookieName() string {
 	return constant.JwtRefreshCookiePrefix + u.unitSlug()
 }
 
-// refreshCookiePaths returns the path the refresh cookie is set on and the
-// one it is not. It is kept to the unit's own routes, so the refresh token
-// does not travel with every request; with transparent refresh the gateway
-// needs it on app requests, so it goes to "/".
-func (u *unit) refreshCookiePaths() (path, otherPath string) {
-	if u.provider.TransparentRefresh {
-		return "/", u.basePath
-	}
-	return u.basePath, "/"
-}
-
 // loginCookieName is the cookie of a login in progress (state, PKCE verifier,
 // return address). With https it gets the __Host- prefix, which requires
 // Path=/ and Secure.

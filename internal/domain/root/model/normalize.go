@@ -102,7 +102,7 @@ func (m *RootJwt) Normalize() error {
 		if m.JwkUrl == "" {
 			return fmt.Errorf("jwk_url: empty")
 		}
-		if m.Client != nil || m.InternalUrl != "" || m.PublicUrl != "" || m.TransparentRefresh {
+		if m.Client != nil || m.InternalUrl != "" || m.PublicUrl != "" {
 			return fmt.Errorf("issuer: empty, but login settings are set")
 		}
 		return nil

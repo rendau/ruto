@@ -211,6 +211,13 @@ func TestBrowserCache(t *testing.T) {
 			want: "public, max-age=60",
 		},
 		{
+			name:       "public turns private on a response that sets cookies",
+			browser:    endpointModel.CacheBrowser{Enabled: true, Scope: constant.CacheScopePublic, MaxAge: 60},
+			respHeader: http.Header{"Set-Cookie": {"s=1"}},
+			path:       "/app/x", method: http.MethodGet,
+			want: "private, max-age=60",
+		},
+		{
 			name:    "no-store",
 			browser: endpointModel.CacheBrowser{Enabled: true, Scope: constant.CacheScopeNoStore, MaxAge: 60},
 			path:    "/app/x", method: http.MethodGet,

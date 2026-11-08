@@ -63,10 +63,6 @@ type RootJwt struct {
 	// empty means Root.BaseUrl.
 	PublicUrl string               `json:"public_url"`
 	Client    *authModel.JwtClient `json:"client,omitempty"`
-	// TransparentRefresh lets the gateway renew an expired session inside an
-	// app request instead of answering 401. The refresh cookie then travels
-	// with every request (Path=/), the gateway keeps it from the backends.
-	TransparentRefresh bool `json:"transparent_refresh"`
 }
 
 // LoginEnabled reports whether the gateway can log users in through this

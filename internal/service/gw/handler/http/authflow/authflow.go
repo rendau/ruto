@@ -41,45 +41,8 @@ type unit struct {
 	origins      *rootModel.OriginMatcher
 }
 
-// Sessions holds the login units whose provider refreshes transparently, by
-// the name of their access cookie: the auth middleware renews an expired
-// session through it inside an app request.
-type Sessions struct {
-	units map[string]*unit
-}
-
-// RefreshCookie names the refresh cookie behind accessCookie when the session
-// may be renewed inside a request; "" otherwise.
-func (s *Sessions) RefreshCookie(accessCookie string) string {
-	if u, ok := s.units[accessCookie]; ok {
-		return u.refreshCookieName()
-	}
-	return ""
-}
-
-// Renew renews the session behind accessCookie with the value of its refresh
-// cookie, sets the new cookies on w and returns the new access token. A session
-// that cannot be renewed gives false and leaves w alone: the request is then
-// answered as without the renewal.
-func (s *Sessions) Renew(w http.ResponseWriter, r *http.Request, accessCookie, refreshCookie string) (string, bool) {
-	u, ok := s.units[accessCookie]
-	if !ok {
-		return "", false
-	}
-	tokens, err := u.renew(r.Context(), decodeSessionCookie(refreshCookie))
-	if err != nil {
-		u.logRenewFailure(err, r)
-		return "", false
-	}
-	u.setSession(w, tokens)
-	return tokens.AccessToken, true
-}
-
-// Register adds the routes of every login unit of the snapshot to router and
-// returns the units that renew sessions inside requests.
-func Register(router chi.Router, snapshot *rootModel.Root) *Sessions {
-	sessions := &Sessions{units: map[string]*unit{}}
-
+// Register adds the routes of every login unit of the snapshot to router.
+func Register(router chi.Router, snapshot *rootModel.Root) {
 	providers := make(map[string]*rootModel.RootJwt, len(snapshot.Jwt))
 	for i := range snapshot.Jwt {
 		p := &snapshot.Jwt[i]
@@ -88,22 +51,16 @@ func Register(router chi.Router, snapshot *rootModel.Root) *Sessions {
 		}
 	}
 	if len(providers) == 0 {
-		return sessions
+		return
 	}
 
 	origins := rootModel.NewOriginMatcher(snapshot.Cors.AllowOrigins)
-	add := func(u *unit) {
-		u.register(router)
-		if u.provider.TransparentRefresh {
-			sessions.units[u.cookieName] = u
-		}
-	}
 
 	for _, p := range providers {
 		if p.Client == nil {
 			continue
 		}
-		add(newUnit(snapshot, p, p.Client, nil, origins))
+		newUnit(snapshot, p, p.Client, nil, origins).register(router)
 	}
 
 	for _, app := range snapshot.ActiveApps() {
@@ -114,11 +71,9 @@ func Register(router chi.Router, snapshot *rootModel.Root) *Sessions {
 					"app", app.Name, "provider", app.Jwt[i].Provider)
 				continue
 			}
-			add(newUnit(snapshot, p, &app.Jwt[i].Client, app, origins))
+			newUnit(snapshot, p, &app.Jwt[i].Client, app, origins).register(router)
 		}
 	}
-
-	return sessions
 }
 
 func newUnit(

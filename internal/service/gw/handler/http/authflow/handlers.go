@@ -1,7 +1,6 @@
 package authflow
 
 import (
-	"context"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
@@ -154,57 +153,43 @@ func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
 func (u *unit) refresh(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 
-	tokens, err := u.renew(r.Context(), u.readSession(r))
-	if err != nil {
-		u.logRenewFailure(err, r)
-		switch {
-		case sessionIsOver(err):
-			// The cookies are left as they are: a refresh of the same token
-			// in another tab or pod may have just set fresh ones, and the
-			// browser applies responses in the order they arrive.
-			http.Error(w, "session is over: log in", http.StatusUnauthorized)
-		case errors.Is(err, errUnverifiableToken):
-			http.Error(w, "login provider returned a token this gateway cannot verify", http.StatusBadGateway)
-		default:
-			http.Error(w, "login provider is unavailable", http.StatusBadGateway)
-		}
+	session := u.readSession(r)
+	if session.RefreshToken == "" {
+		http.Error(w, "no session to refresh: log in", http.StatusUnauthorized)
 		return
 	}
 
-	u.setSession(w, tokens)
-	w.WriteHeader(http.StatusNoContent)
-}
-
-var (
-	errNoSession         = errors.New("no refresh token in the session")
-	errUnverifiableToken = errors.New("access token from the provider is not acceptable")
-)
-
-// renew trades the session's refresh token for a new pair and checks the new
-// access token as a login does. A provider that does not rotate refresh tokens
-// leaves them out of the answer, and the id token is optional on a refresh:
-// what the answer lacks is taken from the session.
-func (u *unit) renew(ctx context.Context, session sessionCookie) (*oidc.TokenResponse, error) {
-	if session.RefreshToken == "" {
-		return nil, errNoSession
+	meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
+	if err != nil {
+		u.logWarn("provider discovery failed", err, r)
+		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
+		return
 	}
 
-	meta, err := oidc.Ins().Metadata(ctx, u.provider.Issuer, u.provider.InternalUrl)
+	tokens, err := oidc.Ins().Refresh(r.Context(), meta.TokenEndpoint, u.client, session.RefreshToken)
 	if err != nil {
-		return nil, fmt.Errorf("provider discovery: %w", err)
-	}
-
-	tokens, err := oidc.Ins().Refresh(ctx, meta.TokenEndpoint, u.client, session.RefreshToken)
-	if err != nil {
-		return nil, fmt.Errorf("refresh: %w", err)
+		if refusal, ok := errors.AsType[*oidc.Error](err); ok && refusal.Code == "invalid_grant" {
+			// The cookies are left as they are: a refresh of the same token
+			// in another tab or pod may have just set fresh ones, and the
+			// browser applies responses in the order they arrive.
+			slog.Info("authflow: session can no longer be refreshed", "unit", u.name, "error", err)
+			http.Error(w, "session is over: log in", http.StatusUnauthorized)
+			return
+		}
+		u.logWarn("refresh failed", err, r)
+		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
+		return
 	}
 
 	if err = u.verifyAccessToken(tokens.AccessToken); err != nil {
-		return nil, fmt.Errorf("%w: %w", errUnverifiableToken, err)
+		u.logWarn("access token from the provider is not acceptable", err, r)
+		http.Error(w, "login provider returned a token this gateway cannot verify", http.StatusBadGateway)
+		return
 	}
 
-	// The answer may be shared with simultaneous refreshes of the same token:
-	// fill a copy.
+	// A provider that does not rotate refresh tokens leaves them out of the
+	// answer, and the id token is optional on a refresh: keep what we had. The
+	// answer may be shared with other refreshes of the token, so fill a copy.
 	renewed := *tokens
 	if renewed.RefreshToken == "" {
 		renewed.RefreshToken = session.RefreshToken
@@ -212,28 +197,9 @@ func (u *unit) renew(ctx context.Context, session sessionCookie) (*oidc.TokenRes
 	if renewed.IdToken == "" {
 		renewed.IdToken = session.IdToken
 	}
-	return &renewed, nil
-}
 
-// sessionIsOver tells a session that cannot be renewed any more (no refresh
-// token, or the provider refused it) from a provider in trouble.
-func sessionIsOver(err error) bool {
-	if errors.Is(err, errNoSession) {
-		return true
-	}
-	refusal, ok := errors.AsType[*oidc.Error](err)
-	return ok && refusal.Code == "invalid_grant"
-}
-
-// logRenewFailure keeps the usual end of a session out of the warnings.
-func (u *unit) logRenewFailure(err error, r *http.Request) {
-	switch {
-	case errors.Is(err, errNoSession):
-	case sessionIsOver(err):
-		slog.Info("authflow: session can no longer be refreshed", "unit", u.name, "error", err)
-	default:
-		u.logWarn("refresh failed", err, r)
-	}
+	u.setSession(w, &renewed)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // setSession sets the access and refresh cookies from the provider's answer.
@@ -247,11 +213,7 @@ func (u *unit) setSession(w http.ResponseWriter, tokens *oidc.TokenResponse) {
 	u.setCookie(w, u.cookieName, tokens.AccessToken, u.cookiePath, maxAge)
 	if tokens.RefreshToken != "" || tokens.IdToken != "" {
 		session := sessionCookie{RefreshToken: tokens.RefreshToken, IdToken: tokens.IdToken}
-		path, otherPath := u.refreshCookiePaths()
-		u.setCookie(w, u.refreshCookieName(), session.encode(), path, maxAge)
-		// A cookie left on the other path by the previous setting of the
-		// provider would shadow or outlive this one.
-		u.clearCookie(w, u.refreshCookieName(), otherPath)
+		u.setCookie(w, u.refreshCookieName(), session.encode(), u.basePath, maxAge)
 	}
 }
 
@@ -266,9 +228,7 @@ func (u *unit) logout(w http.ResponseWriter, r *http.Request) {
 
 	session := u.readSession(r)
 	u.clearCookie(w, u.cookieName, u.cookiePath)
-	path, otherPath := u.refreshCookiePaths()
-	u.clearCookie(w, u.refreshCookieName(), path)
-	u.clearCookie(w, u.refreshCookieName(), otherPath)
+	u.clearCookie(w, u.refreshCookieName(), u.basePath)
 
 	if session.IdToken != "" {
 		meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
