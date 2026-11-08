@@ -208,8 +208,10 @@ refresh), `internal/service/gw/handler/http/authflow` (маршруты `/_auth/
 
 Не вошло в этап (отложено): настраиваемое имя claim с ролями для провайдеров,
 которые кладут роли не в `resource_access` (сейчас читаются `roles`, `role`,
-`realm_access.roles`, `resource_access.*.roles`); ключи ES256/384/512 в JWKS
-(сейчас только RS*); ручка `me` для фронта.
+`realm_access.roles`, `resource_access.*.roles`); ручка `me` для фронта.
+Ключи в JWKS: RS256/384/512, PS256/384/512, ES256/384/512 (P-256/384/521) и
+EdDSA (Ed25519) — сделано позже, `jwk/keys.go`; HS* не принимаются, им нужен
+секрет провайдера.
 
 ## Этап 4. Обновление по явной ручке — сделано
 

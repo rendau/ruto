@@ -90,19 +90,22 @@ func TestUsecase_Interpolate_NotAuthorized(t *testing.T) {
 	require.ErrorIs(t, err, errs.NotAuthorized)
 }
 
-func TestUsecase_GetJwtKidsByURLs_FilterRSAlgorithms(t *testing.T) {
+func TestUsecase_GetJwtKidsByURLs_FilterAlgorithms(t *testing.T) {
 
 	jwkServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{
 			"keys": [
-				{"kid":"kid-rs256","alg":"RS256"},
-				{"kid":"kid-rs512","alg":"RS512"},
-				{"kid":"kid-rs1","alg":"RS1"},
-				{"kid":"kid-es256","alg":"ES256"},
-				{"kid":"kid-none","alg":""},
-				{"kid":"kid-rs256","alg":"RS256"},
-				{"kid":"","alg":"RS256"}
+				{"kid":"kid-rs256","kty":"RSA","alg":"RS256"},
+				{"kid":"kid-rs512","kty":"RSA","alg":"RS512"},
+				{"kid":"kid-rs1","kty":"RSA","alg":"RS1"},
+				{"kid":"kid-hs256","kty":"oct","alg":"HS256"},
+				{"kid":"kid-es256","kty":"EC","crv":"P-256","alg":"ES256"},
+				{"kid":"kid-ec-noalg","kty":"EC","crv":"P-384"},
+				{"kid":"kid-ed","kty":"OKP","crv":"Ed25519","alg":"EdDSA"},
+				{"kid":"kid-none","kty":"RSA","alg":""},
+				{"kid":"kid-rs256","kty":"RSA","alg":"RS256"},
+				{"kid":"","kty":"RSA","alg":"RS256"}
 			]
 		}`))
 	}))
@@ -118,7 +121,7 @@ func TestUsecase_GetJwtKidsByURLs_FilterRSAlgorithms(t *testing.T) {
 		"",
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"kid-rs256", "kid-rs512"}, kids)
+	require.Equal(t, []string{"kid-ec-noalg", "kid-ed", "kid-es256", "kid-rs256", "kid-rs512"}, kids)
 }
 
 func TestUsecase_GetJwtKidsByURLs_NotAuthorized(t *testing.T) {

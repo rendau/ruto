@@ -2,7 +2,7 @@ package jwk
 
 import (
 	"context"
-	"crypto/rsa"
+	"crypto"
 	"fmt"
 	"io"
 	"log/slog"
@@ -87,15 +87,15 @@ func (s *Service) signal() {
 }
 
 // GetPublicKey returns the key kid of the named provider, or of any provider
-// when provider is empty.
-func (s *Service) GetPublicKey(provider, kid string) (*rsa.PublicKey, string) {
+// when provider is empty, with its algorithm.
+func (s *Service) GetPublicKey(provider, kid string) (crypto.PublicKey, string) {
 	set := s.getItems()
 	items := set.all
 	if provider != "" {
 		items = set.byProvider[provider]
 	}
 	if item := items[kid]; item != nil {
-		return &item.RSAPublicKey, item.Alg
+		return item.PublicKey, item.Alg
 	}
 	return nil, ""
 }
@@ -264,15 +264,18 @@ func (s *Service) loadItems(ctx context.Context, key, uri string) (_ []*Item, ok
 
 	items := make([]*Item, 0, len(itemSet.Keys))
 	for _, item := range itemSet.Keys {
+		item.Alg = constant.JWTKeyAlgorithm(item.Kty, item.Crv, item.Alg)
 		if !constant.IsSupportedJWTAlgorithm(item.Alg) {
 			continue
 		}
-		item.RSAPublicKey, err = toRSAPublicKey(item)
+		item.PublicKey, err = toPublicKey(item)
 		if err != nil {
 			slog.Error(
 				"jwk-scrapper: invalid key",
-				"error", fmt.Errorf("ToRSAPublicKey: %w", err),
+				"error", fmt.Errorf("toPublicKey: %w", err),
 				"kid", item.Kid,
+				"kty", item.Kty,
+				"alg", item.Alg,
 				"uri", uri,
 			)
 			continue

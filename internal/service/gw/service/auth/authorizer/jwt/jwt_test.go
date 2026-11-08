@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"net/http"
@@ -17,12 +18,12 @@ import (
 type testJWKGetterT struct {
 	provider string // name of the provider the keys belong to
 	keys     map[string]struct {
-		publicKey *rsa.PublicKey
+		publicKey crypto.PublicKey
 		alg       string
 	}
 }
 
-func (s *testJWKGetterT) GetPublicKey(provider, kid string) (*rsa.PublicKey, string) {
+func (s *testJWKGetterT) GetPublicKey(provider, kid string) (crypto.PublicKey, string) {
 	if provider != "" && provider != s.provider {
 		return nil, ""
 	}
@@ -111,7 +112,7 @@ func TestAuthorize(t *testing.T) {
 	testJWKGetter := &testJWKGetterT{
 		provider: "corp",
 		keys: map[string]struct {
-			publicKey *rsa.PublicKey
+			publicKey crypto.PublicKey
 			alg       string
 		}{
 			itemKid: {
@@ -264,7 +265,7 @@ func TestAuthorize(t *testing.T) {
 			token: "Bearer " + validToken,
 			jwkGetter: &testJWKGetterT{
 				keys: map[string]struct {
-					publicKey *rsa.PublicKey
+					publicKey crypto.PublicKey
 					alg       string
 				}{
 					itemKid: {

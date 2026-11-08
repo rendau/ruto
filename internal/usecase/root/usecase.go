@@ -124,7 +124,7 @@ func (u *Usecase) loadJwkKids(ctx context.Context, jwkURL string) ([]string, err
 
 	result := lo.FilterMap(repObj.Keys, func(key jwkKey, _ int) (string, bool) {
 		kid := strings.TrimSpace(key.Kid)
-		return kid, kid != "" && constant.IsSupportedJWTAlgorithm(key.Alg)
+		return kid, kid != "" && constant.IsSupportedJWTAlgorithm(constant.JWTKeyAlgorithm(key.Kty, key.Crv, key.Alg))
 	})
 
 	return result, nil

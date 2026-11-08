@@ -151,19 +151,52 @@ var DefaultCompressionContentTypes = []string{
 	"image/svg+xml",
 }
 
+// SupportedJWTAlgorithms are the asymmetric JWS algorithms (RFC 7518, RFC
+// 8037) the gateway verifies tokens with: RSA PKCS#1 v1.5 and PSS, ECDSA on
+// the NIST curves, Ed25519. Symmetric ones (HS*) need the provider's secret
+// and are not accepted.
 var SupportedJWTAlgorithms = []string{
-	"RS256",
-	"RS384",
-	"RS512",
+	"RS256", "RS384", "RS512",
+	"PS256", "PS384", "PS512",
+	"ES256", "ES384", "ES512",
+	"EdDSA",
 }
 
-var supportedJWTAlgorithmMap = map[string]struct{}{
-	"RS256": {},
-	"RS384": {},
-	"RS512": {},
-}
+var supportedJWTAlgorithmMap = func() map[string]struct{} {
+	m := make(map[string]struct{}, len(SupportedJWTAlgorithms))
+	for _, alg := range SupportedJWTAlgorithms {
+		m[alg] = struct{}{}
+	}
+	return m
+}()
 
 func IsSupportedJWTAlgorithm(v string) bool {
 	_, ok := supportedJWTAlgorithmMap[v]
 	return ok
+}
+
+// JWTKeyAlgorithm is the algorithm a JWK signs with: its alg when named;
+// otherwise, for a curve key, the one algorithm its curve allows (RFC 7518
+// §3.4, RFC 8037). An RSA key without alg could use any RS*/PS*, so it gets
+// none and is not accepted.
+func JWTKeyAlgorithm(kty, crv, alg string) string {
+	if alg != "" {
+		return alg
+	}
+	switch kty {
+	case "EC":
+		switch crv {
+		case "P-256":
+			return "ES256"
+		case "P-384":
+			return "ES384"
+		case "P-521":
+			return "ES512"
+		}
+	case "OKP":
+		if crv == "Ed25519" {
+			return "EdDSA"
+		}
+	}
+	return ""
 }

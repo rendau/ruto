@@ -6,5 +6,7 @@ type jwkResponse struct {
 
 type jwkKey struct {
 	Kid string `json:"kid"`
+	Kty string `json:"kty"`
+	Crv string `json:"crv"`
 	Alg string `json:"alg"`
 }
