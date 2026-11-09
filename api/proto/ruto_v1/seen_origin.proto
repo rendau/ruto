@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/ruto_v1";
+
+// SeenOrigin reports which browser origins (Origin header) call the gateway,
+// so allow_origins of CORS can be filled from real traffic.
+service SeenOrigin {
+  rpc List(SeenOriginListReq) returns (SeenOriginListRep) {
+    option (google.api.http) = { get: "/seen_origin" };
+  };
+  rpc Clear(SeenOriginClearReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/seen_origin" };
+  };
+  // Delete removes the listed origins only, keeping the other counters.
+  rpc Delete(SeenOriginDeleteReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/seen_origin/delete" body: "*" };
+  };
+}
+
+message SeenOriginListReq {}
+
+message SeenOriginListRep {
+  repeated SeenOriginMain results = 1;
+}
+
+message SeenOriginClearReq {}
+
+message SeenOriginDeleteReq {
+  repeated string origins = 1;
+}
+
+message SeenOriginMain {
+  string origin = 1;
+  int64 hits = 2;
+  int64 first_seen_at_unix = 3;
+  int64 last_seen_at_unix = 4;
+}

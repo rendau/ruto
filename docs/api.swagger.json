@@ -33,6 +33,10 @@
       "name": "Root"
     },
     {
+      "name": "SeenOrigin",
+      "description": "SeenOrigin reports which browser origins (Origin header) call the gateway,\nso allow_origins of CORS can be filled from real traffic."
+    },
+    {
       "name": "SeenPath",
       "description": "SeenPath reports which concrete paths were served by wildcard endpoints."
     },
@@ -1446,6 +1450,83 @@
         ]
       }
     },
+    "/seen_origin": {
+      "get": {
+        "operationId": "SeenOrigin_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1SeenOriginListRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SeenOrigin"
+        ]
+      },
+      "delete": {
+        "operationId": "SeenOrigin_Clear",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "SeenOrigin"
+        ]
+      }
+    },
+    "/seen_origin/delete": {
+      "post": {
+        "summary": "Delete removes the listed origins only, keeping the other counters.",
+        "operationId": "SeenOrigin_Delete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ruto_v1SeenOriginDeleteReq"
+            }
+          }
+        ],
+        "tags": [
+          "SeenOrigin"
+        ]
+      }
+    },
     "/seen_path": {
       "get": {
         "operationId": "SeenPath_List",
@@ -2760,6 +2841,49 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "ruto_v1SeenOriginDeleteReq": {
+      "type": "object",
+      "properties": {
+        "origins": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ruto_v1SeenOriginListRep": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1SeenOriginMain"
+          }
+        }
+      }
+    },
+    "ruto_v1SeenOriginMain": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string"
+        },
+        "hits": {
+          "type": "string",
+          "format": "int64"
+        },
+        "first_seen_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last_seen_at_unix": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

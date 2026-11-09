@@ -11,10 +11,11 @@ import (
 )
 
 type Usecase struct {
-	sessionSvc SessionServiceI
-	cache      CacheI
-	gateways   GatewaysI
-	seenPaths  SeenPathsI
+	sessionSvc  SessionServiceI
+	cache       CacheI
+	gateways    GatewaysI
+	seenPaths   SeenPathsI
+	seenOrigins SeenOriginsI
 }
 
 // Status thresholds are tied to the gateway's heartbeat interval (30s): online
@@ -32,12 +33,13 @@ const (
 	StatusOffline = "offline"
 )
 
-func New(sessionSvc SessionServiceI, cache CacheI, gateways GatewaysI, seenPaths SeenPathsI) *Usecase {
+func New(sessionSvc SessionServiceI, cache CacheI, gateways GatewaysI, seenPaths SeenPathsI, seenOrigins SeenOriginsI) *Usecase {
 	return &Usecase{
-		sessionSvc: sessionSvc,
-		cache:      cache,
-		gateways:   gateways,
-		seenPaths:  seenPaths,
+		sessionSvc:  sessionSvc,
+		cache:       cache,
+		gateways:    gateways,
+		seenPaths:   seenPaths,
+		seenOrigins: seenOrigins,
 	}
 }
 
@@ -110,6 +112,9 @@ func (u *Usecase) Heartbeat(ctx context.Context, req *Heartbeat) error {
 	// An error here makes the gateway keep its counters and resend them.
 	if err := u.seenPaths.Report(ctx, req.SeenPaths); err != nil {
 		return fmt.Errorf("seenPaths.Report: %w", err)
+	}
+	if err := u.seenOrigins.Report(ctx, req.SeenOrigins); err != nil {
+		return fmt.Errorf("seenOrigins.Report: %w", err)
 	}
 
 	return nil

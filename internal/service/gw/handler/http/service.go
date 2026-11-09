@@ -116,7 +116,8 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 		}
 	}
 
-	return middleware.NewCors(snapshot.Cors)(router), nil
+	// Origins are counted outside CORS so that fronts it rejects show up too.
+	return middleware.NewSeenOrigins()(middleware.NewCors(snapshot.Cors)(router)), nil
 }
 
 func anyMethodOrder(ep *endpointModel.Endpoint) int {

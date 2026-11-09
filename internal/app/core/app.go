@@ -30,6 +30,8 @@ import (
 	domainOAuthServiceP "github.com/rendau/ruto/internal/domain/oauth/service"
 	domainRootRepoDbP "github.com/rendau/ruto/internal/domain/root/repo/db"
 	domainRootServiceP "github.com/rendau/ruto/internal/domain/root/service"
+	domainSeenOriginRepoDbP "github.com/rendau/ruto/internal/domain/seenorigin/repo/db"
+	domainSeenOriginServiceP "github.com/rendau/ruto/internal/domain/seenorigin/service"
 	domainSeenPathRepoDbP "github.com/rendau/ruto/internal/domain/seenpath/repo/db"
 	domainSeenPathServiceP "github.com/rendau/ruto/internal/domain/seenpath/service"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
@@ -59,6 +61,7 @@ import (
 	usecaseMonitoringP "github.com/rendau/ruto/internal/usecase/monitoring"
 	usecaseOAuthP "github.com/rendau/ruto/internal/usecase/oauth"
 	usecaseRootP "github.com/rendau/ruto/internal/usecase/root"
+	usecaseSeenOriginP "github.com/rendau/ruto/internal/usecase/seenorigin"
 	usecaseSeenPathP "github.com/rendau/ruto/internal/usecase/seenpath"
 	usecaseSnapshotP "github.com/rendau/ruto/internal/usecase/snapshot"
 	usecaseStatsP "github.com/rendau/ruto/internal/usecase/stats"
@@ -192,8 +195,14 @@ func (a *App) Init() error {
 	usecaseSeenPath := usecaseSeenPathP.New(domainSeenPathService, sessionService)
 	handlerGrpcSeenPath := handlerGrpcP.NewSeenPath(usecaseSeenPath)
 
+	// seen origin
+	domainSeenOriginRepoDb := domainSeenOriginRepoDbP.New(a.pgpool)
+	domainSeenOriginService := domainSeenOriginServiceP.New(domainSeenOriginRepoDb)
+	usecaseSeenOrigin := usecaseSeenOriginP.New(domainSeenOriginService, sessionService)
+	handlerGrpcSeenOrigin := handlerGrpcP.NewSeenOrigin(usecaseSeenOrigin)
+
 	// gateway
-	usecaseGateway := usecaseGatewayP.New(sessionService, cacheService.NewChildInstance("gateway:"), gatewaysService, usecaseSeenPath)
+	usecaseGateway := usecaseGatewayP.New(sessionService, cacheService.NewChildInstance("gateway:"), gatewaysService, usecaseSeenPath, usecaseSeenOrigin)
 	handlerGrpcGateway := handlerGrpcP.NewGateway(usecaseGateway)
 
 	// monitoring
@@ -298,9 +307,11 @@ func (a *App) Init() error {
 			usecaseApiKey,
 			a.oauthUsecase,
 			a.changeRequestUsecase,
+			usecaseRoot,
 			usecaseApp,
 			usecaseEndpoint,
 			usecaseSeenPath,
+			usecaseSeenOrigin,
 			usecaseSnapshot,
 			usecaseGateway,
 			usecaseMonitoring,
@@ -324,6 +335,7 @@ func (a *App) Init() error {
 		ruto_v1.RegisterGatewayServer(server, handlerGrpcGateway)
 		ruto_v1.RegisterMonitoringServer(server, handlerGrpcMonitoring)
 		ruto_v1.RegisterSeenPathServer(server, handlerGrpcSeenPath)
+		ruto_v1.RegisterSeenOriginServer(server, handlerGrpcSeenOrigin)
 		ruto_v1.RegisterApiKeyServer(server, handlerGrpcApiKey)
 		ruto_v1.RegisterChangeRequestServer(server, handlerGrpcChangeRequest)
 		ruto_v1.RegisterOAuthServer(server, handlerGrpcOAuth)
@@ -348,6 +360,7 @@ func (a *App) Init() error {
 			ruto_v1.RegisterGatewayHandler,
 			ruto_v1.RegisterMonitoringHandler,
 			ruto_v1.RegisterSeenPathHandler,
+			ruto_v1.RegisterSeenOriginHandler,
 			ruto_v1.RegisterApiKeyHandler,
 			ruto_v1.RegisterChangeRequestHandler,
 			ruto_v1.RegisterOAuthHandler,

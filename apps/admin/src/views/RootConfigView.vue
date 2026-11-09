@@ -33,6 +33,7 @@ import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import JwtClientEditor from "@/components/editors/JwtClientEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
+import SeenOriginsPanel from "@/components/root/SeenOriginsPanel.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import type { RootJwt, RootMain } from "@/api/types";
 
@@ -73,6 +74,14 @@ const jwtProviderNames = computed(() =>
 const corsText = reactive({ origins: "", methods: "", headers: "" });
 
 const authVariables = computed(() => model.variables);
+const allowOriginLines = computed(() => linesToArray(corsText.origins));
+
+// The origin lands in the textarea only: it reaches the gateway with Save, like
+// any other edit on this page.
+function addAllowOrigin(origin: string): void {
+  if (allowOriginLines.value.includes(origin)) return;
+  corsText.origins = [...allowOriginLines.value, origin].join("\n");
+}
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -237,6 +246,12 @@ onMounted(load);
               </label>
             </div>
           </template>
+          <SeenOriginsPanel
+            :allow-origins="allowOriginLines"
+            :cors-enabled="model.cors.enabled"
+            :readonly="!canEdit"
+            @add="addAllowOrigin"
+          />
         </SectionCard>
 
         <SectionCard

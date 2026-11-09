@@ -28,6 +28,8 @@ import (
 	usecaseGateway "github.com/rendau/ruto/internal/usecase/gateway"
 	usecaseMonitoring "github.com/rendau/ruto/internal/usecase/monitoring"
 	usecaseOAuth "github.com/rendau/ruto/internal/usecase/oauth"
+	usecaseRoot "github.com/rendau/ruto/internal/usecase/root"
+	usecaseSeenOrigin "github.com/rendau/ruto/internal/usecase/seenorigin"
 	usecaseSeenPath "github.com/rendau/ruto/internal/usecase/seenpath"
 	usecaseSnapshot "github.com/rendau/ruto/internal/usecase/snapshot"
 )
@@ -59,9 +61,11 @@ type Handler struct {
 	apiKeyUc        *usecaseApiKey.Usecase
 	oauthUc         *usecaseOAuth.Usecase
 	changeRequestUc *usecaseChangeRequest.Usecase
+	rootUc          *usecaseRoot.Usecase
 	appUc           *usecaseApp.Usecase
 	endpointUc      *usecaseEndpoint.Usecase
 	seenPathUc      *usecaseSeenPath.Usecase
+	seenOriginUc    *usecaseSeenOrigin.Usecase
 	snapshotUc      *usecaseSnapshot.Usecase
 	gatewayUc       *usecaseGateway.Usecase
 	monitoringUc    *usecaseMonitoring.Usecase
@@ -72,9 +76,11 @@ func New(
 	apiKeyUc *usecaseApiKey.Usecase,
 	oauthUc *usecaseOAuth.Usecase,
 	changeRequestUc *usecaseChangeRequest.Usecase,
+	rootUc *usecaseRoot.Usecase,
 	appUc *usecaseApp.Usecase,
 	endpointUc *usecaseEndpoint.Usecase,
 	seenPathUc *usecaseSeenPath.Usecase,
+	seenOriginUc *usecaseSeenOrigin.Usecase,
 	snapshotUc *usecaseSnapshot.Usecase,
 	gatewayUc *usecaseGateway.Usecase,
 	monitoringUc *usecaseMonitoring.Usecase,
@@ -84,9 +90,11 @@ func New(
 		apiKeyUc:        apiKeyUc,
 		oauthUc:         oauthUc,
 		changeRequestUc: changeRequestUc,
+		rootUc:          rootUc,
 		appUc:           appUc,
 		endpointUc:      endpointUc,
 		seenPathUc:      seenPathUc,
+		seenOriginUc:    seenOriginUc,
 		snapshotUc:      snapshotUc,
 		gatewayUc:       gatewayUc,
 		monitoringUc:    monitoringUc,

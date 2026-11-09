@@ -123,7 +123,9 @@ type GatewayHeartbeatRequest struct {
 	MemoryAllocBytes uint64                 `protobuf:"varint,10,opt,name=memory_alloc_bytes,json=memoryAllocBytes,proto3" json:"memory_alloc_bytes,omitempty"`
 	GoroutinesCount  uint32                 `protobuf:"varint,11,opt,name=goroutines_count,json=goroutinesCount,proto3" json:"goroutines_count,omitempty"`
 	// requests served by wildcard endpoints since the previous heartbeat
-	SeenPaths     []*GatewaySeenPath `protobuf:"bytes,12,rep,name=seen_paths,json=seenPaths,proto3" json:"seen_paths,omitempty"`
+	SeenPaths []*GatewaySeenPath `protobuf:"bytes,12,rep,name=seen_paths,json=seenPaths,proto3" json:"seen_paths,omitempty"`
+	// Origin headers of requests since the previous heartbeat
+	SeenOrigins   []*GatewaySeenOrigin `protobuf:"bytes,13,rep,name=seen_origins,json=seenOrigins,proto3" json:"seen_origins,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -221,6 +223,73 @@ func (x *GatewayHeartbeatRequest) GetSeenPaths() []*GatewaySeenPath {
 	return nil
 }
 
+func (x *GatewayHeartbeatRequest) GetSeenOrigins() []*GatewaySeenOrigin {
+	if x != nil {
+		return x.SeenOrigins
+	}
+	return nil
+}
+
+type GatewaySeenOrigin struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Origin         string                 `protobuf:"bytes,1,opt,name=origin,proto3" json:"origin,omitempty"`
+	Hits           int64                  `protobuf:"varint,2,opt,name=hits,proto3" json:"hits,omitempty"`
+	LastSeenAtUnix int64                  `protobuf:"varint,3,opt,name=last_seen_at_unix,json=lastSeenAtUnix,proto3" json:"last_seen_at_unix,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GatewaySeenOrigin) Reset() {
+	*x = GatewaySeenOrigin{}
+	mi := &file_ruto_v1_gateway_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GatewaySeenOrigin) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GatewaySeenOrigin) ProtoMessage() {}
+
+func (x *GatewaySeenOrigin) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_gateway_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GatewaySeenOrigin.ProtoReflect.Descriptor instead.
+func (*GatewaySeenOrigin) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GatewaySeenOrigin) GetOrigin() string {
+	if x != nil {
+		return x.Origin
+	}
+	return ""
+}
+
+func (x *GatewaySeenOrigin) GetHits() int64 {
+	if x != nil {
+		return x.Hits
+	}
+	return 0
+}
+
+func (x *GatewaySeenOrigin) GetLastSeenAtUnix() int64 {
+	if x != nil {
+		return x.LastSeenAtUnix
+	}
+	return 0
+}
+
 type GatewaySeenPath struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	AppId          string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
@@ -237,7 +306,7 @@ type GatewaySeenPath struct {
 
 func (x *GatewaySeenPath) Reset() {
 	*x = GatewaySeenPath{}
-	mi := &file_ruto_v1_gateway_proto_msgTypes[3]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -249,7 +318,7 @@ func (x *GatewaySeenPath) String() string {
 func (*GatewaySeenPath) ProtoMessage() {}
 
 func (x *GatewaySeenPath) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_gateway_proto_msgTypes[3]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -262,7 +331,7 @@ func (x *GatewaySeenPath) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewaySeenPath.ProtoReflect.Descriptor instead.
 func (*GatewaySeenPath) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{3}
+	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GatewaySeenPath) GetAppId() string {
@@ -330,7 +399,7 @@ type GatewayListResponse struct {
 
 func (x *GatewayListResponse) Reset() {
 	*x = GatewayListResponse{}
-	mi := &file_ruto_v1_gateway_proto_msgTypes[4]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -342,7 +411,7 @@ func (x *GatewayListResponse) String() string {
 func (*GatewayListResponse) ProtoMessage() {}
 
 func (x *GatewayListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_gateway_proto_msgTypes[4]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -355,7 +424,7 @@ func (x *GatewayListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayListResponse.ProtoReflect.Descriptor instead.
 func (*GatewayListResponse) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{4}
+	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GatewayListResponse) GetResults() []*GatewayStateItem {
@@ -383,7 +452,7 @@ type GatewayStateItem struct {
 
 func (x *GatewayStateItem) Reset() {
 	*x = GatewayStateItem{}
-	mi := &file_ruto_v1_gateway_proto_msgTypes[5]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -395,7 +464,7 @@ func (x *GatewayStateItem) String() string {
 func (*GatewayStateItem) ProtoMessage() {}
 
 func (x *GatewayStateItem) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_gateway_proto_msgTypes[5]
+	mi := &file_ruto_v1_gateway_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -408,7 +477,7 @@ func (x *GatewayStateItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayStateItem.ProtoReflect.Descriptor instead.
 func (*GatewayStateItem) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{5}
+	return file_ruto_v1_gateway_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GatewayStateItem) GetGatewayId() string {
@@ -490,7 +559,7 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"\n" +
 	"gateway_id\x18\x01 \x01(\tR\tgatewayId\")\n" +
 	"\x13GatewayNotification\x12\x12\n" +
-	"\x04type\x18\x01 \x01(\tR\x04type\"\x8c\x03\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\"\xcb\x03\n" +
 	"\x17GatewayHeartbeatRequest\x12\x1d\n" +
 	"\n" +
 	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x1b\n" +
@@ -504,7 +573,12 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	" \x01(\x04R\x10memoryAllocBytes\x12)\n" +
 	"\x10goroutines_count\x18\v \x01(\rR\x0fgoroutinesCount\x127\n" +
 	"\n" +
-	"seen_paths\x18\f \x03(\v2\x18.ruto_v1.GatewaySeenPathR\tseenPathsJ\x04\b\x03\x10\x04\"\xf2\x01\n" +
+	"seen_paths\x18\f \x03(\v2\x18.ruto_v1.GatewaySeenPathR\tseenPaths\x12=\n" +
+	"\fseen_origins\x18\r \x03(\v2\x1a.ruto_v1.GatewaySeenOriginR\vseenOriginsJ\x04\b\x03\x10\x04\"j\n" +
+	"\x11GatewaySeenOrigin\x12\x16\n" +
+	"\x06origin\x18\x01 \x01(\tR\x06origin\x12\x12\n" +
+	"\x04hits\x18\x02 \x01(\x03R\x04hits\x12)\n" +
+	"\x11last_seen_at_unix\x18\x03 \x01(\x03R\x0elastSeenAtUnix\"\xf2\x01\n" +
 	"\x0fGatewaySeenPath\x12\x15\n" +
 	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12\x1f\n" +
 	"\vendpoint_id\x18\x02 \x01(\tR\n" +
@@ -550,30 +624,32 @@ func file_ruto_v1_gateway_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_gateway_proto_rawDescData
 }
 
-var file_ruto_v1_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_ruto_v1_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_ruto_v1_gateway_proto_goTypes = []any{
 	(*GatewaySubscribeRequest)(nil), // 0: ruto_v1.GatewaySubscribeRequest
 	(*GatewayNotification)(nil),     // 1: ruto_v1.GatewayNotification
 	(*GatewayHeartbeatRequest)(nil), // 2: ruto_v1.GatewayHeartbeatRequest
-	(*GatewaySeenPath)(nil),         // 3: ruto_v1.GatewaySeenPath
-	(*GatewayListResponse)(nil),     // 4: ruto_v1.GatewayListResponse
-	(*GatewayStateItem)(nil),        // 5: ruto_v1.GatewayStateItem
-	(*emptypb.Empty)(nil),           // 6: google.protobuf.Empty
+	(*GatewaySeenOrigin)(nil),       // 3: ruto_v1.GatewaySeenOrigin
+	(*GatewaySeenPath)(nil),         // 4: ruto_v1.GatewaySeenPath
+	(*GatewayListResponse)(nil),     // 5: ruto_v1.GatewayListResponse
+	(*GatewayStateItem)(nil),        // 6: ruto_v1.GatewayStateItem
+	(*emptypb.Empty)(nil),           // 7: google.protobuf.Empty
 }
 var file_ruto_v1_gateway_proto_depIdxs = []int32{
-	3, // 0: ruto_v1.GatewayHeartbeatRequest.seen_paths:type_name -> ruto_v1.GatewaySeenPath
-	5, // 1: ruto_v1.GatewayListResponse.results:type_name -> ruto_v1.GatewayStateItem
-	2, // 2: ruto_v1.Gateway.Heartbeat:input_type -> ruto_v1.GatewayHeartbeatRequest
-	6, // 3: ruto_v1.Gateway.List:input_type -> google.protobuf.Empty
-	0, // 4: ruto_v1.Gateway.Subscribe:input_type -> ruto_v1.GatewaySubscribeRequest
-	6, // 5: ruto_v1.Gateway.Heartbeat:output_type -> google.protobuf.Empty
-	4, // 6: ruto_v1.Gateway.List:output_type -> ruto_v1.GatewayListResponse
-	1, // 7: ruto_v1.Gateway.Subscribe:output_type -> ruto_v1.GatewayNotification
-	5, // [5:8] is the sub-list for method output_type
-	2, // [2:5] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	4, // 0: ruto_v1.GatewayHeartbeatRequest.seen_paths:type_name -> ruto_v1.GatewaySeenPath
+	3, // 1: ruto_v1.GatewayHeartbeatRequest.seen_origins:type_name -> ruto_v1.GatewaySeenOrigin
+	6, // 2: ruto_v1.GatewayListResponse.results:type_name -> ruto_v1.GatewayStateItem
+	2, // 3: ruto_v1.Gateway.Heartbeat:input_type -> ruto_v1.GatewayHeartbeatRequest
+	7, // 4: ruto_v1.Gateway.List:input_type -> google.protobuf.Empty
+	0, // 5: ruto_v1.Gateway.Subscribe:input_type -> ruto_v1.GatewaySubscribeRequest
+	7, // 6: ruto_v1.Gateway.Heartbeat:output_type -> google.protobuf.Empty
+	5, // 7: ruto_v1.Gateway.List:output_type -> ruto_v1.GatewayListResponse
+	1, // 8: ruto_v1.Gateway.Subscribe:output_type -> ruto_v1.GatewayNotification
+	6, // [6:9] is the sub-list for method output_type
+	3, // [3:6] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_gateway_proto_init() }
@@ -587,7 +663,7 @@ func file_ruto_v1_gateway_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_gateway_proto_rawDesc), len(file_ruto_v1_gateway_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -532,6 +532,19 @@ export interface SeenPathListRep {
   results: SeenPathMain[];
 }
 
+// ---- Seen origins (Origin headers gateways saw, candidates for CORS) -------
+
+export interface SeenOriginMain {
+  origin: string;
+  hits: number;
+  first_seen_at_unix: string | number;
+  last_seen_at_unix: string | number;
+}
+
+export interface SeenOriginListRep {
+  results: SeenOriginMain[];
+}
+
 // ---- API keys (built-in MCP server) ----------------------------------------
 
 export interface ApiKeyMain {

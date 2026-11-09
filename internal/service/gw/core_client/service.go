@@ -379,6 +379,7 @@ func (s *Service) sendHeartbeat() error {
 	}
 
 	seenItems := seen.Ins().Drain()
+	seenOrigins := seen.OriginsIns().Drain()
 
 	ctx, cancel := context.WithTimeout(s.globalCtx, heartbeatTimeout)
 	defer cancel()
@@ -393,10 +394,12 @@ func (s *Service) sendHeartbeat() error {
 		MemoryAllocBytes: heapAllocBytes(),
 		GoroutinesCount:  uint32(runtime.NumGoroutine()),
 		SeenPaths:        lo.Map(seenItems, encodeSeenPath),
+		SeenOrigins:      lo.Map(seenOrigins, encodeSeenOrigin),
 	})
 	if err != nil {
 		// Not delivered: keep the counters for the next heartbeat.
 		seen.Ins().Restore(seenItems)
+		seen.OriginsIns().Restore(seenOrigins)
 		if s.globalCtx.Err() == nil {
 			return fmt.Errorf("gatewayClient.Heartbeat: %w", err)
 		}
@@ -415,6 +418,14 @@ func encodeSeenPath(v *seen.Item, _ int) *ruto_v1.GatewaySeenPath {
 		HitsNotFound:   v.HitsNotFound,
 		LastSeenAtUnix: v.LastSeenAt.Unix(),
 		Sample:         v.Sample,
+	}
+}
+
+func encodeSeenOrigin(v *seen.OriginItem, _ int) *ruto_v1.GatewaySeenOrigin {
+	return &ruto_v1.GatewaySeenOrigin{
+		Origin:         v.Origin,
+		Hits:           v.Hits,
+		LastSeenAtUnix: v.LastSeenAt.Unix(),
 	}
 }
 

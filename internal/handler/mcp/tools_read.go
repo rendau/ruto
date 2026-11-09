@@ -12,7 +12,9 @@ import (
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/domain/secretref"
+	seenOriginModel "github.com/rendau/ruto/internal/domain/seenorigin/model"
 	seenPathModel "github.com/rendau/ruto/internal/domain/seenpath/model"
 	usecaseApp "github.com/rendau/ruto/internal/usecase/app"
 	usecaseGateway "github.com/rendau/ruto/internal/usecase/gateway"
@@ -59,6 +61,11 @@ func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 		Name:        "list_seen_paths",
 		Description: "Concrete paths the gateway served through wildcard endpoints of an app, with hit counts (ids collapsed to {id}), most requested first. Use it to replace a wildcard with exact endpoints. Only wildcard endpoints with track_paths=true are counted. endpoint_id narrows to one wildcard endpoint. Rows you turn into exact endpoints can be removed by delete_seen_paths in the same propose_changes request.",
 	}, s.listSeenPaths)
+
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
+		Name:        "list_seen_origins",
+		Description: "Browser origins (Origin header, scheme://host[:port]) that called the gateway, with hit counts, most requested first, and whether each is admitted by the current CORS allow_origins. Use it to fill root cors.allow_origins from real traffic (update_root in propose_changes).",
+	}, s.listSeenOrigins)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_publish_status",
@@ -403,6 +410,55 @@ func (s *sessionServer) listSeenPaths(ctx context.Context, req *mcpsdk.CallToolR
 			Sample:       v.Sample,
 		}
 	})}, nil
+}
+
+type SeenOriginOut struct {
+	Origin      string `json:"origin"`
+	Hits        int64  `json:"hits"`
+	FirstSeenAt string `json:"first_seen_at"`
+	LastSeenAt  string `json:"last_seen_at"`
+	// Allowed: the origin is admitted by the current root cors.allow_origins
+	// (exact entry, subdomain pattern or "*").
+	Allowed bool `json:"allowed"`
+}
+
+type SeenOriginsOut struct {
+	CorsEnabled  bool            `json:"cors_enabled"`
+	AllowOrigins []string        `json:"allow_origins"`
+	Origins      []SeenOriginOut `json:"origins"`
+}
+
+func (s *sessionServer) listSeenOrigins(ctx context.Context, req *mcpsdk.CallToolRequest, _ EmptyIn) (*mcpsdk.CallToolResult, SeenOriginsOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, SeenOriginsOut{}, err
+	}
+
+	root, err := s.h.rootUc.Get(ctx)
+	if err != nil {
+		return nil, SeenOriginsOut{}, toolErr(err)
+	}
+
+	items, err := s.h.seenOriginUc.List(ctx)
+	if err != nil {
+		return nil, SeenOriginsOut{}, toolErr(err)
+	}
+
+	matcher := rootModel.NewOriginMatcher(root.Cors.AllowOrigins)
+
+	return nil, SeenOriginsOut{
+		CorsEnabled:  root.Cors.Enabled,
+		AllowOrigins: root.Cors.AllowOrigins,
+		Origins: lo.Map(items, func(v *seenOriginModel.SeenOrigin, _ int) SeenOriginOut {
+			return SeenOriginOut{
+				Origin:      v.Origin,
+				Hits:        v.Hits,
+				FirstSeenAt: v.FirstSeenAt.Format(time.RFC3339),
+				LastSeenAt:  v.LastSeenAt.Format(time.RFC3339),
+				Allowed:     matcher.Any() || matcher.Listed(v.Origin),
+			}
+		}),
+	}, nil
 }
 
 // ── Publishing ──────────────────────────────────────────

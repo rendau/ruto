@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	seenOriginModel "github.com/rendau/ruto/internal/domain/seenorigin/model"
 	seenPathModel "github.com/rendau/ruto/internal/domain/seenpath/model"
 )
 
@@ -14,6 +15,7 @@ type Heartbeat struct {
 	MemoryAllocBytes uint64
 	GoroutinesCount  uint32
 	SeenPaths        []*seenPathModel.SeenPath
+	SeenOrigins      []*seenOriginModel.SeenOrigin
 }
 
 type Item struct {

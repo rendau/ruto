@@ -39,6 +39,14 @@ message GatewayHeartbeatRequest {
   uint32 goroutines_count = 11;
   // requests served by wildcard endpoints since the previous heartbeat
   repeated GatewaySeenPath seen_paths = 12;
+  // Origin headers of requests since the previous heartbeat
+  repeated GatewaySeenOrigin seen_origins = 13;
+}
+
+message GatewaySeenOrigin {
+  string origin = 1;
+  int64 hits = 2;
+  int64 last_seen_at_unix = 3;
 }
 
 message GatewaySeenPath {
