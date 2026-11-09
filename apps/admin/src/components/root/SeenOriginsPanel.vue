@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { NAlert, NButton, NCheckbox, NIcon, NPopconfirm, NSpin, NTag, useMessage } from "naive-ui";
-import { AddOutline, RefreshOutline, TrashOutline } from "@vicons/ionicons5";
+import { NAlert, NButton, NCheckbox, NIcon, NInput, NPopconfirm, NSpin, NTag, useMessage } from "naive-ui";
+import { AddOutline, RefreshOutline, SearchOutline, TrashOutline } from "@vicons/ionicons5";
 import { clearSeenOrigins, deleteSeenOrigins, listSeenOrigins } from "@/api/seenOrigin";
 import { apiErrorMessage } from "@/api/http";
 import { formatUnixAge } from "@/lib/datetime";
@@ -25,12 +25,28 @@ const deletingKeys = ref(new Set<string>());
 const error = ref("");
 const items = ref<SeenOriginMain[]>([]);
 const showAllowed = ref(false);
+const search = ref("");
+const showAll = ref(false);
+
+// The report may hold up to 2000 rows: the page shows the top of the list and
+// opens the rest on demand instead of scrolling inside itself.
+const PAGE_SIZE = 20;
 
 const rows = computed(() =>
   items.value.map((item) => ({ item, allowed: originAllowed(item.origin, props.allowOrigins) }))
 );
-const allowedCount = computed(() => rows.value.filter((row) => row.allowed).length);
-const visibleRows = computed(() => rows.value.filter((row) => showAllowed.value || !row.allowed));
+const searchText = computed(() => search.value.trim().toLowerCase());
+const matchedRows = computed(() =>
+  searchText.value ? rows.value.filter((row) => row.item.origin.includes(searchText.value)) : rows.value
+);
+const allowedCount = computed(() => matchedRows.value.filter((row) => row.allowed).length);
+const filteredRows = computed(() =>
+  matchedRows.value.filter((row) => showAllowed.value || !row.allowed)
+);
+const visibleRows = computed(() =>
+  showAll.value ? filteredRows.value : filteredRows.value.slice(0, PAGE_SIZE)
+);
+const hiddenCount = computed(() => filteredRows.value.length - visibleRows.value.length);
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -108,7 +124,19 @@ onMounted(load);
 
     <NSpin :show="loading">
       <div v-if="rows.length" class="origins__filters">
+        <NInput
+          v-model:value="search"
+          size="small"
+          clearable
+          placeholder="Filter by host, e.g. zeon."
+          class="origins__search"
+        >
+          <template #prefix><NIcon :component="SearchOutline" /></template>
+        </NInput>
         <NCheckbox v-model:checked="showAllowed">Show already allowed ({{ allowedCount }})</NCheckbox>
+        <span class="muted origins__count">
+          {{ filteredRows.length }} of {{ rows.length }} origin{{ rows.length === 1 ? "" : "s" }}
+        </span>
       </div>
 
       <div v-if="visibleRows.length" class="origins__list">
@@ -145,11 +173,18 @@ onMounted(load);
           </NButton>
         </div>
       </div>
-      <p v-else-if="!loading && !error" class="muted origins__empty">
+      <div v-if="hiddenCount > 0" class="origins__more">
+        <NButton size="small" tertiary @click="showAll = true">
+          Show all ({{ hiddenCount }} more)
+        </NButton>
+      </div>
+      <p v-if="!visibleRows.length && !loading && !error" class="muted origins__empty">
         {{
-          rows.length
-            ? "Every seen origin is already allowed."
-            : "No origins seen yet: no browser has called the gateway since the last clear."
+          !rows.length
+            ? "No origins seen yet: no browser has called the gateway since the last clear."
+            : searchText
+              ? "No seen origin matches the filter."
+              : "Every seen origin is already allowed."
         }}
       </p>
     </NSpin>
@@ -201,15 +236,32 @@ onMounted(load);
 }
 
 .origins__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
   margin-bottom: 8px;
+}
+
+.origins__search {
+  width: 240px;
+}
+
+.origins__count {
+  font-size: 12px;
+  margin-left: auto;
 }
 
 .origins__list {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 320px;
-  overflow-y: auto;
+}
+
+.origins__more {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
 }
 
 .origins__row {
