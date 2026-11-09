@@ -183,6 +183,27 @@ func TestAuthorize(t *testing.T) {
 			want:      model.DeniedAuthenticated,
 		},
 		{
+			name:      "client wildcard: any role of that client",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"ruto:*"}},
+			token:     "Bearer " + keycloakResourceAccessToken,
+			jwkGetter: testJWKGetter,
+			want:      model.Allowed,
+		},
+		{
+			name:      "client wildcard: no roles at that client",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"shop:*"}},
+			token:     "Bearer " + keycloakResourceAccessToken,
+			jwkGetter: testJWKGetter,
+			want:      model.DeniedAuthenticated,
+		},
+		{
+			name:      "client wildcard is not satisfied by a realm role",
+			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"ruto:*"}},
+			token:     "Bearer " + keycloakRealmAccessToken,
+			jwkGetter: testJWKGetter,
+			want:      model.DeniedAuthenticated,
+		},
+		{
 			name:      "bare role still matches any client's roles",
 			conf:      &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"admin"}},
 			token:     "Bearer " + keycloakResourceAccessToken,

@@ -22,9 +22,12 @@ type Jwt struct {
 	requiredKid string
 	// requiredRoleMap holds the bare roles, requiredClientRoles the
 	// "client:role" ones by client; any one of them lets the token in.
+	// A "client:*" entry stores anyClientRole: any role of that client is enough.
 	requiredRoleMap     map[string]bool
 	requiredClientRoles map[string]map[string]bool
 }
+
+const anyClientRole = "*"
 
 func New(conf *domAuthModel.AuthMethodJWT, jwkGetter jwk.PublicKeyGetter) *Jwt {
 	// The cookie name is set when the config is inherited (the app may have
@@ -118,7 +121,7 @@ func (a *Jwt) hasRequiredRole(claims map[string]any) bool {
 		return true
 	}
 	for client, roles := range a.requiredClientRoles {
-		if hasClientRole(claims, client, func(role string) bool { return roles[role] }) {
+		if hasClientRole(claims, client, func(role string) bool { return roles[anyClientRole] || roles[role] }) {
 			return true
 		}
 	}

@@ -65,7 +65,8 @@ export interface AuthMethodApiKey {
 }
 
 // provider: name of a root JWT provider (empty = any); kid: optional pin to one key.
-// A role written as "client:role" is looked up only among that client's roles.
+// A role written as "client:role" is looked up only among that client's roles,
+// "client:*" accepts any role of that client.
 export interface AuthMethodJwt {
   provider: string;
   kid: string;

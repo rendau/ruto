@@ -45,7 +45,8 @@ type AuthMethodAPIKeyItem struct {
 // AuthMethodJWT accepts tokens signed by a key of Provider (a Root jwt
 // provider name; empty — any provider). Kid optionally pins one key. A role
 // written as "client:role" is looked up only among that client's roles
-// (resource_access.<client>.roles); a bare role anywhere roles live.
+// (resource_access.<client>.roles), "client:*" accepts any role of that
+// client; a bare role anywhere roles live.
 type AuthMethodJWT struct {
 	Provider string   `json:"provider"`
 	Kid      string   `json:"kid"`
