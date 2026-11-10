@@ -262,31 +262,39 @@ onMounted(load);
             <template #default="{ value }">
               <div class="provider">
                 <div class="provider-row">
-                  <NInput
-                    v-model:value="value.name"
-                    class="provider-row__name"
-                    placeholder="name, e.g. corp"
-                  />
-                  <NInput
-                    v-model:value="value.jwk_url"
-                    placeholder="JWKS url (optional with an issuer), e.g. https://issuer/.well-known/jwks.json"
-                  />
+                  <label class="field provider-row__name">
+                    <span class="field__label">Name</span>
+                    <NInput v-model:value="value.name" placeholder="e.g. corp" />
+                  </label>
+                  <label class="field provider-row__field">
+                    <span class="field__label">JWKS url (optional with an issuer)</span>
+                    <NInput
+                      v-model:value="value.jwk_url"
+                      placeholder="e.g. https://issuer/.well-known/jwks.json"
+                    />
+                  </label>
                 </div>
                 <div class="provider-row">
-                  <NInput
-                    v-model:value="value.issuer"
-                    placeholder="issuer (login), e.g. https://id.example.com/realms/corp"
-                  />
-                  <NInput
-                    v-model:value="value.internal_url"
-                    placeholder="internal url for the gateway's own calls, e.g. http://keycloak:8080/realms/corp"
-                  />
+                  <label class="field provider-row__field">
+                    <span class="field__label">Issuer (enables login)</span>
+                    <NInput
+                      v-model:value="value.issuer"
+                      placeholder="e.g. https://id.example.com/realms/corp"
+                    />
+                  </label>
+                  <label class="field provider-row__field">
+                    <span class="field__label">Internal url (for the gateway's own calls)</span>
+                    <NInput
+                      v-model:value="value.internal_url"
+                      placeholder="e.g. http://keycloak:8080/realms/corp"
+                    />
+                  </label>
                 </div>
                 <template v-if="value.issuer.trim()">
-                  <NInput
-                    v-model:value="value.public_url"
-                    placeholder="gateway public url for the return address (default: base URL)"
-                  />
+                  <label class="field">
+                    <span class="field__label">Gateway public url (for the return address)</span>
+                    <NInput v-model:value="value.public_url" placeholder="default: base URL" />
+                  </label>
                   <NCheckbox
                     :checked="!!value.client"
                     @update:checked="(checked: boolean) => toggleDefaultClient(value, checked)"
@@ -434,6 +442,11 @@ onMounted(load);
 
 .provider-row__name {
   flex: 0 0 200px;
+}
+
+.provider-row__field {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 @media (max-width: 760px) {
