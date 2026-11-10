@@ -12,14 +12,13 @@ import {
   NForm,
   NFormItem,
   NIcon,
-  NDynamicInput,
   NInput,
   NInputGroup,
   NSelect,
   useMessage,
   type FormItemRule
 } from "naive-ui";
-import { SearchOutline } from "@vicons/ionicons5";
+import { AddOutline, SearchOutline } from "@vicons/ionicons5";
 import { createApp, getAppSwaggerUrlByBackendUrl, updateApp } from "@/api/app";
 import { apiErrorMessage } from "@/api/http";
 import { emptyApp, hasCompressionOverrides } from "@/lib/entities";
@@ -30,6 +29,7 @@ import { useIsMobile } from "@/composables/useIsMobile";
 import { useAppsStore } from "@/stores/apps";
 import { useAuthStore } from "@/stores/auth";
 import { useRootStore } from "@/stores/root";
+import RecordCard from "@/components/common/RecordCard.vue";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import JwtClientEditor from "@/components/editors/JwtClientEditor.vue";
@@ -261,9 +261,20 @@ async function detectSwagger(): Promise<void> {
               a separate login (<code>/_auth/&lt;provider&gt;{{ model.path_prefix ? "/" + model.path_prefix.replace(/^\/+/, "") : "/<prefix>" }}/login</code>),
               its own cookie scoped to its path and tokens issued to this client.
             </p>
-            <NDynamicInput v-model:value="model.jwt" :min="0" :on-create="newAppJwt">
-              <template #default="{ value }">
-                <div class="stacked login-client">
+            <div class="login-clients">
+              <RecordCard
+                v-for="(value, index) in model.jwt"
+                :key="index"
+                remove-label="Remove login client"
+                @remove="model.jwt.splice(index, 1)"
+              >
+                <template #head>
+                  <span class="muted">{{ index + 1 }}</span>
+                  <span class="login-client__name" :class="{ muted: !value.provider }">
+                    {{ value.provider || "no provider" }}
+                  </span>
+                  <span class="login-client__id mono">{{ value.client.id }}</span>
+                </template>
                   <label class="field">
                     <span class="field__label">Provider (a root provider with an issuer)</span>
                     <NSelect
@@ -275,9 +286,12 @@ async function detectSwagger(): Promise<void> {
                     />
                   </label>
                   <JwtClientEditor v-model="value.client" />
-                </div>
-              </template>
-            </NDynamicInput>
+              </RecordCard>
+              <NButton dashed block @click="model.jwt.push(newAppJwt())">
+                <template #icon><NIcon :component="AddOutline" /></template>
+                Add login client
+              </NButton>
+            </div>
           </NCollapseItem>
         </NCollapse>
       </NForm>
@@ -352,11 +366,19 @@ async function detectSwagger(): Promise<void> {
   color: var(--c-text-2);
 }
 
-.login-client {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--c-border);
-  border-radius: 8px;
+.login-clients {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-client__name {
+  font-weight: 600;
+}
+
+.login-client__id {
+  font-size: 12px;
+  color: var(--c-text-3);
 }
 
 @media (max-width: 560px) {

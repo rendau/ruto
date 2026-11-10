@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { NButton, NCard, NCheckbox, NIcon, NInput, NSelect, NSwitch } from "naive-ui";
+import { NButton, NCheckbox, NIcon, NInput, NSelect, NSwitch } from "naive-ui";
 import { RefreshOutline, TrashOutline } from "@vicons/ionicons5";
 import { cloneAuthMethod, normalizeAuth } from "@/api/normalize";
 import { createEmptyAuthMethod, arrayToLines, linesToArray } from "@/lib/forms";
 import { generateSecret } from "@/lib/format";
 import { AUTH_METHOD_TYPES, AUTH_MODE_OPTIONS } from "@/constants/enums";
+import RecordCard from "@/components/common/RecordCard.vue";
 import VariableInput from "./VariableInput.vue";
 import type { Auth, AuthMethod, AuthMethodType, AuthMode, Variable } from "@/api/types";
 
@@ -313,13 +314,15 @@ function jwtSelectOptions(known: string[], current: string) {
     </p>
 
     <div class="auth-editor__list">
-      <NCard
+      <RecordCard
         v-for="(method, methodIndex) in localAuth.methods"
         :key="methodKeys[methodIndex] || methodIndex"
-        size="small"
         class="auth-method"
+        remove-label="Remove method"
+        @remove="removeMethod(methodIndex)"
       >
-        <div class="auth-method__head">
+        <template #head>
+          <span class="muted">{{ methodIndex + 1 }}</span>
           <div class="auth-method__types">
             <NCheckbox
               :checked="!!method.basic"
@@ -346,18 +349,7 @@ function jwtSelectOptions(known: string[], current: string) {
               IP Validation
             </NCheckbox>
           </div>
-          <NButton
-            class="danger-icon-button"
-            type="error"
-            size="small"
-            secondary
-            circle
-            aria-label="Remove method"
-            @click="removeMethod(methodIndex)"
-          >
-            <NIcon :component="TrashOutline" />
-          </NButton>
-        </div>
+        </template>
 
         <div v-if="method.basic" class="auth-block">
           <div class="auth-block__head">
@@ -536,7 +528,7 @@ function jwtSelectOptions(known: string[], current: string) {
             </NButton>
           </div>
         </div>
-      </NCard>
+      </RecordCard>
     </div>
   </div>
 </template>
@@ -590,14 +582,6 @@ function jwtSelectOptions(known: string[], current: string) {
   gap: 12px;
 }
 
-.auth-method__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
 .auth-method__types {
   display: flex;
   flex-wrap: wrap;
@@ -608,9 +592,15 @@ function jwtSelectOptions(known: string[], current: string) {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 6px;
   padding-top: 14px;
   border-top: 1px solid var(--c-border);
+}
+
+.auth-block:first-child {
+  margin-top: 0;
+  padding-top: 4px;
+  border-top: 0;
 }
 
 .auth-block__head {

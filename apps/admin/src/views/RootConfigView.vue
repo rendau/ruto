@@ -4,7 +4,6 @@ import {
   NAlert,
   NButton,
   NCheckbox,
-  NDynamicInput,
   NIcon,
   NInput,
   NInputNumber,
@@ -12,7 +11,7 @@ import {
   NTag,
   useMessage
 } from "naive-ui";
-import { SaveOutline } from "@vicons/ionicons5";
+import { AddOutline, SaveOutline } from "@vicons/ionicons5";
 import { getRoot, setRoot } from "@/api/root";
 import {
   emptyAuth,
@@ -27,6 +26,7 @@ import { useRootStore } from "@/stores/root";
 import { useAuthStore } from "@/stores/auth";
 import { arrayToLines, linesToArray } from "@/lib/forms";
 import PageContainer from "@/components/common/PageContainer.vue";
+import RecordCard from "@/components/common/RecordCard.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
@@ -105,8 +105,12 @@ function jwtProviderUrls(): string[] {
   return jwtProviders.value.map((item) => item.jwk_url).filter(Boolean);
 }
 
-function newJwtProvider(): RootJwt {
-  return emptyRootJwt();
+function addJwtProvider(): void {
+  jwtProviders.value.push(emptyRootJwt());
+}
+
+function removeJwtProvider(index: number): void {
+  jwtProviders.value.splice(index, 1);
 }
 
 // The default login client is optional: without it the provider only serves
@@ -258,9 +262,29 @@ onMounted(load);
           title="JWT providers"
           description="Who signs the tokens JWT auth trusts. Auth methods refer to a provider by name; a provider without a name serves only methods with no provider set. With an issuer the gateway reads the provider's OpenID discovery document and can log users in itself (/_auth/<name>/login)"
         >
-          <NDynamicInput v-model:value="jwtProviders" :min="0" :on-create="newJwtProvider">
-            <template #default="{ value }">
-              <div class="provider">
+          <div class="providers">
+            <RecordCard
+              v-for="(value, index) in jwtProviders"
+              :key="index"
+              remove-label="Remove provider"
+              @remove="removeJwtProvider(index)"
+            >
+              <template #head>
+                <span class="muted">{{ index + 1 }}</span>
+                <span class="provider__name" :class="{ muted: !value.name.trim() }">
+                  {{ value.name.trim() || "no name" }}
+                </span>
+                <NTag
+                  size="small"
+                  :bordered="false"
+                  :type="value.issuer.trim() ? 'success' : 'default'"
+                >
+                  {{ value.issuer.trim() ? "login" : "keys only" }}
+                </NTag>
+                <span class="provider__url mono">
+                  {{ value.issuer.trim() || value.jwk_url.trim() }}
+                </span>
+              </template>
                 <div class="provider-row">
                   <label class="field provider-row__name">
                     <span class="field__label">Name</span>
@@ -303,9 +327,12 @@ onMounted(load);
                   </NCheckbox>
                   <JwtClientEditor v-if="value.client" v-model="value.client" />
                 </template>
-              </div>
-            </template>
-          </NDynamicInput>
+            </RecordCard>
+            <NButton dashed block @click="addJwtProvider()">
+              <template #icon><NIcon :component="AddOutline" /></template>
+              Add provider
+            </NButton>
+          </div>
           <div v-if="rootStore.jwtKids.length" class="kids">
             <span class="muted kids__label">Available KIDs:</span>
             <NTag
@@ -424,14 +451,25 @@ onMounted(load);
   font-size: 12px;
 }
 
-.provider {
+.providers {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--c-border);
-  border-radius: 8px;
+  gap: 14px;
+}
+
+.provider__name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.provider__url {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--c-text-3);
 }
 
 .provider-row {
