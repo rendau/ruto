@@ -24,34 +24,64 @@ func (m *App) inheritToEndpoint(ep *endpointModel.Endpoint, _ int) {
 	ep.Variables.FillMissing(m.Variables)
 }
 
-// SetJwtCookieNames points every jwt method of auth at the cookie its token may
-// come from: the app's own cookie for a provider the app brings a login client
-// for, the provider's shared cookie otherwise. Methods without a provider read
-// no cookie.
+// SetJwtCookieNames points every jwt method of auth at the provider's shared
+// access cookie and, for a provider the app names an audience for, at the
+// app token exchange with the cookies that keep the token. Methods without a
+// provider read no cookie.
 func (m *App) SetJwtCookieNames(auth *authModel.Auth) {
 	for _, method := range auth.Methods {
 		if method == nil || method.JWT == nil || method.JWT.Provider == "" {
 			continue
 		}
-		method.JWT.CookieName = m.JwtCookieName(method.JWT.Provider)
+		method.JWT.CookieName = constant.JwtCookieName(method.JWT.Provider)
+		method.JWT.Exchange = m.jwtExchange(method.JWT.Provider)
 	}
 }
 
-// JwtCookieName is the access cookie of provider for requests to this app.
-func (m *App) JwtCookieName(provider string) string {
-	if m.JwtClient(provider) != nil {
-		return constant.JwtAppCookieName(provider, m.PathPrefix)
+func (m *App) jwtExchange(provider string) *authModel.JwtExchange {
+	audience := m.JwtAudience(provider)
+	if audience == "" {
+		return nil
 	}
-	return constant.JwtCookieName(provider)
+	own := authModel.JwtCookie{Name: constant.JwtAppCookieName(provider, m.PathPrefix), Path: m.PathPrefix}
+	return &authModel.JwtExchange{
+		Audience: audience,
+		Cookie:   own,
+		Copies: lo.Filter(m.JwtCookieCopies[JwtAudienceKey(provider, audience)], func(v authModel.JwtCookie, _ int) bool {
+			return v != own
+		}),
+	}
 }
 
-// JwtClient is the app's own login client for provider, nil when the app uses
-// the provider's default one.
-func (m *App) JwtClient(provider string) *authModel.JwtClient {
+// JwtAudience is the audience of the app's token at provider, empty when the
+// backend gets the shared token.
+func (m *App) JwtAudience(provider string) string {
 	for i := range m.Jwt {
 		if m.Jwt[i].Provider == provider {
-			return &m.Jwt[i].Client
+			return m.Jwt[i].Audience
 		}
 	}
-	return nil
+	return ""
+}
+
+// JwtAudienceKey groups the apps whose tokens are the same: one provider, one
+// audience.
+func JwtAudienceKey(provider, audience string) string {
+	return provider + "\x00" + audience
+}
+
+// JwtAudienceCookies collects the app token cookies of apps by provider and
+// audience (JwtAudienceKey).
+func JwtAudienceCookies(apps []*App) map[string][]authModel.JwtCookie {
+	result := make(map[string][]authModel.JwtCookie)
+	for _, app := range apps {
+		for _, item := range app.Jwt {
+			key := JwtAudienceKey(item.Provider, item.Audience)
+			result[key] = append(result[key], authModel.JwtCookie{
+				Name: constant.JwtAppCookieName(item.Provider, app.PathPrefix),
+				Path: app.PathPrefix,
+			})
+		}
+	}
+	return result
 }

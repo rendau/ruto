@@ -343,7 +343,7 @@ func TestAuthorize(t *testing.T) {
 			}
 
 			req := &model.AuthRequest{Headers: headers}
-			got := New(tt.conf, tt.jwkGetter).Authorize(req)
+			got := New(tt.conf, tt.jwkGetter, nil).Authorize(req)
 			require.Equal(t, tt.want, got)
 			if tt.fromCookie {
 				require.Equal(t, validToken, req.CookieToken())

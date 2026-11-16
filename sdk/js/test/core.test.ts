@@ -16,12 +16,6 @@ describe('urls', () => {
     expect(auth.logoutUrl('/')).toBe('https://api.mdev.kz/_auth/corp/logout?redirect=%2F')
   })
 
-  it("app's own client: routes under /_auth/<provider>/<app>, me inside the app prefix", () => {
-    const auth = createRutoAuth({ gateway: 'https://api.mdev.kz', provider: 'corp', app: 'orders/' })
-    expect(auth.base).toBe('https://api.mdev.kz/_auth/corp/orders')
-    expect(auth.meUrl).toBe('https://api.mdev.kz/orders/_auth/corp/me')
-  })
-
   it('login and logout default to the current page and the site root', () => {
     const location = stubLocation()
     const auth = createRutoAuth({ gateway: 'https://api.mdev.kz', provider: 'corp' })
@@ -85,9 +79,9 @@ describe('refresh', () => {
     const request = vi.fn((_name: string, fn: () => Promise<unknown>) => fn())
     vi.stubGlobal('navigator', { locks: { request } })
     const fetch = fakeFetch({ '/refresh': [204] })
-    const auth = createRutoAuth({ gateway: 'https://gw', provider: 'corp', app: '/orders', fetch })
+    const auth = createRutoAuth({ gateway: 'https://gw', provider: 'corp', fetch })
     await auth.refresh()
-    expect(request).toHaveBeenCalledWith('ruto-auth:corp/orders', expect.any(Function))
+    expect(request).toHaveBeenCalledWith('ruto-auth:corp', expect.any(Function))
   })
 })
 

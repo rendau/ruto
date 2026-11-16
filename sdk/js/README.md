@@ -50,7 +50,6 @@ import { createRutoAuth, hasRole, usernameOf } from '@rendau/ruto-auth'
 const auth = createRutoAuth({
   gateway: 'https://api.mdev.kz',
   provider: 'corp',
-  // app: '/orders'  — только если у приложения свой клиент (App.jwt)
   onLoginRequired: () => auth.login(), // сессия закончилась — на вход
 })
 
@@ -61,13 +60,12 @@ console.log(usernameOf(me), hasRole(me, 'shop:manager'))
 const r = await auth.fetch('https://api.mdev.kz/shop/orders') // куки + повтор после 401
 ```
 
-### Единица входа
+### Вход
 
 Провайдер даёт общий вход на все приложения: маршруты
-`<gateway>/_auth/<provider>/…`, кука на весь хост. Если у приложения свой
-клиент (`App.jwt`), у него отдельная сессия: передайте `app: '/<префикс>'`, и
-SDK сам соберёт адреса `<gateway>/_auth/<provider>/<префикс>/…` и
-`<gateway>/<префикс>/_auth/<provider>/me`.
+`<gateway>/_auth/<provider>/…`, кука на весь хост. Своих входов у приложений
+нет: приложению со своей аудиторией (`App.jwt`) шлюз сам меняет общий токен на
+токен приложения, SDK про это знать не нужно.
 
 ## API
 

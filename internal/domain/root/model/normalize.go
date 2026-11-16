@@ -53,6 +53,26 @@ func (m *Root) Normalize() error {
 			return fmt.Errorf("apps[%d]: %w", i, err)
 		}
 	}
+	return m.checkAppAudiences()
+}
+
+// checkAppAudiences makes sure every app audience names a provider that can
+// exchange tokens: one with an issuer and a client. Otherwise each request to
+// the app would end in an error instead of a save being refused.
+func (m *Root) checkAppAudiences() error {
+	exchangers := make(map[string]bool, len(m.Jwt))
+	for i := range m.Jwt {
+		if m.Jwt[i].LoginEnabled() && m.Jwt[i].Client != nil {
+			exchangers[m.Jwt[i].Name] = true
+		}
+	}
+	for i, app := range m.Apps {
+		for j, item := range app.Jwt {
+			if !exchangers[item.Provider] {
+				return fmt.Errorf("apps[%d]: jwt[%d]: provider: %q is not a root provider with issuer and client", i, j, item.Provider)
+			}
+		}
+	}
 	return nil
 }
 
@@ -98,11 +118,16 @@ func (m *RootJwt) Normalize() error {
 		return fmt.Errorf("public_url: %w", err)
 	}
 
+	m.ExchangeScopes = lo.Uniq(lo.FilterMap(m.ExchangeScopes, func(v string, _ int) (string, bool) {
+		v = strings.TrimSpace(v)
+		return v, v != ""
+	}))
+
 	if m.Issuer == "" {
 		if m.JwkUrl == "" {
 			return fmt.Errorf("jwk_url: empty")
 		}
-		if m.Client != nil || m.InternalUrl != "" || m.PublicUrl != "" {
+		if m.Client != nil || m.InternalUrl != "" || m.PublicUrl != "" || len(m.ExchangeScopes) > 0 {
 			return fmt.Errorf("issuer: empty, but login settings are set")
 		}
 		return nil

@@ -509,57 +509,37 @@ func TestLoginFailureGoesBackToTheFront(t *testing.T) {
 	assert.Equal(t, publicUrl+"/ui?auth_error=temporarily_unavailable", rec.Header().Get("Location"))
 }
 
-func TestAppOwnClientUnit(t *testing.T) {
+func TestLogoutDropsAppTokens(t *testing.T) {
 	op := newFakeOP(t)
 	snapshot := rootModel.NewEmpty()
-	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, nil)} // no default client: no shared login
-	snapshot.Apps = []*appModel.App{{
-		Active:     true,
-		Name:       "shop",
-		PathPrefix: "shop/api",
-		Backend:    appModel.Backend{Url: "http://shop:8080"},
-		Jwt:        []appModel.AppJwt{{Provider: "corp", Client: authModel.JwtClient{Id: "shop-client", Secret: "s"}}},
-	}, {
-		Active:     true,
-		Name:       "orphan",
-		PathPrefix: "orphan",
-		Backend:    appModel.Backend{Url: "http://orphan:8080"},
-		Jwt:        []appModel.AppJwt{{Provider: "nobody", Client: authModel.JwtClient{Id: "x", Secret: "s"}}},
-	}}
+	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
+	newApp := func(name, prefix string, active bool, jwt ...appModel.AppJwt) *appModel.App {
+		return &appModel.App{Active: active, Name: name, PathPrefix: prefix, Backend: appModel.Backend{Url: "http://" + name + ":8080"}, Jwt: jwt}
+	}
+	snapshot.Apps = []*appModel.App{
+		newApp("orders", "orders", true, appModel.AppJwt{Provider: "corp", Audience: "orders"}),
+		newApp("orders-api", "orders/api", true, appModel.AppJwt{Provider: "corp", Audience: "orders"}),
+		newApp("old", "old", false, appModel.AppJwt{Provider: "corp", Audience: "old"}),
+		newApp("shop", "shop", true),
+	}
 	router := buildRouter(t, snapshot)
 
-	assert.Equal(t, http.StatusNotFound, do(router, http.MethodGet, "/_auth/corp/login").Code, "no default client, no shared login")
-	assert.Equal(t, http.StatusNotFound, do(router, http.MethodGet, "/_auth/nobody/orphan/login").Code, "unknown provider is skipped")
+	// apps have no login routes of their own any more
+	assert.Equal(t, http.StatusNotFound, do(router, http.MethodGet, "/_auth/corp/orders/login").Code)
 
-	rec := do(router, http.MethodGet, "/_auth/corp/shop/api/login?redirect=/shop/api/ui")
+	rec := do(router, http.MethodGet, "/_auth/corp/logout?redirect=/bye")
 	require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
-	authUrl, err := url.Parse(rec.Header().Get("Location"))
-	require.NoError(t, err)
-	q := authUrl.Query()
-	assert.Equal(t, "shop-client", q.Get("client_id"))
-	assert.Equal(t, publicUrl+"/_auth/corp/shop/api/callback", q.Get("redirect_uri"))
-	op.challenge = q.Get("code_challenge")
-	op.nonce = q.Get("nonce")
-	loginCookie := cookieByName(t, rec, "__Host-ruto-login_corp_shop.api")
-
-	rec = do(router, http.MethodGet, "/_auth/corp/shop/api/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
-	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
-	assert.Equal(t, publicUrl+"/shop/api/ui", rec.Header().Get("Location"))
-
-	access := cookieByName(t, rec, "ruto_corp_shop.api")
-	assert.Equal(t, "/shop/api", access.Path, "the app cookie travels only with the app's requests")
-	refresh := cookieByName(t, rec, "ruto-rt_corp_shop.api")
-	assert.Equal(t, "/_auth/corp/shop/api", refresh.Path)
-
-	// the app's unit renews its own cookies with its own client
-	rec = do(router, http.MethodPost, "/_auth/corp/shop/api/refresh", refresh)
-	require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
-	assert.Equal(t, "shop-client", op.lastUser)
-	assert.Equal(t, "/shop/api", cookieByName(t, rec, "ruto_corp_shop.api").Path)
-	assert.Equal(t, "/_auth/corp/shop/api", cookieByName(t, rec, "ruto-rt_corp_shop.api").Path)
-
-	// the jwt method of the app reads exactly this cookie
-	assert.Equal(t, "ruto_corp_shop.api", snapshot.Apps[0].JwtCookieName("corp"))
+	cleared := map[string]string{}
+	for _, c := range rec.Result().Cookies() {
+		assert.Equal(t, -1, c.MaxAge, c.Name)
+		cleared[c.Name] = c.Path
+	}
+	assert.Equal(t, map[string]string{
+		"ruto_corp":            "/",
+		"ruto-rt_corp":         "/_auth/corp",
+		"ruto_corp_orders":     "/orders",
+		"ruto_corp_orders.api": "/orders/api",
+	}, cleared)
 }
 
 func TestIdTokenIsChecked(t *testing.T) {
@@ -655,7 +635,7 @@ func TestMe(t *testing.T) {
 		Name:       "shop",
 		PathPrefix: "shop/api",
 		Backend:    appModel.Backend{Url: "http://shop:8080"},
-		Jwt:        []appModel.AppJwt{{Provider: "corp", Client: authModel.JwtClient{Id: "shop-client", Secret: "s"}}},
+		Jwt:        []appModel.AppJwt{{Provider: "corp", Audience: "shop"}},
 	}}
 	router := buildRouter(t, snapshot)
 	const target = "/_auth/corp/me"
@@ -705,13 +685,4 @@ func TestMe(t *testing.T) {
 	want, err := json.Marshal(claims)
 	require.NoError(t, err)
 	assert.JSONEq(t, string(want), rec.Body.String())
-
-	// the app's unit serves /me inside the app's prefix, where the app cookie
-	// (Path=<prefix>) travels, and reads its own cookie, not the shared one
-	assert.Equal(t, http.StatusNotFound, do(router, http.MethodGet, "/_auth/corp/shop/api/me", &http.Cookie{Name: "ruto_corp_shop.api", Value: token}).Code,
-		"the app cookie would never reach /_auth/…: no /me there")
-	rec = do(router, http.MethodGet, "/shop/api/_auth/corp/me", &http.Cookie{Name: "ruto_corp", Value: token})
-	assert.Equal(t, http.StatusUnauthorized, rec.Code, "the shared cookie is not the app's session")
-	rec = do(router, http.MethodGet, "/shop/api/_auth/corp/me", &http.Cookie{Name: "ruto_corp_shop.api", Value: token})
-	assert.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 }

@@ -22,7 +22,6 @@ import { AddOutline, SearchOutline } from "@vicons/ionicons5";
 import { createApp, getAppSwaggerUrlByBackendUrl, updateApp } from "@/api/app";
 import { apiErrorMessage } from "@/api/http";
 import { emptyApp, hasCompressionOverrides } from "@/lib/entities";
-import { emptyJwtClient } from "@/api/normalize";
 import { useAppForm } from "@/composables/useAppForm";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useIsMobile } from "@/composables/useIsMobile";
@@ -32,7 +31,6 @@ import { useRootStore } from "@/stores/root";
 import RecordCard from "@/components/common/RecordCard.vue";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
-import JwtClientEditor from "@/components/editors/JwtClientEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import KeyValueTextarea from "@/components/editors/KeyValueTextarea.vue";
@@ -81,10 +79,10 @@ function nonDefaultSections(): string[] {
 }
 
 function newAppJwt(): AppJwt {
-  return { provider: "", client: emptyJwtClient() };
+  return { provider: "", audience: "" };
 }
 
-const loginProviderOptions = computed(() =>
+const providerOptions = computed(() =>
   rootStore.loginProviderNames.map((name) => ({ label: name, value: name }))
 );
 
@@ -255,17 +253,16 @@ async function detectSwagger(): Promise<void> {
             </p>
             <VariableEditor v-model="model.variables" :available-variables="inheritedVariables" />
           </NCollapseItem>
-          <NCollapseItem title="Own login clients" name="jwt">
+          <NCollapseItem title="App token (exchange)" name="jwt">
             <p class="muted form-hint">
-              By default the app shares the provider's login and cookie. With its own client the app gets
-              a separate login (<code>/_auth/&lt;provider&gt;{{ model.path_prefix ? "/" + model.path_prefix.replace(/^\/+/, "") : "/<prefix>" }}/login</code>),
-              its own cookie scoped to its path and tokens issued to this client.
+              The gateway exchanges the shared login token for a token with this audience and hands it to
+              the backend; leave empty to pass the shared token.
             </p>
             <div class="login-clients">
               <RecordCard
                 v-for="(value, index) in model.jwt"
                 :key="index"
-                remove-label="Remove login client"
+                remove-label="Remove token exchange"
                 @remove="model.jwt.splice(index, 1)"
               >
                 <template #head>
@@ -273,23 +270,28 @@ async function detectSwagger(): Promise<void> {
                   <span class="login-client__name" :class="{ muted: !value.provider }">
                     {{ value.provider || "no provider" }}
                   </span>
-                  <span class="login-client__id mono">{{ value.client.id }}</span>
+                  <span class="login-client__id mono">{{ value.audience }}</span>
                 </template>
-                  <label class="field">
-                    <span class="field__label">Provider (a root provider with an issuer)</span>
-                    <NSelect
-                      v-model:value="value.provider"
-                      filterable
-                      tag
-                      placeholder="Provider name"
-                      :options="loginProviderOptions"
-                    />
-                  </label>
-                  <JwtClientEditor v-model="value.client" />
+                  <div class="form-grid">
+                    <label class="field">
+                      <span class="field__label">Provider (a root provider with an issuer)</span>
+                      <NSelect
+                        v-model:value="value.provider"
+                        filterable
+                        tag
+                        placeholder="Provider name"
+                        :options="providerOptions"
+                      />
+                    </label>
+                    <label class="field">
+                      <span class="field__label">Audience (Keycloak: client id holding the app's roles)</span>
+                      <NInput v-model:value="value.audience" placeholder="e.g. orders" />
+                    </label>
+                  </div>
               </RecordCard>
               <NButton dashed block @click="model.jwt.push(newAppJwt())">
                 <template #icon><NIcon :component="AddOutline" /></template>
-                Add login client
+                Add token exchange
               </NButton>
             </div>
           </NCollapseItem>

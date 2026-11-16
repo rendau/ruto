@@ -25,23 +25,15 @@ const (
 	hostPrefix = "__Host-"
 )
 
-func (u *unit) unitSlug() string {
-	slug := u.provider.Name
-	if u.cookiePath != "/" {
-		slug += "_" + constant.LoginUnitSlug(u.cookiePath)
-	}
-	return slug
-}
-
 func (u *unit) refreshCookieName() string {
-	return constant.JwtRefreshCookiePrefix + u.unitSlug()
+	return constant.JwtRefreshCookiePrefix + u.provider.Name
 }
 
 // loginCookieName is the cookie of a login in progress (state, PKCE verifier,
 // return address). With https it gets the __Host- prefix, which requires
 // Path=/ and Secure.
 func (u *unit) loginCookieName() string {
-	name := constant.JwtLoginCookiePrefix + u.unitSlug()
+	name := constant.JwtLoginCookiePrefix + u.provider.Name
 	if u.secure {
 		return hostPrefix + name
 	}

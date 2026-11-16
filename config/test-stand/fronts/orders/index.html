@@ -1,15 +1,16 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Orders front (own client)</title>
+<html><head><meta charset="utf-8"><title>Orders front (app token)</title>
 <style>body{font:14px/1.4 -apple-system,sans-serif;margin:24px;max-width:900px}button{margin:4px 6px 4px 0;padding:6px 12px}
 pre{background:#f4f4f4;padding:8px;white-space:pre-wrap;word-break:break-all}#user{font-weight:600}#log{max-height:320px;overflow:auto}</style></head>
 <body>
-<h2>Orders front (own client)</h2>
-<p>Me: <code>/orders/_auth/corp/me</code> · Unit: <code>/_auth/corp/orders</code> · API: <code>/orders/hello</code> · SDK: <code>@rendau/ruto-auth</code> (browser bundle)</p>
+<h2>Orders front (app token)</h2>
+<p>Me: <code>/_auth/corp/me</code> (shared token) · API: <code>/orders/hello</code>, <code>/orders-api/hello</code> (app token, audience <code>orders</code>) · SDK: <code>@rendau/ruto-auth</code> (browser bundle)</p>
 <p>Status: <span id="user">…</span></p>
 <p>
 <button id="login">Login</button>
 <button id="me">Me</button>
 <button id="call">Call API</button>
+<button id="call2">Call orders-api</button>
 <button id="refresh">Refresh</button>
 <button id="logout">Logout</button>
 </p>
@@ -20,13 +21,14 @@ pre{background:#f4f4f4;padding:8px;white-space:pre-wrap;word-break:break-all}#us
 <script>
 const GW = 'http://localhost:8088';
 const API = GW + '/orders/hello';
+const API2 = GW + '/orders-api/hello';
 const log = (...a) => { const el = document.getElementById('log'); el.textContent = new Date().toISOString().slice(11,19) + ' ' + a.join(' ') + '\n' + el.textContent; };
 
-// The app's own client: `app` is its path prefix, the SDK derives the unit and me routes.
+// The shared login of the provider; the gateway exchanges its token for the
+// orders app token itself.
 const auth = RutoAuth.createRutoAuth({
   gateway: GW,
   provider: 'corp',
-  app: '/orders',
   onLoginRequired: () => { log('login required'); window.__loginRequired = (window.__loginRequired || 0) + 1; },
 });
 
@@ -36,7 +38,7 @@ async function me() {
   window.__me = claims;
   if (claims) {
     log('me -> 200');
-    document.getElementById('user').textContent = 'logged in as ' + RutoAuth.usernameOf(claims) + ' (exp ' + new Date(claims.exp * 1000).toLocaleTimeString() + ', manager: ' + RutoAuth.hasRole(claims, 'shop:manager') + ')';
+    document.getElementById('user').textContent = 'logged in as ' + RutoAuth.usernameOf(claims) + ' (exp ' + new Date(claims.exp * 1000).toLocaleTimeString() + ', roles in the shared token: ' + JSON.stringify(claims.resource_access || null) + ')';
     document.getElementById('claims').textContent = JSON.stringify(claims, null, 2);
     return 200;
   }
@@ -46,11 +48,14 @@ async function me() {
   return 401;
 }
 
-async function call() {
-  const r = await auth.fetch(API);
+// The backend stub answers with the claims of the token it got (`token`).
+async function call(url = API) {
+  const r = await auth.fetch(url);
   const t = await r.text();
-  log('api ->', r.status, t);
-  window.__api = { status: r.status, body: t };
+  log('api ' + url.slice(GW.length) + ' ->', r.status, t);
+  let body = null;
+  try { body = JSON.parse(t); } catch (e) {}
+  window.__api = { status: r.status, body: t, token: body && body.token };
   return r.status;
 }
 
@@ -58,7 +63,8 @@ const refresh = async () => { const st = await auth.refresh(); log('refresh ->',
 document.getElementById('login').onclick = () => auth.login();
 document.getElementById('logout').onclick = () => auth.logout(location.origin + '/');
 document.getElementById('me').onclick = me;
-document.getElementById('call').onclick = call;
+document.getElementById('call').onclick = () => call(API);
+document.getElementById('call2').onclick = () => call(API2);
 document.getElementById('refresh').onclick = refresh;
 window.__ruto = { me, call, refresh, login: () => auth.login(), logout: () => auth.logout(location.origin + '/'), auth };
 me();

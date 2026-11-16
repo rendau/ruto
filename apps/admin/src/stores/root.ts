@@ -13,7 +13,7 @@ export const useRootStore = defineStore("root", () => {
   const jwtProviderNames = computed(() =>
     (root.value?.jwt || []).map((item) => item.name.trim()).filter(Boolean)
   );
-  // Providers an app may bring its own login client for: those with an issuer.
+  // Providers that can exchange tokens for an app: those with an issuer.
   const loginProviderNames = computed(() =>
     (root.value?.jwt || [])
       .filter((item) => item.issuer?.trim())

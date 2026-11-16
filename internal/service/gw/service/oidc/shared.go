@@ -15,13 +15,14 @@ import (
 	snapshotModel "github.com/rendau/ruto/internal/domain/snapshot/model"
 )
 
-// Refreshes of one refresh token are shared by all gateway pods through Redis:
-// the pod that takes the lock calls the provider and leaves the answer for
-// RefreshGrace, the others wait for it. Redis is never on the path of an app
-// request, only on the path of a refresh. When it fails, each pod refreshes on
-// its own, as without it.
+// Refreshes of one refresh token and exchanges of one token for one audience
+// are shared by all gateway pods through Redis: the pod that takes the lock
+// calls the provider and leaves the answer for RefreshGrace, the others wait
+// for it. Redis is on the path of an app request only when the request needs
+// a new app token. When it fails, each pod calls the provider on its own, as
+// without it.
 const (
-	sharedKeyPrefix = "ruto:gw:refresh:"
+	sharedKeyPrefix = "ruto:gw:token:"
 	// sharedLockTTL outlives the provider call of the lock holder (bounded by
 	// requestTimeout); a holder that died frees the lock by expiry.
 	sharedLockTTL = requestTimeout + 2*time.Second
@@ -31,7 +32,7 @@ const (
 	redisOpTimeout = time.Second
 )
 
-// SetRedis points the service at the Redis the pods share refreshes through;
+// SetRedis points the service at the Redis the pods share token calls through;
 // empty settings stop sharing. The previous client is closed.
 func (s *Service) SetRedis(settings *snapshotModel.GatewaySettings) {
 	var client *redis.Client
@@ -57,7 +58,7 @@ func (s *Service) SetRedis(settings *snapshotModel.GatewaySettings) {
 		_ = previous.Close()
 	}
 	if client != nil {
-		slog.Info("oidc: refreshes are shared through redis", "addr", settings.RedisAddr, "db", settings.RedisDB)
+		slog.Info("oidc: token calls are shared through redis", "addr", settings.RedisAddr, "db", settings.RedisDB)
 	}
 }
 
@@ -67,10 +68,10 @@ func (s *Service) redisClient() *redis.Client {
 	return s.redis
 }
 
-// sharedRefresh returns the answer to a refresh of key, calling the provider
-// with call only when no pod has done so within RefreshGrace and no pod is
-// doing so now.
-func (s *Service) sharedRefresh(client *redis.Client, key string, call func() (*TokenResponse, error)) (*TokenResponse, error) {
+// sharedCall returns the answer to the call of key, calling the provider with
+// call only when no pod has done so within RefreshGrace and no pod is doing so
+// now.
+func (s *Service) sharedCall(client *redis.Client, key string, call func() (*TokenResponse, error)) (*TokenResponse, error) {
 	answerKey := sharedAnswerKey(key)
 	lockKey := answerKey + ":lock"
 	deadline := time.Now().Add(sharedLockTTL)
@@ -91,7 +92,7 @@ func (s *Service) sharedRefresh(client *redis.Client, key string, call func() (*
 			return unshared(err, call)
 		}
 		if locked {
-			return refreshUnderLock(client, answerKey, lockKey, call)
+			return callUnderLock(client, answerKey, lockKey, call)
 		}
 
 		// Another pod is calling the provider. A lock that outlived its
@@ -103,14 +104,14 @@ func (s *Service) sharedRefresh(client *redis.Client, key string, call func() (*
 	}
 }
 
-// sharedAnswerKey hashes the refresh key: the refresh token stays out of the
-// key names, which Redis tools and monitoring show.
+// sharedAnswerKey hashes the call key: the tokens stay out of the key names,
+// which Redis tools and monitoring show.
 func sharedAnswerKey(key string) string {
 	sum := sha256.Sum256([]byte(key))
 	return sharedKeyPrefix + hex.EncodeToString(sum[:])
 }
 
-func refreshUnderLock(client *redis.Client, answerKey, lockKey string, call func() (*TokenResponse, error)) (*TokenResponse, error) {
+func callUnderLock(client *redis.Client, answerKey, lockKey string, call func() (*TokenResponse, error)) (*TokenResponse, error) {
 	rep, err := call()
 
 	ctx, cancel := context.WithTimeout(context.Background(), redisOpTimeout)
@@ -120,12 +121,12 @@ func refreshUnderLock(client *redis.Client, answerKey, lockKey string, call func
 	if err == nil {
 		if raw, marshalErr := json.Marshal(rep); marshalErr == nil {
 			if setErr := client.Set(ctx, answerKey, raw, RefreshGrace).Err(); setErr != nil {
-				slog.Warn("oidc: redis: the refresh answer is not shared", "error", setErr)
+				slog.Warn("oidc: redis: the token answer is not shared", "error", setErr)
 			}
 		}
 	}
 	if delErr := client.Del(ctx, lockKey).Err(); delErr != nil {
-		slog.Warn("oidc: redis: refresh lock is left to expire", "error", delErr)
+		slog.Warn("oidc: redis: token call lock is left to expire", "error", delErr)
 	}
 
 	return rep, err
@@ -151,6 +152,6 @@ func readAnswer(client *redis.Client, answerKey string) (*TokenResponse, error) 
 }
 
 func unshared(err error, call func() (*TokenResponse, error)) (*TokenResponse, error) {
-	slog.Warn("oidc: redis is unavailable, refreshing without other pods", "error", err)
+	slog.Warn("oidc: redis is unavailable, calling the provider without other pods", "error", err)
 	return call()
 }

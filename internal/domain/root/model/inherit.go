@@ -10,6 +10,10 @@ import (
 )
 
 func (m *Root) InheritDown() {
+	copies := appModel.JwtAudienceCookies(m.ActiveApps())
+	for _, app := range m.Apps {
+		app.JwtCookieCopies = copies
+	}
 	lo.ForEach(m.Apps, m.inheritToApp)
 }
 

@@ -1,6 +1,6 @@
 // Package oidc talks to OpenID Connect providers on the gateway's behalf:
-// reads their discovery documents and exchanges or refreshes tokens at their
-// token endpoint. It knows nothing about cookies, apps or requests.
+// reads their discovery documents and exchanges codes, refreshes and exchanges
+// tokens at their token endpoint. It knows nothing about cookies, apps or requests.
 package oidc
 
 import (
@@ -24,8 +24,8 @@ const (
 	// MetadataTTL is how long a discovery document is trusted before it is
 	// read again; providers change their endpoints about never.
 	MetadataTTL = time.Hour
-	// RefreshGrace is how long the answer to a refresh is given again for the
-	// same refresh token without asking the provider.
+	// RefreshGrace is how long the answer to a refresh or a token exchange is
+	// given again for the same request without asking the provider.
 	RefreshGrace     = 15 * time.Second
 	discoveryPath    = "/.well-known/openid-configuration"
 	requestTimeout   = 10 * time.Second
@@ -42,11 +42,11 @@ type Service struct {
 	httpClient *http.Client
 	mu         sync.Mutex
 	entries    map[string]*entry // by discovery url
-	refreshes  singleflight.Group
+	calls      singleflight.Group
 	recentMu   sync.Mutex
-	recent     map[string]recentRefresh // by refresh key, see Refresh
+	recent     map[string]recentAnswer // by call key, see shared
 	redisMu    sync.RWMutex
-	redis      *redis.Client // shared refreshes, see SetRedis; nil — none
+	redis      *redis.Client // shared calls, see SetRedis; nil — none
 }
 
 type entry struct {
@@ -59,7 +59,7 @@ func New() *Service {
 	return &Service{
 		httpClient: httpx.New(httpx.Config{Timeout: requestTimeout}),
 		entries:    make(map[string]*entry),
-		recent:     make(map[string]recentRefresh),
+		recent:     make(map[string]recentAnswer),
 	}
 }
 

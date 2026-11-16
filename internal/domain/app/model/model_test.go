@@ -6,9 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
-	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
 func TestAppNormalize_RejectWildcardInPathPrefix(t *testing.T) {
@@ -202,23 +200,20 @@ func TestAppNormalize_Jwt(t *testing.T) {
 	item := &App{
 		PathPrefix: "shop",
 		Backend:    Backend{Url: "http://example.local/svc"},
-		Jwt: []AppJwt{
-			{Provider: " corp ", Client: authModel.JwtClient{Id: "shop", Secret: "s", Scopes: []string{"email"}}},
-		},
+		Jwt:        []AppJwt{{Provider: " corp ", Audience: " shop "}},
 	}
 	require.NoError(t, item.Normalize())
-	assert.Equal(t, "corp", item.Jwt[0].Provider)
-	assert.Equal(t, []string{"openid", "email"}, item.Jwt[0].Client.Scopes)
-	assert.Equal(t, "ruto_corp_shop", item.JwtCookieName("corp"))
-	assert.Equal(t, "ruto_other", item.JwtCookieName("other"))
+	assert.Equal(t, AppJwt{Provider: "corp", Audience: "shop"}, item.Jwt[0])
+	assert.Equal(t, "shop", item.JwtAudience("corp"))
+	assert.Empty(t, item.JwtAudience("other"))
 
-	item.Jwt = append(item.Jwt, AppJwt{Provider: "corp", Client: authModel.JwtClient{Id: "x", Secret: "y"}})
+	item.Jwt = append(item.Jwt, AppJwt{Provider: "corp", Audience: "x"})
 	require.EqualError(t, item.Normalize(), `jwt[1]: provider: duplicate "corp"`)
 
-	item.Jwt = []AppJwt{{Provider: "corp", Client: authModel.JwtClient{Id: "shop"}}}
-	require.EqualError(t, item.Normalize(), "jwt[0]: client: secret: empty")
+	item.Jwt = []AppJwt{{Provider: "corp"}}
+	require.EqualError(t, item.Normalize(), "jwt[0]: audience: empty")
 
-	item.Jwt = []AppJwt{{Client: authModel.JwtClient{Id: "shop", Secret: "s"}}}
+	item.Jwt = []AppJwt{{Audience: "shop"}}
 	require.EqualError(t, item.Normalize(), "jwt[0]: provider: empty")
 
 	item.Jwt = nil
@@ -226,14 +221,14 @@ func TestAppNormalize_Jwt(t *testing.T) {
 	assert.NotNil(t, item.Jwt)
 }
 
-func TestAppRedacted_JwtClientSecret(t *testing.T) {
+func TestAppRedacted_Jwt(t *testing.T) {
 	item := &App{
 		PathPrefix: "shop",
 		Backend:    Backend{Url: "http://example.local/svc"},
-		Jwt:        []AppJwt{{Provider: "corp", Client: authModel.JwtClient{Id: "shop", Secret: "s3cret", Scopes: []string{"openid"}}}},
+		Jwt:        []AppJwt{{Provider: "corp", Audience: "shop"}},
 	}
 	redacted := item.Redacted()
-	assert.Equal(t, varsModel.RedactedPlaceholder, redacted.Jwt[0].Client.Secret)
-	assert.Equal(t, "shop", redacted.Jwt[0].Client.Id)
-	assert.Equal(t, "s3cret", item.Jwt[0].Client.Secret, "the receiver is left untouched")
+	assert.Equal(t, item.Jwt, redacted.Jwt, "the audience is not a secret")
+	redacted.Jwt[0].Audience = "x"
+	assert.Equal(t, "shop", item.Jwt[0].Audience, "the receiver is left untouched")
 }

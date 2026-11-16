@@ -35,37 +35,79 @@ func (s *Service) Exchange(
 // Refreshes of one token in this process share one call to the provider:
 // those that come while it is in flight (several tabs got a 401 at once) and,
 // for RefreshGrace after it, those the browser sent before it got the new
-// cookies. With Redis set (SetRedis) the call is shared by all gateway pods. A provider that rotates refresh tokens would refuse all of them but
-// the first. The call outlives a caller that gives up, so the others still
-// get the answer. The shared answer must not be modified.
+// cookies. With Redis set (SetRedis) the call is shared by all gateway pods. A
+// provider that rotates refresh tokens would refuse all of them but the first.
+// The call outlives a caller that gives up, so the others still get the
+// answer. The shared answer must not be modified.
 func (s *Service) Refresh(
 	ctx context.Context,
 	tokenEndpoint string,
 	client *authModel.JwtClient,
 	refreshToken string,
 ) (*TokenResponse, error) {
-	key := tokenEndpoint + "\x00" + client.Id + "\x00" + refreshToken
-	if rep := s.recentRefresh(key); rep != nil {
+	key := "refresh\x00" + tokenEndpoint + "\x00" + client.Id + "\x00" + refreshToken
+	return s.shared(key, func() (*TokenResponse, error) {
+		form := url.Values{
+			"grant_type":    {"refresh_token"},
+			"refresh_token": {refreshToken},
+		}
+		return s.token(context.WithoutCancel(ctx), tokenEndpoint, client, form)
+	})
+}
+
+// Token exchange parameters of RFC 8693.
+const (
+	grantTypeTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
+	tokenTypeAccessToken   = "urn:ietf:params:oauth:token-type:access_token"
+)
+
+// TokenExchange trades subjectToken, an access token issued to client, for an
+// access token meant for audience (RFC 8693 §2.1), asking for scopes when
+// there are any. Exchanges of one token for one audience are shared like
+// refreshes (see Refresh): several requests of a page that need the app token
+// at once get it from one call, and so do the requests sent before the browser
+// got the cookie with it. The shared answer must not be modified.
+func (s *Service) TokenExchange(
+	ctx context.Context,
+	tokenEndpoint string,
+	client *authModel.JwtClient,
+	subjectToken, audience string,
+	scopes []string,
+) (*TokenResponse, error) {
+	scope := strings.Join(scopes, " ")
+	key := "exchange\x00" + tokenEndpoint + "\x00" + client.Id + "\x00" + subjectToken + "\x00" + audience + "\x00" + scope
+	return s.shared(key, func() (*TokenResponse, error) {
+		form := url.Values{
+			"grant_type":           {grantTypeTokenExchange},
+			"subject_token":        {subjectToken},
+			"subject_token_type":   {tokenTypeAccessToken},
+			"requested_token_type": {tokenTypeAccessToken},
+			"audience":             {audience},
+		}
+		if scope != "" {
+			form.Set("scope", scope)
+		}
+		return s.token(context.WithoutCancel(ctx), tokenEndpoint, client, form)
+	})
+}
+
+// shared runs call once for all the callers with the same key: in this
+// process, and through Redis in all pods when it is set; its answer is given
+// again for RefreshGrace.
+func (s *Service) shared(key string, call func() (*TokenResponse, error)) (*TokenResponse, error) {
+	if rep := s.recentAnswer(key); rep != nil {
 		return rep, nil
 	}
-	rep, err, _ := s.refreshes.Do(key, func() (any, error) {
-		call := func() (*TokenResponse, error) {
-			form := url.Values{
-				"grant_type":    {"refresh_token"},
-				"refresh_token": {refreshToken},
-			}
-			return s.token(context.WithoutCancel(ctx), tokenEndpoint, client, form)
-		}
-
+	rep, err, _ := s.calls.Do(key, func() (any, error) {
 		var rep *TokenResponse
 		var err error
-		if shared := s.redisClient(); shared != nil {
-			rep, err = s.sharedRefresh(shared, key, call)
+		if redisClient := s.redisClient(); redisClient != nil {
+			rep, err = s.sharedCall(redisClient, key, call)
 		} else {
 			rep, err = call()
 		}
 		if err == nil {
-			s.rememberRefresh(key, rep)
+			s.rememberAnswer(key, rep)
 		}
 		return rep, err
 	})
@@ -75,12 +117,12 @@ func (s *Service) Refresh(
 	return rep.(*TokenResponse), nil
 }
 
-type recentRefresh struct {
+type recentAnswer struct {
 	rep *TokenResponse
 	at  time.Time
 }
 
-func (s *Service) recentRefresh(key string) *TokenResponse {
+func (s *Service) recentAnswer(key string) *TokenResponse {
 	s.recentMu.Lock()
 	defer s.recentMu.Unlock()
 	if item, ok := s.recent[key]; ok && time.Since(item.at) < RefreshGrace {
@@ -89,9 +131,9 @@ func (s *Service) recentRefresh(key string) *TokenResponse {
 	return nil
 }
 
-// rememberRefresh keeps an answer for RefreshGrace; the outdated ones are
-// dropped on the way, there are only as many as refreshes in that window.
-func (s *Service) rememberRefresh(key string, rep *TokenResponse) {
+// rememberAnswer keeps an answer for RefreshGrace; the outdated ones are
+// dropped on the way, there are only as many as calls in that window.
+func (s *Service) rememberAnswer(key string, rep *TokenResponse) {
 	s.recentMu.Lock()
 	defer s.recentMu.Unlock()
 	now := time.Now()
@@ -100,7 +142,7 @@ func (s *Service) rememberRefresh(key string, rep *TokenResponse) {
 			delete(s.recent, k)
 		}
 	}
-	s.recent[key] = recentRefresh{rep: rep, at: now}
+	s.recent[key] = recentAnswer{rep: rep, at: now}
 }
 
 // token posts form to the token endpoint as a confidential client

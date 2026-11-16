@@ -35,11 +35,6 @@ export interface RutoAuthOptions {
   gateway: string
   /** Login provider name in the gateway root config (`Root.jwt[].name`). */
   provider: string
-  /**
-   * Path prefix of the app when it logs in with its own client (`App.jwt`),
-   * e.g. `/orders`. Leave empty for the shared login of the provider.
-   */
-  app?: string
   /** fetch used for the gateway's own routes (`me`, `refresh`); default global fetch. */
   fetch?: FetchLike
   /**
@@ -49,7 +44,7 @@ export interface RutoAuthOptions {
    * resolves to null.
    */
   onLoginRequired?: (() => void) | undefined
-  /** Name of the Web Lock that serializes refreshes across tabs; default derived from the unit. */
+  /** Name of the Web Lock that serializes refreshes across tabs; default derived from the provider. */
   lockName?: string
 }
 
@@ -89,9 +84,9 @@ export function statusOf(value: unknown): number | undefined {
 const trimSlash = (s: string): string => s.replace(/\/+$/, '')
 
 export class RutoAuth {
-  /** Base of the unit's routes: `<gateway>/_auth/<provider>[<app>]`. */
+  /** Base of the provider's login routes: `<gateway>/_auth/<provider>`. */
   readonly base: string
-  /** `me` lives under the access cookie's path: `<gateway>[<app>]/_auth/<provider>/me`. */
+  /** `<gateway>/_auth/<provider>/me`. */
   readonly meUrl: string
   readonly refreshUrl: string
 
@@ -105,14 +100,11 @@ export class RutoAuth {
     const gateway = trimSlash(options.gateway.trim())
     const provider = options.provider.trim()
     if (!gateway || !provider) throw new Error('ruto-auth: gateway and provider are required')
-    let app = trimSlash((options.app ?? '').trim())
-    if (app && !app.startsWith('/')) app = '/' + app
-
-    this.base = `${gateway}/_auth/${provider}${app}`
-    this.meUrl = `${gateway}${app}/_auth/${provider}/me`
+    this.base = `${gateway}/_auth/${provider}`
+    this.meUrl = `${this.base}/me`
     this.refreshUrl = `${this.base}/refresh`
     this.fetchImpl = options.fetch ?? ((input, init) => globalThis.fetch(input, init))
-    this.lockName = options.lockName ?? `ruto-auth:${provider}${app}`
+    this.lockName = options.lockName ?? `ruto-auth:${provider}`
     this.onLoginRequired = options.onLoginRequired
   }
 
@@ -247,7 +239,7 @@ export function loginError(url?: string): string | null {
   }
 }
 
-/** Creates a client of one login unit (provider, or provider + app). */
+/** Creates a client of the login of one provider. */
 export function createRutoAuth(options: RutoAuthOptions): RutoAuth {
   return new RutoAuth(options)
 }

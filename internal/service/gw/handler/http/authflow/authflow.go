@@ -1,15 +1,13 @@
 // Package authflow serves the gateway's own login routes,
-// /_auth/<provider>[/<app prefix>]/login|callback|refresh|logout and
-// [/<app prefix>]/_auth/<provider>/me: the OpenID Connect authorization code
-// flow with PKCE, ending in the access and refresh cookies that the jwt auth
-// method reads on every other request, the renewal of those cookies with the
-// refresh token, and a front's view of the session (who is logged in, with
-// what roles).
+// /_auth/<provider>/login|callback|refresh|logout|me: the OpenID Connect
+// authorization code flow with PKCE, ending in the access and refresh cookies
+// that the jwt auth method reads on every other request, the renewal of those
+// cookies with the refresh token, and a front's view of the session (who is
+// logged in, with what roles).
 //
-// A login unit is a provider plus a client: the provider's default client
-// (shared by every app that names the provider) or an app's own client (its own
-// cookie, scoped to the app's path). Units know nothing about proxying, apps'
-// endpoints or the cache.
+// A login unit is a provider with its default client, shared by every app that
+// names the provider. Units know nothing about proxying, apps' endpoints or
+// the cache.
 package authflow
 
 import (
@@ -21,20 +19,21 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/rendau/ruto/internal/constant"
-	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 )
 
 type unit struct {
-	name     string // "<provider>" or "<provider>/<app prefix>", for logs
+	name     string // provider name, for logs
 	provider rootModel.RootJwt
 	client   *authModel.JwtClient
 	// basePath is where the unit's routes live and where the refresh cookie is
 	// scoped to: it never travels with an app request.
 	basePath   string
-	cookieName string // access cookie, the one the jwt method reads
-	cookiePath string // "/" for the shared login, the app's prefix for its own
+	cookieName string // access cookie on Path=/, the one the jwt method reads
+	// appCookies are the cookies of the app tokens got for this provider's
+	// shared token (App.Jwt): a logout drops them with the session.
+	appCookies []authModel.JwtCookie
 	publicUrl  string // gateway address the provider sends the browser back to
 	secure     bool   // https gateway: Secure cookies, __Host- login cookie
 	// A login may send the browser back to the gateway itself or to a CORS
@@ -62,29 +61,11 @@ func Register(router chi.Router, snapshot *rootModel.Root) {
 		if p.Client == nil {
 			continue
 		}
-		newUnit(snapshot, p, p.Client, nil, origins).register(router)
-	}
-
-	for _, app := range snapshot.ActiveApps() {
-		for i := range app.Jwt {
-			p, ok := providers[app.Jwt[i].Provider]
-			if !ok {
-				slog.Warn("authflow: app refers to an unknown login provider, its login is skipped",
-					"app", app.Name, "provider", app.Jwt[i].Provider)
-				continue
-			}
-			newUnit(snapshot, p, &app.Jwt[i].Client, app, origins).register(router)
-		}
+		newUnit(snapshot, p, origins).register(router)
 	}
 }
 
-func newUnit(
-	snapshot *rootModel.Root,
-	provider *rootModel.RootJwt,
-	client *authModel.JwtClient,
-	app *appModel.App,
-	origins *rootModel.OriginMatcher,
-) *unit {
+func newUnit(snapshot *rootModel.Root, provider *rootModel.RootJwt, origins *rootModel.OriginMatcher) *unit {
 	publicUrl := provider.PublicUrl
 	if publicUrl == "" {
 		publicUrl = snapshot.BaseUrl
@@ -93,23 +74,29 @@ func newUnit(
 	u := &unit{
 		name:         provider.Name,
 		provider:     *provider,
-		client:       client,
+		client:       provider.Client,
 		basePath:     "/" + constant.AuthRoutePrefix + "/" + provider.Name,
 		cookieName:   constant.JwtCookieName(provider.Name),
-		cookiePath:   "/",
+		appCookies:   appCookies(snapshot, provider.Name),
 		publicUrl:    publicUrl,
 		secure:       strings.HasPrefix(publicUrl, "https://"),
 		publicOrigin: originOf(publicUrl),
 		origins:      origins,
 	}
-	if app != nil {
-		u.name += app.PathPrefix
-		u.basePath += app.PathPrefix
-		u.cookieName = constant.JwtAppCookieName(provider.Name, app.PathPrefix)
-		u.cookiePath = app.PathPrefix
-	}
-
 	return u
+}
+
+func appCookies(snapshot *rootModel.Root, provider string) []authModel.JwtCookie {
+	var result []authModel.JwtCookie
+	for _, app := range snapshot.ActiveApps() {
+		if app.JwtAudience(provider) != "" {
+			result = append(result, authModel.JwtCookie{
+				Name: constant.JwtAppCookieName(provider, app.PathPrefix),
+				Path: app.PathPrefix,
+			})
+		}
+	}
+	return result
 }
 
 func (u *unit) register(router chi.Router) {
@@ -119,15 +106,7 @@ func (u *unit) register(router chi.Router) {
 	// so another site cannot make the browser renew the session.
 	router.Post(u.basePath+"/refresh", u.refresh)
 	router.Get(u.basePath+"/logout", u.logout)
-	router.Get(u.mePath(), u.me)
-}
-
-// mePath is where /me lives: under the path of the access cookie, the one
-// route that needs it. For the shared login that is the unit's own base; an
-// app's cookie is scoped to the app's prefix and never reaches /_auth/…, so
-// the app unit's /me sits inside the prefix: /<prefix>/_auth/<provider>/me.
-func (u *unit) mePath() string {
-	return strings.TrimSuffix(u.cookiePath, "/") + "/" + constant.AuthRoutePrefix + "/" + u.provider.Name + "/me"
+	router.Get(u.basePath+"/me", u.me)
 }
 
 // originOf returns "scheme://host[:port]" of an absolute http(s) url, lower

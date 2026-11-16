@@ -81,7 +81,7 @@ registered`, `oauth: consent`, `oauth: tokens issued`, `oauth: connection revoke
 Секретными считаются: пароли basic-авторизации, ключи `api_key`, значения переменных
 (`variables`), значения заголовков и query-параметров к бэкенду (`backend.headers`,
 `backend.query_params`) — у root, app и endpoint; у JWT-провайдеров root — секрет
-клиента (`jwt[].client.secret`), у app — секрет своего клиента (`jwt[].client.secret`). Список путей —
+клиента (`jwt[].client.secret`). Список путей —
 `internal/domain/secretref/secretref.go` (`secretPaths`), должен совпадать с методами
 `Redacted()` доменных моделей.
 

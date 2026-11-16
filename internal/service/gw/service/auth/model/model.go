@@ -1,11 +1,13 @@
 package model
 
 import (
+	"context"
 	"encoding/base64"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/samber/lo"
@@ -21,8 +23,14 @@ type AuthRequest struct {
 	apiKeyByHeader map[string]string
 	cookies        authCookies
 	cookieToken    string
+	rutoBearer     bool
 	remoteIP       netip.Addr
 	ipAddrs        authIPs
+
+	ctx          context.Context
+	respCookies  []*http.Cookie
+	stripCookies []string
+	challenge    string
 }
 
 type authToken struct {
@@ -58,6 +66,19 @@ func (r *AuthRequest) SetHttpQueryParams(qPars url.Values) {
 	r.QueryParams = qPars
 }
 
+// SetContext is the context of the request: an authorizer that calls a
+// provider (the app token exchange) stops when the client goes away.
+func (r *AuthRequest) SetContext(ctx context.Context) {
+	r.ctx = ctx
+}
+
+func (r *AuthRequest) Context() context.Context {
+	if r.ctx == nil {
+		return context.Background()
+	}
+	return r.ctx
+}
+
 func (r *AuthRequest) SetRemoteAddr(remoteAddr string) {
 	r.RemoteAddr = strings.TrimSpace(remoteAddr)
 	r.remoteIP, _ = parseRemoteAddrIP(r.RemoteAddr)
@@ -79,23 +100,32 @@ func (r *AuthRequest) ExtractToken() (finalResult string) {
 	}
 
 	parts := strings.Fields(value)
-	if len(parts) == 0 {
+	var token string
+	switch {
+	case len(parts) == 1:
+		token = parts[0]
+	case len(parts) == 2 && strings.EqualFold(parts[0], "bearer"):
+		token = parts[1]
+	default:
 		return ""
 	}
 
-	if len(parts) == 1 {
-		return parts[0]
-	}
-
-	if len(parts) != 2 {
+	// A token of the gateway itself is what an OpenID Connect SDK of a front
+	// holds; it proves nothing to the gateway, the session is in the cookies.
+	if IsRutoToken(token) {
+		r.rutoBearer = true
 		return ""
 	}
 
-	if !strings.EqualFold(parts[0], "bearer") {
-		return ""
-	}
+	return token
+}
 
-	return parts[1]
+// RutoBearer reports that the request presented a token of the gateway itself
+// (see ExtractToken): the transport replaces it with the token the request
+// was let in by.
+func (r *AuthRequest) RutoBearer() bool {
+	r.ExtractToken()
+	return r.rutoBearer
 }
 
 // ExtractCookie returns the value of the named cookie from the Cookie header,
@@ -118,6 +148,44 @@ func (r *AuthRequest) MarkCookieToken(token string) {
 
 func (r *AuthRequest) CookieToken() string {
 	return r.cookieToken
+}
+
+// SetResponseCookie records a cookie for the response, whatever the outcome
+// of the check: an app token the gateway got is worth keeping. A cookie with
+// the same name and path replaces the recorded one.
+func (r *AuthRequest) SetResponseCookie(cookie *http.Cookie) {
+	for i, c := range r.respCookies {
+		if c.Name == cookie.Name && c.Path == cookie.Path {
+			r.respCookies[i] = cookie
+			return
+		}
+	}
+	r.respCookies = append(r.respCookies, cookie)
+}
+
+func (r *AuthRequest) ResponseCookies() []*http.Cookie {
+	return r.respCookies
+}
+
+// StripCookie records a cookie the backend must not get when the request is
+// let in: the shared token, once the backend gets an app token instead.
+func (r *AuthRequest) StripCookie(name string) {
+	if !slices.Contains(r.stripCookies, name) {
+		r.stripCookies = append(r.stripCookies, name)
+	}
+}
+
+func (r *AuthRequest) StrippedCookies() []string {
+	return r.stripCookies
+}
+
+// SetChallenge records the WWW-Authenticate value of a 401 answer.
+func (r *AuthRequest) SetChallenge(value string) {
+	r.challenge = value
+}
+
+func (r *AuthRequest) Challenge() string {
+	return r.challenge
 }
 
 func (r *AuthRequest) ExtractBasic() (finalUsername string, finalPassword string) {

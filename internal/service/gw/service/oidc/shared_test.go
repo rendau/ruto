@@ -138,3 +138,30 @@ func TestSharedRefreshLockOfAGoneHolder(t *testing.T) {
 	assert.Equal(t, "rt-new", rep.RefreshToken)
 	assert.Equal(t, int32(1), calls.Load())
 }
+
+func TestSharedTokenExchangeAcrossPods(t *testing.T) {
+	redisServer := miniredis.RunT(t)
+	tokenEndpoint, calls := sharedProvider(t, 100*time.Millisecond)
+	gateways := pods(t, redisServer.Addr(), 3)
+
+	var wg sync.WaitGroup
+	results := make([]*TokenResponse, len(gateways))
+	errs := make([]error, len(results))
+	for i := range results {
+		wg.Go(func() {
+			results[i], errs[i] = gateways[i].TokenExchange(context.Background(), tokenEndpoint, sharedClient, "shared-at", "orders", nil)
+		})
+	}
+	wg.Wait()
+
+	assert.Equal(t, int32(1), calls.Load(), "one exchange for all pods")
+	for i := range results {
+		require.NoError(t, errs[i])
+		assert.Equal(t, results[0].AccessToken, results[i].AccessToken)
+	}
+
+	// a refresh with the same token string is another call
+	_, err := gateways[0].Refresh(context.Background(), tokenEndpoint, sharedClient, "shared-at")
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), calls.Load())
+}

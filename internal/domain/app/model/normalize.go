@@ -140,8 +140,9 @@ func (m *AppJwt) Normalize() error {
 	if m.Provider == "" {
 		return fmt.Errorf("provider: empty")
 	}
-	if err := m.Client.Normalize(); err != nil {
-		return fmt.Errorf("client: %w", err)
+	m.Audience = strings.TrimSpace(m.Audience)
+	if m.Audience == "" {
+		return fmt.Errorf("audience: empty")
 	}
 	return nil
 }

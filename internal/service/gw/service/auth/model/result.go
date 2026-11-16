@@ -8,6 +8,8 @@ package model
 //     and 401 would only make it renew a valid token in a loop.
 //   - NoCredentials beats Denied: some method still lets the client in once it
 //     presents credentials.
+//   - Unavailable beats everything: the gateway could not decide (the provider
+//     of the app token is down), any other answer would mislead the client.
 type Result int
 
 const (
@@ -20,6 +22,8 @@ const (
 	DeniedAuthenticated
 	// InvalidCredentials — the credentials were presented but rejected.
 	InvalidCredentials
+	// Unavailable — the check needs a provider that cannot be reached.
+	Unavailable
 )
 
 func (r Result) Forbidden() bool {

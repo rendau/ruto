@@ -305,7 +305,7 @@ func (u *unit) setSession(w http.ResponseWriter, tokens *oidc.TokenResponse) {
 	if maxAge <= 0 {
 		maxAge = defaultSessionMaxAge
 	}
-	u.setCookie(w, u.cookieName, tokens.AccessToken, u.cookiePath, maxAge)
+	u.setCookie(w, u.cookieName, tokens.AccessToken, "/", maxAge)
 	if tokens.RefreshToken != "" || tokens.IdToken != "" {
 		session := sessionCookie{RefreshToken: tokens.RefreshToken, IdToken: tokens.IdToken}
 		name := u.refreshCookieName()
@@ -317,8 +317,9 @@ func (u *unit) setSession(w http.ResponseWriter, tokens *oidc.TokenResponse) {
 	}
 }
 
-// logout drops the session cookies and, when the provider supports it, ends
-// the provider session too (OpenID Connect RP-Initiated Logout).
+// logout drops the session cookies with the app tokens got for it and, when
+// the provider supports it, ends the provider session too (OpenID Connect
+// RP-Initiated Logout).
 func (u *unit) logout(w http.ResponseWriter, r *http.Request) {
 	redirect, ok := u.returnUrl(r.URL.Query().Get("redirect"))
 	if !ok {
@@ -327,8 +328,11 @@ func (u *unit) logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session := u.readSession(r)
-	u.clearCookie(w, u.cookieName, u.cookiePath)
+	u.clearCookie(w, u.cookieName, "/")
 	u.clearCookie(w, u.refreshCookieName(), u.basePath)
+	for _, c := range u.appCookies {
+		u.clearCookie(w, c.Name, c.Path)
+	}
 
 	if session.IdToken != "" {
 		meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
@@ -356,8 +360,7 @@ func (u *unit) logout(w http.ResponseWriter, r *http.Request) {
 // anywhere. Only the cookie is read, not the Authorization header: a client
 // that holds a bearer token has the claims already. A missing, foreign or
 // expired cookie is 401, which a front treats like any other 401: refresh,
-// then repeat. The route lives under the cookie's path (mePath), or the
-// browser would not send the cookie along.
+// then repeat.
 func (u *unit) me(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 

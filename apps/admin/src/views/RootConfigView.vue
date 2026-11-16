@@ -4,6 +4,7 @@ import {
   NAlert,
   NButton,
   NCheckbox,
+  NDynamicTags,
   NIcon,
   NInput,
   NInputNumber,
@@ -113,8 +114,8 @@ function removeJwtProvider(index: number): void {
   jwtProviders.value.splice(index, 1);
 }
 
-// The default login client is optional: without it the provider only serves
-// apps that bring their own client.
+// The default login client is optional: without it the gateway does not log
+// users in through this provider.
 function toggleDefaultClient(provider: RootJwt, enabled: boolean): void {
   provider.client = enabled ? emptyJwtClient() : undefined;
 }
@@ -129,7 +130,8 @@ function cleanProvider(item: RootJwt): RootJwt {
     issuer: item.issuer.trim(),
     internal_url: item.internal_url.trim(),
     public_url: item.public_url.trim(),
-    client
+    client,
+    exchange_scopes: (item.exchange_scopes || []).map((scope) => scope.trim()).filter(Boolean)
   };
 }
 
@@ -326,6 +328,16 @@ onMounted(load);
                     Default login client (shared login for every app naming this provider)
                   </NCheckbox>
                   <JwtClientEditor v-if="value.client" v-model="value.client" />
+                  <div class="field">
+                    <span class="field__label">Exchange scopes</span>
+                    <NDynamicTags
+                      :value="value.exchange_scopes || []"
+                      @update:value="(scopes: string[]) => (value.exchange_scopes = scopes)"
+                    />
+                    <span class="muted field__hint">
+                      Scopes asked for when the gateway exchanges the shared token for an app token (Keycloak: roles)
+                    </span>
+                  </div>
                 </template>
             </RecordCard>
             <NButton dashed block @click="addJwtProvider()">
@@ -414,6 +426,10 @@ onMounted(load);
 .field__label {
   font-size: 12px;
   color: var(--c-text-3);
+}
+
+.field__hint {
+  font-size: 12px;
 }
 
 .general__check {

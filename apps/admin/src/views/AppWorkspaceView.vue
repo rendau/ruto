@@ -495,11 +495,10 @@ onBeforeUnmount(() => {
             <SectionCard title="Authentication">
               <AuthSummary :auth="app.auth" />
               <div v-if="app.jwt.length" class="login-clients">
-                <div class="login-clients__title">Own login clients</div>
+                <div class="login-clients__title">App token (exchange)</div>
                 <div v-for="item in app.jwt" :key="item.provider" class="login-clients__item">
                   <NTag size="tiny" type="info" :bordered="false">{{ item.provider }}</NTag>
-                  <span class="mono">client {{ item.client.id }}</span>
-                  <span class="muted mono">/_auth/{{ item.provider }}{{ app.path_prefix }}/login</span>
+                  <span class="mono">audience {{ item.audience }}</span>
                 </div>
               </div>
             </SectionCard>

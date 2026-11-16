@@ -48,8 +48,7 @@ type RootCors struct {
 //
 // With Issuer set the provider is an OpenID Connect server: its endpoints come
 // from discovery (JwkUrl may then be left empty) and the gateway can log users
-// in on behalf of Client, the default login client. An app may bring its own
-// client instead (App.Jwt).
+// in on behalf of Client and exchange the shared token for app tokens (App.Jwt).
 type RootJwt struct {
 	Name   string `json:"name"`
 	JwkUrl string `json:"jwk_url"`
@@ -63,10 +62,14 @@ type RootJwt struct {
 	// empty means Root.BaseUrl.
 	PublicUrl string               `json:"public_url"`
 	Client    *authModel.JwtClient `json:"client,omitempty"`
+	// ExchangeScopes are the scopes the gateway asks for when it exchanges
+	// the shared token for an app token: the shared token is requested
+	// without the roles of the apps, the app token with them (Keycloak: roles).
+	ExchangeScopes []string `json:"exchange_scopes"`
 }
 
 // LoginEnabled reports whether the gateway can log users in through this
-// provider at all (an app client still needs it).
+// provider at all.
 func (m *RootJwt) LoginEnabled() bool {
 	return m.Issuer != ""
 }

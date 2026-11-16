@@ -106,49 +106,90 @@ func TestRootInheritDownJwtCookieNames(t *testing.T) {
 	root.Auth = authModel.Auth{Enabled: true, Methods: []*authModel.AuthMethod{
 		{JWT: &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"shop:admin"}}},
 	}}
-	shop := &appModel.App{
-		Active:     true,
-		PathPrefix: "shop/api",
-		Backend:    appModel.Backend{Url: "http://shop:8080"},
-		Auth:       authModel.Auth{Enabled: true},
-		Jwt:        []appModel.AppJwt{{Provider: "corp", Client: authModel.JwtClient{Id: "shop", Secret: "s"}}},
-		Endpoints: []*endpointModel.Endpoint{{
-			Active: true,
-			Http:   endpointModel.Http{Method: "GET", Path: "items"},
-			Auth: authModel.Auth{Enabled: true, Methods: []*authModel.AuthMethod{
-				{JWT: &authModel.AuthMethodJWT{Provider: "partners"}},
+	newApp := func(prefix string, active bool, jwt ...appModel.AppJwt) *appModel.App {
+		return &appModel.App{
+			Active:     active,
+			PathPrefix: prefix,
+			Backend:    appModel.Backend{Url: "http://backend:8080"},
+			Auth:       authModel.Auth{Enabled: true},
+			Jwt:        jwt,
+			Endpoints: []*endpointModel.Endpoint{{
+				Active: true,
+				Http:   endpointModel.Http{Method: "GET", Path: "items"},
+				Auth: authModel.Auth{Enabled: true, Methods: []*authModel.AuthMethod{
+					{JWT: &authModel.AuthMethodJWT{Provider: "partners"}},
+				}},
 			}},
-		}},
+		}
 	}
-	crm := &appModel.App{
-		Active:     true,
-		PathPrefix: "crm",
-		Backend:    appModel.Backend{Url: "http://crm:8080"},
-		Auth:       authModel.Auth{Enabled: true},
-		Endpoints: []*endpointModel.Endpoint{{
-			Active: true,
-			Http:   endpointModel.Http{Method: "GET", Path: "deals"},
-			Auth:   authModel.Auth{Enabled: true},
-		}},
-	}
-	root.Apps = []*appModel.App{shop, crm}
+	shop := newApp("shop/api", true, appModel.AppJwt{Provider: "corp", Audience: "shop"})
+	shopUi := newApp("shop-ui", true, appModel.AppJwt{Provider: "corp", Audience: "shop"})
+	shopOld := newApp("shop-old", false, appModel.AppJwt{Provider: "corp", Audience: "shop"})
+	crm := newApp("crm", true)
+	root.Apps = []*appModel.App{shop, shopUi, shopOld, crm}
 
 	require.NoError(t, root.Normalize())
 	root.InheritDown()
 
-	// The app with its own client reads its own cookie, scoped to its prefix,
-	// for the inherited root method and for its own endpoint method alike.
+	// The app with an audience exchanges the shared token for its own, kept
+	// in a cookie on its prefix and copied into the cookies of the other
+	// active apps with the same audience; for the inherited root method and
+	// its own endpoint method alike.
+	shopExchange := &authModel.JwtExchange{
+		Audience: "shop",
+		Cookie:   authModel.JwtCookie{Name: "ruto_corp_shop.api", Path: "/shop/api"},
+		Copies:   []authModel.JwtCookie{{Name: "ruto_corp_shop-ui", Path: "/shop-ui"}},
+	}
 	shopEp := shop.Endpoints[0]
 	require.Len(t, shopEp.Auth.Methods, 2)
-	assert.Equal(t, "ruto_corp_shop.api", shopEp.Auth.Methods[0].JWT.CookieName)
+	assert.Equal(t, "ruto_corp", shopEp.Auth.Methods[0].JWT.CookieName)
+	assert.Equal(t, shopExchange, shopEp.Auth.Methods[0].JWT.Exchange)
 	assert.Equal(t, "ruto_partners", shopEp.Auth.Methods[1].JWT.CookieName)
-	assert.Equal(t, "ruto_corp_shop.api", shop.Auth.Methods[0].JWT.CookieName)
+	assert.Nil(t, shopEp.Auth.Methods[1].JWT.Exchange, "no audience for this provider")
+	assert.Equal(t, shopExchange, shop.Auth.Methods[0].JWT.Exchange)
 
-	// The app on the shared login reads the provider cookie.
+	assert.Equal(t, &authModel.JwtExchange{
+		Audience: "shop",
+		Cookie:   authModel.JwtCookie{Name: "ruto_corp_shop-ui", Path: "/shop-ui"},
+		Copies:   []authModel.JwtCookie{{Name: "ruto_corp_shop.api", Path: "/shop/api"}},
+	}, shopUi.Endpoints[0].Auth.Methods[0].JWT.Exchange)
+
+	// The app without an audience reads the shared token.
 	crmEp := crm.Endpoints[0]
-	require.Len(t, crmEp.Auth.Methods, 1)
 	assert.Equal(t, "ruto_corp", crmEp.Auth.Methods[0].JWT.CookieName)
+	assert.Nil(t, crmEp.Auth.Methods[0].JWT.Exchange)
 
 	// The root's own method is untouched: the cookie name is a per-app matter.
 	assert.Empty(t, root.Auth.Methods[0].JWT.CookieName)
+	assert.Nil(t, root.Auth.Methods[0].JWT.Exchange)
+}
+
+func TestRootJwtNormalizeExchangeScopes(t *testing.T) {
+	p := RootJwt{Name: "corp", Issuer: "https://id.example.com/realms/corp", ExchangeScopes: []string{" roles ", "", "roles", "email"}}
+	require.NoError(t, p.Normalize())
+	assert.Equal(t, []string{"roles", "email"}, p.ExchangeScopes)
+
+	keys := RootJwt{JwkUrl: "http://jwts/jwk/set", ExchangeScopes: []string{"roles"}}
+	require.EqualError(t, keys.Normalize(), "issuer: empty, but login settings are set")
+}
+
+func TestRootNormalizeAppAudienceProvider(t *testing.T) {
+	root := NewEmpty()
+	root.BaseUrl = "https://api.example.com"
+	root.Jwt = []RootJwt{
+		{Name: "corp", Issuer: "https://id.example.com/realms/corp", Client: &authModel.JwtClient{Id: "ruto", Secret: "s"}},
+		{Name: "noclient", Issuer: "https://id.example.com/realms/other"},
+		{Name: "keys", JwkUrl: "http://jwts/jwk/set"},
+	}
+	app := &appModel.App{PathPrefix: "orders", Backend: appModel.Backend{Url: "http://orders:8080"}}
+	root.Apps = []*appModel.App{app}
+
+	app.Jwt = []appModel.AppJwt{{Provider: "corp", Audience: "orders"}}
+	require.NoError(t, root.Normalize())
+
+	for _, provider := range []string{"noclient", "keys", "missing"} {
+		app.Jwt = []appModel.AppJwt{{Provider: provider, Audience: "orders"}}
+		require.EqualError(t, root.Normalize(),
+			`apps[0]: jwt[0]: provider: "`+provider+`" is not a root provider with issuer and client`)
+	}
 }

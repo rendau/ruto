@@ -51,15 +51,34 @@ type AuthMethodJWT struct {
 	Provider string   `json:"provider"`
 	Kid      string   `json:"kid"`
 	Roles    []string `json:"roles"`
-	// CookieName is the cookie the token may be read from: the provider's
-	// cookie, or the cookie of the app's own login client. Set when the
-	// config is inherited down, so it is never stored.
+	// CookieName is the provider's shared access cookie the token may be read
+	// from. Set when the config is inherited down, so it is never stored.
 	CookieName string `json:"-"`
+	// Exchange, set on inheritance for an app that names an audience for
+	// Provider (App.Jwt), makes the method hand the backend an app token: the
+	// shared token from CookieName is exchanged for one with that audience.
+	Exchange *JwtExchange `json:"-"`
+}
+
+// JwtExchange is how a jwt method gets the app token: the audience it asks
+// the provider for and the cookies the token is kept in.
+type JwtExchange struct {
+	Audience string
+	// Cookie is the app's own cookie of the token, scoped to the app's path.
+	Cookie JwtCookie
+	// Copies are the cookies of the other apps with the same provider and
+	// audience: one exchange fills them all.
+	Copies []JwtCookie
+}
+
+// JwtCookie is a cookie the gateway keeps a token in.
+type JwtCookie struct {
+	Name string
+	Path string
 }
 
 // JwtClient is a registered OAuth client of a provider: the gateway logs the
-// user in on its behalf. A provider carries the default one, an app may bring
-// its own.
+// user in and exchanges tokens on its behalf.
 type JwtClient struct {
 	Id     string   `json:"id"`
 	Secret string   `json:"secret"`
@@ -156,6 +175,18 @@ func (m *AuthMethodJWT) Clone() *AuthMethodJWT {
 		Kid:        m.Kid,
 		Roles:      append([]string(nil), m.Roles...),
 		CookieName: m.CookieName,
+		Exchange:   m.Exchange.Clone(),
+	}
+}
+
+func (m *JwtExchange) Clone() *JwtExchange {
+	if m == nil {
+		return nil
+	}
+	return &JwtExchange{
+		Audience: m.Audience,
+		Cookie:   m.Cookie,
+		Copies:   append([]JwtCookie(nil), m.Copies...),
 	}
 }
 

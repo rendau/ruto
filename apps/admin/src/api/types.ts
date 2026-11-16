@@ -133,7 +133,8 @@ export interface RootCors {
 
 // A JWT provider. With issuer set it is an OpenID Connect server: the gateway
 // reads its discovery document (jwk_url may stay empty) and logs users in with
-// client, the default login client; an app may bring its own (AppJwt).
+// client, the shared login client. exchange_scopes are asked for when the
+// gateway exchanges the shared login token for an app token (AppJwt).
 export interface RootJwt {
   name: string;
   jwk_url: string;
@@ -141,6 +142,7 @@ export interface RootJwt {
   internal_url: string;
   public_url: string;
   client?: JwtClient;
+  exchange_scopes?: string[];
 }
 
 export interface RootTransform {
@@ -196,14 +198,18 @@ export interface AppMain {
   logging: Logging;
   variables: Variable[];
   compression: Compression;
-  // Providers the app logs users in through its own client instead of the
-  // provider's default one: own cookie, own /_auth/<provider>/<prefix>/ routes.
+  // Token exchange (RFC 8693), one entry per provider: the gateway exchanges
+  // the shared login token for a token with this audience and hands it to the
+  // backend. No entry = the backend gets the shared login token.
   jwt: AppJwt[];
 }
 
+// provider: name of a root JWT provider; audience: what the gateway asks the
+// provider for in the exchange (Keycloak: client_id of the client holding the
+// app's roles).
 export interface AppJwt {
   provider: string;
-  client: JwtClient;
+  audience: string;
 }
 
 export interface AppListRep {

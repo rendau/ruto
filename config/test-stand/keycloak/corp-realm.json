@@ -1,12 +1,14 @@
 {
   "realm": "corp",
   "enabled": true,
-  "accessTokenLifespan": 60,
-  "ssoSessionIdleTimeout": 1800,
-  "ssoSessionMaxLifespan": 36000,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 604800,
+  "ssoSessionMaxLifespan": 604800,
+  "eventsEnabled": true,
+  "enabledEventTypes": ["TOKEN_EXCHANGE", "TOKEN_EXCHANGE_ERROR"],
   "roles": {
     "realm": [{"name": "auditor"}],
-    "client": {"shop": [{"name": "manager"}]}
+    "client": {"shop": [{"name": "manager"}], "orders": [{"name": "manager"}]}
   },
   "clients": [
     {
@@ -18,28 +20,29 @@
       "directAccessGrantsEnabled": false,
       "fullScopeAllowed": true,
       "redirectUris": ["http://localhost:8088/_auth/corp/callback"],
-      "attributes": {"post.logout.redirect.uris": "http://localhost:5181/*##http://localhost:5182/*##http://localhost:8088/*"},
-      "defaultClientScopes": ["profile", "email", "roles", "basic"],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:5181/*##http://localhost:5182/*##http://localhost:8088/*",
+        "standard.token.exchange.enabled": "true"
+      },
+      "defaultClientScopes": ["profile", "email", "basic"],
+      "optionalClientScopes": ["roles"],
       "protocolMappers": [
         {"name": "tenant_id", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper",
          "config": {"user.attribute": "tenant_id", "claim.name": "tenant_id", "jsonType.label": "String",
-                    "access.token.claim": "true", "id.token.claim": "true", "userinfo.token.claim": "true"}}
+                    "access.token.claim": "true", "id.token.claim": "true", "userinfo.token.claim": "true"}},
+        {"name": "ruto-audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+         "config": {"included.client.audience": "ruto", "access.token.claim": "true", "id.token.claim": "false",
+                    "introspection.token.claim": "true"}}
       ]
     },
     {
-      "clientId": "orders-client",
+      "clientId": "shop",
       "enabled": true,
-      "publicClient": false,
-      "secret": "orders-secret",
-      "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
-      "fullScopeAllowed": true,
-      "redirectUris": ["http://localhost:8088/_auth/corp/orders/callback"],
-      "attributes": {"post.logout.redirect.uris": "http://localhost:5182/*##http://localhost:8088/*"},
-      "defaultClientScopes": ["profile", "email", "roles", "basic"]
+      "bearerOnly": true,
+      "standardFlowEnabled": false
     },
     {
-      "clientId": "shop",
+      "clientId": "orders",
       "enabled": true,
       "bearerOnly": true,
       "standardFlowEnabled": false
@@ -56,7 +59,7 @@
       "attributes": {"tenant_id": ["t-42"]},
       "credentials": [{"type": "password", "value": "alice-pass", "temporary": false}],
       "realmRoles": ["auditor"],
-      "clientRoles": {"shop": ["manager"]}
+      "clientRoles": {"shop": ["manager"], "orders": ["manager"]}
     },
     {
       "username": "bob",

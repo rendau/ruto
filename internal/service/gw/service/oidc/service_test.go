@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -191,4 +192,90 @@ func TestRefreshSharesSimultaneousCalls(t *testing.T) {
 	_, err = svc.Refresh(context.Background(), meta.TokenEndpoint, &authModel.JwtClient{Id: "other", Secret: "s"}, "rt-1")
 	require.NoError(t, err)
 	assert.Equal(t, int32(3), calls.Load())
+}
+
+func TestTokenExchange(t *testing.T) {
+	var issuer string
+	var calls atomic.Int32
+	var mu sync.Mutex
+	var seen struct {
+		user, pass string
+		form       map[string]string
+	}
+	release := make(chan struct{})
+	server := fakeProvider(t, func() string { return issuer }, func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		<-release
+		user, pass, _ := r.BasicAuth()
+		require.NoError(t, r.ParseForm())
+		mu.Lock()
+		seen.user, seen.pass = user, pass
+		seen.form = map[string]string{}
+		for k := range r.PostForm {
+			seen.form[k] = r.PostForm.Get(k)
+		}
+		mu.Unlock()
+		if r.PostForm.Get("audience") == "denied" {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid_request", "error_description": "Requested audience not available"})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "app-" + r.PostForm.Get("audience"), ExpiresIn: 300})
+	})
+	issuer = server.URL + "/realms/corp"
+	svc := New()
+	meta, err := svc.Metadata(context.Background(), issuer, "")
+	require.NoError(t, err)
+	client := &authModel.JwtClient{Id: "ruto", Secret: "s3cret"}
+
+	// three requests of a page need the app token at once: one exchange
+	const callers = 3
+	var wg sync.WaitGroup
+	results := make([]*TokenResponse, callers)
+	errs := make([]error, callers)
+	for i := range callers {
+		wg.Go(func() {
+			results[i], errs[i] = svc.TokenExchange(context.Background(), meta.TokenEndpoint, client, "shared-at", "orders", []string{"roles"})
+		})
+	}
+	require.Eventually(t, func() bool { return calls.Load() == 1 }, 3*time.Second, 5*time.Millisecond)
+	time.Sleep(50 * time.Millisecond) // let every caller join the call in flight
+	close(release)
+	wg.Wait()
+
+	assert.Equal(t, int32(1), calls.Load())
+	for i := range callers {
+		require.NoError(t, errs[i])
+		assert.Equal(t, "app-orders", results[i].AccessToken)
+	}
+	assert.Equal(t, "ruto", seen.user)
+	assert.Equal(t, "s3cret", seen.pass)
+	assert.Equal(t, map[string]string{
+		"grant_type":           "urn:ietf:params:oauth:grant-type:token-exchange",
+		"subject_token":        "shared-at",
+		"subject_token_type":   "urn:ietf:params:oauth:token-type:access_token",
+		"requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
+		"audience":             "orders",
+		"scope":                "roles",
+	}, seen.form)
+
+	// a request sent before the browser got the cookie gets the same token
+	late, err := svc.TokenExchange(context.Background(), meta.TokenEndpoint, client, "shared-at", "orders", []string{"roles"})
+	require.NoError(t, err)
+	assert.Same(t, results[0], late)
+	assert.Equal(t, int32(1), calls.Load())
+
+	// another audience is another token; no scopes — no scope parameter
+	other, err := svc.TokenExchange(context.Background(), meta.TokenEndpoint, client, "shared-at", "shop", nil)
+	require.NoError(t, err)
+	assert.Equal(t, "app-shop", other.AccessToken)
+	assert.NotContains(t, seen.form, "scope")
+	assert.Equal(t, int32(2), calls.Load())
+
+	// a refusal is the provider's error
+	_, err = svc.TokenExchange(context.Background(), meta.TokenEndpoint, client, "shared-at", "denied", nil)
+	refusal, ok := errors.AsType[*Error](err)
+	require.True(t, ok)
+	assert.Equal(t, "invalid_request", refusal.Code)
+	assert.Equal(t, http.StatusBadRequest, refusal.Status)
 }

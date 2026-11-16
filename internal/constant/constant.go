@@ -20,13 +20,13 @@ const AuthAPIKeyDefaultHeader = "x-api-key"
 
 // JwtCookiePrefix starts the name of the cookie that holds a provider's JWT:
 // one cookie per provider, so logins of different providers live side by side
-// on the same host. An app with its own login client gets its own cookie,
-// named after the provider and the app's path prefix.
+// on the same host. An app with an audience of its own gets a cookie for its
+// token, named after the provider and the app's path prefix.
 const JwtCookiePrefix = "ruto_"
 
 // JwtRefreshCookiePrefix and JwtLoginCookiePrefix start the names of the
-// refresh cookie and of the short-lived login (state + PKCE) cookie of a login
-// unit. Their "-" keeps them apart from any access cookie name.
+// refresh cookie and of the short-lived login (state + PKCE) cookie of a
+// provider. Their "-" keeps them apart from any access cookie name.
 const (
 	JwtRefreshCookiePrefix = "ruto-rt_"
 	JwtLoginCookiePrefix   = "ruto-login_"
@@ -36,23 +36,22 @@ func JwtCookieName(provider string) string {
 	return JwtCookiePrefix + provider
 }
 
-// JwtAppCookieName names the access cookie of an app's own login client:
+// JwtAppCookieName names the cookie of an app's token (see App.Jwt):
 // "ruto_<provider>_<prefix>", the prefix slashes replaced, since a cookie name
 // may not contain "/".
 func JwtAppCookieName(provider, appPathPrefix string) string {
-	return JwtCookiePrefix + provider + "_" + LoginUnitSlug(appPathPrefix)
+	return JwtCookiePrefix + provider + "_" + PathSlug(appPathPrefix)
 }
 
-// LoginUnitSlug turns an app path prefix ("/shop/api") into a cookie-safe
-// suffix ("shop.api").
-func LoginUnitSlug(appPathPrefix string) string {
+// PathSlug turns an app path prefix ("/shop/api") into a cookie-safe suffix
+// ("shop.api").
+func PathSlug(appPathPrefix string) string {
 	return strings.ReplaceAll(strings.Trim(appPathPrefix, "/"), "/", ".")
 }
 
 // AuthRoutePrefix is the first path segment of the gateway's own login routes
-// (/_auth/<provider>[/<app prefix>]/login|callback|refresh|logout and
-// [/<app prefix>]/_auth/<provider>/me); no app prefix and no endpoint path may
-// start with it.
+// (/_auth/<provider>/login|callback|refresh|logout|me); no app prefix and no
+// endpoint path may start with it.
 const AuthRoutePrefix = "_auth"
 
 // OidcScopeOpenid is the scope every OpenID Connect login must ask for.

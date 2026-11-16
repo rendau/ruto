@@ -18,6 +18,7 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/sdkjs"
 	localGrpc "github.com/rendau/ruto/internal/service/gw/server/grpc"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
+	"github.com/rendau/ruto/internal/service/gw/service/apptoken"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 	"github.com/rendau/ruto/internal/service/gw/service/oidc"
@@ -122,6 +123,10 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 		// interpolate
 		conf.Interpolate()
 	}
+
+	// The app token exchange reads the providers per request, so they are
+	// there before the handlers that use them.
+	apptoken.Ins().SetProviders(conf)
 
 	// set http handler
 	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache)
