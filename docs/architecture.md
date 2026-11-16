@@ -40,7 +40,7 @@ internal/service/gw/
   server/grpc/          обёртка grpc-прокси-сервера с горячей заменой handler'а
   handler/http/         сборка chi-роутера из snapshot
     authflow/           собственные маршруты входа /_auth/…: login, callback, refresh, logout, me (OpenID Connect + PKCE, куки)
-    broker/             шлюз как OpenID-провайдер для фронтов: /_auth/<провайдер>/<клиент>/… (discovery, JWKS ruto)
+    broker/             шлюз как OpenID-провайдер для фронтов: /_auth/<провайдер>/<клиент>/… (discovery, JWKS ruto, authorize, token)
     middleware/         cors, compression, auth, cache, backend_request_params, metrics, request_log, chain
     proxy/              httputil.ReverseProxy на backend
   handler/grpc/         маршрутизация gRPC по (x-ruto-app-name + method path) → backend
@@ -76,7 +76,7 @@ internal/service/gw/
 
 **Токен из куки.** Метод `jwt` с `provider` читает токен и из куки `ruto_<provider>`, если в запросе нет `Authorization: Bearer` и `auth_token`. Принятый из куки токен middleware Auth дописывает в запрос как `Authorization: Bearer …` (только если клиент не прислал свой `Authorization`), а куку оставляет: backend'ы на заголовке и backend'ы на куке работают одинаково. Auth стоит раньше ServerCache, поэтому ключ кэша видит подставленный заголовок и различает пользователей и по куке. Заголовок `Cookie` в access-логе маскируется. В gRPC кука в метаданных так же проходит проверку, но `authorization` в метаданные backend'а не добавляется.
 
-**Вход через провайдера.** Провайдер с `issuer` — OpenID Connect сервер, через который gateway сам логинит пользователей (код с PKCE, токены в httpOnly-куках). Для каждого провайдера с клиентом `buildHandler` регистрирует до маршрутов приложений маршруты `gw/handler/http/authflow`: `/_auth/<провайдер>/login|callback|refresh|logout|me`, а за ними — маршруты брокера `gw/handler/http/broker` (`/_auth/<провайдер>/<клиент>/…`: discovery для фронта и ключи ruto из `gw/service/rutokey`); discovery провайдера, обмен кода и refresh — `gw/service/oidc`. Горячий путь входом не затрагивается, кроме приложений со своей аудиторией (`App.jwt[]`): им метод `jwt` меняет общий токен на токен приложения (`gw/service/apptoken`, RFC 8693) и держит его в куке на пути приложения. Как устроены маршруты, куки, обновление сессии, `me`, ошибки входа и JS SDK — в [sso.md](sso.md).
+**Вход через провайдера.** Провайдер с `issuer` — OpenID Connect сервер, через который gateway сам логинит пользователей (код с PKCE, токены в httpOnly-куках). Для каждого провайдера с клиентом `buildHandler` регистрирует до маршрутов приложений маршруты `gw/handler/http/authflow`: `/_auth/<провайдер>/login|callback|refresh|logout|me`, а за ними — маршруты брокера `gw/handler/http/broker` (`/_auth/<провайдер>/<клиент>/…`: discovery для фронта, ключи ruto из `gw/service/rutokey`, вход фронта и обмен кода поверх сессии `authflow`); discovery провайдера, обмен кода и refresh — `gw/service/oidc`. Горячий путь входом не затрагивается, кроме приложений со своей аудиторией (`App.jwt[]`): им метод `jwt` меняет общий токен на токен приложения (`gw/service/apptoken`, RFC 8693) и держит его в куке на пути приложения. Как устроены маршруты, куки, обновление сессии, `me`, ошибки входа и JS SDK — в [sso.md](sso.md).
 
 **Заголовки X-Forwarded-\*.** Прокси (`gw/handler/http/proxy`) ставит их для всех приложений одинаково, без настройки — как nginx с `$proxy_add_x_forwarded_for`:
 - `X-Forwarded-For` — входящий `X-Forwarded-For` (если был) + IP того, кто прислал запрос в ruto: `198.51.100.1, 10.0.0.5`;

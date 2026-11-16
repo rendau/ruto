@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	snapshotModel "github.com/rendau/ruto/internal/domain/snapshot/model"
@@ -72,18 +73,40 @@ func (f *fakeMeta) Metadata(_ context.Context, issuer, _ string) (*oidc.Metadata
 
 func newRouter(t *testing.T, meta MetadataGetter, keys KeySet) http.Handler {
 	t.Helper()
+	return newRouterWith(t, Deps{Meta: meta, Keys: keys}, newFakeSessions(t))
+}
+
+// newRouterWith builds the broker for the test snapshot: providers corp
+// (Keycloak-like) and id (at its host root), apps with audiences crm (front
+// and backend share the client) and orders.
+func newRouterWith(t *testing.T, deps Deps, sessions *fakeSessions) http.Handler {
+	t.Helper()
 	snapshot := &rootModel.Root{
 		BaseUrl: "https://api.test",
+		Cors:    rootModel.RootCors{AllowOrigins: []string{"https://*.front.test", "*"}},
 		Jwt: []rootModel.RootJwt{
 			{Name: "corp", Issuer: "http://kc.test/realms/corp", Client: &authModel.JwtClient{Id: "ruto"}},
 			{Name: "id", Issuer: "https://id.test", PublicUrl: "https://gw.test", Client: &authModel.JwtClient{Id: "ruto"}},
 			{Name: "nologin", Issuer: "https://other.test"},
 		},
+		Apps: []*appModel.App{
+			{Name: "crm-api", PathPrefix: "/crm-api", Active: true, Jwt: []appModel.AppJwt{{Provider: "corp", Audience: "crm"}}},
+			{Name: "orders", PathPrefix: "/orders", Active: true, Jwt: []appModel.AppJwt{{Provider: "corp", Audience: "orders"}}},
+		},
+	}
+	if deps.Sessions == nil {
+		deps.Sessions = map[string]Sessions{"corp": sessions, "id": sessions}
+	}
+	if deps.Exchanger == nil {
+		deps.Exchanger = sessions
+	}
+	if deps.Used == nil {
+		deps.Used = newFakeUsed()
 	}
 	router := chi.NewRouter()
 	// the gateway's own routes of a provider, as authflow registers them
 	router.Get("/_auth/corp/login", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("own login")) })
-	Register(router, snapshot, meta, keys)
+	Register(router, snapshot, deps)
 	return router
 }
 
@@ -232,9 +255,14 @@ func TestProviderPagesWithRutoToken(t *testing.T) {
 func TestOwnEndpointsAreNotSentToTheProvider(t *testing.T) {
 	h := newRouter(t, &fakeMeta{docs: map[string]string{"http://kc.test/realms/corp": keycloakDoc}}, newKeys(t))
 
-	for _, p := range []string{"auth", "token", "userinfo", "logout"} {
+	for p, status := range map[string]int{
+		"auth":     http.StatusBadRequest, // served: no redirect_uri
+		"token":    http.StatusMethodNotAllowed,
+		"userinfo": http.StatusNotFound, // not built yet
+		"logout":   http.StatusNotFound,
+	} {
 		rec := get(t, h, "/_auth/corp/crm/realms/corp/protocol/openid-connect/"+p+"?client_id=crm")
-		assert.Equal(t, http.StatusNotFound, rec.Code, p)
+		assert.Equal(t, status, rec.Code, p)
 		assert.Empty(t, rec.Header().Get("Location"), p)
 	}
 }

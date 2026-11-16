@@ -165,3 +165,25 @@ func TestSharedTokenExchangeAcrossPods(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int32(2), calls.Load())
 }
+
+func TestMarkUsed(t *testing.T) {
+	redisServer := miniredis.RunT(t)
+	a, b := New(), New()
+	for _, s := range []*Service{a, b} {
+		s.SetRedis(&snapshotModel.GatewaySettings{RedisAddr: redisServer.Addr()})
+	}
+
+	assert.True(t, a.MarkUsed(context.Background(), "code-1", time.Minute))
+	assert.False(t, b.MarkUsed(context.Background(), "code-1", time.Minute), "the other pod sees the mark")
+	assert.True(t, b.MarkUsed(context.Background(), "code-2", time.Minute))
+
+	redisServer.FastForward(time.Minute + time.Second)
+	assert.True(t, a.MarkUsed(context.Background(), "code-1", time.Minute), "the mark lives as long as asked")
+
+	without := New()
+	assert.True(t, without.MarkUsed(context.Background(), "code-1", time.Minute))
+	assert.True(t, without.MarkUsed(context.Background(), "code-1", time.Minute), "without redis nothing is marked")
+
+	redisServer.Close()
+	assert.True(t, a.MarkUsed(context.Background(), "code-3", time.Minute), "a failing redis lets the value through")
+}

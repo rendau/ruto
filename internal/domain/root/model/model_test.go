@@ -133,12 +133,14 @@ func TestRootInheritDownJwtCookieNames(t *testing.T) {
 
 	// The app with an audience exchanges the shared token for its own, kept
 	// in a cookie on its prefix and copied into the cookies of the other
-	// active apps with the same audience; for the inherited root method and
-	// its own endpoint method alike.
+	// active apps with the same audience and into the broker cookie of the
+	// front with that client; for the inherited root method and its own
+	// endpoint method alike.
+	frontCookie := authModel.JwtCookie{Name: "ruto-ft_corp_shop", Path: "/_auth/corp/shop"}
 	shopExchange := &authModel.JwtExchange{
 		Audience: "shop",
 		Cookie:   authModel.JwtCookie{Name: "ruto_corp_shop.api", Path: "/shop/api"},
-		Copies:   []authModel.JwtCookie{{Name: "ruto_corp_shop-ui", Path: "/shop-ui"}},
+		Copies:   []authModel.JwtCookie{{Name: "ruto_corp_shop-ui", Path: "/shop-ui"}, frontCookie},
 	}
 	shopEp := shop.Endpoints[0]
 	require.Len(t, shopEp.Auth.Methods, 2)
@@ -151,7 +153,7 @@ func TestRootInheritDownJwtCookieNames(t *testing.T) {
 	assert.Equal(t, &authModel.JwtExchange{
 		Audience: "shop",
 		Cookie:   authModel.JwtCookie{Name: "ruto_corp_shop-ui", Path: "/shop-ui"},
-		Copies:   []authModel.JwtCookie{{Name: "ruto_corp_shop.api", Path: "/shop/api"}},
+		Copies:   []authModel.JwtCookie{{Name: "ruto_corp_shop.api", Path: "/shop/api"}, frontCookie},
 	}, shopUi.Endpoints[0].Auth.Methods[0].JWT.Exchange)
 
 	// The app without an audience reads the shared token.

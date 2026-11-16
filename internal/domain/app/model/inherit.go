@@ -44,12 +44,21 @@ func (m *App) jwtExchange(provider string) *authModel.JwtExchange {
 		return nil
 	}
 	own := authModel.JwtCookie{Name: constant.JwtAppCookieName(provider, m.PathPrefix), Path: m.PathPrefix}
+	copies := lo.Filter(m.JwtCookieCopies[JwtAudienceKey(provider, audience)], func(v authModel.JwtCookie, _ int) bool {
+		return v != own
+	})
+	// An audience that is a front's client: the same token is the front's
+	// token at the broker, so it goes to the front's cookie too.
+	if constant.BrokerClientIsValid(audience) {
+		copies = append(copies, authModel.JwtCookie{
+			Name: constant.JwtFrontCookieName(provider, audience),
+			Path: constant.BrokerPath(provider, audience),
+		})
+	}
 	return &authModel.JwtExchange{
 		Audience: audience,
 		Cookie:   own,
-		Copies: lo.Filter(m.JwtCookieCopies[JwtAudienceKey(provider, audience)], func(v authModel.JwtCookie, _ int) bool {
-			return v != own
-		}),
+		Copies:   copies,
 	}
 }
 

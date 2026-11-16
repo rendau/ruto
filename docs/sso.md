@@ -159,7 +159,9 @@ Zitadel, Okta, Auth0, свой `id` — любой, что выдаёт access-�
 ## Брокер для фронтов (в работе)
 
 Шлюз становится OpenID-провайдером для фронтов, стоящим перед настоящим провайдером
-(план — [sso-broker-plan.md](sso-broker-plan.md)). Сделано: discovery и ключи.
+(план — [sso-broker-plan.md](sso-broker-plan.md)). Сделано: discovery, ключи, вход фронта
+(`authorization`) и обмен кода (`token`, `grant_type=authorization_code`); обновление токенов,
+userinfo и выход — следующий этап.
 
 - У каждого фронта свой адрес: `<public_url>/_auth/<провайдер>/<клиент>` + путь `issuer`
   провайдера. Keycloak `http://kc/realms/corp` → для фронта `crm` issuer
@@ -179,8 +181,48 @@ Zitadel, Okta, Auth0, свой `id` — любой, что выдаёт access-�
   max-age=300`.
 - Прочие пути под адресом фронта: `GET` без токена ruto в `Authorization` — перенаправление на
   тот же путь у провайдера (страницы аккаунта, регистрации, на которые ссылается SDK);
-  остальное — 404. Ручки самого брокера (`authorization`, `token`, `userinfo`, `end_session`)
-  пока отвечают 404 и к провайдеру не уводят. Discovery провайдера не прочитать — 502.
+  остальное — 404. `userinfo` и `end_session` пока отвечают 404 и к провайдеру не уводят.
+  Discovery провайдера не прочитать — 502.
+
+### Вход фронта и обмен кода
+
+- `authorization` (GET или POST): `client_id` равен клиенту в адресе, `redirect_uri` —
+  абсолютный адрес без фрагмента на origin шлюза или из `cors.allow_origins` (`*` не в счёт);
+  иначе — страница ошибки 400 без перехода. Дальше ошибки уходят на адрес фронта по стандарту
+  (`error`, `error_description`, `state`, `iss` по RFC 9207), в `query` или `fragment`
+  (`response_mode`, у keycloak-js по умолчанию `fragment`). Обязательны `response_type=code` и
+  PKCE `S256`.
+  - Живая сессия шлюза (кука A; истёк A — обновление по R, `authflow.Unit.Session`) — сразу
+    код ruto, без формы. `prompt=none` без сессии — `error=login_required`.
+  - Без сессии или с `prompt=login` — обычный вход шлюза у провайдера клиентом `ruto`
+    (`/_auth/<провайдер>/login`), возвратом на тот же `authorization` без `prompt`; провайдеру
+    `prompt` передаётся как есть. Неудачный вход возвращается с `auth_error` и уходит на фронт
+    как `error`.
+- Код ruto — запись (адрес возврата, PKCE challenge, `nonce`, `scope`, `sub`, `auth_time`, срок
+  60 с, случайный id), зашифрованная ключом refresh-куки с привязкой к провайдеру и фронту:
+  нигде не хранится, открывается на любом поде, для другого фронта не открывается. С Redis
+  погашенный код отмечается (`SET NX`, `ruto:gw:used:*`) и второй раз не проходит; без Redis
+  повтор в пределах 60 с сдерживает только PKCE.
+- `token`, `grant_type=authorization_code`: `client_id` (иначе `invalid_client`), код, тот же
+  `redirect_uri`, `code_verifier`; живая сессия того же `sub`. Токен фронта F — из куки
+  `ruto-ft_<провайдер>_<клиент>` (`Path=/_auth/<провайдер>/<клиент>`), если он живой, для этого
+  клиента и того же человека; иначе обмен A под `audience=<клиент>`, F кладётся в эту куку и
+  копиями — в куки C приложений с `audience=<клиент>` (вход фронта сразу готовит токен его
+  бэкенда). Обратно тоже: обмен в горячем пути для аудитории X кладёт копию в куку F фронта X.
+  Провайдер отказал в обмене по сути (у человека нет ничего в этом фронте) — вход всё равно
+  проходит, данные — из A, без ролей фронта; бэкенд потом откажет по правам. Ошибки — по RFC
+  6749 §5.2 (`invalid_grant` — код, verifier, адрес, сессия; `unsupported_grant_type` — пока
+  для `refresh_token`); провайдер недоступен — 503 `temporarily_unavailable`.
+- Ответ — токены ruto, подписанные ключом ruto: ID-токен (`iss` фронта, `sub`, `aud`=`azp`=
+  клиент, `nonce`, `auth_time`, данные человека из F без служебных полей провайдера),
+  access-токен (те же данные с ролями — keycloak-js читает роли из него, `typ=Bearer`, `scope`)
+  и refresh-токен (`typ=Refresh`, срок — до конца сессии R); `expires_in` и срок ID- и
+  access-токена — до истечения A. Шлюз эти токены за учётные данные не принимает: в рабочем
+  запросе берёт куки, а бэкенду отдаёт C или A вместо токена ruto в заголовке.
+- keycloak-js: `checkLoginIframe: false` обязателен — iframe статуса входа и проверка сторонних
+  кук ходят к самому провайдеру, брокер за него их не отвечает. Сам keycloak-js шлёт куки в
+  ручку токенов (`credentials: 'include'`); oidc-client-ts — с `fetchRequestCredentials:
+  'include'`, в auth-js такой настройки пока нет (расширение из плана).
 
 ## Настройки шлюзов от core
 
@@ -248,7 +290,7 @@ core вместе со снимком (`Snapshot.Get`, поле `gateway`); в �
 | ключи провайдеров (JWKS) | `internal/service/gw/service/jwk` |
 | токен из куки, токен приложения в горячем пути, роли `клиент:роль` | `internal/service/gw/service/auth/authorizer/jwt`, middleware auth |
 | аудитория приложения, куки токенов приложений | `internal/domain/app/model` (`AppJwt`, `SetJwtCookieNames`) |
-| брокер: discovery для фронтов, JWKS ruto, уход на страницы провайдера | `internal/service/gw/handler/http/broker` |
+| брокер: discovery для фронтов, JWKS ruto, вход фронта, код и токены ruto, уход на страницы провайдера | `internal/service/gw/handler/http/broker` |
 | ключ подписи ruto, `kid`, JWKS | `internal/service/gw/service/rutokey` |
 | раздача JS SDK | `internal/service/gw/handler/http/sdkjs` |
 | имена кук, префикс `_auth` | `internal/constant` |

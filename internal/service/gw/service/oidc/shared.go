@@ -155,3 +155,27 @@ func unshared(err error, call func() (*TokenResponse, error)) (*TokenResponse, e
 	slog.Warn("oidc: redis is unavailable, calling the provider without other pods", "error", err)
 	return call()
 }
+
+// usedKeyPrefix keeps the marks of used one-time values (the broker's login
+// codes) apart from the shared token calls.
+const usedKeyPrefix = "ruto:gw:used:"
+
+// MarkUsed records key as used for ttl in the Redis the pods share and tells
+// whether this call was the first to do so. Without Redis, or when it fails,
+// every call is the first: the mark is an extra guard on top of others, not
+// the only one.
+func (s *Service) MarkUsed(ctx context.Context, key string, ttl time.Duration) bool {
+	client := s.redisClient()
+	if client == nil {
+		return true
+	}
+	sum := sha256.Sum256([]byte(key))
+	opCtx, cancel := context.WithTimeout(ctx, redisOpTimeout)
+	defer cancel()
+	first, err := client.SetNX(opCtx, usedKeyPrefix+hex.EncodeToString(sum[:]), 1, ttl).Result()
+	if err != nil {
+		slog.Warn("oidc: redis failed, a one-time value is not marked", "error", err)
+		return true
+	}
+	return first
+}

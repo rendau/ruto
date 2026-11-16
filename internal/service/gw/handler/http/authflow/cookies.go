@@ -25,14 +25,14 @@ const (
 	hostPrefix = "__Host-"
 )
 
-func (u *unit) refreshCookieName() string {
+func (u *Unit) refreshCookieName() string {
 	return constant.JwtRefreshCookiePrefix + u.provider.Name
 }
 
 // loginCookieName is the cookie of a login in progress (state, PKCE verifier,
 // return address). With https it gets the __Host- prefix, which requires
 // Path=/ and Secure.
-func (u *unit) loginCookieName() string {
+func (u *Unit) loginCookieName() string {
 	name := constant.JwtLoginCookiePrefix + u.provider.Name
 	if u.secure {
 		return hostPrefix + name
@@ -40,7 +40,7 @@ func (u *unit) loginCookieName() string {
 	return name
 }
 
-func (u *unit) setCookie(w http.ResponseWriter, name, value, path string, maxAge int) {
+func (u *Unit) setCookie(w http.ResponseWriter, name, value, path string, maxAge int) {
 	cookie := &http.Cookie{
 		Name:     name,
 		Value:    value,
@@ -57,7 +57,7 @@ func (u *unit) setCookie(w http.ResponseWriter, name, value, path string, maxAge
 	http.SetCookie(w, cookie)
 }
 
-func (u *unit) clearCookie(w http.ResponseWriter, name, path string) {
+func (u *Unit) clearCookie(w http.ResponseWriter, name, path string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",

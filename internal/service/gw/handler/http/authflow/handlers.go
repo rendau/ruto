@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 
@@ -23,6 +24,9 @@ import (
 type sessionCookie struct {
 	RefreshToken string `json:"rt,omitempty"`
 	IdToken      string `json:"idt,omitempty"`
+	// Expires is when the cookie runs out (unix seconds): the session cannot
+	// be renewed past it. Zero in cookies set before it was kept.
+	Expires int64 `json:"exp,omitempty"`
 }
 
 // encode seals the session for the cookie called name; false without a key.
@@ -43,7 +47,7 @@ func decodeSessionCookie(name, value string) sessionCookie {
 
 // login starts the flow: remembers state, PKCE verifier and the return address
 // in the login cookie and sends the browser to the provider.
-func (u *unit) login(w http.ResponseWriter, r *http.Request) {
+func (u *Unit) login(w http.ResponseWriter, r *http.Request) {
 	redirect, ok := u.returnUrl(r.URL.Query().Get("redirect"))
 	if !ok {
 		http.Error(w, "redirect is not allowed: not this gateway and not a CORS origin", http.StatusBadRequest)
@@ -116,7 +120,7 @@ func parsePrompt(raw string) (string, bool) {
 // callback finishes the flow: checks the state against the login cookie,
 // exchanges the code, verifies the access token and sets the session cookies.
 // A failure goes back to the front with an error code (see loginFailed).
-func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
+func (u *Unit) callback(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	loginCookieName := u.loginCookieName()
 
@@ -203,7 +207,7 @@ func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
 // they exist (access_denied, invalid_grant, temporarily_unavailable, …) and
 // state_mismatch / invalid_token for the gateway's own checks. Without a
 // return address the text answer stays: there is nowhere to go.
-func (u *unit) loginFailed(w http.ResponseWriter, r *http.Request, redirect, code string, status int, text string) {
+func (u *Unit) loginFailed(w http.ResponseWriter, r *http.Request, redirect, code string, status int, text string) {
 	if redirect == "" {
 		http.Error(w, text, status)
 		return
@@ -237,20 +241,31 @@ func errorCode(raw string) string {
 // refresh renews the session with the refresh token from the refresh cookie
 // and sets fresh cookies. A front calls it after a 401 and repeats the
 // request; a 401 from here means the session is over and it is time for login.
-func (u *unit) refresh(w http.ResponseWriter, r *http.Request) {
+func (u *Unit) refresh(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 
-	session := u.readSession(r)
+	_, err := u.renew(w, r, u.readSession(r))
+	switch {
+	case err == nil:
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, ErrNoSession):
+		http.Error(w, "session is over: log in", http.StatusUnauthorized)
+	default:
+		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
+	}
+}
+
+// renew refreshes the session with the refresh token of session and sets
+// fresh cookies; the error is ErrNoSession or ErrUnavailable, wrapped.
+func (u *Unit) renew(w http.ResponseWriter, r *http.Request, session sessionCookie) (*oidc.TokenResponse, error) {
 	if session.RefreshToken == "" {
-		http.Error(w, "no session to refresh: log in", http.StatusUnauthorized)
-		return
+		return nil, fmt.Errorf("%w: no refresh cookie", ErrNoSession)
 	}
 
 	meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
 	if err != nil {
 		u.logWarn("provider discovery failed", err, r)
-		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
-		return
+		return nil, fmt.Errorf("%w: discovery: %w", ErrUnavailable, err)
 	}
 
 	tokens, err := oidc.Ins().Refresh(r.Context(), meta.TokenEndpoint, u.client, session.RefreshToken)
@@ -260,25 +275,21 @@ func (u *unit) refresh(w http.ResponseWriter, r *http.Request) {
 			// in another tab or pod may have just set fresh ones, and the
 			// browser applies responses in the order they arrive.
 			slog.Info("authflow: session can no longer be refreshed", "unit", u.name, "error", err)
-			http.Error(w, "session is over: log in", http.StatusUnauthorized)
-			return
+			return nil, fmt.Errorf("%w: %w", ErrNoSession, err)
 		}
 		u.logWarn("refresh failed", err, r)
-		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
-		return
+		return nil, fmt.Errorf("%w: %w", ErrUnavailable, err)
 	}
 
 	if err = u.verifyAccessToken(tokens.AccessToken); err != nil {
 		u.logWarn("access token from the provider is not acceptable", err, r)
-		http.Error(w, "login provider returned a token this gateway cannot verify", http.StatusBadGateway)
-		return
+		return nil, fmt.Errorf("%w: access token: %w", ErrUnavailable, err)
 	}
 
 	if tokens.IdToken != "" {
 		if err = u.verifyRenewedIdToken(tokens.IdToken, session.IdToken); err != nil {
 			u.logWarn("renewed id token from the provider is not acceptable", err, r)
-			http.Error(w, "login provider returned an id token this gateway cannot verify", http.StatusBadGateway)
-			return
+			return nil, fmt.Errorf("%w: id token: %w", ErrUnavailable, err)
 		}
 	}
 
@@ -294,20 +305,24 @@ func (u *unit) refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u.setSession(w, &renewed)
-	w.WriteHeader(http.StatusNoContent)
+	return &renewed, nil
 }
 
 // setSession sets the access and refresh cookies from the provider's answer.
 // They live as long as the session can be renewed, not as long as the access
 // token: a browser must not drop them before a refresh.
-func (u *unit) setSession(w http.ResponseWriter, tokens *oidc.TokenResponse) {
+func (u *Unit) setSession(w http.ResponseWriter, tokens *oidc.TokenResponse) {
 	maxAge := tokens.RefreshExpiresIn
 	if maxAge <= 0 {
 		maxAge = defaultSessionMaxAge
 	}
 	u.setCookie(w, u.cookieName, tokens.AccessToken, "/", maxAge)
 	if tokens.RefreshToken != "" || tokens.IdToken != "" {
-		session := sessionCookie{RefreshToken: tokens.RefreshToken, IdToken: tokens.IdToken}
+		session := sessionCookie{
+			RefreshToken: tokens.RefreshToken,
+			IdToken:      tokens.IdToken,
+			Expires:      time.Now().Unix() + int64(maxAge),
+		}
 		name := u.refreshCookieName()
 		if value, ok := session.encode(name); ok {
 			u.setCookie(w, name, value, u.basePath, maxAge)
@@ -320,7 +335,7 @@ func (u *unit) setSession(w http.ResponseWriter, tokens *oidc.TokenResponse) {
 // logout drops the session cookies with the app tokens got for it and, when
 // the provider supports it, ends the provider session too (OpenID Connect
 // RP-Initiated Logout).
-func (u *unit) logout(w http.ResponseWriter, r *http.Request) {
+func (u *Unit) logout(w http.ResponseWriter, r *http.Request) {
 	redirect, ok := u.returnUrl(r.URL.Query().Get("redirect"))
 	if !ok {
 		http.Error(w, "redirect is not allowed: not this gateway and not a CORS origin", http.StatusBadRequest)
@@ -361,7 +376,7 @@ func (u *unit) logout(w http.ResponseWriter, r *http.Request) {
 // that holds a bearer token has the claims already. A missing, foreign or
 // expired cookie is 401, which a front treats like any other 401: refresh,
 // then repeat.
-func (u *unit) me(w http.ResponseWriter, r *http.Request) {
+func (u *Unit) me(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 
 	cookie, err := r.Cookie(u.cookieName)
@@ -382,7 +397,7 @@ func (u *unit) me(w http.ResponseWriter, r *http.Request) {
 
 // readSession decodes the refresh cookie; a missing or malformed one is an
 // empty session.
-func (u *unit) readSession(r *http.Request) sessionCookie {
+func (u *Unit) readSession(r *http.Request) sessionCookie {
 	name := u.refreshCookieName()
 	cookie, err := r.Cookie(name)
 	if err != nil {
@@ -396,7 +411,7 @@ func (u *unit) readSession(r *http.Request) sessionCookie {
 // issuer, meant for our client (aud, and azp when present), not expired, and
 // carrying the nonce this login started with. The scope always includes
 // openid, so the provider must have sent one.
-func (u *unit) verifyIdToken(token, nonce string) error {
+func (u *Unit) verifyIdToken(token, nonce string) error {
 	if token == "" {
 		return errors.New("no id_token in the token response")
 	}
@@ -419,7 +434,7 @@ func (u *unit) verifyIdToken(token, nonce string) error {
 // nonce, and the same subject as the id token of the session. previous was
 // verified at login; it is read as is, since a cookie its owner broke only
 // hurts its owner.
-func (u *unit) verifyRenewedIdToken(token, previous string) error {
+func (u *Unit) verifyRenewedIdToken(token, previous string) error {
 	claims, err := u.parseIdToken(token)
 	if err != nil {
 		return err
@@ -444,7 +459,7 @@ func (u *unit) verifyRenewedIdToken(token, previous string) error {
 // parseIdToken checks the signature by a key of this provider, iss, aud and
 // azp against our client, and exp; the claims are returned for the checks
 // that depend on the flow.
-func (u *unit) parseIdToken(token string) (jwtv5.MapClaims, error) {
+func (u *Unit) parseIdToken(token string) (jwtv5.MapClaims, error) {
 	claims := jwtv5.MapClaims{}
 	if _, err := jwtv5.ParseWithClaims(token, claims, u.providerKey,
 		jwtv5.WithIssuer(u.provider.Issuer),
@@ -464,13 +479,13 @@ func (u *unit) parseIdToken(token string) (jwtv5.MapClaims, error) {
 // verifyAccessToken makes sure the provider handed us a token the jwt auth
 // method will accept later: signed by a known key of this provider, issued by
 // the configured issuer, with an expiry.
-func (u *unit) verifyAccessToken(token string) error {
+func (u *Unit) verifyAccessToken(token string) error {
 	_, err := u.parseAccessToken(token)
 	return err
 }
 
 // parseAccessToken runs the checks of verifyAccessToken and returns the claims.
-func (u *unit) parseAccessToken(token string) (jwtv5.MapClaims, error) {
+func (u *Unit) parseAccessToken(token string) (jwtv5.MapClaims, error) {
 	claims := jwtv5.MapClaims{}
 	if _, err := jwtv5.ParseWithClaims(token, claims, u.providerKey,
 		jwtv5.WithIssuer(u.provider.Issuer),
@@ -483,7 +498,7 @@ func (u *unit) parseAccessToken(token string) (jwtv5.MapClaims, error) {
 
 // providerKey resolves the token's kid to a key of this provider and checks
 // the token's alg against the key's.
-func (u *unit) providerKey(tokenObj *jwtv5.Token) (any, error) {
+func (u *Unit) providerKey(tokenObj *jwtv5.Token) (any, error) {
 	kid, _ := tokenObj.Header["kid"].(string)
 	if kid == "" {
 		return nil, errors.New("token has no kid")

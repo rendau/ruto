@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>cart front (oidc-client-ts through the ruto broker)</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; margin: 2rem; }
+    button { margin-right: .5rem; }
+    pre { background: #f4f4f4; padding: 1rem; white-space: pre-wrap; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>cart — oidc-client-ts</h1>
+  <p>The library auth-js is built on, with cookies sent to the broker (the auth-js extension to come).
+     Client <code>cart-fe</code>.</p>
+  <button id="login">Login</button>
+  <button id="forget">Forget user</button>
+  <pre id="out">…</pre>
+  <script src="../node_modules/oidc-client-ts/dist/browser/oidc-client-ts.min.js"></script>
+  <script>
+    (async () => {
+      const gateway = 'http://localhost:8088';
+      const out = document.getElementById('out');
+      const show = (value) => { out.textContent = JSON.stringify(value, null, 2); };
+
+      const manager = new oidc.UserManager({
+        authority: `${gateway}/_auth/corp/cart-fe/realms/corp`,
+        client_id: 'cart-fe',
+        redirect_uri: `${location.origin}/cart/`,
+        response_type: 'code',
+        scope: 'openid profile email',
+        fetchRequestCredentials: 'include', // the broker finds the session by the gateway's cookies
+        loadUserInfo: false, // userinfo comes with the next stage
+        automaticSilentRenew: false,
+        userStore: new oidc.WebStorageStateStore({ store: window.sessionStorage }),
+      });
+      window.__oidc = manager;
+      window.__state = { error: null, user: null };
+
+      const summary = (user) => user ? {
+        user: user.profile.preferred_username,
+        sub: user.profile.sub,
+        iss: user.profile.iss,
+        aud: user.profile.aud,
+        roles: user.profile.resource_access && user.profile.resource_access['cart-fe'],
+        expiresIn: user.expires_in,
+      } : { user: null, error: window.__state.error };
+
+      try {
+        const params = new URLSearchParams(location.search);
+        if (params.has('code') || params.has('error')) {
+          window.__state.user = await manager.signinRedirectCallback();
+          history.replaceState(null, '', location.pathname);
+        } else {
+          window.__state.user = await manager.getUser();
+        }
+      } catch (e) {
+        window.__state.error = String(e && e.message || e);
+      }
+      window.__state.summary = () => summary(window.__state.user);
+      show(summary(window.__state.user));
+
+      document.getElementById('login').onclick = () => manager.signinRedirect();
+      document.getElementById('forget').onclick = async () => {
+        await manager.removeUser();
+        window.__state.user = null;
+        show(summary(null));
+      };
+    })();
+  </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 """Test stand: configures a fresh core for the SSO checks (see CLAUDE.md,
 "Тестовый стенд"): first admin, provider corp (Keycloak in docker; the shared
-login asks for no roles, the app tokens are exchanged with scope roles), apps
-with one GET endpoint each, snapshot published. Run with python3 -I once core
+login asks for no roles, the app tokens are exchanged with scope roles), CORS
+for the test fronts, apps with one GET endpoint each, snapshot published. Run with python3 -I once core
 is up."""
 import json, urllib.request, sys
 BASE='http://localhost:9090/api'
@@ -22,7 +22,7 @@ st,rep=call('POST','/usr/login',{'username':'admin','password':'ruto-test-admin'
 st,root=call('GET','/root'); print('root get', st)
 root.update({
   'base_url':'http://localhost:8088',
-  'cors':{'enabled':True,'allow_credentials':True,'max_age':'1h','allow_origins':['http://localhost:5181','http://localhost:5182'],'allow_methods':['*'],'allow_headers':['*']},
+  'cors':{'enabled':True,'allow_credentials':True,'max_age':'1h','allow_origins':['http://localhost:5181','http://localhost:5182','http://localhost:5183','http://localhost:5184'],'allow_methods':['*'],'allow_headers':['*']},
   'jwt':[{'name':'corp','issuer':'http://localhost:8180/realms/corp','public_url':'http://localhost:8088',
           'client':{'id':'ruto','secret':'ruto-secret','scopes':['openid','profile','email']},'exchange_scopes':['roles']}],
 })
@@ -42,5 +42,8 @@ app('shop','shop',[])
 # orders and orders-api: one audience, so one exchange fills the cookies of both
 app('orders','orders',['orders:manager'],jwt=[{'provider':'corp','audience':'orders'}])
 app('orders-api','orders-api',['orders:manager'],jwt=[{'provider':'corp','audience':'orders'}])
+# crm-api: the audience is the client of the crm front (fronts/crm), so the front's login through the
+# broker fills its cookie and the first request goes without an exchange
+app('crm-api','crm-api',['crm:user'],jwt=[{'provider':'corp','audience':'crm'}])
 print('deploy', call('POST','/snapshot/deploy',{}))
 print('version', call('GET','/snapshot/version'))

@@ -8,7 +8,8 @@
   "enabledEventTypes": ["TOKEN_EXCHANGE", "TOKEN_EXCHANGE_ERROR"],
   "roles": {
     "realm": [{"name": "auditor"}],
-    "client": {"shop": [{"name": "manager"}], "orders": [{"name": "manager"}]}
+    "client": {"shop": [{"name": "manager"}], "orders": [{"name": "manager"}],
+               "crm": [{"name": "user"}], "cart-fe": [{"name": "user"}]}
   },
   "clients": [
     {
@@ -46,6 +47,18 @@
       "enabled": true,
       "bearerOnly": true,
       "standardFlowEnabled": false
+    },
+    {
+      "clientId": "crm",
+      "enabled": true,
+      "bearerOnly": true,
+      "standardFlowEnabled": false
+    },
+    {
+      "clientId": "cart-fe",
+      "enabled": true,
+      "bearerOnly": true,
+      "standardFlowEnabled": false
     }
   ],
   "users": [
@@ -59,7 +72,7 @@
       "attributes": {"tenant_id": ["t-42"]},
       "credentials": [{"type": "password", "value": "alice-pass", "temporary": false}],
       "realmRoles": ["auditor"],
-      "clientRoles": {"shop": ["manager"], "orders": ["manager"]}
+      "clientRoles": {"shop": ["manager"], "orders": ["manager"], "crm": ["user"], "cart-fe": ["user"]}
     },
     {
       "username": "bob",

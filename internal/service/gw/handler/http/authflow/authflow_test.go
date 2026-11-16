@@ -288,7 +288,10 @@ func TestSharedLoginFlow(t *testing.T) {
 
 	refresh := cookieByName(t, rec, "ruto-rt_corp")
 	assert.Equal(t, "/_auth/corp", refresh.Path)
-	assert.Equal(t, sessionCookie{RefreshToken: "refresh-1", IdToken: op.lastIdToken}, decodeSessionCookie(refresh.Name, refresh.Value))
+	session := decodeSessionCookie(refresh.Name, refresh.Value)
+	assert.InDelta(t, time.Now().Unix()+1800, session.Expires, 2, "the session knows when it runs out")
+	session.Expires = 0
+	assert.Equal(t, sessionCookie{RefreshToken: "refresh-1", IdToken: op.lastIdToken}, session)
 	assert.Equal(t, 1800, refresh.MaxAge)
 
 	cleared := cookieByName(t, rec, "__Host-ruto-login_corp")
@@ -359,7 +362,9 @@ func TestRefresh(t *testing.T) {
 	assert.Equal(t, "/_auth/corp", refresh.Path)
 	assert.Equal(t, 1700, refresh.MaxAge)
 	require.NotEmpty(t, op.lastIdToken)
-	assert.Equal(t, sessionCookie{RefreshToken: "refresh-2", IdToken: op.lastIdToken}, decodeSessionCookie(refresh.Name, refresh.Value))
+	renewed := decodeSessionCookie(refresh.Name, refresh.Value)
+	renewed.Expires = 0
+	assert.Equal(t, sessionCookie{RefreshToken: "refresh-2", IdToken: op.lastIdToken}, renewed)
 
 	// a renewed id token for another user or another client is refused, the
 	// cookies are left alone
@@ -385,7 +390,10 @@ func TestRefresh(t *testing.T) {
 		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "sticky", IdToken: "id-token-1"}))
 	require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
 	refresh = cookieByName(t, rec, "ruto-rt_corp")
-	assert.Equal(t, sessionCookie{RefreshToken: "sticky", IdToken: "id-token-1"}, decodeSessionCookie(refresh.Name, refresh.Value))
+	sticky := decodeSessionCookie(refresh.Name, refresh.Value)
+	assert.InDelta(t, time.Now().Unix()+defaultSessionMaxAge, sticky.Expires, 2)
+	sticky.Expires = 0
+	assert.Equal(t, sessionCookie{RefreshToken: "sticky", IdToken: "id-token-1"}, sticky)
 	assert.Equal(t, defaultSessionMaxAge, refresh.MaxAge)
 
 	// the session is over: 401, and the cookies are not touched, a parallel

@@ -84,7 +84,7 @@ func (u *unit) discovery(w http.ResponseWriter, meta *oidc.Metadata, client stri
 // jwks answers with ruto's public keys only: fronts check ruto's tokens by
 // them, the provider's tokens are none of their business.
 func (u *unit) jwks(w http.ResponseWriter) {
-	body, ok := u.keys.JWKS()
+	body, ok := u.deps.Keys.JWKS()
 	if !ok {
 		http.Error(w, "no signing key", http.StatusServiceUnavailable)
 		return

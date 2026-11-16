@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>crm front (keycloak-js through the ruto broker)</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; margin: 2rem; }
+    button { margin-right: .5rem; }
+    pre { background: #f4f4f4; padding: 1rem; white-space: pre-wrap; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>crm — keycloak-js</h1>
+  <p>Logs in to the gateway as an OpenID Connect provider (client <code>crm</code>), not to Keycloak.
+     The backend <code>/crm-api</code> has the audience <code>crm</code>: the login fills its cookie too.</p>
+  <button id="login">Login</button>
+  <button id="call">Call crm-api</button>
+  <button id="logout-local">Forget tokens</button>
+  <pre id="out">…</pre>
+  <script type="module">
+    // keycloak-js has no dependencies but its own deprecations.js: loaded as is from node_modules
+    import Keycloak from '../node_modules/keycloak-js/lib/keycloak.js';
+
+    const gateway = 'http://localhost:8088';
+    const out = document.getElementById('out');
+    const show = (value) => { out.textContent = JSON.stringify(value, null, 2); };
+
+    const kc = new Keycloak({ url: `${gateway}/_auth/corp/crm`, realm: 'corp', clientId: 'crm' });
+    window.__kc = kc;
+    window.__state = { initError: null, authenticated: false, api: null };
+
+    try {
+      // check-sso: a redirect with prompt=none — a live gateway session gives a code without a form.
+      // The login status iframe and the third-party cookie check talk to the provider itself, which
+      // the broker does not stand for: off.
+      window.__state.authenticated = await kc.init({ onLoad: 'check-sso', checkLoginIframe: false, pkceMethod: 'S256' });
+    } catch (e) {
+      window.__state.initError = String(e && (e.error || e.message) || e);
+    }
+
+    const summary = () => ({
+      authenticated: kc.authenticated,
+      subject: kc.subject,
+      user: kc.idTokenParsed && kc.idTokenParsed.preferred_username,
+      iss: kc.idTokenParsed && kc.idTokenParsed.iss,
+      aud: kc.idTokenParsed && kc.idTokenParsed.aud,
+      nonceMatched: !!kc.idTokenParsed,
+      crmRoles: kc.resourceAccess && kc.resourceAccess.crm && kc.resourceAccess.crm.roles,
+      expiresIn: kc.tokenParsed ? kc.tokenParsed.exp - Math.floor(Date.now() / 1000) : null,
+      initError: window.__state.initError,
+    });
+    window.__state.summary = summary;
+    show(summary());
+
+    document.getElementById('login').onclick = () => kc.login();
+    document.getElementById('logout-local').onclick = () => { kc.clearToken(); show(summary()); };
+    document.getElementById('call').onclick = async () => {
+      // the ruto token goes in Authorization as an SDK would send it; the gateway takes the cookies
+      const rep = await fetch(`${gateway}/crm-api/hello`, {
+        credentials: 'include',
+        headers: kc.token ? { Authorization: `Bearer ${kc.token}` } : {},
+      });
+      const body = await rep.text();
+      let parsed = body;
+      try { parsed = JSON.parse(body); } catch (_) {}
+      window.__state.api = { status: rep.status, body: parsed };
+      show(window.__state.api);
+    };
+  </script>
+</body>
+</html>

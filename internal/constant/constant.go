@@ -32,6 +32,12 @@ const (
 	JwtLoginCookiePrefix   = "ruto-login_"
 )
 
+// JwtFrontCookiePrefix starts the name of the cookie with a front's token
+// (the shared token exchanged for the front's client), which the broker
+// builds the front's ID token and userinfo on. It lives on the front's broker
+// path and never travels with an app request.
+const JwtFrontCookiePrefix = "ruto-ft_"
+
 func JwtCookieName(provider string) string {
 	return JwtCookiePrefix + provider
 }
@@ -47,6 +53,42 @@ func JwtAppCookieName(provider, appPathPrefix string) string {
 // ("shop.api").
 func PathSlug(appPathPrefix string) string {
 	return strings.ReplaceAll(strings.Trim(appPathPrefix, "/"), "/", ".")
+}
+
+// JwtFrontCookieName names the cookie of a front's token:
+// "ruto-ft_<provider>_<client>".
+func JwtFrontCookieName(provider, client string) string {
+	return JwtFrontCookiePrefix + provider + "_" + client
+}
+
+// BrokerPath is where the broker serves a front: /_auth/<provider>/<client>.
+func BrokerPath(provider, client string) string {
+	return "/" + AuthRoutePrefix + "/" + provider + "/" + client
+}
+
+// brokerReservedClients are taken by the gateway's own routes under
+// /_auth/<provider>.
+var brokerReservedClients = map[string]struct{}{
+	"login": {}, "callback": {}, "refresh": {}, "logout": {}, "me": {}, "logged-out": {},
+}
+
+// BrokerClientIsValid tells a client name the broker serves: one plain path
+// segment that is also a valid cookie name part, not taken by the gateway's
+// own routes.
+func BrokerClientIsValid(client string) bool {
+	if _, reserved := brokerReservedClients[client]; reserved {
+		return false
+	}
+	if client == "" || len(client) > 128 {
+		return false
+	}
+	for i, c := range client {
+		alnum := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9'
+		if !alnum && (i == 0 || (c != '.' && c != '_' && c != '~' && c != '-')) {
+			return false
+		}
+	}
+	return true
 }
 
 // AuthRoutePrefix is the first path segment of the gateway's own login routes
