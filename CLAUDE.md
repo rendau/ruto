@@ -18,6 +18,7 @@ This repo has rich docs — read them before non-trivial work:
 
 - `docs/overview.md` — concepts (Root/App/Endpoint/Snapshot/Auth/Vars/Session), repo map, tech stack.
 - `docs/architecture.md` — layering, request flows, snapshot pipeline, app lifecycle, error handling.
+- `docs/sso.md` — login through the gateway: OpenID Connect provider in Root, `/_auth/…` routes, access/refresh cookies, refresh, `me`, `auth_error`, JS SDK served by the gateway.
 - `docs/code-style.md` — conventions.
 - `docs/onboarding.md` — local setup and recipes for common changes.
 - `docs/gateway-grpc.md` — connecting to the gateway over gRPC.
