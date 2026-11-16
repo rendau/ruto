@@ -141,7 +141,11 @@ type GatewaySettings struct {
 	RedisDb       int32  `protobuf:"varint,3,opt,name=redis_db,json=redisDb,proto3" json:"redis_db,omitempty"`
 	// Key the gateways seal the refresh cookie of a login session with (AES-256,
 	// 32 bytes), the same on every pod. Empty: no refresh cookie is issued.
-	CookieKey     []byte `protobuf:"bytes,4,opt,name=cookie_key,json=cookieKey,proto3" json:"cookie_key,omitempty"`
+	CookieKey []byte `protobuf:"bytes,4,opt,name=cookie_key,json=cookieKey,proto3" json:"cookie_key,omitempty"`
+	// Private key the gateways sign ruto's own tokens with as an OpenID Connect
+	// broker: the P-256 scalar (ES256, 32 bytes), the same on every pod. Empty:
+	// the gateways publish no keys and issue no tokens.
+	SigningKey    []byte `protobuf:"bytes,5,opt,name=signing_key,json=signingKey,proto3" json:"signing_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -204,6 +208,13 @@ func (x *GatewaySettings) GetCookieKey() []byte {
 	return nil
 }
 
+func (x *GatewaySettings) GetSigningKey() []byte {
+	if x != nil {
+		return x.SigningKey
+	}
+	return nil
+}
+
 var File_ruto_v1_snapshot_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_snapshot_proto_rawDesc = "" +
@@ -214,14 +225,16 @@ const file_ruto_v1_snapshot_proto_rawDesc = "" +
 	"\agateway\x18\x02 \x01(\v2\x18.ruto_v1.GatewaySettingsR\agateway\"V\n" +
 	"\x0fSnapshotVersion\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12)\n" +
-	"\x10settings_version\x18\x02 \x01(\tR\x0fsettingsVersion\"\x91\x01\n" +
+	"\x10settings_version\x18\x02 \x01(\tR\x0fsettingsVersion\"\xb2\x01\n" +
 	"\x0fGatewaySettings\x12\x1d\n" +
 	"\n" +
 	"redis_addr\x18\x01 \x01(\tR\tredisAddr\x12%\n" +
 	"\x0eredis_password\x18\x02 \x01(\tR\rredisPassword\x12\x19\n" +
 	"\bredis_db\x18\x03 \x01(\x05R\aredisDb\x12\x1d\n" +
 	"\n" +
-	"cookie_key\x18\x04 \x01(\fR\tcookieKey2\xf3\x01\n" +
+	"cookie_key\x18\x04 \x01(\fR\tcookieKey\x12\x1f\n" +
+	"\vsigning_key\x18\x05 \x01(\fR\n" +
+	"signingKey2\xf3\x01\n" +
 	"\bSnapshot\x12Y\n" +
 	"\n" +
 	"GetVersion\x12\x16.google.protobuf.Empty\x1a\x18.ruto_v1.SnapshotVersion\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/snapshot/version\x128\n" +

@@ -360,6 +360,7 @@ func decodeGatewaySettings(m *ruto_v1.GatewaySettings) *snapshotModel.GatewaySet
 		RedisPassword: m.GetRedisPassword(),
 		RedisDB:       int(m.GetRedisDb()),
 		CookieKey:     m.GetCookieKey(),
+		SigningKey:    m.GetSigningKey(),
 	}
 }
 

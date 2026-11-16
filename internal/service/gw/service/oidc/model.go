@@ -1,6 +1,9 @@
 package oidc
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // Metadata is the part of an OpenID Connect discovery document the gateway
 // uses. TokenEndpoint and JwksUri are the addresses the gateway itself calls,
@@ -12,6 +15,20 @@ type Metadata struct {
 	TokenEndpoint         string `json:"token_endpoint"`
 	EndSessionEndpoint    string `json:"end_session_endpoint"`
 	JwksUri               string `json:"jwks_uri"`
+
+	// Document is the whole discovery document as the provider published it,
+	// with public endpoints only: the broker copies its parts for the fronts.
+	Document map[string]json.RawMessage `json:"-"`
+}
+
+// PublicEndpoint returns an endpoint of the published document by its member
+// name ("userinfo_endpoint"); "" when the provider has none.
+func (m *Metadata) PublicEndpoint(name string) string {
+	var value string
+	if json.Unmarshal(m.Document[name], &value) != nil {
+		return ""
+	}
+	return value
 }
 
 // TokenResponse is the token endpoint's answer to a code exchange or a

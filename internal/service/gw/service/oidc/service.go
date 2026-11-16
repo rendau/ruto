@@ -129,6 +129,9 @@ func (s *Service) load(ctx context.Context, discoveryUrl, issuer, internalUrl st
 	if err = json.Unmarshal(body, meta); err != nil {
 		return nil, fmt.Errorf("discovery %s: json.Unmarshal: %w", discoveryUrl, err)
 	}
+	if err = json.Unmarshal(body, &meta.Document); err != nil {
+		return nil, fmt.Errorf("discovery %s: json.Unmarshal: %w", discoveryUrl, err)
+	}
 
 	// The document must describe the provider we were configured with: a
 	// wrong address or a proxy to another realm would otherwise go unnoticed.

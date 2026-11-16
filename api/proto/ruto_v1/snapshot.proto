@@ -44,4 +44,8 @@ message GatewaySettings {
   // Key the gateways seal the refresh cookie of a login session with (AES-256,
   // 32 bytes), the same on every pod. Empty: no refresh cookie is issued.
   bytes cookie_key = 4;
+  // Private key the gateways sign ruto's own tokens with as an OpenID Connect
+  // broker: the P-256 scalar (ES256, 32 bytes), the same on every pod. Empty:
+  // the gateways publish no keys and issue no tokens.
+  bytes signing_key = 5;
 }

@@ -11,5 +11,6 @@ func EncodeGatewaySettings(m *snapshotModel.GatewaySettings) *ruto_v1.GatewaySet
 		RedisPassword: m.RedisPassword,
 		RedisDb:       int32(m.RedisDB),
 		CookieKey:     m.CookieKey,
+		SigningKey:    m.SigningKey,
 	}
 }

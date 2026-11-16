@@ -19,9 +19,11 @@ import (
 	localGrpc "github.com/rendau/ruto/internal/service/gw/server/grpc"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
 	"github.com/rendau/ruto/internal/service/gw/service/apptoken"
+	authModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 	"github.com/rendau/ruto/internal/service/gw/service/oidc"
+	"github.com/rendau/ruto/internal/service/gw/service/rutokey"
 )
 
 type Service struct {
@@ -106,6 +108,8 @@ func (s *Service) Stop(timeout time.Duration) error {
 func applySettings(settings *snapshotModel.GatewaySettings) {
 	oidc.Ins().SetRedis(settings)
 	authflow.SetCookieKey(settings.CookieKey)
+	rutokey.Ins().Set(settings.SigningKey)
+	authModel.SetRutoKids(rutokey.Ins().Kids())
 }
 
 func (s *Service) SetConfig(conf *rootModel.Root) error {

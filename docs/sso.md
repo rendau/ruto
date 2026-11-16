@@ -156,18 +156,49 @@ Zitadel, Okta, Auth0, свой `id` — любой, что выдаёт access-�
   нужна своя claim (`tenant_id`). Подпись остаётся в httpOnly-куке, из одних claims токен не
   собрать.
 
+## Брокер для фронтов (в работе)
+
+Шлюз становится OpenID-провайдером для фронтов, стоящим перед настоящим провайдером
+(план — [sso-broker-plan.md](sso-broker-plan.md)). Сделано: discovery и ключи.
+
+- У каждого фронта свой адрес: `<public_url>/_auth/<провайдер>/<клиент>` + путь `issuer`
+  провайдера. Keycloak `http://kc/realms/corp` → для фронта `crm` issuer
+  `https://api/_auth/corp/crm/realms/corp`, discovery — на нём же
+  `/.well-known/openid-configuration`. Списка фронтов нет: годится любое имя клиента из
+  латиницы, цифр и `._~-`, кроме занятых маршрутами шлюза (`login`, `callback`, `refresh`,
+  `logout`, `me`, `logged-out`).
+- Discovery — копия документа провайдера: `issuer` и пути ручек (`authorization`, `token`,
+  `userinfo`, `end_session`, `jwks_uri`) — под адресом фронта; поддерживается только
+  Authorization Code + PKCE S256 для публичного клиента (`token_endpoint_auth_methods_supported:
+  none`), `response_mode` `query`/`fragment`, ID-токены ES256. Из документа провайдера берутся
+  только описания пользователя и страниц (`scopes_supported`, `claims_supported`,
+  `subject_types_supported`, локали, ссылки на политики) — остальное (интроспекция,
+  регистрация, device flow…) брокер не делает и не объявляет.
+- `jwks_uri` отдаёт только ключи ruto: фронт проверяет ими токены ruto. Ключ — ES256, `kid` —
+  отпечаток ключа (RFC 7638). Без ключа — 503. Discovery и JWKS — `Cache-Control: public,
+  max-age=300`.
+- Прочие пути под адресом фронта: `GET` без токена ruto в `Authorization` — перенаправление на
+  тот же путь у провайдера (страницы аккаунта, регистрации, на которые ссылается SDK);
+  остальное — 404. Ручки самого брокера (`authorization`, `token`, `userinfo`, `end_session`)
+  пока отвечают 404 и к провайдеру не уводят. Discovery провайдера не прочитать — 502.
+
 ## Настройки шлюзов от core
 
-Redis для склейки и ключ шифрования refresh-куки шлюзы получают от core вместе со снимком
-(`Snapshot.Get`, поле `gateway`); в БД, админку и MCP они не попадают.
+Redis для склейки, ключ шифрования refresh-куки и ключ подписи токенов ruto шлюзы получают от
+core вместе со снимком (`Snapshot.Get`, поле `gateway`); в БД, админку и MCP они не попадают.
 
 - Redis: env core `GW_REDIS_ADDR`, `GW_REDIS_DB`, `GW_REDIS_PASSWORD`; без `GW_REDIS_ADDR` —
   Redis самого core (`REDIS_*`); нет ни того, ни другого — склейка только внутри пода.
 - Ключ: HKDF-SHA256 от `GW_COOKIE_SECRET`, без него — от `ADMIN_JWT_SECRET`. Смена секрета
   разлогинивает всех из сессий шлюза (access-куки доживают свой срок). Core без ключа — шлюз
   предупреждает в логе и refresh-куку не ставит: вход работает, обновления нет.
+- Ключ подписи токенов ruto (ES256): тоже HKDF от того же секрета, но со своей меткой, так что
+  с ключом куки он не связан; шлюзу уходит приватный ключ (32 байта), на всех подах одинаковый.
+  Смена секрета — новый ключ и новый `kid`: токены ruto, выданные раньше, не пройдут проверку.
+  Тот же `kid` шлюз узнаёт в токене ruto из `Authorization` и не принимает такой токен за
+  учётные данные (см. «Токен приложения»).
 - Версия настроек — `settings_version` в `Snapshot.GetVersion` (HMAC ключом
-  `ADMIN_JWT_SECRET`). Сменились только настройки — шлюз переподключает Redis и меняет ключ,
+  `ADMIN_JWT_SECRET`). Сменились только настройки — шлюз переподключает Redis и меняет ключи,
   не пересобирая маршруты (`gw.applySettings`).
 
 ## JS SDK для фронтов
@@ -217,9 +248,11 @@ Redis для склейки и ключ шифрования refresh-куки ш
 | ключи провайдеров (JWKS) | `internal/service/gw/service/jwk` |
 | токен из куки, токен приложения в горячем пути, роли `клиент:роль` | `internal/service/gw/service/auth/authorizer/jwt`, middleware auth |
 | аудитория приложения, куки токенов приложений | `internal/domain/app/model` (`AppJwt`, `SetJwtCookieNames`) |
+| брокер: discovery для фронтов, JWKS ruto, уход на страницы провайдера | `internal/service/gw/handler/http/broker` |
+| ключ подписи ruto, `kid`, JWKS | `internal/service/gw/service/rutokey` |
 | раздача JS SDK | `internal/service/gw/handler/http/sdkjs` |
 | имена кук, префикс `_auth` | `internal/constant` |
-| настройки шлюзов (Redis, ключ) | `internal/domain/snapshot/model` (`GatewaySettings`), `internal/usecase/snapshot` |
+| настройки шлюзов (Redis, ключи) | `internal/domain/snapshot/model` (`GatewaySettings`), `internal/usecase/snapshot` |
 | SDK | `sdk/js` |
 
 Локальный стенд с Keycloak и тестовыми фронтами — раздел «Тестовый стенд» в `CLAUDE.md`.

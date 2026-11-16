@@ -10,10 +10,13 @@ import (
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/authflow"
+	"github.com/rendau/ruto/internal/service/gw/handler/http/broker"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/sdkjs"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
+	"github.com/rendau/ruto/internal/service/gw/service/oidc"
+	"github.com/rendau/ruto/internal/service/gw/service/rutokey"
 )
 
 type Service struct {
@@ -51,6 +54,7 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 	// The gateway's own login routes go first; no app may own the /_auth
 	// prefix, so they never compete with an app route.
 	authflow.Register(router, snapshot)
+	broker.Register(router, snapshot, oidc.Ins(), rutokey.Ins())
 	sdkjs.Register(router)
 
 	for _, app := range snapshot.ActiveApps() {
