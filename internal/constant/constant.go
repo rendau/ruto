@@ -67,9 +67,10 @@ func BrokerPath(provider, client string) string {
 }
 
 // brokerReservedClients are taken by the gateway's own routes under
-// /_auth/<provider>.
+// /_auth/<provider>: callback is the provider's return address of the
+// gateway's client.
 var brokerReservedClients = map[string]struct{}{
-	"login": {}, "callback": {}, "refresh": {}, "logout": {}, "logged-out": {},
+	"callback": {}, "logged-out": {},
 }
 
 // BrokerClientIsValid tells a client name the broker serves: one plain path
@@ -92,8 +93,8 @@ func BrokerClientIsValid(client string) bool {
 }
 
 // AuthRoutePrefix is the first path segment of the gateway's own login routes
-// (/_auth/<provider>/login|callback|refresh|logout|me); no app prefix and no
-// endpoint path may start with it.
+// (/_auth/<provider>/callback and the broker's /_auth/<provider>/<client>/…);
+// no app prefix and no endpoint path may start with it.
 const AuthRoutePrefix = "_auth"
 
 // OidcScopeOpenid is the scope every OpenID Connect login must ask for.

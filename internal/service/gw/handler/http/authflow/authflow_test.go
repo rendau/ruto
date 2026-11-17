@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -189,24 +189,60 @@ func (op *fakeOP) provider(t *testing.T, client *authModel.JwtClient) rootModel.
 	return p
 }
 
-func buildRouter(t *testing.T, snapshot *rootModel.Root) http.Handler {
+// newUnits builds the login units of snapshot, as the gateway does on a new
+// snapshot, with a cookie key.
+func newUnits(t *testing.T, snapshot *rootModel.Root) map[string]*Unit {
 	SetCookieKey(snapshotModel.CookieKeyFrom("test-admin-secret"))
 	t.Cleanup(func() { SetCookieKey(nil) })
 	require.NoError(t, snapshot.Normalize())
 	snapshot.InheritDown()
-	router := chi.NewRouter()
-	Register(router, snapshot)
-	return router
+	return NewUnits(snapshot)
 }
 
-func do(router http.Handler, method, target string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(method, target, nil)
+func newCorp(t *testing.T, op *fakeOP, client *authModel.JwtClient) *Unit {
+	snapshot := rootModel.NewEmpty()
+	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, client)}
+	u := newUnits(t, snapshot)["corp"]
+	require.NotNil(t, u)
+	return u
+}
+
+func newRequest(target string, cookies ...*http.Cookie) *http.Request {
+	req := httptest.NewRequest(http.MethodGet, target, nil)
 	for _, c := range cookies {
 		req.AddCookie(c)
 	}
+	return req
+}
+
+// login starts a login for ret and returns the answer, the query the browser
+// takes to the provider and the login cookie; the OP learns the challenge and
+// the nonce, as a real one does from that query.
+func login(t *testing.T, op *fakeOP, u *Unit, ret string, opts *LoginOptions) (*httptest.ResponseRecorder, url.Values, *http.Cookie) {
+	t.Helper()
 	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	return rec
+	require.NoError(t, u.Login(rec, newRequest("/_auth/corp/crm/auth"), ret, opts))
+	require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
+	authUrl, err := url.Parse(rec.Header().Get("Location"))
+	require.NoError(t, err)
+	q := authUrl.Query()
+	op.challenge = q.Get("code_challenge")
+	op.nonce = q.Get("nonce")
+	return rec, q, cookieByName(t, rec, u.loginCookieName(q.Get("state")))
+}
+
+// callback brings the provider's answer to the gateway.
+func callback(u *Unit, query string, cookies ...*http.Cookie) (*httptest.ResponseRecorder, string, error) {
+	rec := httptest.NewRecorder()
+	ret, err := u.Callback(rec, newRequest("/_auth/corp/callback?"+query, cookies...))
+	return rec, ret, err
+}
+
+func loginErrorCode(t *testing.T, err error) string {
+	t.Helper()
+	failure, ok := errors.AsType[*LoginError](err)
+	require.True(t, ok, "%v is not a login error", err)
+	return failure.Code
 }
 
 func cookieByName(t *testing.T, rec *httptest.ResponseRecorder, name string) *http.Cookie {
@@ -219,59 +255,72 @@ func cookieByName(t *testing.T, rec *httptest.ResponseRecorder, name string) *ht
 	return nil
 }
 
-func TestSharedLoginFlow(t *testing.T) {
+func noSessionCookies(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	for _, c := range rec.Result().Cookies() {
+		assert.NotEqual(t, "ruto_corp", c.Name, "no session")
+		assert.NotEqual(t, "ruto-rt_corp", c.Name, "no session")
+	}
+}
+
+const testRet = "/_auth/corp/crm/realms/corp/auth?client_id=crm&state=front-state"
+
+func TestLoginFlow(t *testing.T) {
 	op := newFakeOP(t)
-	snapshot := rootModel.NewEmpty()
-	snapshot.Cors.AllowOrigins = []string{"https://app.example.test", "*"}
-	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret", Scopes: []string{"profile"}})}
-	router := buildRouter(t, snapshot)
+	u := newCorp(t, op, &authModel.JwtClient{Id: "ruto", Secret: "s3cret", Scopes: []string{"profile"}})
 
-	// login: a redirect to the provider and the login cookie
-	rec := do(router, http.MethodGet, "/_auth/corp/login?redirect=https://app.example.test/home")
-	require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
-
+	// login: a redirect to the provider and a login cookie of its own
+	rec, q, loginCookie := login(t, op, u, testRet, nil)
 	authUrl, err := url.Parse(rec.Header().Get("Location"))
 	require.NoError(t, err)
 	assert.Equal(t, op.issuer+"/auth", authUrl.Scheme+"://"+authUrl.Host+authUrl.Path)
-	q := authUrl.Query()
 	assert.Equal(t, "code", q.Get("response_type"))
 	assert.Equal(t, "ruto", q.Get("client_id"))
 	assert.Equal(t, publicUrl+"/_auth/corp/callback", q.Get("redirect_uri"))
 	assert.Equal(t, "openid profile", q.Get("scope"))
 	assert.Equal(t, "S256", q.Get("code_challenge_method"))
-	assert.NotEmpty(t, q.Get("state"))
-	op.challenge = q.Get("code_challenge")
+	require.NotEmpty(t, q.Get("state"))
 	require.NotEmpty(t, op.challenge)
-	op.nonce = q.Get("nonce")
 	require.NotEmpty(t, op.nonce)
+	for _, name := range []string{"prompt", "max_age", "login_hint", "ui_locales", "acr_values"} {
+		assert.NotContains(t, q, name, "nothing asked, nothing sent")
+	}
 
-	loginCookie := cookieByName(t, rec, "__Host-ruto-login_corp")
+	assert.Equal(t, "__Host-ruto-login_corp_"+q.Get("state"), loginCookie.Name)
 	assert.True(t, loginCookie.HttpOnly)
 	assert.True(t, loginCookie.Secure)
 	assert.Equal(t, "/", loginCookie.Path)
 	assert.Equal(t, http.SameSiteLaxMode, loginCookie.SameSite)
 	assert.Equal(t, loginCookieMaxAge, loginCookie.MaxAge)
 
-	// callback with a wrong state is refused before any call to the provider;
-	// the front learns about it from the address it is sent back to
-	rec = do(router, http.MethodGet, "/_auth/corp/callback?state=wrong&code=good-code", loginCookie)
-	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "https://app.example.test/home?auth_error=state_mismatch", rec.Header().Get("Location"))
+	// another state finds no login of its own; the provider is not asked
+	_, ret, err := callback(u, "state=wrong&code=good-code", loginCookie)
+	assert.Equal(t, "invalid_request", loginErrorCode(t, err))
+	assert.Empty(t, ret, "the gateway does not know where the person came from")
 	assert.Equal(t, 0, op.tokenCalls)
 
-	// callback without the login cookie: nowhere to go back to
-	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code")
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	// the login cookie is gone (another tab finished, it expired)
+	_, ret, err = callback(u, "state="+q.Get("state")+"&code=good-code")
+	assert.Equal(t, "invalid_request", loginErrorCode(t, err))
+	assert.Empty(t, ret)
 
-	// the provider refused
-	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=bad", loginCookie)
-	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "https://app.example.test/home?auth_error=invalid_grant", rec.Header().Get("Location"))
+	// a cookie that says another state than its name
+	forged := &http.Cookie{Name: loginCookie.Name, Value: strings.Replace(loginCookie.Value, q.Get("state"), "other", 1)}
+	_, ret, err = callback(u, "state="+q.Get("state")+"&code=good-code", forged)
+	assert.Equal(t, "state_mismatch", loginErrorCode(t, err))
+	assert.Equal(t, testRet, ret)
+	assert.Equal(t, 0, op.tokenCalls)
+
+	// the provider refused the code
+	rec, ret, err = callback(u, "state="+q.Get("state")+"&code=bad", loginCookie)
+	assert.Equal(t, "invalid_grant", loginErrorCode(t, err))
+	assert.Equal(t, testRet, ret)
+	noSessionCookies(t, rec)
 
 	// the real thing
-	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
-	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
-	assert.Equal(t, "https://app.example.test/home", rec.Header().Get("Location"))
+	rec, ret, err = callback(u, "state="+q.Get("state")+"&code=good-code", loginCookie)
+	require.NoError(t, err)
+	assert.Equal(t, testRet, ret, "back to the request the login was started for")
 	assert.Equal(t, "ruto", op.lastUser)
 	assert.Equal(t, "s3cret", op.lastPass)
 	assert.Equal(t, "authorization_code", op.lastForm.Get("grant_type"))
@@ -294,25 +343,80 @@ func TestSharedLoginFlow(t *testing.T) {
 	assert.Equal(t, sessionCookie{RefreshToken: "refresh-1", IdToken: op.lastIdToken}, session)
 	assert.Equal(t, 1800, refresh.MaxAge)
 
-	cleared := cookieByName(t, rec, "__Host-ruto-login_corp")
+	cleared := cookieByName(t, rec, loginCookie.Name)
 	assert.Equal(t, -1, cleared.MaxAge, "the login cookie is dropped")
 
+	// the session is there for the broker
+	req := newRequest("/_auth/corp/crm/auth", access, refresh)
+	got, err := u.Session(httptest.NewRecorder(), req)
+	require.NoError(t, err)
+	assert.Equal(t, "u1", got.Claims["sub"])
+
 	// logout: cookies cleared, provider session ended with the id token
-	rec = do(router, http.MethodGet, "/_auth/corp/logout?redirect=/bye", access, refresh)
+	rec = httptest.NewRecorder()
+	u.Logout(rec, newRequest("/_auth/corp/crm/logout", access, refresh), "https://crm.example.test/bye", "")
 	require.Equal(t, http.StatusFound, rec.Code)
 	endUrl, err := url.Parse(rec.Header().Get("Location"))
 	require.NoError(t, err)
 	assert.Equal(t, op.issuer+"/logout", endUrl.Scheme+"://"+endUrl.Host+endUrl.Path)
 	assert.Equal(t, op.lastIdToken, endUrl.Query().Get("id_token_hint"))
-	assert.Equal(t, publicUrl+"/bye", endUrl.Query().Get("post_logout_redirect_uri"))
+	assert.Equal(t, "https://crm.example.test/bye", endUrl.Query().Get("post_logout_redirect_uri"))
 	assert.Equal(t, "ruto", endUrl.Query().Get("client_id"))
 	assert.Equal(t, -1, cookieByName(t, rec, "ruto_corp").MaxAge)
 	assert.Equal(t, -1, cookieByName(t, rec, "ruto-rt_corp").MaxAge)
+}
 
-	// logout without a session goes straight to the return address
-	rec = do(router, http.MethodGet, "/_auth/corp/logout")
-	require.Equal(t, http.StatusFound, rec.Code)
-	assert.Equal(t, publicUrl+"/", rec.Header().Get("Location"))
+func TestLoginOptionsGoToTheProvider(t *testing.T) {
+	op := newFakeOP(t)
+	u := newCorp(t, op, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})
+
+	_, q, _ := login(t, op, u, testRet, &LoginOptions{
+		Prompt:    "login consent",
+		MaxAge:    "0",
+		LoginHint: "alice@example.test",
+		UiLocales: "ru en",
+		AcrValues: "urn:mace:incommon:iap:silver",
+	})
+	assert.Equal(t, "login consent", q.Get("prompt"))
+	assert.Equal(t, "0", q.Get("max_age"), "zero is a value, not an absence")
+	assert.Equal(t, "alice@example.test", q.Get("login_hint"))
+	assert.Equal(t, "ru en", q.Get("ui_locales"))
+	assert.Equal(t, "urn:mace:incommon:iap:silver", q.Get("acr_values"))
+
+	_, q, _ = login(t, op, u, testRet, &LoginOptions{LoginHint: "bob"})
+	assert.Equal(t, "bob", q.Get("login_hint"))
+	assert.NotContains(t, q, "prompt")
+	assert.NotContains(t, q, "max_age")
+}
+
+func TestParallelLogins(t *testing.T) {
+	op := newFakeOP(t)
+	u := newCorp(t, op, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})
+
+	// two tabs start a login one after the other; the browser keeps both cookies
+	const retA, retB = testRet + "&tab=a", testRet + "&tab=b"
+	_, qA, cookieA := login(t, op, u, retA, nil)
+	challengeA, nonceA := op.challenge, op.nonce
+	_, qB, cookieB := login(t, op, u, retB, nil)
+	require.NotEqual(t, qA.Get("state"), qB.Get("state"))
+	require.NotEqual(t, cookieA.Name, cookieB.Name, "the second login does not overwrite the first")
+
+	// the second tab comes back first
+	rec, ret, err := callback(u, "state="+qB.Get("state")+"&code=good-code", cookieA, cookieB)
+	require.NoError(t, err)
+	assert.Equal(t, retB, ret)
+	assert.Equal(t, -1, cookieByName(t, rec, cookieB.Name).MaxAge)
+	for _, c := range rec.Result().Cookies() {
+		assert.NotEqual(t, cookieA.Name, c.Name, "the other login is left alone")
+	}
+
+	// then the first: its cookie is still there and its state matches
+	op.challenge, op.nonce = challengeA, nonceA
+	rec, ret, err = callback(u, "state="+qA.Get("state")+"&code=good-code", cookieA)
+	require.NoError(t, err)
+	assert.Equal(t, retA, ret)
+	cookieByName(t, rec, "ruto_corp")
+	assert.Equal(t, 2, op.tokenCalls)
 }
 
 func sessionCookieOf(name, path string, session sessionCookie) *http.Cookie {
@@ -323,27 +427,27 @@ func sessionCookieOf(name, path string, session sessionCookie) *http.Cookie {
 	return &http.Cookie{Name: name, Path: path, Value: value}
 }
 
-func TestRefresh(t *testing.T) {
+// renewWith asks for the session with only a refresh cookie: the access
+// token is renewed by it.
+func renewWith(u *Unit, refresh *http.Cookie) (*httptest.ResponseRecorder, error) {
+	rec := httptest.NewRecorder()
+	_, err := u.Session(rec, newRequest("/_auth/corp/crm/token", refresh))
+	return rec, err
+}
+
+func TestRenew(t *testing.T) {
 	op := newFakeOP(t)
-	snapshot := rootModel.NewEmpty()
-	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
-	router := buildRouter(t, snapshot)
-	const target = "/_auth/corp/refresh"
+	u := newCorp(t, op, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})
 
-	assert.Equal(t, http.StatusMethodNotAllowed, do(router, http.MethodGet, target).Code, "a cross-site GET must not renew the session")
-
-	rec := do(router, http.MethodPost, target)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code, "no refresh cookie")
+	_, err := u.Session(httptest.NewRecorder(), newRequest("/x"))
+	assert.ErrorIs(t, err, ErrNoSession, "no cookies")
 	assert.Equal(t, 0, op.tokenCalls)
-	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 
 	// a rotated pair: new access cookie, new refresh token, the fresh id token
 	// replaces the one from login
 	loginIdToken := op.sign(jwtv5.MapClaims{"sub": "u1", "iss": op.issuer, "exp": time.Now().Add(5 * time.Minute).Unix(), "aud": "ruto"})
-	rec = do(router, http.MethodPost, target,
-		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-1", IdToken: loginIdToken}))
-	require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
-	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	rec, err := renewWith(u, sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-1", IdToken: loginIdToken}))
+	require.NoError(t, err)
 	assert.Equal(t, "refresh_token", op.lastForm.Get("grant_type"))
 	assert.Equal(t, "refresh-1", op.lastForm.Get("refresh_token"))
 	assert.Equal(t, "ruto", op.lastUser)
@@ -377,18 +481,16 @@ func TestRefresh(t *testing.T) {
 	} {
 		op.idSub, op.idAud = "", ""
 		tc.setup()
-		rec = do(router, http.MethodPost, target,
-			sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: tc.refreshToken, IdToken: loginIdToken}))
-		assert.Equal(t, http.StatusBadGateway, rec.Code, tc.name)
+		rec, err = renewWith(u, sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: tc.refreshToken, IdToken: loginIdToken}))
+		assert.ErrorIs(t, err, ErrUnavailable, tc.name)
 		assert.Empty(t, rec.Header().Values("Set-Cookie"), tc.name)
 	}
 	op.idSub, op.idAud = "", ""
 
 	// a provider that does not rotate: the refresh token stays, the session
 	// length falls back to the default
-	rec = do(router, http.MethodPost, target,
-		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "sticky", IdToken: "id-token-1"}))
-	require.Equal(t, http.StatusNoContent, rec.Code, rec.Body.String())
+	rec, err = renewWith(u, sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "sticky", IdToken: "id-token-1"}))
+	require.NoError(t, err)
 	refresh = cookieByName(t, rec, "ruto-rt_corp")
 	sticky := decodeSessionCookie(refresh.Name, refresh.Value)
 	assert.InDelta(t, time.Now().Unix()+defaultSessionMaxAge, sticky.Expires, 2)
@@ -396,125 +498,64 @@ func TestRefresh(t *testing.T) {
 	assert.Equal(t, sessionCookie{RefreshToken: "sticky", IdToken: "id-token-1"}, sticky)
 	assert.Equal(t, defaultSessionMaxAge, refresh.MaxAge)
 
-	// the session is over: 401, and the cookies are not touched, a parallel
+	// the session is over, and the cookies are not touched: a parallel
 	// refresh may have just renewed them
-	rec = do(router, http.MethodPost, target,
-		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-old"}))
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	rec, err = renewWith(u, sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-old"}))
+	assert.ErrorIs(t, err, ErrNoSession)
 	assert.Empty(t, rec.Header().Values("Set-Cookie"))
 
 	// the provider is in trouble: not the user's fault, the session stays
-	rec = do(router, http.MethodPost, target,
-		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "unavailable"}))
-	assert.Equal(t, http.StatusBadGateway, rec.Code)
+	rec, err = renewWith(u, sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "unavailable"}))
+	assert.ErrorIs(t, err, ErrUnavailable)
 	assert.Empty(t, rec.Header().Values("Set-Cookie"))
 }
 
-func TestReturnUrlIsChecked(t *testing.T) {
+func TestLoginFailures(t *testing.T) {
 	op := newFakeOP(t)
-	snapshot := rootModel.NewEmpty()
-	snapshot.Cors.AllowOrigins = []string{"https://app.example.test", "https://*.fronts.example"}
-	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s"})}
-	router := buildRouter(t, snapshot)
+	u := newCorp(t, op, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})
 
-	for _, redirect := range []string{
-		"https://evil.example/steal",
-		"//evil.example/steal",
-		"javascript:alert(1)",
-		"https://app.example.test.evil.example/",
-		"https://fronts.example/",
-		"https://shop.fronts.example.evil.example/",
-	} {
-		rec := do(router, http.MethodGet, "/_auth/corp/login?redirect="+url.QueryEscape(redirect))
-		assert.Equal(t, http.StatusBadRequest, rec.Code, redirect)
-		rec = do(router, http.MethodGet, "/_auth/corp/logout?redirect="+url.QueryEscape(redirect))
-		assert.Equal(t, http.StatusBadRequest, rec.Code, redirect)
-	}
-
-	for _, redirect := range []string{"", "/shop/ui", "https://app.example.test/x?y=1", publicUrl + "/shop", "https://shop.fronts.example/home"} {
-		rec := do(router, http.MethodGet, "/_auth/corp/login?redirect="+url.QueryEscape(redirect))
-		assert.Equal(t, http.StatusFound, rec.Code, redirect)
-	}
-}
-
-func TestLoginPrompt(t *testing.T) {
-	op := newFakeOP(t)
-	snapshot := rootModel.NewEmpty()
-	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
-	router := buildRouter(t, snapshot)
-
-	providerPrompt := func(t *testing.T, rec *httptest.ResponseRecorder) string {
-		require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
-		authUrl, err := url.Parse(rec.Header().Get("Location"))
-		require.NoError(t, err)
-		return authUrl.Query().Get("prompt")
-	}
-
-	// no prompt: the parameter is not sent at all
-	rec := do(router, http.MethodGet, "/_auth/corp/login?redirect=/home")
-	assert.Equal(t, "", providerPrompt(t, rec))
-	assert.NotContains(t, rec.Header().Get("Location"), "prompt=")
-
-	// standard values go to the provider as they are, several at once too
-	for _, prompt := range []string{"login", "select_account", "consent", "none", "login consent"} {
-		rec = do(router, http.MethodGet, "/_auth/corp/login?redirect=/home&prompt="+url.QueryEscape(prompt))
-		assert.Equal(t, prompt, providerPrompt(t, rec), prompt)
-	}
-
-	// anything outside the standard, and none with company, is refused before the provider is involved
-	for _, prompt := range []string{"password", "login,consent", "none login", "LOGIN"} {
-		rec = do(router, http.MethodGet, "/_auth/corp/login?redirect=/home&prompt="+url.QueryEscape(prompt))
-		assert.Equal(t, http.StatusBadRequest, rec.Code, prompt)
-	}
-}
-
-func TestLoginFailureGoesBackToTheFront(t *testing.T) {
-	op := newFakeOP(t)
-	snapshot := rootModel.NewEmpty()
-	snapshot.Cors.AllowOrigins = []string{"https://app.example.test"}
-	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
-	router := buildRouter(t, snapshot)
-
-	start := func(t *testing.T, redirect string) *http.Cookie {
-		rec := do(router, http.MethodGet, "/_auth/corp/login?redirect="+url.QueryEscape(redirect))
-		require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
-		return cookieByName(t, rec, "__Host-ruto-login_corp")
-	}
-
-	// the provider said no (the person cancelled, or has no access): back to
-	// the front with the provider's own code, the login cookie is dropped
-	loginCookie := start(t, "https://app.example.test/login?return_to=%2Fdesk")
-	rec := do(router, http.MethodGet, "/_auth/corp/callback?error=access_denied&error_description=User+cancelled&state=x", loginCookie)
-	assert.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
-	assert.Equal(t, "https://app.example.test/login?auth_error=access_denied&return_to=%2Fdesk", rec.Header().Get("Location"))
-	assert.Less(t, cookieByName(t, rec, "__Host-ruto-login_corp").MaxAge, 0, "login cookie dropped")
+	// the provider said no (the person cancelled, or has no access): its own
+	// code with the ret of the login, the login cookie is dropped
+	_, q, loginCookie := login(t, op, u, testRet, nil)
+	rec, ret, err := callback(u, "error=access_denied&error_description=User+cancelled&state="+q.Get("state"), loginCookie)
+	assert.Equal(t, "access_denied", loginErrorCode(t, err))
+	assert.Equal(t, testRet, ret)
+	assert.Less(t, cookieByName(t, rec, loginCookie.Name).MaxAge, 0, "login cookie dropped")
 	assert.Equal(t, 0, op.tokenCalls)
 
-	// a hash-router front keeps its fragment, the error goes into the query
-	loginCookie = start(t, "https://app.example.test/#/orders")
-	rec = do(router, http.MethodGet, "/_auth/corp/callback?error=login_required", loginCookie)
-	assert.Equal(t, http.StatusSeeOther, rec.Code)
-	assert.Equal(t, "https://app.example.test/?auth_error=login_required#/orders", rec.Header().Get("Location"))
-
-	// a code that does not look like one is not echoed into the address bar
-	loginCookie = start(t, "https://app.example.test/")
-	rec = do(router, http.MethodGet, "/_auth/corp/callback?error="+url.QueryEscape("<script>alert(1)</script>"), loginCookie)
-	assert.Equal(t, "https://app.example.test/?auth_error=server_error", rec.Header().Get("Location"))
+	// a code that does not look like one is not echoed into an address
+	_, q, loginCookie = login(t, op, u, testRet, nil)
+	_, _, err = callback(u, "error="+url.QueryEscape("<script>alert(1)</script>")+"&state="+q.Get("state"), loginCookie)
+	assert.Equal(t, "server_error", loginErrorCode(t, err))
 
 	// no login cookie: the gateway does not know where the person came from
-	rec = do(router, http.MethodGet, "/_auth/corp/callback?error=access_denied")
-	assert.Equal(t, http.StatusUnauthorized, rec.Code)
-	assert.Contains(t, rec.Body.String(), "access_denied")
+	_, ret, err = callback(u, "error=access_denied&state=x")
+	assert.Equal(t, "access_denied", loginErrorCode(t, err))
+	assert.Empty(t, ret)
 
 	// the provider is down during the code exchange
-	rec = do(router, http.MethodGet, "/_auth/corp/login?redirect=/ui")
-	q, err := url.ParseQuery(strings.SplitN(rec.Header().Get("Location"), "?", 2)[1])
-	require.NoError(t, err)
-	loginCookie = cookieByName(t, rec, "__Host-ruto-login_corp")
+	_, q, loginCookie = login(t, op, u, testRet, nil)
 	op.server.Close()
-	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
-	assert.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
-	assert.Equal(t, publicUrl+"/ui?auth_error=temporarily_unavailable", rec.Header().Get("Location"))
+	_, ret, err = callback(u, "state="+q.Get("state")+"&code=good-code", loginCookie)
+	assert.Equal(t, "temporarily_unavailable", loginErrorCode(t, err))
+	assert.Equal(t, testRet, ret)
+}
+
+func TestLoginProviderUnavailable(t *testing.T) {
+	snapshot := rootModel.NewEmpty()
+	snapshot.Jwt = []rootModel.RootJwt{{
+		Name:      "corp",
+		Issuer:    "http://127.0.0.1:1/realms/corp", // nobody listens there
+		PublicUrl: publicUrl,
+		Client:    &authModel.JwtClient{Id: "ruto", Secret: "s"},
+	}}
+	u := newUnits(t, snapshot)["corp"]
+
+	rec := httptest.NewRecorder()
+	err := u.Login(rec, newRequest("/_auth/corp/crm/auth"), testRet, nil)
+	assert.ErrorIs(t, err, ErrUnavailable)
+	assert.Empty(t, rec.Header().Values("Set-Cookie"), "nothing written, the caller answers")
+	assert.Empty(t, rec.Header().Get("Location"))
 }
 
 func TestLogoutDropsAppTokens(t *testing.T) {
@@ -530,12 +571,10 @@ func TestLogoutDropsAppTokens(t *testing.T) {
 		newApp("old", "old", false, appModel.AppJwt{Provider: "corp", Audience: "old"}),
 		newApp("shop", "shop", true),
 	}
-	router := buildRouter(t, snapshot)
+	u := newUnits(t, snapshot)["corp"]
 
-	// apps have no login routes of their own any more
-	assert.Equal(t, http.StatusNotFound, do(router, http.MethodGet, "/_auth/corp/orders/login").Code)
-
-	rec := do(router, http.MethodGet, "/_auth/corp/logout?redirect=/bye")
+	rec := httptest.NewRecorder()
+	u.Logout(rec, newRequest("/_auth/corp/crm/logout"), publicUrl+"/bye", "")
 	require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
 	cleared := map[string]string{}
 	for _, c := range rec.Result().Cookies() {
@@ -548,6 +587,7 @@ func TestLogoutDropsAppTokens(t *testing.T) {
 		"ruto_corp_orders":     "/orders",
 		"ruto_corp_orders.api": "/orders/api",
 	}, cleared)
+	assert.Equal(t, publicUrl+"/bye", rec.Header().Get("Location"), "no session, straight to the return address")
 }
 
 func TestIdTokenIsChecked(t *testing.T) {
@@ -563,48 +603,27 @@ func TestIdTokenIsChecked(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			op := newFakeOP(t)
 			tc.setup(op)
-			snapshot := rootModel.NewEmpty()
-			snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s"})}
-			router := buildRouter(t, snapshot)
+			u := newCorp(t, op, &authModel.JwtClient{Id: "ruto", Secret: "s"})
 
-			rec := do(router, http.MethodGet, "/_auth/corp/login")
-			require.Equal(t, http.StatusFound, rec.Code)
-			q, err := url.ParseQuery(strings.SplitN(rec.Header().Get("Location"), "?", 2)[1])
-			require.NoError(t, err)
-			op.challenge = q.Get("code_challenge")
-			op.nonce = q.Get("nonce")
-			loginCookie := cookieByName(t, rec, "__Host-ruto-login_corp")
-
-			rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
-			assert.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
-			assert.Equal(t, publicUrl+"/?auth_error=invalid_token", rec.Header().Get("Location"))
+			_, q, loginCookie := login(t, op, u, testRet, nil)
+			rec, ret, err := callback(u, "state="+q.Get("state")+"&code=good-code", loginCookie)
+			assert.Equal(t, "invalid_token", loginErrorCode(t, err))
+			assert.Equal(t, testRet, ret)
 			assert.Equal(t, 1, op.tokenCalls)
-			for _, c := range rec.Result().Cookies() {
-				assert.NotEqual(t, "ruto_corp", c.Name, "no session on a bad id token")
-				assert.NotEqual(t, "ruto-rt_corp", c.Name, "no session on a bad id token")
-			}
+			noSessionCookies(t, rec)
 		})
 	}
 }
 
 func TestNoCookieKeyNoRefreshCookie(t *testing.T) {
 	op := newFakeOP(t)
-	snapshot := rootModel.NewEmpty()
-	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s"})}
-	router := buildRouter(t, snapshot)
+	u := newCorp(t, op, &authModel.JwtClient{Id: "ruto", Secret: "s"})
 	SetCookieKey(nil) // an old core that sends no key
 
-	rec := do(router, http.MethodGet, "/_auth/corp/login")
-	require.Equal(t, http.StatusFound, rec.Code)
-	q, err := url.ParseQuery(strings.SplitN(rec.Header().Get("Location"), "?", 2)[1])
-	require.NoError(t, err)
-	op.challenge = q.Get("code_challenge")
-	op.nonce = q.Get("nonce")
-	loginCookie := cookieByName(t, rec, "__Host-ruto-login_corp")
-
 	// the login still works: the access cookie is set, the refresh cookie is not
-	rec = do(router, http.MethodGet, "/_auth/corp/callback?state="+q.Get("state")+"&code=good-code", loginCookie)
-	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	_, q, loginCookie := login(t, op, u, testRet, nil)
+	rec, _, err := callback(u, "state="+q.Get("state")+"&code=good-code", loginCookie)
+	require.NoError(t, err)
 	cookieByName(t, rec, "ruto_corp")
 	for _, c := range rec.Result().Cookies() {
 		assert.NotEqual(t, "ruto-rt_corp", c.Name, "no key, no refresh cookie")
@@ -614,8 +633,8 @@ func TestNoCookieKeyNoRefreshCookie(t *testing.T) {
 	SetCookieKey(snapshotModel.CookieKeyFrom("old-key"))
 	stale := sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-1"})
 	SetCookieKey(snapshotModel.CookieKeyFrom("new-key"))
-	rec = do(router, http.MethodPost, "/_auth/corp/refresh", stale)
-	assert.Equal(t, http.StatusUnauthorized, rec.Code, "time to log in again")
+	_, err = renewWith(u, stale)
+	assert.ErrorIs(t, err, ErrNoSession, "time to log in again")
 	assert.Equal(t, 1, op.tokenCalls, "the provider is not asked")
 }
 
@@ -625,31 +644,23 @@ func TestHttpGatewayGetsPlainCookies(t *testing.T) {
 	p := op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s"})
 	p.PublicUrl = "http://localhost:8088"
 	snapshot.Jwt = []rootModel.RootJwt{p}
-	router := buildRouter(t, snapshot)
+	u := newUnits(t, snapshot)["corp"]
 
-	rec := do(router, http.MethodGet, "/_auth/corp/login")
-	require.Equal(t, http.StatusFound, rec.Code)
-	loginCookie := cookieByName(t, rec, "ruto-login_corp")
+	_, q, loginCookie := login(t, op, u, testRet, nil)
+	assert.Equal(t, "ruto-login_corp_"+q.Get("state"), loginCookie.Name)
 	assert.False(t, loginCookie.Secure, "no Secure on plain http, or the browser drops the cookie")
-	assert.False(t, strings.HasPrefix(loginCookie.Name, "__Host-"))
+	assert.Equal(t, "http://localhost:8088/_auth/corp/callback", q.Get("redirect_uri"))
 }
 
 func TestLogoutPassesState(t *testing.T) {
 	op := newFakeOP(t)
-	snapshot := rootModel.NewEmpty()
-	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
-	SetCookieKey(snapshotModel.CookieKeyFrom("test-admin-secret"))
-	t.Cleanup(func() { SetCookieKey(nil) })
-	require.NoError(t, snapshot.Normalize())
-	snapshot.InheritDown()
-	units := Register(chi.NewRouter(), snapshot)
-	require.Contains(t, units, "corp")
+	u := newCorp(t, op, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})
 
 	// with the provider's id token: the provider gets the state to pass on
-	req := httptest.NewRequest(http.MethodGet, "/_auth/corp/crm/logout", nil)
-	req.AddCookie(sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "rt", IdToken: "idt"}))
 	rec := httptest.NewRecorder()
-	units["corp"].Logout(rec, req, "https://crm.example.com/bye", "s-1")
+	u.Logout(rec, newRequest("/_auth/corp/crm/logout",
+		sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "rt", IdToken: "idt"})),
+		"https://crm.example.com/bye", "s-1")
 	endUrl, err := url.Parse(rec.Header().Get("Location"))
 	require.NoError(t, err)
 	assert.Equal(t, op.issuer+"/logout", endUrl.Scheme+"://"+endUrl.Host+endUrl.Path)
@@ -658,6 +669,6 @@ func TestLogoutPassesState(t *testing.T) {
 
 	// without a session: straight back, the state added here
 	rec = httptest.NewRecorder()
-	units["corp"].Logout(rec, httptest.NewRequest(http.MethodGet, "/x", nil), "https://crm.example.com/bye?a=1", "s-1")
+	u.Logout(rec, newRequest("/x"), "https://crm.example.com/bye?a=1", "s-1")
 	assert.Equal(t, "https://crm.example.com/bye?a=1&state=s-1", rec.Header().Get("Location"))
 }

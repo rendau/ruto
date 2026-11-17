@@ -10,7 +10,9 @@
 // by the CORS origins.
 //
 // What is served: the discovery document, ruto's public keys, the
-// authorization, token, userinfo and end session endpoints. The provider's
+// authorization, token, userinfo and end session endpoints, and the
+// provider's return address of the gateway's own login, which the
+// authorization endpoint starts when there is no session. The provider's
 // other pages (account, registration) are sent to the provider.
 package broker
 
@@ -50,7 +52,8 @@ type KeySet interface {
 type Sessions interface {
 	Session(w http.ResponseWriter, r *http.Request) (*authflow.Session, error)
 	FreshSession(w http.ResponseWriter, r *http.Request) (*authflow.Session, error)
-	LoginPath(returnPath, prompt string) string
+	Login(w http.ResponseWriter, r *http.Request, ret string, opts *authflow.LoginOptions) error
+	Callback(w http.ResponseWriter, r *http.Request) (string, error)
 	Logout(w http.ResponseWriter, r *http.Request, redirect, state string)
 	ParseProviderToken(token string) (jwt.MapClaims, error)
 	SetCookie(w http.ResponseWriter, name, value, path string, maxAge int)
@@ -101,9 +104,10 @@ type unit struct {
 	sessions        Sessions
 }
 
-// Register adds the broker routes of every login provider to router. The
-// gateway's own routes of a provider are registered as plain paths, which chi
-// prefers to the client parameter.
+// Register adds the broker routes of every login provider to router: the
+// provider's return address /_auth/<provider>/callback, a plain path chi
+// prefers to the client parameter, and the fronts under
+// /_auth/<provider>/<client>.
 func Register(router chi.Router, snapshot *rootModel.Root, deps Deps) {
 	origins := rootModel.NewOriginMatcher(snapshot.Cors.AllowOrigins)
 	appCookies := appModel.JwtAudienceCookies(snapshot.ActiveApps())
@@ -121,6 +125,7 @@ func Register(router chi.Router, snapshot *rootModel.Root, deps Deps) {
 			slog.Error("broker: provider skipped", "provider", p.Name, "error", err)
 			continue
 		}
+		router.Get(u.basePath+"/callback", u.callback)
 		router.Handle(u.basePath+"/{client}", http.HandlerFunc(u.serve))
 		router.Handle(u.basePath+"/{client}/*", http.HandlerFunc(u.serve))
 	}
@@ -173,7 +178,9 @@ func (u *unit) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	front := u.basePath + "/" + client
 	rest, ok := strings.CutPrefix(r.URL.EscapedPath(), front)
-	if !ok {
+	// The front's address itself is nothing: no endpoint and no page of the
+	// provider (the old /_auth/<provider>/login|refresh|logout land here too).
+	if !ok || rest == "" || rest == "/" {
 		http.NotFound(w, r)
 		return
 	}

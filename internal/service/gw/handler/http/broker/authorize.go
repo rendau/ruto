@@ -6,14 +6,13 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/rendau/ruto/internal/constant"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/authflow"
 )
-
-// authError is the parameter a failed login at the provider comes back to the
-// authorization endpoint with (see authflow.LoginPath).
-const authError = "auth_error"
 
 // promptValues are the values OpenID Connect Core §3.1.2.1 defines for prompt.
 var promptValues = map[string]bool{"none": true, "login": true, "consent": true, "select_account": true}
@@ -21,7 +20,8 @@ var promptValues = map[string]bool{"none": true, "login": true, "consent": true,
 // authorize is the authorization endpoint (OpenID Connect Core §3.1.2): the
 // code flow with PKCE S256 for a public client. With a live login session on
 // the gateway the front gets a code at once; without one the person logs in
-// at the provider through the gateway's own login, which comes back here.
+// at the provider with the gateway's own client, and the callback comes back
+// here.
 func (u *unit) authorize(w http.ResponseWriter, r *http.Request, client string) {
 	w.Header().Set("Cache-Control", "no-store")
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
@@ -56,10 +56,6 @@ func (u *unit) authorize(w http.ResponseWriter, r *http.Request, client string) 
 		return
 	}
 
-	if code := params.Get(authError); code != "" {
-		reply.fail(w, r, errorCode(code), "login at the provider failed")
-		return
-	}
 	if params.Get("response_type") != "code" {
 		reply.fail(w, r, "unsupported_response_type", "only the code flow is supported")
 		return
@@ -74,9 +70,14 @@ func (u *unit) authorize(w http.ResponseWriter, r *http.Request, client string) 
 		reply.fail(w, r, "invalid_request", "prompt is not valid")
 		return
 	}
+	maxAge, ok := parseMaxAge(params.Get("max_age"))
+	if !ok {
+		reply.fail(w, r, "invalid_request", "max_age must be a non-negative number of seconds")
+		return
+	}
 
 	if slices.Contains(strings.Fields(prompt), "login") {
-		u.toLogin(w, r, params, prompt)
+		u.toLogin(w, r, reply, params, prompt)
 		return
 	}
 
@@ -88,11 +89,22 @@ func (u *unit) authorize(w http.ResponseWriter, r *http.Request, client string) 
 			reply.fail(w, r, "login_required", "no login session")
 			return
 		}
-		u.toLogin(w, r, params, prompt)
+		u.toLogin(w, r, reply, params, prompt)
 		return
 	default:
 		slog.Warn("broker: session is unavailable", "provider", u.name, "client", client, "error", err)
 		reply.fail(w, r, "temporarily_unavailable", "login provider is unavailable")
+		return
+	}
+
+	// max_age: a person who entered the credentials longer ago, or at a time
+	// the provider did not say, logs in again (OpenID Connect Core §3.1.2.1).
+	if maxAge >= 0 && (session.AuthTime == 0 || time.Now().Unix()-session.AuthTime > maxAge) {
+		if prompt == "none" {
+			reply.fail(w, r, "login_required", "the login is older than max_age")
+			return
+		}
+		u.toLogin(w, r, reply, params, prompt)
 		return
 	}
 
@@ -118,18 +130,88 @@ func (u *unit) authorize(w http.ResponseWriter, r *http.Request, client string) 
 	reply.succeed(w, r, code)
 }
 
-// toLogin sends the browser to the gateway's login at the provider, to come
-// back to this very request: without prompt (it is passed to the provider and
-// done with) and without a previous login error.
-func (u *unit) toLogin(w http.ResponseWriter, r *http.Request, params url.Values, prompt string) {
+// toLogin starts the gateway's login at the provider, to come back to this
+// very request: without prompt and max_age, which the provider gets and is
+// done with (they would send the person to the provider again and again).
+func (u *unit) toLogin(w http.ResponseWriter, r *http.Request, reply *authReply, params url.Values, prompt string) {
 	again := url.Values{}
 	for key, values := range params {
-		if key != "prompt" && key != authError {
+		if key != "prompt" && key != "max_age" {
 			again[key] = values
 		}
 	}
-	returnPath := r.URL.EscapedPath() + "?" + again.Encode()
-	http.Redirect(w, r, u.sessions.LoginPath(returnPath, prompt), http.StatusFound)
+	ret := r.URL.EscapedPath() + "?" + again.Encode()
+
+	opts := &authflow.LoginOptions{
+		Prompt:    prompt,
+		MaxAge:    params.Get("max_age"),
+		LoginHint: params.Get("login_hint"),
+		UiLocales: params.Get("ui_locales"),
+		AcrValues: params.Get("acr_values"),
+	}
+	if err := u.sessions.Login(w, r, ret, opts); err != nil {
+		slog.Warn("broker: login at the provider cannot start", "provider", u.name, "error", err)
+		reply.fail(w, r, "temporarily_unavailable", "login provider is unavailable")
+	}
+}
+
+// callback is the provider's return address of the gateway's login
+// (/_auth/<provider>/callback, the one the gateway's client has at the
+// provider). A login that went through goes back to the authorization request
+// that started it, which now finds the session; a failed one is answered at
+// the front's return address with the standard error. Without a known
+// request there is no one to answer: the error is shown here.
+func (u *unit) callback(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	ret, err := u.sessions.Callback(w, r)
+	reply := u.replyOf(ret)
+
+	if err == nil {
+		if reply == nil {
+			http.Error(w, "the login went through, but the request it was started for is not valid", http.StatusBadRequest)
+			return
+		}
+		http.Redirect(w, r, u.publicUrl+ret, http.StatusSeeOther)
+		return
+	}
+
+	failure, ok := errors.AsType[*authflow.LoginError](err)
+	if !ok {
+		failure = &authflow.LoginError{Code: "server_error", Status: http.StatusInternalServerError, Text: "login failed"}
+	}
+	if reply == nil {
+		http.Error(w, failure.Text, failure.Status)
+		return
+	}
+	reply.fail(w, r, failure.Code, failure.Text)
+}
+
+// replyOf rebuilds the answer to the front from the authorization request a
+// login was started for (toLogin) and checks it again: the login cookie came
+// from the browser. nil for anything that is not a request to this
+// provider's broker with an allowed return address.
+func (u *unit) replyOf(ret string) *authReply {
+	if ret == "" {
+		return nil
+	}
+	target, err := url.Parse(ret)
+	if err != nil || target.Host != "" || target.Scheme != "" {
+		return nil
+	}
+	params := target.Query()
+	client := params.Get("client_id")
+	if !constant.BrokerClientIsValid(client) || !strings.HasPrefix(target.Path, constant.BrokerPath(u.name, client)+"/") {
+		return nil
+	}
+	redirectUri := params.Get("redirect_uri")
+	if !u.redirectAllowed(redirectUri) {
+		return nil
+	}
+	reply := &authReply{redirectUri: redirectUri, state: params.Get("state"), issuer: u.frontIssuer(client), mode: "query"}
+	if params.Get("response_mode") == "fragment" {
+		reply.mode = "fragment"
+	}
+	return reply
 }
 
 // redirectAllowed checks a front's return address: an absolute http(s) url
@@ -208,16 +290,15 @@ func parsePrompt(raw string) (string, bool) {
 	return strings.Join(values, " "), true
 }
 
-// errorCode keeps an error code as it is when it looks like one and hides
-// anything else behind server_error: the value ends up in a front's address.
-func errorCode(raw string) string {
-	if raw == "" || len(raw) > 64 {
-		return "server_error"
+// parseMaxAge validates max_age: a non-negative number of seconds; -1 when
+// there is none.
+func parseMaxAge(raw string) (int64, bool) {
+	if raw == "" {
+		return -1, true
 	}
-	for _, c := range raw {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_' || c == '-' || c == '.') {
-			return "server_error"
-		}
+	value, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || value < 0 {
+		return 0, false
 	}
-	return raw
+	return value, true
 }

@@ -52,9 +52,9 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 
 	router := chi.NewRouter()
 
-	// The gateway's own login routes go first; no app may own the /_auth
-	// prefix, so they never compete with an app route.
-	units := authflow.Register(router, snapshot)
+	// The gateway's login routes (the broker) go first; no app may own the
+	// /_auth prefix, so they never compete with an app route.
+	units := authflow.NewUnits(snapshot)
 	broker.Register(router, snapshot, broker.Deps{
 		Meta: oidc.Ins(),
 		Keys: rutokey.Ins(),

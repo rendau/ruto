@@ -29,11 +29,14 @@ func (u *Unit) refreshCookieName() string {
 	return constant.JwtRefreshCookiePrefix + u.provider.Name
 }
 
-// loginCookieName is the cookie of a login in progress (state, PKCE verifier,
-// return address). With https it gets the __Host- prefix, which requires
-// Path=/ and Secure.
-func (u *Unit) loginCookieName() string {
-	name := constant.JwtLoginCookiePrefix + u.provider.Name
+// loginCookieName is the cookie of one login in progress (PKCE verifier,
+// nonce, return address). Every login has its own, named after its state:
+// two logins at once, in two tabs, do not overwrite each other, and the
+// callback finds its own by the state the provider sends back. With https it
+// gets the __Host- prefix, which requires Path=/ and Secure: a sibling
+// subdomain cannot plant one.
+func (u *Unit) loginCookieName(state string) string {
+	name := constant.JwtLoginCookiePrefix + u.provider.Name + "_" + state
 	if u.secure {
 		return hostPrefix + name
 	}
@@ -69,18 +72,18 @@ func (u *Unit) clearCookie(w http.ResponseWriter, name, path string) {
 	})
 }
 
-// loginState is what the login cookie carries from /login to /callback.
+// loginState is what the login cookie carries from Login to Callback.
 type loginState struct {
 	state    string
 	verifier string
 	nonce    string // must come back inside the id token
-	redirect string
+	ret      string // where the browser goes after the login
 }
 
 // encode joins the four values with "." — none of them contains one: the
 // first three are base64url, the address is base64url-encoded too.
 func (s *loginState) encode() string {
-	return s.state + "." + s.verifier + "." + s.nonce + "." + base64.RawURLEncoding.EncodeToString([]byte(s.redirect))
+	return s.state + "." + s.verifier + "." + s.nonce + "." + base64.RawURLEncoding.EncodeToString([]byte(s.ret))
 }
 
 func decodeLoginState(raw string) (*loginState, bool) {
@@ -88,11 +91,11 @@ func decodeLoginState(raw string) (*loginState, bool) {
 	if len(parts) != 4 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
 		return nil, false
 	}
-	redirect, err := base64.RawURLEncoding.DecodeString(parts[3])
+	ret, err := base64.RawURLEncoding.DecodeString(parts[3])
 	if err != nil {
 		return nil, false
 	}
-	return &loginState{state: parts[0], verifier: parts[1], nonce: parts[2], redirect: string(redirect)}, true
+	return &loginState{state: parts[0], verifier: parts[1], nonce: parts[2], ret: string(ret)}, true
 }
 
 func randomToken(bytes int) string {

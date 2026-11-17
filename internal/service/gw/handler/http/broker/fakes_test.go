@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -41,13 +40,17 @@ type fakeSessions struct {
 	renewals      atomic.Int32
 	loggedOut     []string // redirect|state of every logout
 	userinfoCalls []string // endpoints
+
+	logins    map[string]string // ret of every login started, by state
+	loginOpts *authflow.LoginOptions
+	loginErr  error // Login fails with it
 }
 
 func newFakeSessions(t *testing.T) *fakeSessions {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
-	f := &fakeSessions{t: t, key: key, roles: map[string][]string{"crm": {"admin"}}}
+	f := &fakeSessions{t: t, key: key, roles: map[string][]string{"crm": {"admin"}}, logins: map[string]string{}}
 	f.login("u-1")
 	return f
 }
@@ -92,12 +95,36 @@ func (f *fakeSessions) Session(_ http.ResponseWriter, _ *http.Request) (*authflo
 	return f.session, f.sessionErr
 }
 
-func (f *fakeSessions) LoginPath(returnPath, prompt string) string {
-	query := url.Values{"redirect": {returnPath}}
-	if prompt != "" {
-		query.Set("prompt", prompt)
+// Login sends the browser to the provider with a state of its own and
+// remembers the login, as authflow does in its login cookie.
+func (f *fakeSessions) Login(w http.ResponseWriter, r *http.Request, ret string, opts *authflow.LoginOptions) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.loginErr != nil {
+		return f.loginErr
 	}
-	return "/_auth/corp/login?" + query.Encode()
+	state := randomToken(8)
+	f.logins[state] = ret
+	f.loginOpts = opts
+	http.Redirect(w, r, "http://kc.test/realms/corp/protocol/openid-connect/auth?state="+state, http.StatusFound)
+	return nil
+}
+
+// Callback finishes a login: the provider's error, or a live session of u-1.
+func (f *fakeSessions) Callback(_ http.ResponseWriter, r *http.Request) (string, error) {
+	query := r.URL.Query()
+	f.mu.Lock()
+	ret := f.logins[query.Get("state")]
+	delete(f.logins, query.Get("state"))
+	f.mu.Unlock()
+	if code := query.Get("error"); code != "" {
+		return ret, &authflow.LoginError{Code: code, Status: http.StatusUnauthorized, Text: "login failed: " + code}
+	}
+	if ret == "" {
+		return "", &authflow.LoginError{Code: "invalid_request", Status: http.StatusBadRequest, Text: "no login in progress"}
+	}
+	f.login("u-1")
+	return ret, nil
 }
 
 func (f *fakeSessions) ParseProviderToken(token string) (jwt.MapClaims, error) {

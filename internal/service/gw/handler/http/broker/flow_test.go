@@ -166,46 +166,175 @@ func TestAuthorizeWithSession(t *testing.T) {
 	assert.Equal(t, "st-1", values.Get("state"))
 }
 
+// startLogin runs an authorization request that has to log in at the
+// provider and returns the state of the login it started.
+func (f *flow) startLogin(query url.Values) string {
+	f.t.Helper()
+	rec := f.authorize(query)
+	require.Equal(f.t, http.StatusFound, rec.Code, rec.Body.String())
+	login, err := url.Parse(rec.Header().Get("Location"))
+	require.NoError(f.t, err)
+	require.Equal(f.t, "kc.test", login.Host, "straight to the provider")
+	return login.Query().Get("state")
+}
+
+func (f *flow) callback(query string) *httptest.ResponseRecorder {
+	return get(f.t, f.h, "/_auth/corp/callback?"+query)
+}
+
 func TestAuthorizeWithoutSession(t *testing.T) {
 	f := newFlow(t)
 	f.sessions.logout(authflow.ErrNoSession)
 
-	rec := f.authorize(authorizeQuery("prompt", "select_account"))
-	require.Equal(t, http.StatusFound, rec.Code)
-	login, err := url.Parse(rec.Header().Get("Location"))
-	require.NoError(t, err)
-	assert.Equal(t, "/_auth/corp/login", login.Path, "the gateway's own login at the provider")
-	assert.Equal(t, "select_account", login.Query().Get("prompt"), "passed to the provider")
-	back, err := url.Parse(login.Query().Get("redirect"))
+	state := f.startLogin(authorizeQuery(
+		"prompt", "select_account",
+		"login_hint", "alice@example.test",
+		"ui_locales", "ru en",
+		"max_age", "600",
+		"acr_values", "silver gold",
+	))
+	assert.Equal(t, &authflow.LoginOptions{
+		Prompt:    "select_account",
+		MaxAge:    "600",
+		LoginHint: "alice@example.test",
+		UiLocales: "ru en",
+		AcrValues: "silver gold",
+	}, f.sessions.loginOpts, "the front's wishes go to the provider")
+	back, err := url.Parse(f.sessions.logins[state])
 	require.NoError(t, err)
 	assert.Equal(t, crmBase+"/auth", back.Path, "comes back to the same request")
-	assert.Empty(t, back.Query().Get("prompt"), "done with at the provider")
+	assert.NotContains(t, back.Query(), "prompt", "done with at the provider")
+	assert.NotContains(t, back.Query(), "max_age", "done with at the provider")
+	assert.Equal(t, "alice@example.test", back.Query().Get("login_hint"))
 	assert.Equal(t, "st-1", back.Query().Get("state"))
 	assert.Equal(t, challengeOf(testVerifier), back.Query().Get("code_challenge"))
 
-	// the login failed at the provider and came back with auth_error
-	values := answer(t, get(t, f.h, back.String()+"&auth_error=access_denied"))
-	assert.Equal(t, "access_denied", values.Get("error"))
+	// the login went through: back to the request, which gives the code now
+	rec := f.callback("state=" + state + "&code=provider-code")
+	require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	location := rec.Header().Get("Location")
+	assert.True(t, strings.HasPrefix(location, "https://api.test"+crmBase+"/auth?"), location)
+	values := answer(t, get(t, f.h, strings.TrimPrefix(location, "https://api.test")))
+	assert.NotEmpty(t, values.Get("code"))
 	assert.Equal(t, "st-1", values.Get("state"))
 
+	values = answer(t, f.authorize(authorizeQuery("prompt", "none")))
+	assert.NotEmpty(t, values.Get("code"), "the session is there now")
+
+	f.sessions.logout(authflow.ErrNoSession)
 	values = answer(t, f.authorize(authorizeQuery("prompt", "none")))
 	assert.Equal(t, "login_required", values.Get("error"), "no interaction asked, none possible")
 
 	f.sessions.logout(authflow.ErrUnavailable)
 	values = answer(t, f.authorize(authorizeQuery()))
 	assert.Equal(t, "temporarily_unavailable", values.Get("error"))
+
+	// the provider's discovery fails as the login starts
+	f.sessions.logout(authflow.ErrNoSession)
+	f.sessions.loginErr = authflow.ErrUnavailable
+	values = answer(t, f.authorize(authorizeQuery()))
+	assert.Equal(t, "temporarily_unavailable", values.Get("error"))
+}
+
+func TestLoginFailureGoesToTheFront(t *testing.T) {
+	f := newFlow(t)
+	f.sessions.logout(authflow.ErrNoSession)
+
+	// the person cancelled at the provider: the standard error at the front's
+	// address, with its state and the broker's issuer
+	state := f.startLogin(authorizeQuery())
+	values := answer(t, f.callback("state="+state+"&error=access_denied"))
+	assert.Equal(t, "access_denied", values.Get("error"))
+	assert.Equal(t, "st-1", values.Get("state"))
+	assert.Equal(t, crmIssuer, values.Get("iss"))
+	assert.Empty(t, values.Get("code"))
+
+	// the front's response mode is kept
+	state = f.startLogin(authorizeQuery("response_mode", "fragment"))
+	rec := f.callback("state=" + state + "&error=login_required")
+	location, err := url.Parse(rec.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Empty(t, location.RawQuery)
+	assert.Contains(t, location.Fragment, "error=login_required")
+
+	// a login nobody started: nowhere to answer, shown here
+	rec = f.callback("state=unknown&error=access_denied")
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Empty(t, rec.Header().Get("Location"))
+}
+
+func TestCallbackChecksTheRequest(t *testing.T) {
+	f := newFlow(t)
+
+	// the login cookie came from the browser: what it says is checked again
+	for name, ret := range map[string]string{
+		"foreign redirect_uri": crmBase + "/auth?" + authorizeQuery("redirect_uri", "https://evil.test/cb").Encode(),
+		"another provider":     "/_auth/id/crm/realms/corp/auth?" + authorizeQuery().Encode(),
+		"another client path":  "/_auth/corp/cart/realms/corp/auth?" + authorizeQuery().Encode(),
+		"absolute":             "https://evil.test" + crmBase + "/auth?" + authorizeQuery().Encode(),
+		"not a request":        "/elsewhere",
+	} {
+		f.sessions.logins["s-"+name] = ret
+		rec := f.callback(url.Values{"state": {"s-" + name}, "error": {"access_denied"}}.Encode())
+		assert.Equal(t, http.StatusUnauthorized, rec.Code, name)
+		assert.Empty(t, rec.Header().Get("Location"), name)
+
+		f.sessions.logins["s-"+name] = ret
+		rec = f.callback(url.Values{"state": {"s-" + name}, "code": {"c"}}.Encode())
+		assert.Equal(t, http.StatusBadRequest, rec.Code, name)
+		assert.Empty(t, rec.Header().Get("Location"), name)
+	}
+}
+
+func TestAuthorizeMaxAge(t *testing.T) {
+	f := newFlow(t) // the person entered the credentials a minute ago
+
+	assert.NotEmpty(t, answer(t, f.authorize(authorizeQuery("max_age", "3600"))).Get("code"))
+
+	// older than max_age: logs in again, the provider gets max_age
+	state := f.startLogin(authorizeQuery("max_age", "30"))
+	assert.Equal(t, "30", f.sessions.loginOpts.MaxAge)
+	assert.NotContains(t, f.sessions.logins[state], "max_age", "no loop after the login")
+
+	values := answer(t, f.authorize(authorizeQuery("max_age", "30", "prompt", "none")))
+	assert.Equal(t, "login_required", values.Get("error"))
+
+	// the provider did not say when: the person logs in again
+	f.sessions.mu.Lock()
+	f.sessions.session.AuthTime = 0
+	f.sessions.mu.Unlock()
+	f.startLogin(authorizeQuery("max_age", "3600"))
+
+	for _, bad := range []string{"-1", "soon", "1.5"} {
+		assert.Equal(t, "invalid_request", answer(t, f.authorize(authorizeQuery("max_age", bad))).Get("error"), bad)
+	}
 }
 
 func TestAuthorizePromptLogin(t *testing.T) {
 	f := newFlow(t)
 
-	rec := f.authorize(authorizeQuery("prompt", "login"))
-	require.Equal(t, http.StatusFound, rec.Code)
-	login, err := url.Parse(rec.Header().Get("Location"))
-	require.NoError(t, err)
-	assert.Equal(t, "/_auth/corp/login", login.Path, "a live session does not count, the person logs in again")
-	assert.Equal(t, "login", login.Query().Get("prompt"))
-	assert.NotContains(t, login.Query().Get("redirect"), "prompt", "no loop after the login")
+	state := f.startLogin(authorizeQuery("prompt", "login"))
+	assert.Equal(t, "login", f.sessions.loginOpts.Prompt, "a live session does not count, the person logs in again")
+	assert.NotContains(t, f.sessions.logins[state], "prompt", "no loop after the login")
+}
+
+func TestParallelLoginsAtTheBroker(t *testing.T) {
+	f := newFlow(t)
+	f.sessions.logout(authflow.ErrNoSession)
+
+	// two tabs, two fronts' requests: each login comes back to its own
+	stateA := f.startLogin(authorizeQuery("state", "tab-a"))
+	stateB := f.startLogin(authorizeQuery("state", "tab-b"))
+	require.NotEqual(t, stateA, stateB)
+
+	for state, want := range map[string]string{stateB: "tab-b", stateA: "tab-a"} {
+		rec := f.callback("state=" + state + "&code=c")
+		require.Equal(t, http.StatusSeeOther, rec.Code, rec.Body.String())
+		values := answer(t, get(t, f.h, strings.TrimPrefix(rec.Header().Get("Location"), "https://api.test")))
+		assert.NotEmpty(t, values.Get("code"))
+		assert.Equal(t, want, values.Get("state"))
+	}
 }
 
 func TestAuthorizeChecks(t *testing.T) {
@@ -235,7 +364,6 @@ func TestAuthorizeChecks(t *testing.T) {
 	assert.Equal(t, "invalid_request", answer(t, f.authorize(authorizeQuery("code_challenge_method", "plain"))).Get("error"))
 	assert.Equal(t, "invalid_request", answer(t, f.authorize(authorizeQuery("response_mode", "form_post"))).Get("error"))
 	assert.Equal(t, "invalid_request", answer(t, f.authorize(authorizeQuery("prompt", "none login"))).Get("error"))
-	assert.Equal(t, "server_error", answer(t, f.authorize(authorizeQuery("auth_error", "<script>"))).Get("error"))
 
 	// the gateway's own origin is a return address too
 	rec := f.authorize(authorizeQuery("redirect_uri", "https://api.test/app/callback"))

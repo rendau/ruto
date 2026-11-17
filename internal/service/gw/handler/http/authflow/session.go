@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
 	jwtv5 "github.com/golang-jwt/jwt/v5"
@@ -126,17 +125,6 @@ func authTime(claims jwtv5.MapClaims) int64 {
 		return int64(v)
 	}
 	return 0
-}
-
-// LoginPath is the gateway path that logs the person in at the provider and
-// sends the browser to returnPath (a path on the gateway) afterwards; a
-// failed login comes back to it with auth_error. prompt is passed on as it is.
-func (u *Unit) LoginPath(returnPath, prompt string) string {
-	query := url.Values{"redirect": {returnPath}}
-	if prompt != "" {
-		query.Set("prompt", prompt)
-	}
-	return u.basePath + "/login?" + query.Encode()
 }
 
 // ParseProviderToken checks a token of this provider: the signature by a key

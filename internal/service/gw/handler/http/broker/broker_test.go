@@ -110,8 +110,6 @@ func newRouterWith(t *testing.T, deps Deps, sessions *fakeSessions) http.Handler
 		deps.Userinfo = sessions
 	}
 	router := chi.NewRouter()
-	// the gateway's own routes of a provider, as authflow registers them
-	router.Get("/_auth/corp/login", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("own login")) })
 	Register(router, snapshot, deps)
 	return router
 }
@@ -280,12 +278,28 @@ func TestOwnEndpointsAreNotSentToTheProvider(t *testing.T) {
 func TestClientNames(t *testing.T) {
 	h := newRouter(t, &fakeMeta{docs: map[string]string{"http://kc.test/realms/corp": keycloakDoc}}, newKeys(t))
 
-	rec := get(t, h, "/_auth/corp/login")
-	assert.Equal(t, "own login", rec.Body.String(), "the gateway's own route wins")
+	rec := get(t, h, "/_auth/corp/callback?state=x&code=y")
+	assert.Equal(t, http.StatusBadRequest, rec.Code, "the provider's return address, not a front")
+	assert.Contains(t, rec.Body.String(), "no login in progress")
 
-	for _, client := range []string{"login", "callback", "refresh", "logout", "logged-out", ".hidden", "a%2Fb"} {
+	for _, client := range []string{"callback", "logged-out", ".hidden", "a%2Fb"} {
 		rec := get(t, h, "/_auth/corp/"+client+"/realms/corp/.well-known/openid-configuration")
 		assert.Equal(t, http.StatusNotFound, rec.Code, client)
+	}
+
+	// the old login routes are gone: the front's address alone is nothing
+	for _, target := range []string{"/_auth/corp/login?redirect=/", "/_auth/corp/logout", "/_auth/corp/crm", "/_auth/corp/crm/"} {
+		assert.Equal(t, http.StatusNotFound, get(t, h, target).Code, target)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/_auth/corp/refresh", nil)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+
+	// the names of the old login routes are free now
+	for _, client := range []string{"login", "refresh", "logout"} {
+		rec := get(t, h, "/_auth/corp/"+client+"/realms/corp/.well-known/openid-configuration")
+		assert.Equal(t, http.StatusOK, rec.Code, client)
 	}
 
 	assert.Equal(t, http.StatusNotFound,

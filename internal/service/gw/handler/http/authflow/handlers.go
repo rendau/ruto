@@ -45,41 +45,41 @@ func decodeSessionCookie(name, value string) sessionCookie {
 	return session
 }
 
-// login starts the flow: remembers state, PKCE verifier and the return address
-// in the login cookie and sends the browser to the provider.
-func (u *Unit) login(w http.ResponseWriter, r *http.Request) {
-	redirect, ok := u.returnUrl(r.URL.Query().Get("redirect"))
-	if !ok {
-		http.Error(w, "redirect is not allowed: not this gateway and not a CORS origin", http.StatusBadRequest)
-		return
-	}
-	prompt, ok := parsePrompt(r.URL.Query().Get("prompt"))
-	if !ok {
-		http.Error(w, "prompt is not valid: none, login, consent or select_account, space separated, none alone", http.StatusBadRequest)
-		return
-	}
+// LoginOptions are the front's wishes for the login, passed to the provider
+// as they are (OpenID Connect Core §3.1.2.1); empty ones are left out. The
+// caller has validated them.
+type LoginOptions struct {
+	Prompt    string
+	MaxAge    string
+	LoginHint string
+	UiLocales string
+	AcrValues string
+}
 
+// Login starts a login at the provider: remembers state, PKCE verifier, nonce
+// and ret, where the browser goes after the login, in a login cookie of its
+// own and sends the browser to the provider. ret is a path on the gateway;
+// the provider's answer comes to Callback. On an error nothing is written:
+// the provider is unavailable.
+func (u *Unit) Login(w http.ResponseWriter, r *http.Request, ret string, opts *LoginOptions) error {
 	meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
 	if err != nil {
 		u.logWarn("provider discovery failed", err, r)
-		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
-		return
+		return fmt.Errorf("%w: discovery: %w", ErrUnavailable, err)
+	}
+	authUrl, err := url.Parse(meta.AuthorizationEndpoint)
+	if err != nil {
+		u.logWarn("authorization_endpoint is not a url", err, r)
+		return fmt.Errorf("%w: authorization_endpoint: %w", ErrUnavailable, err)
 	}
 
 	st := &loginState{
 		state:    randomToken(16),
 		verifier: randomToken(32),
 		nonce:    randomToken(16),
-		redirect: redirect,
+		ret:      ret,
 	}
-	u.setCookie(w, u.loginCookieName(), st.encode(), "/", loginCookieMaxAge)
 
-	authUrl, err := url.Parse(meta.AuthorizationEndpoint)
-	if err != nil {
-		u.logWarn("authorization_endpoint is not a url", err, r)
-		http.Error(w, "login provider is misconfigured", http.StatusBadGateway)
-		return
-	}
 	query := authUrl.Query()
 	query.Set("response_type", "code")
 	query.Set("client_id", u.client.Id)
@@ -89,138 +89,103 @@ func (u *Unit) login(w http.ResponseWriter, r *http.Request) {
 	query.Set("nonce", st.nonce)
 	query.Set("code_challenge", pkceChallenge(st.verifier))
 	query.Set("code_challenge_method", "S256")
-	if prompt != "" {
-		query.Set("prompt", prompt)
+	if opts != nil {
+		for name, value := range map[string]string{
+			"prompt":     opts.Prompt,
+			"max_age":    opts.MaxAge,
+			"login_hint": opts.LoginHint,
+			"ui_locales": opts.UiLocales,
+			"acr_values": opts.AcrValues,
+		} {
+			if value != "" {
+				query.Set(name, value)
+			}
+		}
 	}
 	authUrl.RawQuery = query.Encode()
 
+	u.setCookie(w, u.loginCookieName(st.state), st.encode(), "/", loginCookieMaxAge)
 	http.Redirect(w, r, authUrl.String(), http.StatusFound)
+	return nil
 }
 
-// promptValues are the values OpenID Connect Core §3.1.2.1 defines for the
-// prompt parameter. A front passes prompt through login as it is: "login"
-// asks the provider for the credentials again even with a live SSO session
-// (another person wants to log in after an access denial), "select_account"
-// for an account picker, "consent" for the consent screen, "none" for no
-// interaction at all.
-var promptValues = map[string]bool{"none": true, "login": true, "consent": true, "select_account": true}
+// LoginError is a login that did not happen. Code is a standard error code
+// where the standard has one (the provider's own code as it is,
+// invalid_grant, temporarily_unavailable, …) or state_mismatch / invalid_token
+// for the gateway's own checks; it is safe to put into an address.
+type LoginError struct {
+	Code   string
+	Status int // for an answer on the gateway itself
+	Text   string
+}
 
-// parsePrompt validates a prompt query value: standard values separated by
-// spaces, "none" only alone. Empty means no prompt.
-func parsePrompt(raw string) (string, bool) {
-	values := strings.Fields(raw)
-	for _, value := range values {
-		if !promptValues[value] || (value == "none" && len(values) > 1) {
-			return "", false
+func (e *LoginError) Error() string {
+	return e.Code + ": " + e.Text
+}
+
+// Callback finishes a login at the provider's return address: finds the
+// login cookie by the state, exchanges the code, verifies the tokens and sets
+// the session cookies on w; the caller sends the browser on. It returns the
+// ret of the login, also on a failure (a *LoginError) when the login cookie
+// was there: "" means the gateway does not know where the person came from.
+func (u *Unit) Callback(w http.ResponseWriter, r *http.Request) (string, error) {
+	query := r.URL.Query()
+	state := query.Get("state")
+
+	var st *loginState
+	if state != "" {
+		name := u.loginCookieName(state)
+		if cookie, err := r.Cookie(name); err == nil {
+			st, _ = decodeLoginState(cookie.Value)
+			u.clearCookie(w, name, "/")
 		}
 	}
-	return strings.Join(values, " "), true
-}
-
-// callback finishes the flow: checks the state against the login cookie,
-// exchanges the code, verifies the access token and sets the session cookies.
-// A failure goes back to the front with an error code (see loginFailed).
-func (u *Unit) callback(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	loginCookieName := u.loginCookieName()
+	ret := ""
+	if st != nil {
+		ret = st.ret
+	}
 
 	if code := query.Get("error"); code != "" {
-		redirect := ""
-		if cookie, err := r.Cookie(loginCookieName); err == nil {
-			if st, ok := decodeLoginState(cookie.Value); ok {
-				redirect, _ = u.returnUrl(st.redirect)
-			}
-		}
-		u.clearCookie(w, loginCookieName, "/")
 		u.logWarn("provider returned an error", fmt.Errorf("%s: %s", code, query.Get("error_description")), r)
-		u.loginFailed(w, r, redirect, errorCode(code), http.StatusUnauthorized, "login failed: "+code)
-		return
+		return ret, &LoginError{Code: errorCode(code), Status: http.StatusUnauthorized, Text: "login failed: " + code}
 	}
-
-	state, code := query.Get("state"), query.Get("code")
+	code := query.Get("code")
 	if state == "" || code == "" {
-		http.Error(w, "state and code are required", http.StatusBadRequest)
-		return
+		return ret, &LoginError{Code: "invalid_request", Status: http.StatusBadRequest, Text: "state and code are required"}
 	}
-
-	cookie, err := r.Cookie(loginCookieName)
-	if err != nil {
-		http.Error(w, "no login in progress: start again from /login", http.StatusBadRequest)
-		return
-	}
-	st, ok := decodeLoginState(cookie.Value)
-	u.clearCookie(w, loginCookieName, "/")
-	if !ok {
-		http.Error(w, "state does not match the login in progress", http.StatusBadRequest)
-		return
-	}
-	// Checked again: the cookie came from the browser, not from this process.
-	redirect, ok := u.returnUrl(st.redirect)
-	if !ok {
-		http.Error(w, "redirect is not allowed", http.StatusBadRequest)
-		return
+	if st == nil {
+		return "", &LoginError{Code: "invalid_request", Status: http.StatusBadRequest, Text: "no login in progress for this state: start the login again"}
 	}
 	if subtle.ConstantTimeCompare([]byte(st.state), []byte(state)) != 1 {
-		u.loginFailed(w, r, redirect, "state_mismatch", http.StatusBadRequest, "state does not match the login in progress")
-		return
+		return ret, &LoginError{Code: "state_mismatch", Status: http.StatusBadRequest, Text: "state does not match the login in progress"}
 	}
 
 	meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
 	if err != nil {
 		u.logWarn("provider discovery failed", err, r)
-		u.loginFailed(w, r, redirect, "temporarily_unavailable", http.StatusBadGateway, "login provider is unavailable")
-		return
+		return ret, &LoginError{Code: "temporarily_unavailable", Status: http.StatusBadGateway, Text: "login provider is unavailable"}
 	}
 
 	tokens, err := oidc.Ins().Exchange(r.Context(), meta.TokenEndpoint, u.client, code, st.verifier, u.redirectUri())
 	if err != nil {
 		u.logWarn("code exchange failed", err, r)
 		if refusal, ok := errors.AsType[*oidc.Error](err); ok {
-			u.loginFailed(w, r, redirect, errorCode(refusal.Code), http.StatusUnauthorized, "login failed: "+refusal.Code)
-			return
+			return ret, &LoginError{Code: errorCode(refusal.Code), Status: http.StatusUnauthorized, Text: "login failed: " + refusal.Code}
 		}
-		u.loginFailed(w, r, redirect, "temporarily_unavailable", http.StatusBadGateway, "login provider is unavailable")
-		return
+		return ret, &LoginError{Code: "temporarily_unavailable", Status: http.StatusBadGateway, Text: "login provider is unavailable"}
 	}
 
 	if err = u.verifyIdToken(tokens.IdToken, st.nonce); err != nil {
 		u.logWarn("id token from the provider is not acceptable", err, r)
-		u.loginFailed(w, r, redirect, "invalid_token", http.StatusBadGateway, "login provider returned an id token this gateway cannot verify")
-		return
+		return ret, &LoginError{Code: "invalid_token", Status: http.StatusBadGateway, Text: "login provider returned an id token this gateway cannot verify"}
 	}
 	if err = u.verifyAccessToken(tokens.AccessToken); err != nil {
 		u.logWarn("access token from the provider is not acceptable", err, r)
-		u.loginFailed(w, r, redirect, "invalid_token", http.StatusBadGateway, "login provider returned a token this gateway cannot verify")
-		return
+		return ret, &LoginError{Code: "invalid_token", Status: http.StatusBadGateway, Text: "login provider returned a token this gateway cannot verify"}
 	}
 
 	u.setSession(w, tokens)
-	http.Redirect(w, r, redirect, http.StatusSeeOther)
-}
-
-// loginFailed ends a login that did not happen. When the return address of
-// the login is known (the login cookie was there and valid), the browser goes
-// back to it with `auth_error=<code>` in the query, so the front can tell the
-// person what happened and offer to try again instead of leaving them on a
-// bare gateway page; the standard covers only how the provider reports an
-// error to the gateway, this leg is ours, with the standard's codes where
-// they exist (access_denied, invalid_grant, temporarily_unavailable, …) and
-// state_mismatch / invalid_token for the gateway's own checks. Without a
-// return address the text answer stays: there is nowhere to go.
-func (u *Unit) loginFailed(w http.ResponseWriter, r *http.Request, redirect, code string, status int, text string) {
-	if redirect == "" {
-		http.Error(w, text, status)
-		return
-	}
-	target, err := url.Parse(redirect)
-	if err != nil {
-		http.Error(w, text, status)
-		return
-	}
-	query := target.Query()
-	query.Set("auth_error", code)
-	target.RawQuery = query.Encode()
-	http.Redirect(w, r, target.String(), http.StatusSeeOther)
+	return ret, nil
 }
 
 // errorCode keeps a provider's error code as it is when it looks like one
@@ -236,23 +201,6 @@ func errorCode(raw string) string {
 		}
 	}
 	return raw
-}
-
-// refresh renews the session with the refresh token from the refresh cookie
-// and sets fresh cookies. A front calls it after a 401 and repeats the
-// request; a 401 from here means the session is over and it is time for login.
-func (u *Unit) refresh(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-store")
-
-	_, err := u.renew(w, r, u.readSession(r))
-	switch {
-	case err == nil:
-		w.WriteHeader(http.StatusNoContent)
-	case errors.Is(err, ErrNoSession):
-		http.Error(w, "session is over: log in", http.StatusUnauthorized)
-	default:
-		http.Error(w, "login provider is unavailable", http.StatusBadGateway)
-	}
 }
 
 // renew refreshes the session with the refresh token of session and sets
@@ -330,19 +278,6 @@ func (u *Unit) setSession(w http.ResponseWriter, tokens *oidc.TokenResponse) {
 			slog.Warn("authflow: no cookie key, the session is issued without a refresh cookie", "unit", u.name)
 		}
 	}
-}
-
-// logout drops the session cookies with the app tokens got for it and, when
-// the provider supports it, ends the provider session too (OpenID Connect
-// RP-Initiated Logout).
-func (u *Unit) logout(w http.ResponseWriter, r *http.Request) {
-	redirect, ok := u.returnUrl(r.URL.Query().Get("redirect"))
-	if !ok {
-		http.Error(w, "redirect is not allowed: not this gateway and not a CORS origin", http.StatusBadRequest)
-		return
-	}
-
-	u.Logout(w, r, redirect, "")
 }
 
 // Logout drops the session cookies with the app tokens got for it and sends
