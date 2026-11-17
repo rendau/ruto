@@ -8,7 +8,11 @@ import (
 
 // defaultSensitiveKeys are always masked in logged headers, gRPC metadata and
 // query params.
-var defaultSensitiveKeys = []string{"authorization", "api-key", "cookie"}
+var defaultSensitiveKeys = []string{"authorization", "api-key"}
+
+// droppedKeys are left out of the log altogether: cookies are the browser's
+// state, mostly sessions, and are no use in a request log even masked.
+var droppedKeys = map[string]struct{}{"cookie": {}, "set-cookie": {}}
 
 const maskedValue = "***"
 
@@ -30,12 +34,15 @@ func BuildSensitiveKeySet(ep *domEndpointModel.Endpoint) map[string]struct{} {
 	return set
 }
 
-// MaskValues copies a header/metadata/query-param map, replacing the values of
-// sensitive keys with a mask. http.Header, url.Values and metadata.MD all share
-// this underlying type.
+// MaskValues copies a header/metadata/query-param map without the dropped keys,
+// replacing the values of sensitive keys with a mask. http.Header, url.Values
+// and metadata.MD all share this underlying type.
 func MaskValues(in map[string][]string, sensitive map[string]struct{}) map[string][]string {
 	out := make(map[string][]string, len(in))
 	for k, v := range in {
+		if _, ok := droppedKeys[strings.ToLower(k)]; ok {
+			continue
+		}
 		if _, ok := sensitive[strings.ToLower(k)]; ok {
 			out[k] = []string{maskedValue}
 			continue
