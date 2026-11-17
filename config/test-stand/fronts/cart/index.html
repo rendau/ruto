@@ -96,6 +96,13 @@
       window.__state.summary = () => summary(window.__state.user);
       show(summary(window.__state.user));
 
+      // inside the shell (fronts/shell): the shell asks how the page is doing, cross-origin
+      window.addEventListener('message', (e) => {
+        if (e.data !== 'ruto-state?') return;
+        e.source.postMessage({ front: 'cart', summary: summary(window.__state.user), calls: window.__state.calls,
+          userinfo: window.__state.userinfo && window.__state.userinfo.status }, e.origin);
+      });
+
       const refresh = async () => {
         try {
           window.__state.user = await manager.signinSilent(); // the refresh_token grant

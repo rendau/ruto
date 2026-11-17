@@ -58,6 +58,13 @@
     window.__state.summary = summary;
     show(summary());
 
+    // inside the shell (fronts/shell): the shell asks how the page is doing, cross-origin
+    window.addEventListener('message', (e) => {
+      if (e.data !== 'ruto-state?') return;
+      e.source.postMessage({ front: 'crm', summary: summary(), calls: window.__state.calls,
+        api: window.__state.api && window.__state.api.status }, e.origin);
+    });
+
     const callApi = async () => {
       // the ruto token goes in Authorization as an SDK would send it; the gateway takes the cookies
       const rep = await fetch(`${gateway}/crm-api/hello`, {

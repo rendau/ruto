@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>shell (two embedded fronts on one ruto login)</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; margin: 1rem 2rem; }
+    button { margin-right: .5rem; }
+    .frames { display: flex; gap: 1rem; margin-top: 1rem; }
+    iframe { flex: 1; height: 520px; border: 1px solid #ccc; }
+    pre { background: #f4f4f4; padding: .5rem 1rem; white-space: pre-wrap; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>shell — crm and cart in frames</h1>
+  <p>The fronts live on their own origins (<code>:5183</code>, <code>:5184</code>) and log in through the
+     broker as usual. The provider's login page does not show in a frame, so the login (and, when
+     wanted, the logout) is done by the shell at the top level, through the gateway's own routes;
+     the frames then open on the session: cart by userinfo, crm by <code>prompt=none</code>.</p>
+  <button id="login">Login</button>
+  <button id="logout">Logout</button>
+  <button id="reload">Reload frames</button>
+  <button id="ask">Ask frames</button>
+  <pre id="out">…</pre>
+  <div class="frames">
+    <iframe id="crm" src="http://localhost:5183/crm/" title="crm"></iframe>
+    <iframe id="cart" src="http://localhost:5184/cart/" title="cart"></iframe>
+  </div>
+  <script>
+    const unit = 'http://localhost:8088/_auth/corp';
+    const back = location.origin + location.pathname;
+    const out = document.getElementById('out');
+    const frames = { crm: document.getElementById('crm'), cart: document.getElementById('cart') };
+    const origins = { 'http://localhost:5183': 'crm', 'http://localhost:5184': 'cart' };
+
+    // __frames: the last state each frame reported (see the message listener in crm and cart)
+    window.__frames = {};
+    window.addEventListener('message', (e) => {
+      const name = origins[e.origin];
+      if (!name || !e.data || e.data.front !== name) return;
+      window.__frames[name] = e.data;
+      out.textContent = JSON.stringify(window.__frames, null, 2);
+    });
+    const ask = () => {
+      for (const [name, frame] of Object.entries(frames)) {
+        frame.contentWindow.postMessage('ruto-state?', new URL(frame.src).origin);
+      }
+    };
+    const reload = () => {
+      window.__frames = {};
+      for (const frame of Object.values(frames)) frame.src = frame.src;
+    };
+
+    const login = () => { location.href = `${unit}/login?redirect=${encodeURIComponent(back)}`; };
+    const logout = () => { location.href = `${unit}/logout?redirect=${encodeURIComponent(back)}`; };
+    document.getElementById('login').onclick = login;
+    document.getElementById('logout').onclick = logout;
+    document.getElementById('reload').onclick = reload;
+    document.getElementById('ask').onclick = ask;
+    window.__shell = { ask, reload, login, logout };
+    setInterval(ask, 2000);
+  </script>
+</body>
+</html>
