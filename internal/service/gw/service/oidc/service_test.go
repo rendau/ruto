@@ -3,36 +3,24 @@ package oidc
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
-	"sync"
-	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 )
 
 // fakeProvider serves a discovery document naming issuer as itself.
-func fakeProvider(t *testing.T, issuer func() string, token http.HandlerFunc) *httptest.Server {
+func fakeProvider(t *testing.T, issuer func() string) *httptest.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/realms/corp/.well-known/openid-configuration", func(w http.ResponseWriter, _ *http.Request) {
 		base := issuer()
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"issuer":                 base,
-			"authorization_endpoint": base + "/protocol/openid-connect/auth",
-			"token_endpoint":         base + "/protocol/openid-connect/token",
-			"end_session_endpoint":   base + "/protocol/openid-connect/logout",
-			"jwks_uri":               base + "/protocol/openid-connect/certs",
+			"issuer":   base,
+			"jwks_uri": base + "/protocol/openid-connect/certs",
 		})
 	})
-	if token != nil {
-		mux.HandleFunc("/realms/corp/protocol/openid-connect/token", token)
-	}
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 	return server
@@ -40,16 +28,13 @@ func fakeProvider(t *testing.T, issuer func() string, token http.HandlerFunc) *h
 
 func TestMetadata(t *testing.T) {
 	var issuer string
-	server := fakeProvider(t, func() string { return issuer }, nil)
+	server := fakeProvider(t, func() string { return issuer })
 	issuer = server.URL + "/realms/corp"
 
 	svc := New()
 	meta, err := svc.Metadata(context.Background(), issuer, "")
 	require.NoError(t, err)
-	assert.Equal(t, issuer+"/protocol/openid-connect/auth", meta.AuthorizationEndpoint)
-	assert.Equal(t, issuer+"/protocol/openid-connect/token", meta.TokenEndpoint)
 	assert.Equal(t, issuer+"/protocol/openid-connect/certs", meta.JwksUri)
-	assert.Equal(t, issuer+"/protocol/openid-connect/logout", meta.EndSessionEndpoint)
 
 	// The second call is served from the cache: the server may go away.
 	server.Close()
@@ -60,222 +45,20 @@ func TestMetadata(t *testing.T) {
 
 func TestMetadataInternalUrl(t *testing.T) {
 	// The document is read from the internal address but names the public
-	// issuer; only the endpoints the gateway calls move to the internal one.
+	// issuer; jwks_uri moves to the internal one.
 	const publicIssuer = "https://id.example.com/realms/corp"
-	server := fakeProvider(t, func() string { return publicIssuer }, nil)
+	server := fakeProvider(t, func() string { return publicIssuer })
 	internal := server.URL + "/realms/corp"
 
 	meta, err := New().Metadata(context.Background(), publicIssuer, internal)
 	require.NoError(t, err)
-	assert.Equal(t, publicIssuer+"/protocol/openid-connect/auth", meta.AuthorizationEndpoint)
-	assert.Equal(t, publicIssuer+"/protocol/openid-connect/logout", meta.EndSessionEndpoint)
-	assert.Equal(t, internal+"/protocol/openid-connect/token", meta.TokenEndpoint)
 	assert.Equal(t, internal+"/protocol/openid-connect/certs", meta.JwksUri)
 }
 
 func TestMetadataIssuerMismatch(t *testing.T) {
-	server := fakeProvider(t, func() string { return "https://other.example.com/realms/x" }, nil)
+	server := fakeProvider(t, func() string { return "https://other.example.com/realms/x" })
 
 	_, err := New().Metadata(context.Background(), server.URL+"/realms/corp", "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not match")
-}
-
-func TestExchange(t *testing.T) {
-	var issuer string
-	var seen struct {
-		user, pass string
-		form       map[string]string
-	}
-	server := fakeProvider(t, func() string { return issuer }, func(w http.ResponseWriter, r *http.Request) {
-		seen.user, seen.pass, _ = r.BasicAuth()
-		require.NoError(t, r.ParseForm())
-		seen.form = map[string]string{}
-		for k := range r.PostForm {
-			seen.form[k] = r.PostForm.Get(k)
-		}
-		if r.PostForm.Get("code") == "bad" {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid_grant", "error_description": "Code not valid"})
-			return
-		}
-		_ = json.NewEncoder(w).Encode(TokenResponse{
-			AccessToken: "at", RefreshToken: "rt", IdToken: "idt", ExpiresIn: 300, RefreshExpiresIn: 1800,
-		})
-	})
-	issuer = server.URL + "/realms/corp"
-
-	svc := New()
-	meta, err := svc.Metadata(context.Background(), issuer, "")
-	require.NoError(t, err)
-
-	client := &authModel.JwtClient{Id: "ruto", Secret: "s3cret"}
-	rep, err := svc.Exchange(context.Background(), meta.TokenEndpoint, client, "the-code", "verifier", "https://gw/_auth/corp/callback")
-	require.NoError(t, err)
-	assert.Equal(t, "at", rep.AccessToken)
-	assert.Equal(t, 1800, rep.RefreshExpiresIn)
-	assert.Equal(t, "ruto", seen.user)
-	assert.Equal(t, "s3cret", seen.pass)
-	assert.Equal(t, map[string]string{
-		"grant_type":    "authorization_code",
-		"code":          "the-code",
-		"code_verifier": "verifier",
-		"redirect_uri":  "https://gw/_auth/corp/callback",
-	}, seen.form)
-
-	_, err = svc.Exchange(context.Background(), meta.TokenEndpoint, client, "bad", "verifier", "https://gw/_auth/corp/callback")
-	var refusal *Error
-	require.ErrorAs(t, err, &refusal)
-	assert.Equal(t, "invalid_grant", refusal.Code)
-	assert.Equal(t, http.StatusBadRequest, refusal.Status)
-
-	_, err = svc.Refresh(context.Background(), meta.TokenEndpoint, client, "rt")
-	require.NoError(t, err)
-	assert.Equal(t, "refresh_token", seen.form["grant_type"])
-	assert.Equal(t, "rt", seen.form["refresh_token"])
-}
-
-func TestRefreshSharesSimultaneousCalls(t *testing.T) {
-	var issuer string
-	var calls atomic.Int32
-	release := make(chan struct{})
-	server := fakeProvider(t, func() string { return issuer }, func(w http.ResponseWriter, _ *http.Request) {
-		calls.Add(1)
-		<-release
-		_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "at", RefreshToken: "rt-2"})
-	})
-	issuer = server.URL + "/realms/corp"
-
-	svc := New()
-	meta, err := svc.Metadata(context.Background(), issuer, "")
-	require.NoError(t, err)
-	client := &authModel.JwtClient{Id: "ruto", Secret: "s"}
-
-	const callers = 5
-	var wg sync.WaitGroup
-	results := make([]*TokenResponse, callers)
-	errs := make([]error, callers)
-	refresh := func(ctx context.Context, i int) {
-		wg.Go(func() { results[i], errs[i] = svc.Refresh(ctx, meta.TokenEndpoint, client, "rt-1") })
-	}
-
-	// The caller that started the call gives up: the others must still get
-	// the answer.
-	firstCtx, cancelFirst := context.WithCancel(context.Background())
-	refresh(firstCtx, 0)
-	require.Eventually(t, func() bool { return calls.Load() == 1 }, 3*time.Second, 5*time.Millisecond)
-	for i := 1; i < callers; i++ {
-		refresh(context.Background(), i)
-	}
-	time.Sleep(50 * time.Millisecond) // let every caller join the call in flight
-	cancelFirst()
-	close(release)
-	wg.Wait()
-
-	assert.Equal(t, int32(1), calls.Load())
-	for i := range callers {
-		require.NoError(t, errs[i])
-		assert.Equal(t, "rt-2", results[i].RefreshToken)
-	}
-
-	// A request the browser sent before it got the new cookies comes right
-	// after the call with the same token: it gets the same answer.
-	late, err := svc.Refresh(context.Background(), meta.TokenEndpoint, client, "rt-1")
-	require.NoError(t, err)
-	assert.Same(t, results[0], late)
-	assert.Equal(t, int32(1), calls.Load())
-
-	// Another token, or another client with the same token, goes to the
-	// provider.
-	_, err = svc.Refresh(context.Background(), meta.TokenEndpoint, client, "rt-2")
-	require.NoError(t, err)
-	_, err = svc.Refresh(context.Background(), meta.TokenEndpoint, &authModel.JwtClient{Id: "other", Secret: "s"}, "rt-1")
-	require.NoError(t, err)
-	assert.Equal(t, int32(3), calls.Load())
-}
-
-func TestTokenExchange(t *testing.T) {
-	var issuer string
-	var calls atomic.Int32
-	var mu sync.Mutex
-	var seen struct {
-		user, pass string
-		form       map[string]string
-	}
-	release := make(chan struct{})
-	server := fakeProvider(t, func() string { return issuer }, func(w http.ResponseWriter, r *http.Request) {
-		calls.Add(1)
-		<-release
-		user, pass, _ := r.BasicAuth()
-		require.NoError(t, r.ParseForm())
-		mu.Lock()
-		seen.user, seen.pass = user, pass
-		seen.form = map[string]string{}
-		for k := range r.PostForm {
-			seen.form[k] = r.PostForm.Get(k)
-		}
-		mu.Unlock()
-		if r.PostForm.Get("audience") == "denied" {
-			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "invalid_request", "error_description": "Requested audience not available"})
-			return
-		}
-		_ = json.NewEncoder(w).Encode(TokenResponse{AccessToken: "app-" + r.PostForm.Get("audience"), ExpiresIn: 300})
-	})
-	issuer = server.URL + "/realms/corp"
-	svc := New()
-	meta, err := svc.Metadata(context.Background(), issuer, "")
-	require.NoError(t, err)
-	client := &authModel.JwtClient{Id: "ruto", Secret: "s3cret"}
-
-	// three requests of a page need the app token at once: one exchange
-	const callers = 3
-	var wg sync.WaitGroup
-	results := make([]*TokenResponse, callers)
-	errs := make([]error, callers)
-	for i := range callers {
-		wg.Go(func() {
-			results[i], errs[i] = svc.TokenExchange(context.Background(), meta.TokenEndpoint, client, "shared-at", "orders", []string{"roles"})
-		})
-	}
-	require.Eventually(t, func() bool { return calls.Load() == 1 }, 3*time.Second, 5*time.Millisecond)
-	time.Sleep(50 * time.Millisecond) // let every caller join the call in flight
-	close(release)
-	wg.Wait()
-
-	assert.Equal(t, int32(1), calls.Load())
-	for i := range callers {
-		require.NoError(t, errs[i])
-		assert.Equal(t, "app-orders", results[i].AccessToken)
-	}
-	assert.Equal(t, "ruto", seen.user)
-	assert.Equal(t, "s3cret", seen.pass)
-	assert.Equal(t, map[string]string{
-		"grant_type":           "urn:ietf:params:oauth:grant-type:token-exchange",
-		"subject_token":        "shared-at",
-		"subject_token_type":   "urn:ietf:params:oauth:token-type:access_token",
-		"requested_token_type": "urn:ietf:params:oauth:token-type:access_token",
-		"audience":             "orders",
-		"scope":                "roles",
-	}, seen.form)
-
-	// a request sent before the browser got the cookie gets the same token
-	late, err := svc.TokenExchange(context.Background(), meta.TokenEndpoint, client, "shared-at", "orders", []string{"roles"})
-	require.NoError(t, err)
-	assert.Same(t, results[0], late)
-	assert.Equal(t, int32(1), calls.Load())
-
-	// another audience is another token; no scopes — no scope parameter
-	other, err := svc.TokenExchange(context.Background(), meta.TokenEndpoint, client, "shared-at", "shop", nil)
-	require.NoError(t, err)
-	assert.Equal(t, "app-shop", other.AccessToken)
-	assert.NotContains(t, seen.form, "scope")
-	assert.Equal(t, int32(2), calls.Load())
-
-	// a refusal is the provider's error
-	_, err = svc.TokenExchange(context.Background(), meta.TokenEndpoint, client, "shared-at", "denied", nil)
-	refusal, ok := errors.AsType[*Error](err)
-	require.True(t, ok)
-	assert.Equal(t, "invalid_request", refusal.Code)
-	assert.Equal(t, http.StatusBadRequest, refusal.Status)
 }

@@ -25,9 +25,6 @@ type Usecase struct {
 	endpointSvc EndpointServiceI
 	gateways    GatewaysNotifierI
 	sessionSvc  SessionServiceI
-
-	gatewaySettings        snapshotModel.GatewaySettings
-	gatewaySettingsVersion string
 }
 
 func New(
@@ -37,18 +34,14 @@ func New(
 	endpointSvc EndpointServiceI,
 	gateways GatewaysNotifierI,
 	sessionSvc SessionServiceI,
-	gatewaySettings snapshotModel.GatewaySettings,
-	gatewaySettingsKey string,
 ) *Usecase {
 	result := &Usecase{
-		snapshotSvc:            snapshotSvc,
-		rootSvc:                rootSvc,
-		appSvc:                 appSvc,
-		endpointSvc:            endpointSvc,
-		gateways:               gateways,
-		sessionSvc:             sessionSvc,
-		gatewaySettings:        gatewaySettings,
-		gatewaySettingsVersion: gatewaySettings.Version(gatewaySettingsKey),
+		snapshotSvc: snapshotSvc,
+		rootSvc:     rootSvc,
+		appSvc:      appSvc,
+		endpointSvc: endpointSvc,
+		gateways:    gateways,
+		sessionSvc:  sessionSvc,
 	}
 
 	if err := result.ensure(context.Background()); err != nil {
@@ -72,12 +65,6 @@ func (u *Usecase) Get(ctx context.Context) ([]byte, error) {
 		return nil, fmt.Errorf("snapshotSvc.Get: %w", err)
 	}
 	return result.Data, nil
-}
-
-// GatewaySettings returns the runtime settings of the gateways and their
-// version. Like Get, it is for gateways only: the settings hold secrets.
-func (u *Usecase) GatewaySettings() (*snapshotModel.GatewaySettings, string) {
-	return &u.gatewaySettings, u.gatewaySettingsVersion
 }
 
 // Deploy publishes the saved config to gateways. Any logged-in user may run

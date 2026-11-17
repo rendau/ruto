@@ -2969,10 +2969,6 @@
       "properties": {
         "version": {
           "type": "string"
-        },
-        "settings_version": {
-          "type": "string",
-          "description": "Changes when the gateway settings change; a keyed hash, so it tells\nnothing about them. Empty when there are none."
         }
       }
     },

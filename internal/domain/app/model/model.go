@@ -26,26 +26,8 @@ type App struct {
 	Logging            loggingModel.Logging         `json:"logging"`
 	Variables          varsModel.Vars               `json:"variables"`
 	Compression        compressionModel.Compression `json:"compression"`
-	// Jwt names, per provider, the audience of the app's own token: the
-	// gateway exchanges the shared login token for a token with that audience
-	// and hands it to the backend. Without an entry the backend gets the
-	// shared token.
-	Jwt []AppJwt `json:"jwt"`
 
 	Endpoints []*endpointModel.Endpoint `json:"endpoints"` // not stored in db
-
-	// JwtCookieCopies are the app token cookies of all apps of the snapshot
-	// by provider and audience (JwtAudienceKey), so one exchange fills the
-	// cookies of every app with the same audience. Set by the root before it
-	// inherits down.
-	JwtCookieCopies map[string][]authModel.JwtCookie `json:"-"`
-}
-
-// AppJwt is the audience the app's token is exchanged for at Provider (RFC
-// 8693): in Keycloak the client_id of the client that holds the app's roles.
-type AppJwt struct {
-	Provider string `json:"provider"`
-	Audience string `json:"audience"`
 }
 
 type Backend struct {

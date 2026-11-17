@@ -27,16 +27,6 @@ var Conf = struct {
 	RedisDB       int    `env:"REDIS_DB" envDefault:"0"`
 	RedisPassword string `env:"REDIS_PASSWORD"`
 
-	// Redis the gateways share login session refreshes through; handed to
-	// them with the snapshot. Empty GW_REDIS_ADDR: core's own Redis above.
-	GwRedisAddr     string `env:"GW_REDIS_ADDR"`
-	GwRedisDB       int    `env:"GW_REDIS_DB" envDefault:"0"`
-	GwRedisPassword string `env:"GW_REDIS_PASSWORD"`
-	// Secret the gateways' refresh-cookie key is derived from; handed to them
-	// with the snapshot. Empty: derived from ADMIN_JWT_SECRET. Changing it
-	// logs every user out of the gateway login sessions.
-	GwCookieSecret string `env:"GW_COOKIE_SECRET"`
-
 	AppSwaggerDiscoveryOnStart bool `env:"APP_SWAGGER_DISCOVERY_ON_START" envDefault:"false"`
 
 	// monitoring: external Prometheus / log-store the admin charts are read from

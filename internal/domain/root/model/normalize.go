@@ -22,9 +22,6 @@ func (m *Root) Normalize() error {
 		if err := m.Jwt[i].Normalize(); err != nil {
 			return fmt.Errorf("jwt[%d]: %w", i, err)
 		}
-		if m.Jwt[i].LoginEnabled() && m.Jwt[i].PublicUrl == "" && m.BaseUrl == "" {
-			return fmt.Errorf("jwt[%d]: public_url: empty and root base_url is empty", i)
-		}
 		if name := m.Jwt[i].Name; name != "" {
 			if _, ok := providerNames[name]; ok {
 				return fmt.Errorf("jwt[%d]: name: duplicate %q", i, name)
@@ -51,26 +48,6 @@ func (m *Root) Normalize() error {
 	for i := range m.Apps {
 		if err := m.Apps[i].Normalize(); err != nil {
 			return fmt.Errorf("apps[%d]: %w", i, err)
-		}
-	}
-	return m.checkAppAudiences()
-}
-
-// checkAppAudiences makes sure every app audience names a provider that can
-// exchange tokens: one with an issuer and a client. Otherwise each request to
-// the app would end in an error instead of a save being refused.
-func (m *Root) checkAppAudiences() error {
-	exchangers := make(map[string]bool, len(m.Jwt))
-	for i := range m.Jwt {
-		if m.Jwt[i].LoginEnabled() && m.Jwt[i].Client != nil {
-			exchangers[m.Jwt[i].Name] = true
-		}
-	}
-	for i, app := range m.Apps {
-		for j, item := range app.Jwt {
-			if !exchangers[item.Provider] {
-				return fmt.Errorf("apps[%d]: jwt[%d]: provider: %q is not a root provider with issuer and client", i, j, item.Provider)
-			}
 		}
 	}
 	return nil
@@ -114,32 +91,13 @@ func (m *RootJwt) Normalize() error {
 	if m.InternalUrl, err = normalizeBaseUrl(m.InternalUrl); err != nil {
 		return fmt.Errorf("internal_url: %w", err)
 	}
-	if m.PublicUrl, err = normalizeBaseUrl(m.PublicUrl); err != nil {
-		return fmt.Errorf("public_url: %w", err)
-	}
-
-	m.ExchangeScopes = lo.Uniq(lo.FilterMap(m.ExchangeScopes, func(v string, _ int) (string, bool) {
-		v = strings.TrimSpace(v)
-		return v, v != ""
-	}))
 
 	if m.Issuer == "" {
 		if m.JwkUrl == "" {
 			return fmt.Errorf("jwk_url: empty")
 		}
-		if m.Client != nil || m.InternalUrl != "" || m.PublicUrl != "" || len(m.ExchangeScopes) > 0 {
-			return fmt.Errorf("issuer: empty, but login settings are set")
-		}
-		return nil
-	}
-
-	// Login routes and cookies are named after the provider.
-	if m.Name == "" {
-		return fmt.Errorf("name: empty, required with issuer")
-	}
-	if m.Client != nil {
-		if err = m.Client.Normalize(); err != nil {
-			return fmt.Errorf("client: %w", err)
+		if m.InternalUrl != "" {
+			return fmt.Errorf("internal_url: set without issuer")
 		}
 	}
 	return nil

@@ -25,10 +25,8 @@ func (h *Snapshot) GetVersion(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.S
 	if err != nil {
 		return nil, fmt.Errorf("usecase.GetVersion: %w", err)
 	}
-	_, settingsVersion := h.usecase.GatewaySettings()
 	return &ruto_v1.SnapshotVersion{
-		Version:         result,
-		SettingsVersion: settingsVersion,
+		Version: result,
 	}, nil
 }
 
@@ -37,10 +35,8 @@ func (h *Snapshot) Get(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.Snapshot
 	if err != nil {
 		return nil, fmt.Errorf("usecase.Get: %w", err)
 	}
-	settings, _ := h.usecase.GatewaySettings()
 	return &ruto_v1.SnapshotResponse{
-		Data:    dto.JsonObjToGrpcStruct(result),
-		Gateway: dto.EncodeGatewaySettings(settings),
+		Data: dto.JsonObjToGrpcStruct(result),
 	}, nil
 }
 

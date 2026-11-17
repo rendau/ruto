@@ -10,16 +10,11 @@ import (
 )
 
 func (m *Root) InheritDown() {
-	copies := appModel.JwtAudienceCookies(m.ActiveApps())
-	for _, app := range m.Apps {
-		app.JwtCookieCopies = copies
-	}
 	lo.ForEach(m.Apps, m.inheritToApp)
 }
 
 func (m *Root) inheritToApp(app *appModel.App, _ int) {
 	app.Auth = authModel.Merge(m.Auth, app.Auth)
-	app.SetJwtCookieNames(&app.Auth)
 	app.Logging = loggingModel.Merge(m.Logging, app.Logging)
 	app.Compression = compressionModel.Merge(m.Compression, app.Compression)
 	app.Variables.FillMissing(m.Variables)

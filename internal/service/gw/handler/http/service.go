@@ -6,18 +6,12 @@ import (
 	"slices"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/samber/lo"
 
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
-	"github.com/rendau/ruto/internal/service/gw/handler/http/authflow"
-	"github.com/rendau/ruto/internal/service/gw/handler/http/broker"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
-	"github.com/rendau/ruto/internal/service/gw/service/apptoken"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
-	"github.com/rendau/ruto/internal/service/gw/service/oidc"
-	"github.com/rendau/ruto/internal/service/gw/service/rutokey"
 )
 
 type Service struct {
@@ -51,20 +45,6 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 	}()
 
 	router := chi.NewRouter()
-
-	// The gateway's login routes (the broker) go first; no app may own the
-	// /_auth prefix, so they never compete with an app route.
-	units := authflow.NewUnits(snapshot)
-	broker.Register(router, snapshot, broker.Deps{
-		Meta: oidc.Ins(),
-		Keys: rutokey.Ins(),
-		Sessions: lo.MapValues(units, func(u *authflow.Unit, _ string) broker.Sessions {
-			return u
-		}),
-		Exchanger: apptoken.Ins(),
-		Used:      oidc.Ins(),
-		Userinfo:  oidc.Ins(),
-	})
 
 	for _, app := range snapshot.ActiveApps() {
 		endpoints := app.ActiveEndpoints()

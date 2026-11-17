@@ -1,70 +1,9 @@
 package oidc
 
-import (
-	"encoding/json"
-	"fmt"
-)
-
 // Metadata is the part of an OpenID Connect discovery document the gateway
-// uses. TokenEndpoint and JwksUri are the addresses the gateway itself calls,
-// already pointed at the provider's internal address when one is configured;
-// the browser-facing endpoints stay public.
+// uses. JwksUri is the address the gateway itself calls, already pointed at
+// the provider's internal address when one is configured.
 type Metadata struct {
-	Issuer                string `json:"issuer"`
-	AuthorizationEndpoint string `json:"authorization_endpoint"`
-	TokenEndpoint         string `json:"token_endpoint"`
-	EndSessionEndpoint    string `json:"end_session_endpoint"`
-	JwksUri               string `json:"jwks_uri"`
-	// UserinfoEndpoint is called by the gateway too (the broker passes it on),
-	// so it is moved onto the internal address like TokenEndpoint.
-	UserinfoEndpoint string `json:"userinfo_endpoint"`
-
-	// Document is the whole discovery document as the provider published it,
-	// with public endpoints only: the broker copies its parts for the fronts.
-	Document map[string]json.RawMessage `json:"-"`
-}
-
-// PublicEndpoint returns an endpoint of the published document by its member
-// name ("userinfo_endpoint"); "" when the provider has none.
-func (m *Metadata) PublicEndpoint(name string) string {
-	var value string
-	if json.Unmarshal(m.Document[name], &value) != nil {
-		return ""
-	}
-	return value
-}
-
-// UserinfoResponse is the provider's userinfo answer as it is.
-type UserinfoResponse struct {
-	Status      int
-	ContentType string
-	Body        []byte
-}
-
-// TokenResponse is the token endpoint's answer to a code exchange or a
-// refresh. RefreshExpiresIn is a common extension (Keycloak), zero when the
-// provider does not send it.
-type TokenResponse struct {
-	AccessToken      string `json:"access_token"`
-	TokenType        string `json:"token_type"`
-	ExpiresIn        int    `json:"expires_in"`
-	RefreshToken     string `json:"refresh_token"`
-	RefreshExpiresIn int    `json:"refresh_expires_in"`
-	IdToken          string `json:"id_token"`
-	Scope            string `json:"scope"`
-}
-
-// Error is the provider's refusal (RFC 6749 §5.2): the code is what the
-// provider said, Status the http status it said it with.
-type Error struct {
-	Status      int
-	Code        string `json:"error"`
-	Description string `json:"error_description"`
-}
-
-func (e *Error) Error() string {
-	if e.Description != "" {
-		return fmt.Sprintf("provider refused (%d): %s: %s", e.Status, e.Code, e.Description)
-	}
-	return fmt.Sprintf("provider refused (%d): %s", e.Status, e.Code)
+	Issuer  string `json:"issuer"`
+	JwksUri string `json:"jwks_uri"`
 }

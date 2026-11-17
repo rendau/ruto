@@ -3,7 +3,6 @@ package model
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -178,57 +177,4 @@ func TestAppNormalize_WildcardEndpointNeedsAllowWildcard(t *testing.T) {
 
 	require.EqualError(t, newApp(false).Normalize(), "endpoints[1]: http: path: wildcard '*' is not allowed for this app")
 	require.NoError(t, newApp(true).Normalize())
-}
-
-func TestAppNormalize_RejectReservedAuthPrefix(t *testing.T) {
-	for _, prefix := range []string{"_auth", "/_auth/", "_auth/corp"} {
-		item := &App{
-			PathPrefix: prefix,
-			Backend:    Backend{Url: "http://example.local/svc"},
-		}
-		require.EqualError(t, item.Normalize(), "path_prefix: /_auth is reserved for the gateway login routes", prefix)
-	}
-
-	item := &App{
-		PathPrefix: "_authors",
-		Backend:    Backend{Url: "http://example.local/svc"},
-	}
-	require.NoError(t, item.Normalize())
-}
-
-func TestAppNormalize_Jwt(t *testing.T) {
-	item := &App{
-		PathPrefix: "shop",
-		Backend:    Backend{Url: "http://example.local/svc"},
-		Jwt:        []AppJwt{{Provider: " corp ", Audience: " shop "}},
-	}
-	require.NoError(t, item.Normalize())
-	assert.Equal(t, AppJwt{Provider: "corp", Audience: "shop"}, item.Jwt[0])
-	assert.Equal(t, "shop", item.JwtAudience("corp"))
-	assert.Empty(t, item.JwtAudience("other"))
-
-	item.Jwt = append(item.Jwt, AppJwt{Provider: "corp", Audience: "x"})
-	require.EqualError(t, item.Normalize(), `jwt[1]: provider: duplicate "corp"`)
-
-	item.Jwt = []AppJwt{{Provider: "corp"}}
-	require.EqualError(t, item.Normalize(), "jwt[0]: audience: empty")
-
-	item.Jwt = []AppJwt{{Audience: "shop"}}
-	require.EqualError(t, item.Normalize(), "jwt[0]: provider: empty")
-
-	item.Jwt = nil
-	require.NoError(t, item.Normalize())
-	assert.NotNil(t, item.Jwt)
-}
-
-func TestAppRedacted_Jwt(t *testing.T) {
-	item := &App{
-		PathPrefix: "shop",
-		Backend:    Backend{Url: "http://example.local/svc"},
-		Jwt:        []AppJwt{{Provider: "corp", Audience: "shop"}},
-	}
-	redacted := item.Redacted()
-	assert.Equal(t, item.Jwt, redacted.Jwt, "the audience is not a secret")
-	redacted.Jwt[0].Audience = "x"
-	assert.Equal(t, "shop", item.Jwt[0].Audience, "the receiver is left untouched")
 }

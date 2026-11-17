@@ -21,7 +21,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
-	snapshotModel "github.com/rendau/ruto/internal/domain/snapshot/model"
 	"github.com/rendau/ruto/internal/service/gw/service/seen"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
@@ -46,14 +45,9 @@ const (
 
 type configCallback func(*rootModel.Root) error
 
-// settingsCallback takes the gateway runtime settings core sends with the
-// snapshot; they may change while the snapshot stays the same.
-type settingsCallback func(*snapshotModel.GatewaySettings)
-
 type Service struct {
-	globalCtx  context.Context
-	onConfig   configCallback
-	onSettings settingsCallback
+	globalCtx context.Context
+	onConfig  configCallback
 
 	conn          *grpc.ClientConn
 	client        ruto_v1.SnapshotClient
@@ -65,10 +59,8 @@ type Service struct {
 	// and heartbeatWorker reads from a different goroutine.
 	mu             sync.Mutex
 	currentVersion string
-	// settingsVersion is touched only by refreshWorker.
-	settingsVersion string
-	lastApplyAt     int64
-	lastError       string
+	lastApplyAt    int64
+	lastError      string
 
 	// triggerCh requests a refresh (version check + apply). It is
 	// buffered/coalescing so bursts collapse to a single pending refresh.
@@ -88,14 +80,12 @@ func New(
 	globalCtx context.Context,
 	address string,
 	onConfig configCallback,
-	onSettings settingsCallback,
 ) (*Service, error) {
 	var err error
 
 	service := &Service{
 		globalCtx:        globalCtx,
 		onConfig:         onConfig,
-		onSettings:       onSettings,
 		identity:         newIdentity(),
 		startedAtUnix:    time.Now().Unix(),
 		triggerCh:        make(chan struct{}, 1),
@@ -238,41 +228,20 @@ func (s *Service) subscribeOnce() error {
 }
 
 func (s *Service) refresh() {
-	serverVersion, settingsVersion, err := s.fetchVersion()
+	serverVersion, err := s.fetchVersion()
 	if err != nil {
 		s.recordError(err.Error())
 		slog.Error("config-client: fetchVersion failed", "error", err)
 		return
 	}
-	configChanged := serverVersion != "" && serverVersion != s.readVersion()
-	settingsChanged := settingsVersion != s.settingsVersion
-	if !configChanged && !settingsChanged {
+	if serverVersion == "" || serverVersion == s.readVersion() {
 		return
 	}
 
-	configRep, err := s.fetchConfig()
-	if err != nil || configRep == nil {
-		if err != nil {
-			s.recordError(err.Error())
-			slog.Error("config-client: fetchConfig failed", "error", err, "version", serverVersion)
-		}
-		return
-	}
-
-	// Settings first: the config applied next may already rely on them. A
-	// settings change alone does not rebuild the handlers.
-	if settingsChanged {
-		s.onSettings(decodeGatewaySettings(configRep.GetGateway()))
-		s.settingsVersion = settingsVersion
-		slog.Info("config-client: gateway settings applied", "settings_version", settingsVersion)
-	}
-	if !configChanged {
-		return
-	}
-
-	if err = s.applyConfig(configRep); err != nil {
+	err = s.fetchAndApplyConfig()
+	if err != nil {
 		s.recordError(err.Error())
-		slog.Error("config-client: applyConfig failed", "error", err, "version", serverVersion)
+		slog.Error("config-client: fetchAndApplyConfig failed", "error", err, "version", serverVersion)
 		return
 	}
 
@@ -305,37 +274,33 @@ func (s *Service) recordError(msg string) {
 	s.lastError = msg
 }
 
-func (s *Service) fetchVersion() (string, string, error) {
+func (s *Service) fetchVersion() (string, error) {
 	ctx, cancel := context.WithTimeout(s.globalCtx, 5*time.Second)
 	defer cancel()
 
 	versionRep, err := s.client.GetVersion(ctx, &emptypb.Empty{})
 	if err != nil {
 		if s.globalCtx.Err() == nil {
-			return "", "", fmt.Errorf("client.GetVersion: %w", err)
+			return "", fmt.Errorf("client.GetVersion: %w", err)
 		}
-		return "", "", nil
+		return "", nil
 	}
 
-	return versionRep.GetVersion(), versionRep.GetSettingsVersion(), nil
+	return versionRep.GetVersion(), nil
 }
 
-// fetchConfig returns nil without an error when the gateway is shutting down.
-func (s *Service) fetchConfig() (*ruto_v1.SnapshotResponse, error) {
+func (s *Service) fetchAndApplyConfig() error {
 	ctx, cancel := context.WithTimeout(s.globalCtx, 5*time.Second)
 	defer cancel()
 
 	configRep, err := s.client.Get(ctx, &emptypb.Empty{})
 	if err != nil {
 		if s.globalCtx.Err() == nil {
-			return nil, fmt.Errorf("client.Get: %w", err)
+			return fmt.Errorf("client.Get: %w", err)
 		}
-		return nil, nil
+		return nil
 	}
-	return configRep, nil
-}
 
-func (s *Service) applyConfig(configRep *ruto_v1.SnapshotResponse) error {
 	conf, err := decodeConfig(configRep)
 	if err != nil {
 		return fmt.Errorf("decodeConfig: %w", err)
@@ -347,21 +312,6 @@ func (s *Service) applyConfig(configRep *ruto_v1.SnapshotResponse) error {
 	}
 
 	return nil
-}
-
-// decodeGatewaySettings reads the settings core sends; a core that sends none
-// (an older one) leaves them empty.
-func decodeGatewaySettings(m *ruto_v1.GatewaySettings) *snapshotModel.GatewaySettings {
-	if m == nil {
-		return &snapshotModel.GatewaySettings{}
-	}
-	return &snapshotModel.GatewaySettings{
-		RedisAddr:     m.GetRedisAddr(),
-		RedisPassword: m.GetRedisPassword(),
-		RedisDB:       int(m.GetRedisDb()),
-		CookieKey:     m.GetCookieKey(),
-		SigningKey:    m.GetSigningKey(),
-	}
 }
 
 func (s *Service) sendHeartbeat() error {

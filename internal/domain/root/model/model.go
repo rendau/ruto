@@ -46,32 +46,17 @@ type RootCors struct {
 // Name is what auth methods refer to; a provider without a name only serves
 // methods that pin no provider.
 //
-// With Issuer set the provider is an OpenID Connect server: its endpoints come
-// from discovery (JwkUrl may then be left empty) and the gateway can log users
-// in on behalf of Client and exchange the shared token for app tokens (App.Jwt).
+// With Issuer set the address of the keys comes from the provider's OpenID
+// Connect discovery document (JwkUrl may then be left empty).
 type RootJwt struct {
 	Name   string `json:"name"`
 	JwkUrl string `json:"jwk_url"`
 	// Issuer is the public address of the OpenID provider, the "iss" of its
 	// tokens and the base of its discovery document.
 	Issuer string `json:"issuer"`
-	// InternalUrl, when set, replaces the Issuer prefix of the endpoints the
-	// gateway itself calls (token, keys): the way in from inside the cluster.
+	// InternalUrl, when set, replaces the Issuer prefix of the addresses the
+	// gateway reads (discovery, keys): the way in from inside the cluster.
 	InternalUrl string `json:"internal_url"`
-	// PublicUrl is the gateway address the provider sends the browser back to;
-	// empty means Root.BaseUrl.
-	PublicUrl string               `json:"public_url"`
-	Client    *authModel.JwtClient `json:"client,omitempty"`
-	// ExchangeScopes are the scopes the gateway asks for when it exchanges
-	// the shared token for an app token: the shared token is requested
-	// without the roles of the apps, the app token with them (Keycloak: roles).
-	ExchangeScopes []string `json:"exchange_scopes"`
-}
-
-// LoginEnabled reports whether the gateway can log users in through this
-// provider at all.
-func (m *RootJwt) LoginEnabled() bool {
-	return m.Issuer != ""
 }
 
 func NewEmpty() *Root {

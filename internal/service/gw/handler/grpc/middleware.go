@@ -64,7 +64,6 @@ func newAuthMiddleware(service *serviceAuth.Service) middleware {
 			md := metadataFromContext(stream.Context())
 
 			authReq := serviceAuthModel.NewAuthRequest()
-			authReq.SetContext(stream.Context())
 			authReq.SetHttpHeader(headersFromMetadata(md))
 			authReq.SetRemoteAddr(remoteAddrFromContext(stream.Context()))
 			if result := service.Check(authReq); result != serviceAuthModel.Allowed {

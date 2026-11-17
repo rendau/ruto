@@ -246,8 +246,8 @@ func (c *cacheControlWriter) WriteHeader(status int) {
 	header := c.ResponseWriter.Header()
 	if status == http.StatusOK && (c.override || header.Get("Cache-Control") == "") {
 		value := c.value
-		// A response that sets cookies (a session renewed on the way) is
-		// the user's own: a shared cache must not keep and hand it out.
+		// A response that sets cookies is the user's own: a shared cache
+		// must not keep and hand it out.
 		if header.Get("Set-Cookie") != "" {
 			value = privateCacheControl(value)
 		}

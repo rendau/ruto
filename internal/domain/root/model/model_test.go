@@ -1,14 +1,11 @@
 package model
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	appModel "github.com/rendau/ruto/internal/domain/app/model"
-	authModel "github.com/rendau/ruto/internal/domain/auth/model"
-	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 )
 
 func TestRootJwtNormalize(t *testing.T) {
@@ -16,16 +13,17 @@ func TestRootJwtNormalize(t *testing.T) {
 		name    string
 		item    RootJwt
 		wantErr string
-		check   func(t *testing.T, item RootJwt)
+		want    RootJwt
 	}{
 		{
-			name: "plain jwks provider as before",
+			name: "plain jwks provider",
 			item: RootJwt{Name: " corp ", JwkUrl: " http://jwts/jwk/set "},
-			check: func(t *testing.T, item RootJwt) {
-				assert.Equal(t, "corp", item.Name)
-				assert.Equal(t, "http://jwts/jwk/set", item.JwkUrl)
-				assert.False(t, item.LoginEnabled())
-			},
+			want: RootJwt{Name: "corp", JwkUrl: "http://jwts/jwk/set"},
+		},
+		{
+			name: "keys from discovery by issuer, read from the internal address",
+			item: RootJwt{Name: "corp", Issuer: "https://id.example.com/realms/corp/", InternalUrl: "http://keycloak:8080/realms/corp/"},
+			want: RootJwt{Name: "corp", Issuer: "https://id.example.com/realms/corp", InternalUrl: "http://keycloak:8080/realms/corp"},
 		},
 		{
 			name:    "neither jwk_url nor issuer",
@@ -33,40 +31,14 @@ func TestRootJwtNormalize(t *testing.T) {
 			wantErr: "jwk_url: empty",
 		},
 		{
-			name:    "login settings without an issuer",
-			item:    RootJwt{Name: "corp", JwkUrl: "http://jwts/jwk/set", PublicUrl: "https://api.example.com"},
-			wantErr: "issuer: empty, but login settings are set",
-		},
-		{
-			name:    "issuer requires a name",
-			item:    RootJwt{Issuer: "https://id.example.com/realms/corp"},
-			wantErr: "name: empty, required with issuer",
+			name:    "internal_url without issuer",
+			item:    RootJwt{JwkUrl: "http://jwts/jwk/set", InternalUrl: "http://keycloak:8080"},
+			wantErr: "internal_url: set without issuer",
 		},
 		{
 			name:    "issuer must be an absolute http url",
 			item:    RootJwt{Name: "corp", Issuer: "id.example.com/realms/corp"},
 			wantErr: "issuer: scheme must be http or https",
-		},
-		{
-			name:    "client needs a secret",
-			item:    RootJwt{Name: "corp", Issuer: "https://id.example.com/realms/corp", Client: &authModel.JwtClient{Id: "ruto"}},
-			wantErr: "client: secret: empty",
-		},
-		{
-			name: "oidc provider without jwk_url, client scopes get openid",
-			item: RootJwt{
-				Name:        "corp",
-				Issuer:      "https://id.example.com/realms/corp/",
-				InternalUrl: "http://keycloak:8080/realms/corp/",
-				Client:      &authModel.JwtClient{Id: " ruto ", Secret: "s", Scopes: []string{"profile", " ", "email", "profile"}},
-			},
-			check: func(t *testing.T, item RootJwt) {
-				assert.True(t, item.LoginEnabled())
-				assert.Equal(t, "https://id.example.com/realms/corp", item.Issuer)
-				assert.Equal(t, "http://keycloak:8080/realms/corp", item.InternalUrl)
-				assert.Equal(t, "ruto", item.Client.Id)
-				assert.Equal(t, []string{"openid", "profile", "email"}, item.Client.Scopes)
-			},
 		},
 	}
 
@@ -78,120 +50,32 @@ func TestRootJwtNormalize(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			tt.check(t, tt.item)
+			assert.Equal(t, tt.want, tt.item)
 		})
 	}
 }
 
-func TestRootNormalizeLoginNeedsPublicUrl(t *testing.T) {
+// TestRootReadsOldLoginFields: roots saved while the gateway logged users in
+// carry provider and app fields that are gone now; they are read without an
+// error and dropped on the next save.
+func TestRootReadsOldLoginFields(t *testing.T) {
+	const stored = `{
+		"base_url": "https://api.example.com",
+		"jwt": [{
+			"name": "id",
+			"issuer": "https://id.example.com/realms/corp",
+			"public_url": "https://api.example.com",
+			"client": {"id": "ruto", "secret": "s", "scopes": ["openid"]},
+			"exchange_scopes": ["roles"],
+			"clients": [{"id": "crm"}]
+		}]
+	}`
 	root := NewEmpty()
-	root.Jwt = []RootJwt{{Name: "corp", Issuer: "https://id.example.com/realms/corp"}}
-	require.EqualError(t, root.Normalize(), "jwt[0]: public_url: empty and root base_url is empty")
-
-	root.BaseUrl = "https://api.example.com/"
+	require.NoError(t, json.Unmarshal([]byte(stored), root))
 	require.NoError(t, root.Normalize())
+	assert.Equal(t, []RootJwt{{Name: "id", Issuer: "https://id.example.com/realms/corp"}}, root.Jwt)
 
-	root.BaseUrl = ""
-	root.Jwt[0].PublicUrl = "https://gw.example.com"
-	require.NoError(t, root.Normalize())
-}
-
-func TestRootInheritDownJwtCookieNames(t *testing.T) {
-	root := NewEmpty()
-	root.BaseUrl = "https://api.example.com"
-	root.Jwt = []RootJwt{
-		{Name: "corp", Issuer: "https://id.example.com/realms/corp", Client: &authModel.JwtClient{Id: "ruto", Secret: "s"}},
-		{Name: "partners", JwkUrl: "http://jwts/jwk/set"},
-	}
-	root.Auth = authModel.Auth{Enabled: true, Methods: []*authModel.AuthMethod{
-		{JWT: &authModel.AuthMethodJWT{Provider: "corp", Roles: []string{"shop:admin"}}},
-	}}
-	newApp := func(prefix string, active bool, jwt ...appModel.AppJwt) *appModel.App {
-		return &appModel.App{
-			Active:     active,
-			PathPrefix: prefix,
-			Backend:    appModel.Backend{Url: "http://backend:8080"},
-			Auth:       authModel.Auth{Enabled: true},
-			Jwt:        jwt,
-			Endpoints: []*endpointModel.Endpoint{{
-				Active: true,
-				Http:   endpointModel.Http{Method: "GET", Path: "items"},
-				Auth: authModel.Auth{Enabled: true, Methods: []*authModel.AuthMethod{
-					{JWT: &authModel.AuthMethodJWT{Provider: "partners"}},
-				}},
-			}},
-		}
-	}
-	shop := newApp("shop/api", true, appModel.AppJwt{Provider: "corp", Audience: "shop"})
-	shopUi := newApp("shop-ui", true, appModel.AppJwt{Provider: "corp", Audience: "shop"})
-	shopOld := newApp("shop-old", false, appModel.AppJwt{Provider: "corp", Audience: "shop"})
-	crm := newApp("crm", true)
-	root.Apps = []*appModel.App{shop, shopUi, shopOld, crm}
-
-	require.NoError(t, root.Normalize())
-	root.InheritDown()
-
-	// The app with an audience exchanges the shared token for its own, kept
-	// in a cookie on its prefix and copied into the cookies of the other
-	// active apps with the same audience and into the broker cookie of the
-	// front with that client; for the inherited root method and its own
-	// endpoint method alike.
-	frontCookie := authModel.JwtCookie{Name: "ruto-ft_corp_shop", Path: "/_auth/corp/shop"}
-	shopExchange := &authModel.JwtExchange{
-		Audience: "shop",
-		Cookie:   authModel.JwtCookie{Name: "ruto_corp_shop.api", Path: "/shop/api"},
-		Copies:   []authModel.JwtCookie{{Name: "ruto_corp_shop-ui", Path: "/shop-ui"}, frontCookie},
-	}
-	shopEp := shop.Endpoints[0]
-	require.Len(t, shopEp.Auth.Methods, 2)
-	assert.Equal(t, "ruto_corp", shopEp.Auth.Methods[0].JWT.CookieName)
-	assert.Equal(t, shopExchange, shopEp.Auth.Methods[0].JWT.Exchange)
-	assert.Equal(t, "ruto_partners", shopEp.Auth.Methods[1].JWT.CookieName)
-	assert.Nil(t, shopEp.Auth.Methods[1].JWT.Exchange, "no audience for this provider")
-	assert.Equal(t, shopExchange, shop.Auth.Methods[0].JWT.Exchange)
-
-	assert.Equal(t, &authModel.JwtExchange{
-		Audience: "shop",
-		Cookie:   authModel.JwtCookie{Name: "ruto_corp_shop-ui", Path: "/shop-ui"},
-		Copies:   []authModel.JwtCookie{{Name: "ruto_corp_shop.api", Path: "/shop/api"}, frontCookie},
-	}, shopUi.Endpoints[0].Auth.Methods[0].JWT.Exchange)
-
-	// The app without an audience reads the shared token.
-	crmEp := crm.Endpoints[0]
-	assert.Equal(t, "ruto_corp", crmEp.Auth.Methods[0].JWT.CookieName)
-	assert.Nil(t, crmEp.Auth.Methods[0].JWT.Exchange)
-
-	// The root's own method is untouched: the cookie name is a per-app matter.
-	assert.Empty(t, root.Auth.Methods[0].JWT.CookieName)
-	assert.Nil(t, root.Auth.Methods[0].JWT.Exchange)
-}
-
-func TestRootJwtNormalizeExchangeScopes(t *testing.T) {
-	p := RootJwt{Name: "corp", Issuer: "https://id.example.com/realms/corp", ExchangeScopes: []string{" roles ", "", "roles", "email"}}
-	require.NoError(t, p.Normalize())
-	assert.Equal(t, []string{"roles", "email"}, p.ExchangeScopes)
-
-	keys := RootJwt{JwkUrl: "http://jwts/jwk/set", ExchangeScopes: []string{"roles"}}
-	require.EqualError(t, keys.Normalize(), "issuer: empty, but login settings are set")
-}
-
-func TestRootNormalizeAppAudienceProvider(t *testing.T) {
-	root := NewEmpty()
-	root.BaseUrl = "https://api.example.com"
-	root.Jwt = []RootJwt{
-		{Name: "corp", Issuer: "https://id.example.com/realms/corp", Client: &authModel.JwtClient{Id: "ruto", Secret: "s"}},
-		{Name: "noclient", Issuer: "https://id.example.com/realms/other"},
-		{Name: "keys", JwkUrl: "http://jwts/jwk/set"},
-	}
-	app := &appModel.App{PathPrefix: "orders", Backend: appModel.Backend{Url: "http://orders:8080"}}
-	root.Apps = []*appModel.App{app}
-
-	app.Jwt = []appModel.AppJwt{{Provider: "corp", Audience: "orders"}}
-	require.NoError(t, root.Normalize())
-
-	for _, provider := range []string{"noclient", "keys", "missing"} {
-		app.Jwt = []appModel.AppJwt{{Provider: provider, Audience: "orders"}}
-		require.EqualError(t, root.Normalize(),
-			`apps[0]: jwt[0]: provider: "`+provider+`" is not a root provider with issuer and client`)
-	}
+	saved, err := json.Marshal(root.Jwt)
+	require.NoError(t, err)
+	assert.JSONEq(t, `[{"name":"id","jwk_url":"","issuer":"https://id.example.com/realms/corp","internal_url":""}]`, string(saved))
 }

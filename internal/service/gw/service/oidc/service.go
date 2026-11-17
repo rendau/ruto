@@ -1,6 +1,6 @@
-// Package oidc talks to OpenID Connect providers on the gateway's behalf:
-// reads their discovery documents and exchanges codes, refreshes and exchanges
-// tokens at their token endpoint. It knows nothing about cookies, apps or requests.
+// Package oidc reads the discovery documents of OpenID Connect providers: the
+// gateway takes the address of a provider's keys (jwks_uri) from there when the
+// provider is configured by its issuer.
 package oidc
 
 import (
@@ -14,19 +14,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
-	"golang.org/x/sync/singleflight"
-
 	"github.com/rendau/ruto/internal/infra/httpx"
 )
 
 const (
 	// MetadataTTL is how long a discovery document is trusted before it is
 	// read again; providers change their endpoints about never.
-	MetadataTTL = time.Hour
-	// RefreshGrace is how long the answer to a refresh or a token exchange is
-	// given again for the same request without asking the provider.
-	RefreshGrace     = 15 * time.Second
+	MetadataTTL      = time.Hour
 	discoveryPath    = "/.well-known/openid-configuration"
 	requestTimeout   = 10 * time.Second
 	maxResponseBytes = 1 << 20
@@ -42,11 +36,6 @@ type Service struct {
 	httpClient *http.Client
 	mu         sync.Mutex
 	entries    map[string]*entry // by discovery url
-	calls      singleflight.Group
-	recentMu   sync.Mutex
-	recent     map[string]recentAnswer // by call key, see shared
-	redisMu    sync.RWMutex
-	redis      *redis.Client // shared calls, see SetRedis; nil — none
 }
 
 type entry struct {
@@ -57,17 +46,17 @@ type entry struct {
 
 func New() *Service {
 	return &Service{
-		httpClient: httpx.New(httpx.Config{Timeout: requestTimeout}),
+		// Read once an hour: an idle connection would be closed by then anyway.
+		httpClient: httpx.New(httpx.Config{Timeout: requestTimeout, DisableKeepAlives: true}),
 		entries:    make(map[string]*entry),
-		recent:     make(map[string]recentAnswer),
 	}
 }
 
-// Metadata returns the provider's endpoints. issuer is the public address the
-// provider names itself by; internalUrl, when not empty, stands for the same
-// address from inside the cluster: the discovery document is read from it and
-// the endpoints the gateway calls are moved onto it. A document is cached for
-// MetadataTTL; when a reload fails the previous document is kept.
+// Metadata returns the provider's discovery document. issuer is the public
+// address the provider names itself by; internalUrl, when not empty, stands
+// for the same address from inside the cluster: the document is read from it
+// and jwks_uri is moved onto it. A document is cached for MetadataTTL; when a
+// reload fails the previous document is kept.
 func (s *Service) Metadata(ctx context.Context, issuer, internalUrl string) (*Metadata, error) {
 	base := issuer
 	if internalUrl != "" {
@@ -117,19 +106,21 @@ func (s *Service) load(ctx context.Context, discoveryUrl, issuer, internalUrl st
 	}
 	req.Header.Set("Accept", "application/json")
 
-	body, status, err := s.do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("discovery %s: %w", discoveryUrl, err)
 	}
-	if status != http.StatusOK {
-		return nil, fmt.Errorf("discovery %s: status %d", discoveryUrl, status)
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("discovery %s: status %d", discoveryUrl, resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	if err != nil {
+		return nil, fmt.Errorf("discovery %s: io.ReadAll: %w", discoveryUrl, err)
 	}
 
 	meta := new(Metadata)
 	if err = json.Unmarshal(body, meta); err != nil {
-		return nil, fmt.Errorf("discovery %s: json.Unmarshal: %w", discoveryUrl, err)
-	}
-	if err = json.Unmarshal(body, &meta.Document); err != nil {
 		return nil, fmt.Errorf("discovery %s: json.Unmarshal: %w", discoveryUrl, err)
 	}
 
@@ -138,13 +129,11 @@ func (s *Service) load(ctx context.Context, discoveryUrl, issuer, internalUrl st
 	if strings.TrimRight(meta.Issuer, "/") != issuer {
 		return nil, fmt.Errorf("discovery %s: issuer %q does not match configured %q", discoveryUrl, meta.Issuer, issuer)
 	}
-	if meta.AuthorizationEndpoint == "" || meta.TokenEndpoint == "" || meta.JwksUri == "" {
-		return nil, fmt.Errorf("discovery %s: authorization_endpoint, token_endpoint and jwks_uri are required", discoveryUrl)
+	if meta.JwksUri == "" {
+		return nil, fmt.Errorf("discovery %s: jwks_uri is required", discoveryUrl)
 	}
 
-	meta.TokenEndpoint = rebase(meta.TokenEndpoint, issuer, internalUrl)
 	meta.JwksUri = rebase(meta.JwksUri, issuer, internalUrl)
-	meta.UserinfoEndpoint = rebase(meta.UserinfoEndpoint, issuer, internalUrl)
 
 	return meta, nil
 }
@@ -159,40 +148,4 @@ func rebase(endpoint, issuer, internalUrl string) string {
 		return internalUrl + rest
 	}
 	return endpoint
-}
-
-// Userinfo calls the provider's userinfo endpoint with token and returns the
-// answer as it is; the error is about not getting one.
-func (s *Service) Userinfo(ctx context.Context, endpoint, token string) (*UserinfoResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, fmt.Errorf("http.NewRequest: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("userinfo %s: %w", endpoint, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
-	if err != nil {
-		return nil, fmt.Errorf("userinfo %s: io.ReadAll: %w", endpoint, err)
-	}
-	return &UserinfoResponse{Status: resp.StatusCode, ContentType: resp.Header.Get("Content-Type"), Body: body}, nil
-}
-
-func (s *Service) do(req *http.Request) ([]byte, int, error) {
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, 0, fmt.Errorf("http.Client.Do: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
-	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("io.ReadAll: %w", err)
-	}
-	return body, resp.StatusCode, nil
 }

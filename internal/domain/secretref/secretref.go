@@ -34,7 +34,6 @@ var secretPaths = [][]string{
 	{"variables", "*"},
 	{"backend", "headers", "*"},
 	{"backend", "query_params", "*"},
-	{"jwt", "*", "client", "secret"}, // root provider's default client
 }
 
 // IsSecretPath reports whether a full path addresses a secret leaf.

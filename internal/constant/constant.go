@@ -1,7 +1,5 @@
 package constant
 
-import "strings"
-
 const (
 	ServiceName = "ruto"
 )
@@ -17,88 +15,6 @@ func AuthModeIsValid(v string) bool {
 
 // AuthAPIKeyDefaultHeader carries the api key when an api_key method sets no header.
 const AuthAPIKeyDefaultHeader = "x-api-key"
-
-// JwtCookiePrefix starts the name of the cookie that holds a provider's JWT:
-// one cookie per provider, so logins of different providers live side by side
-// on the same host. An app with an audience of its own gets a cookie for its
-// token, named after the provider and the app's path prefix.
-const JwtCookiePrefix = "ruto_"
-
-// JwtRefreshCookiePrefix and JwtLoginCookiePrefix start the names of the
-// refresh cookie and of the short-lived login (state + PKCE) cookie of a
-// provider. Their "-" keeps them apart from any access cookie name.
-const (
-	JwtRefreshCookiePrefix = "ruto-rt_"
-	JwtLoginCookiePrefix   = "ruto-login_"
-)
-
-// JwtFrontCookiePrefix starts the name of the cookie with a front's token
-// (the shared token exchanged for the front's client), which the broker
-// builds the front's ID token and userinfo on. It lives on the front's broker
-// path and never travels with an app request.
-const JwtFrontCookiePrefix = "ruto-ft_"
-
-func JwtCookieName(provider string) string {
-	return JwtCookiePrefix + provider
-}
-
-// JwtAppCookieName names the cookie of an app's token (see App.Jwt):
-// "ruto_<provider>_<prefix>", the prefix slashes replaced, since a cookie name
-// may not contain "/".
-func JwtAppCookieName(provider, appPathPrefix string) string {
-	return JwtCookiePrefix + provider + "_" + PathSlug(appPathPrefix)
-}
-
-// PathSlug turns an app path prefix ("/shop/api") into a cookie-safe suffix
-// ("shop.api").
-func PathSlug(appPathPrefix string) string {
-	return strings.ReplaceAll(strings.Trim(appPathPrefix, "/"), "/", ".")
-}
-
-// JwtFrontCookieName names the cookie of a front's token:
-// "ruto-ft_<provider>_<client>".
-func JwtFrontCookieName(provider, client string) string {
-	return JwtFrontCookiePrefix + provider + "_" + client
-}
-
-// BrokerPath is where the broker serves a front: /_auth/<provider>/<client>.
-func BrokerPath(provider, client string) string {
-	return "/" + AuthRoutePrefix + "/" + provider + "/" + client
-}
-
-// brokerReservedClients are taken by the gateway's own routes under
-// /_auth/<provider>: callback is the provider's return address of the
-// gateway's client.
-var brokerReservedClients = map[string]struct{}{
-	"callback": {}, "logged-out": {},
-}
-
-// BrokerClientIsValid tells a client name the broker serves: one plain path
-// segment that is also a valid cookie name part, not taken by the gateway's
-// own routes.
-func BrokerClientIsValid(client string) bool {
-	if _, reserved := brokerReservedClients[client]; reserved {
-		return false
-	}
-	if client == "" || len(client) > 128 {
-		return false
-	}
-	for i, c := range client {
-		alnum := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9'
-		if !alnum && (i == 0 || (c != '.' && c != '_' && c != '~' && c != '-')) {
-			return false
-		}
-	}
-	return true
-}
-
-// AuthRoutePrefix is the first path segment of the gateway's own login routes
-// (/_auth/<provider>/callback and the broker's /_auth/<provider>/<client>/…);
-// no app prefix and no endpoint path may start with it.
-const AuthRoutePrefix = "_auth"
-
-// OidcScopeOpenid is the scope every OpenID Connect login must ask for.
-const OidcScopeOpenid = "openid"
 
 const (
 	LoggingModeExtend  = "extend"
