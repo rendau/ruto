@@ -22,7 +22,7 @@ st,rep=call('POST','/usr/login',{'username':'admin','password':'ruto-test-admin'
 st,root=call('GET','/root'); print('root get', st)
 root.update({
   'base_url':'http://localhost:8088',
-  'cors':{'enabled':True,'allow_credentials':True,'max_age':'1h','allow_origins':['http://localhost:5181','http://localhost:5182','http://localhost:5183','http://localhost:5184','http://localhost:5185'],'allow_methods':['*'],'allow_headers':['*']},
+  'cors':{'enabled':True,'allow_credentials':True,'max_age':'1h','allow_origins':['http://localhost:5183','http://localhost:5184','http://localhost:5185'],'allow_methods':['*'],'allow_headers':['*']},
   'jwt':[{'name':'corp','issuer':'http://localhost:8180/realms/corp','public_url':'http://localhost:8088',
           'client':{'id':'ruto','secret':'ruto-secret','scopes':['openid','profile','email']},'exchange_scopes':['roles']}],
 })

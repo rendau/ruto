@@ -9,7 +9,7 @@
   "roles": {
     "realm": [{"name": "auditor"}],
     "client": {"shop": [{"name": "manager"}], "orders": [{"name": "manager"}],
-               "crm": [{"name": "user"}], "cart-fe": [{"name": "user"}]}
+               "crm": [{"name": "user"}], "cart-fe": [{"name": "user"}], "shell": [{"name": "user"}]}
   },
   "clients": [
     {
@@ -22,7 +22,7 @@
       "fullScopeAllowed": true,
       "redirectUris": ["http://localhost:8088/_auth/corp/callback"],
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:5181/*##http://localhost:5182/*##http://localhost:5183/*##http://localhost:5184/*##http://localhost:5185/*##http://localhost:8088/*",
+        "post.logout.redirect.uris": "http://localhost:5183/*##http://localhost:5184/*##http://localhost:5185/*##http://localhost:8088/*",
         "standard.token.exchange.enabled": "true"
       },
       "defaultClientScopes": ["profile", "email", "basic"],
@@ -59,6 +59,12 @@
       "enabled": true,
       "bearerOnly": true,
       "standardFlowEnabled": false
+    },
+    {
+      "clientId": "shell",
+      "enabled": true,
+      "bearerOnly": true,
+      "standardFlowEnabled": false
     }
   ],
   "users": [
@@ -72,7 +78,7 @@
       "attributes": {"tenant_id": ["t-42"]},
       "credentials": [{"type": "password", "value": "alice-pass", "temporary": false}],
       "realmRoles": ["auditor"],
-      "clientRoles": {"shop": ["manager"], "orders": ["manager"], "crm": ["user"], "cart-fe": ["user"]}
+      "clientRoles": {"shop": ["manager"], "orders": ["manager"], "crm": ["user"], "cart-fe": ["user"], "shell": ["user"]}
     },
     {
       "username": "bob",
