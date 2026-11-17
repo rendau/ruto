@@ -13,6 +13,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/samber/lo"
+
+	"github.com/rendau/ruto/internal/constant"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/service/oidc"
@@ -70,13 +73,22 @@ func (s *Service) SetProviders(snapshot *rootModel.Root) {
 			issuer:      p.Issuer,
 			internalUrl: p.InternalUrl,
 			client:      p.Client.Clone(),
-			scopes:      append([]string(nil), p.ExchangeScopes...),
+			scopes:      exchangeScopes(p.ExchangeScopes),
 			secure:      strings.HasPrefix(publicUrl, "https://"),
 		}
 	}
 	s.mu.Lock()
 	s.providers = providers
 	s.mu.Unlock()
+}
+
+// exchangeScopes are the scopes asked for in an exchange: the provider's
+// exchange_scopes and always openid, so that the token also serves at the
+// provider's userinfo (the broker asks it with a front's token, and an app
+// token may be a front's token too: Keycloak refuses userinfo without openid).
+func exchangeScopes(configured []string) []string {
+	scopes := append([]string{constant.OidcScopeOpenid}, configured...)
+	return lo.Uniq(scopes)
 }
 
 func (s *Service) provider(name string) *provider {

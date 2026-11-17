@@ -18,6 +18,7 @@ import (
 	snapshotModel "github.com/rendau/ruto/internal/domain/snapshot/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/authflow"
 	"github.com/rendau/ruto/internal/service/gw/service/apptoken"
+	gwAuthModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/service/rutokey"
 )
 
@@ -46,6 +47,8 @@ func newFlow(t *testing.T) *flow {
 	authflow.SetCookieKey(snapshotModel.CookieKeyFrom("broker flow test"))
 	t.Cleanup(func() { authflow.SetCookieKey(nil) })
 	f := &flow{t: t, sessions: newFakeSessions(t), keys: newKeys(t), used: newFakeUsed()}
+	gwAuthModel.SetRutoKids(f.keys.Kids())
+	t.Cleanup(func() { gwAuthModel.SetRutoKids(nil) })
 	f.h = newRouterWith(t, Deps{
 		Meta: &fakeMeta{docs: map[string]string{providerIssuer: keycloakDoc}},
 		Keys: f.keys,
@@ -333,8 +336,8 @@ func TestCodeGrantChecks(t *testing.T) {
 	f.sessions.logout(authflow.ErrNoSession)
 	assert.Equal(t, "invalid_grant", tokenErrorOf(t, f.exchange(codeForm(code))))
 
-	rec = f.exchange(url.Values{"grant_type": {"refresh_token"}, "refresh_token": {"x"}, "client_id": {"crm"}})
-	assert.Equal(t, "unsupported_grant_type", tokenErrorOf(t, rec), "the next stage")
+	rec = f.exchange(url.Values{"grant_type": {"password"}, "username": {"alice"}, "client_id": {"crm"}})
+	assert.Equal(t, "unsupported_grant_type", tokenErrorOf(t, rec))
 	assert.Equal(t, http.StatusMethodNotAllowed, get(t, f.h, crmBase+"/token").Code)
 }
 

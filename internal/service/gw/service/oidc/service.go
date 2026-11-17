@@ -144,6 +144,7 @@ func (s *Service) load(ctx context.Context, discoveryUrl, issuer, internalUrl st
 
 	meta.TokenEndpoint = rebase(meta.TokenEndpoint, issuer, internalUrl)
 	meta.JwksUri = rebase(meta.JwksUri, issuer, internalUrl)
+	meta.UserinfoEndpoint = rebase(meta.UserinfoEndpoint, issuer, internalUrl)
 
 	return meta, nil
 }
@@ -158,6 +159,28 @@ func rebase(endpoint, issuer, internalUrl string) string {
 		return internalUrl + rest
 	}
 	return endpoint
+}
+
+// Userinfo calls the provider's userinfo endpoint with token and returns the
+// answer as it is; the error is about not getting one.
+func (s *Service) Userinfo(ctx context.Context, endpoint, token string) (*UserinfoResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("http.NewRequest: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("userinfo %s: %w", endpoint, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	if err != nil {
+		return nil, fmt.Errorf("userinfo %s: io.ReadAll: %w", endpoint, err)
+	}
+	return &UserinfoResponse{Status: resp.StatusCode, ContentType: resp.Header.Get("Content-Type"), Body: body}, nil
 }
 
 func (s *Service) do(req *http.Request) ([]byte, int, error) {

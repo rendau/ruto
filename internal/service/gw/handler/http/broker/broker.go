@@ -10,10 +10,8 @@
 // by the CORS origins.
 //
 // What is served: the discovery document, ruto's public keys, the
-// authorization endpoint and the code exchange at the token endpoint. The
-// provider's other pages (account, registration) are sent to the provider;
-// userinfo, the token refresh and logout are not built yet (404 and
-// unsupported_grant_type).
+// authorization, token, userinfo and end session endpoints. The provider's
+// other pages (account, registration) are sent to the provider.
 package broker
 
 import (
@@ -51,9 +49,17 @@ type KeySet interface {
 // session in the cookies and the login at the provider.
 type Sessions interface {
 	Session(w http.ResponseWriter, r *http.Request) (*authflow.Session, error)
+	FreshSession(w http.ResponseWriter, r *http.Request) (*authflow.Session, error)
 	LoginPath(returnPath, prompt string) string
+	Logout(w http.ResponseWriter, r *http.Request, redirect, state string)
 	ParseProviderToken(token string) (jwt.MapClaims, error)
 	SetCookie(w http.ResponseWriter, name, value, path string, maxAge int)
+	ClearCookie(w http.ResponseWriter, name, path string)
+}
+
+// UserinfoGetter calls the provider's userinfo endpoint.
+type UserinfoGetter interface {
+	Userinfo(ctx context.Context, endpoint, token string) (*oidc.UserinfoResponse, error)
 }
 
 // Exchanger trades the shared token for a token with another audience.
@@ -73,6 +79,7 @@ type Deps struct {
 	Sessions  map[string]Sessions // by provider name
 	Exchanger Exchanger
 	Used      UsedMarker
+	Userinfo  UserinfoGetter
 }
 
 type unit struct {
@@ -201,9 +208,11 @@ func (u *unit) serve(w http.ResponseWriter, r *http.Request) {
 	case "token_endpoint":
 		u.token(w, r, client)
 		return
-	case "":
-	default: // not built yet; never sent to the provider
-		http.NotFound(w, r)
+	case "userinfo_endpoint":
+		u.userinfo(w, r, client, meta)
+		return
+	case "end_session_endpoint":
+		u.endSession(w, r, client)
 		return
 	}
 

@@ -15,6 +15,9 @@ type Metadata struct {
 	TokenEndpoint         string `json:"token_endpoint"`
 	EndSessionEndpoint    string `json:"end_session_endpoint"`
 	JwksUri               string `json:"jwks_uri"`
+	// UserinfoEndpoint is called by the gateway too (the broker passes it on),
+	// so it is moved onto the internal address like TokenEndpoint.
+	UserinfoEndpoint string `json:"userinfo_endpoint"`
 
 	// Document is the whole discovery document as the provider published it,
 	// with public endpoints only: the broker copies its parts for the fronts.
@@ -29,6 +32,13 @@ func (m *Metadata) PublicEndpoint(name string) string {
 		return ""
 	}
 	return value
+}
+
+// UserinfoResponse is the provider's userinfo answer as it is.
+type UserinfoResponse struct {
+	Status      int
+	ContentType string
+	Body        []byte
 }
 
 // TokenResponse is the token endpoint's answer to a code exchange or a

@@ -64,6 +64,7 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 		}),
 		Exchanger: apptoken.Ins(),
 		Used:      oidc.Ins(),
+		Userinfo:  oidc.Ins(),
 	})
 	sdkjs.Register(router)
 

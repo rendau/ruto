@@ -15,6 +15,9 @@
      The backend <code>/crm-api</code> has the audience <code>crm</code>: the login fills its cookie too.</p>
   <button id="login">Login</button>
   <button id="call">Call crm-api</button>
+  <button id="refresh">Refresh</button>
+  <button id="userinfo">Userinfo</button>
+  <button id="logout">Logout</button>
   <button id="logout-local">Forget tokens</button>
   <pre id="out">…</pre>
   <script type="module">
@@ -27,7 +30,10 @@
 
     const kc = new Keycloak({ url: `${gateway}/_auth/corp/crm`, realm: 'corp', clientId: 'crm' });
     window.__kc = kc;
-    window.__state = { initError: null, authenticated: false, api: null };
+    // calls: what the keep-alive loop saw — work requests, refreshes, a login asked for
+    window.__state = { initError: null, authenticated: false, api: null, userinfo: null,
+      calls: { ok: 0, unauthorized: 0, other: 0, refreshed: 0, refreshFailed: 0, loginRequired: 0 } };
+    kc.onAuthRefreshError = () => { window.__state.calls.loginRequired++; };
 
     try {
       // check-sso: a redirect with prompt=none — a live gateway session gives a code without a form.
@@ -52,9 +58,7 @@
     window.__state.summary = summary;
     show(summary());
 
-    document.getElementById('login').onclick = () => kc.login();
-    document.getElementById('logout-local').onclick = () => { kc.clearToken(); show(summary()); };
-    document.getElementById('call').onclick = async () => {
+    const callApi = async () => {
       // the ruto token goes in Authorization as an SDK would send it; the gateway takes the cookies
       const rep = await fetch(`${gateway}/crm-api/hello`, {
         credentials: 'include',
@@ -64,6 +68,46 @@
       let parsed = body;
       try { parsed = JSON.parse(body); } catch (_) {}
       window.__state.api = { status: rep.status, body: parsed };
+      return rep.status;
+    };
+
+    // keep-alive: like a working page, renew the tokens when they are about to expire and call the API
+    const tick = async () => {
+      if (!kc.authenticated) return;
+      try {
+        if (await kc.updateToken(60)) window.__state.calls.refreshed++;
+      } catch (_) {
+        window.__state.calls.refreshFailed++;
+        return;
+      }
+      const status = await callApi();
+      const calls = window.__state.calls;
+      if (status === 200) calls.ok++; else if (status === 401) calls.unauthorized++; else calls.other++;
+    };
+    setInterval(tick, 20000);
+    window.__state.tick = tick;
+
+    document.getElementById('login').onclick = () => kc.login();
+    document.getElementById('refresh').onclick = async () => {
+      try { await kc.updateToken(-1); window.__state.calls.refreshed++; } catch (_) { window.__state.calls.refreshFailed++; }
+      show(summary());
+    };
+    // kc.loadUserInfo() sends no cookies, and the broker finds the session by them: asked by hand
+    const askUserinfo = async () => {
+      const rep = await fetch(`${gateway}/_auth/corp/crm/realms/corp/protocol/openid-connect/userinfo`, {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${kc.token}` },
+      });
+      const body = rep.headers.get('content-type')?.includes('json') ? await rep.json() : await rep.text();
+      window.__state.userinfo = { status: rep.status, body };
+      return window.__state.userinfo;
+    };
+    window.__state.askUserinfo = askUserinfo;
+    document.getElementById('userinfo').onclick = async () => show(await askUserinfo());
+    document.getElementById('logout').onclick = () => kc.logout({ redirectUri: `${location.origin}/crm/` });
+    document.getElementById('logout-local').onclick = () => { kc.clearToken(); show(summary()); };
+    document.getElementById('call').onclick = async () => {
+      await callApi();
       show(window.__state.api);
     };
   </script>

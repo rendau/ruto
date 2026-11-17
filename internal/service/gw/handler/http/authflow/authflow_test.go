@@ -694,3 +694,31 @@ func TestMe(t *testing.T) {
 	require.NoError(t, err)
 	assert.JSONEq(t, string(want), rec.Body.String())
 }
+
+func TestLogoutPassesState(t *testing.T) {
+	op := newFakeOP(t)
+	snapshot := rootModel.NewEmpty()
+	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
+	SetCookieKey(snapshotModel.CookieKeyFrom("test-admin-secret"))
+	t.Cleanup(func() { SetCookieKey(nil) })
+	require.NoError(t, snapshot.Normalize())
+	snapshot.InheritDown()
+	units := Register(chi.NewRouter(), snapshot)
+	require.Contains(t, units, "corp")
+
+	// with the provider's id token: the provider gets the state to pass on
+	req := httptest.NewRequest(http.MethodGet, "/_auth/corp/crm/logout", nil)
+	req.AddCookie(sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "rt", IdToken: "idt"}))
+	rec := httptest.NewRecorder()
+	units["corp"].Logout(rec, req, "https://crm.example.com/bye", "s-1")
+	endUrl, err := url.Parse(rec.Header().Get("Location"))
+	require.NoError(t, err)
+	assert.Equal(t, op.issuer+"/logout", endUrl.Scheme+"://"+endUrl.Host+endUrl.Path)
+	assert.Equal(t, "s-1", endUrl.Query().Get("state"))
+	assert.Equal(t, "https://crm.example.com/bye", endUrl.Query().Get("post_logout_redirect_uri"))
+
+	// without a session: straight back, the state added here
+	rec = httptest.NewRecorder()
+	units["corp"].Logout(rec, httptest.NewRequest(http.MethodGet, "/x", nil), "https://crm.example.com/bye?a=1", "s-1")
+	assert.Equal(t, "https://crm.example.com/bye?a=1&state=s-1", rec.Header().Get("Location"))
+}

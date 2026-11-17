@@ -342,6 +342,15 @@ func (u *Unit) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	u.Logout(w, r, redirect, "")
+}
+
+// Logout drops the session cookies with the app tokens got for it and sends
+// the browser to redirect (already checked by the caller) through the
+// provider's end_session_endpoint when the provider has one and the session
+// has its id token. state, when not empty, comes back with the redirect: the
+// provider passes it on, otherwise it is added here.
+func (u *Unit) Logout(w http.ResponseWriter, r *http.Request, redirect, state string) {
 	session := u.readSession(r)
 	u.clearCookie(w, u.cookieName, "/")
 	u.clearCookie(w, u.refreshCookieName(), u.basePath)
@@ -358,12 +367,23 @@ func (u *Unit) logout(w http.ResponseWriter, r *http.Request) {
 			query.Set("id_token_hint", session.IdToken)
 			query.Set("client_id", u.client.Id)
 			query.Set("post_logout_redirect_uri", redirect)
+			if state != "" {
+				query.Set("state", state)
+			}
 			endUrl.RawQuery = query.Encode()
 			http.Redirect(w, r, endUrl.String(), http.StatusFound)
 			return
 		}
 	}
 
+	if state != "" {
+		if target, err := url.Parse(redirect); err == nil {
+			query := target.Query()
+			query.Set("state", state)
+			target.RawQuery = query.Encode()
+			redirect = target.String()
+		}
+	}
 	http.Redirect(w, r, redirect, http.StatusFound)
 }
 

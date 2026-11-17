@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/rendau/ruto/internal/service/gw/handler/http/authflow"
+	"github.com/rendau/ruto/internal/service/gw/service/oidc"
 )
 
 const providerIssuer = "http://kc.test/realms/corp"
@@ -36,6 +37,10 @@ type fakeSessions struct {
 
 	exchangeErr error
 	exchanges   atomic.Int32
+
+	renewals      atomic.Int32
+	loggedOut     []string // redirect|state of every logout
+	userinfoCalls []string // endpoints
 }
 
 func newFakeSessions(t *testing.T) *fakeSessions {
@@ -167,4 +172,47 @@ func publicKeysOf(t *testing.T, jwks []byte) map[string]*ecdsa.PublicKey {
 		result[item.Kid] = key
 	}
 	return result
+}
+
+// FreshSession renews the shared token, as the gateway does when less than
+// half of its life is left.
+func (f *fakeSessions) FreshSession(w http.ResponseWriter, r *http.Request) (*authflow.Session, error) {
+	f.mu.Lock()
+	current, err := f.session, f.sessionErr
+	f.mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	f.renewals.Add(1)
+	f.login(current.Claims["sub"].(string))
+	return f.Session(w, r)
+}
+
+func (f *fakeSessions) Logout(w http.ResponseWriter, r *http.Request, redirect, state string) {
+	f.mu.Lock()
+	f.loggedOut = append(f.loggedOut, redirect+"|"+state)
+	f.session, f.sessionErr = nil, authflow.ErrNoSession
+	f.mu.Unlock()
+	http.Redirect(w, r, redirect, http.StatusFound)
+}
+
+func (f *fakeSessions) ClearCookie(w http.ResponseWriter, name, path string) {
+	http.SetCookie(w, &http.Cookie{Name: name, Value: "", Path: path, MaxAge: -1})
+}
+
+// Userinfo answers with the claims of the token it was asked with, like a
+// provider's userinfo.
+func (f *fakeSessions) Userinfo(_ context.Context, endpoint, token string) (*oidc.UserinfoResponse, error) {
+	f.mu.Lock()
+	f.userinfoCalls = append(f.userinfoCalls, endpoint)
+	f.mu.Unlock()
+	claims, err := f.ParseProviderToken(token)
+	if err != nil {
+		return &oidc.UserinfoResponse{Status: http.StatusUnauthorized, ContentType: "text/plain", Body: []byte("invalid token")}, nil
+	}
+	body, _ := json.Marshal(map[string]any{
+		"sub": claims["sub"], "preferred_username": claims["preferred_username"],
+		"aud_of_token": claims["aud"], "resource_access": claims["resource_access"],
+	})
+	return &oidc.UserinfoResponse{Status: http.StatusOK, ContentType: "application/json", Body: body}, nil
 }

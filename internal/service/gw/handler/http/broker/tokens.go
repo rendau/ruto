@@ -29,16 +29,26 @@ type tokenResponse struct {
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int    `json:"expires_in"`
 	RefreshToken string `json:"refresh_token"`
-	IdToken      string `json:"id_token"`
+	IdToken      string `json:"id_token,omitempty"`
 	Scope        string `json:"scope,omitempty"`
 }
 
-// issueTokens builds ruto's tokens of the front. They live as long as the
-// shared token: the front refreshes them when it would have to be renewed.
-// The gateway does not take them as credentials (see auth model IsRutoToken);
-// the person's data and roles in them, from the front token, are for the
-// front's SDK, which reads them from the ID and the access token alike.
-func (u *unit) issueTokens(client string, code *loginCode, session *authflow.Session, data jwt.MapClaims) (*tokenResponse, error) {
+// grant is what ruto's tokens are issued for: the person, the scope the front
+// asked for and, at a login, its nonce.
+type grant struct {
+	Sub      string
+	Nonce    string
+	Scope    string
+	AuthTime int64
+}
+
+// issueTokens builds ruto's tokens of the front; withId adds the ID token.
+// They live as long as the shared token: the front refreshes them when it
+// would have to be renewed. The gateway does not take them as credentials
+// (see auth model IsRutoToken); the person's data and roles in them, from the
+// front token, are for the front's SDK, which reads them from the ID and the
+// access token alike.
+func (u *unit) issueTokens(client string, code *grant, session *authflow.Session, data jwt.MapClaims, withId bool) (*tokenResponse, error) {
 	now := time.Now()
 	person := maps.Clone(data)
 	for _, name := range serviceClaims {
@@ -76,11 +86,16 @@ func (u *unit) issueTokens(client string, code *loginCode, session *authflow.Ses
 	refresh := common(jwt.MapClaims{}, sessionEnd)
 	refresh["typ"] = "Refresh"
 	refresh["jti"] = randomToken(16)
+	if code.Scope != "" {
+		refresh["scope"] = code.Scope // the refreshed tokens keep it
+	}
 
 	rep := &tokenResponse{TokenType: "Bearer", ExpiresIn: int(session.Expires.Sub(now).Seconds()), Scope: code.Scope}
 	var err error
-	if rep.IdToken, err = u.deps.Keys.Sign(id); err != nil {
-		return nil, fmt.Errorf("id token: %w", err)
+	if withId {
+		if rep.IdToken, err = u.deps.Keys.Sign(id); err != nil {
+			return nil, fmt.Errorf("id token: %w", err)
+		}
 	}
 	if rep.AccessToken, err = u.deps.Keys.Sign(access); err != nil {
 		return nil, fmt.Errorf("access token: %w", err)

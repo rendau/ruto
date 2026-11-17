@@ -19,15 +19,20 @@ var (
 	ErrUnavailable = errors.New("authflow: login provider is unavailable")
 )
 
-// sessionMargin: an access token with less time left is renewed before it is
-// handed on, so that what is built on it does not expire on the way.
-const sessionMargin = 10 * time.Second
+const (
+	// sessionMargin: an access token with less time left is renewed before it
+	// is handed on, so that what is built on it does not expire on the way.
+	sessionMargin = 10 * time.Second
+	// freshMinimum stands for half the life of an access token without iat.
+	freshMinimum = time.Minute
+)
 
 // Session is the live login session of a request.
 type Session struct {
 	AccessToken string // the shared access token (A), verified
 	Claims      jwtv5.MapClaims
 	Expires     time.Time // of the access token
+	IssuedAt    time.Time // of the access token; zero when it has no iat
 	// SessionExpires is when the session can no longer be renewed; zero when
 	// unknown.
 	SessionExpires time.Time
@@ -41,13 +46,35 @@ type Session struct {
 // refresh cookie, the fresh cookies set on w. The error is ErrNoSession or
 // ErrUnavailable, wrapped.
 func (u *Unit) Session(w http.ResponseWriter, r *http.Request) (*Session, error) {
+	return u.session(w, r, func(s *Session) bool {
+		return time.Until(s.Expires) > sessionMargin
+	})
+}
+
+// FreshSession is Session for a front renewing its own tokens, which live as
+// long as the access token: the access token is renewed once less than half
+// of its life is left, so that the front gets tokens it does not have to
+// renew again at once.
+func (u *Unit) FreshSession(w http.ResponseWriter, r *http.Request) (*Session, error) {
+	return u.session(w, r, func(s *Session) bool {
+		left := time.Until(s.Expires)
+		if s.IssuedAt.IsZero() {
+			return left > freshMinimum
+		}
+		return left > sessionMargin && left > s.Expires.Sub(s.IssuedAt)/2
+	})
+}
+
+// session returns the access cookie's session when keep accepts it,
+// otherwise the session renewed by the refresh cookie.
+func (u *Unit) session(w http.ResponseWriter, r *http.Request, keep func(*Session) bool) (*Session, error) {
 	refresh := u.readSession(r)
 
 	var current *Session
 	if cookie, err := r.Cookie(u.cookieName); err == nil && cookie.Value != "" {
 		current, _ = u.newSession(cookie.Value, refresh)
 	}
-	if current != nil && time.Until(current.Expires) > sessionMargin {
+	if current != nil && keep(current) {
 		return current, nil
 	}
 
@@ -78,6 +105,9 @@ func (u *Unit) newSession(accessToken string, refresh sessionCookie) (*Session, 
 		return nil, errors.New("access token has no exp")
 	}
 	session := &Session{AccessToken: accessToken, Claims: claims, Expires: exp.Time}
+	if iat, iatErr := claims.GetIssuedAt(); iatErr == nil && iat != nil {
+		session.IssuedAt = iat.Time
+	}
 	if refresh.Expires > 0 {
 		session.SessionExpires = time.Unix(refresh.Expires, 0)
 	}
@@ -129,6 +159,11 @@ func (u *Unit) PublicUrl() string {
 // cookies (SameSite=Lax, Secure on an https gateway).
 func (u *Unit) SetCookie(w http.ResponseWriter, name, value, path string, maxAge int) {
 	u.setCookie(w, name, value, path, maxAge)
+}
+
+// ClearCookie drops a cookie set by SetCookie.
+func (u *Unit) ClearCookie(w http.ResponseWriter, name, path string) {
+	u.clearCookie(w, name, path)
 }
 
 // Seal encrypts plain with the cookie key for the purpose named by name (see

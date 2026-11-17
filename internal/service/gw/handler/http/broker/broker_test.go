@@ -65,6 +65,9 @@ func (f *fakeMeta) Metadata(_ context.Context, issuer, _ string) (*oidc.Metadata
 		return nil, f.err
 	}
 	meta := new(oidc.Metadata)
+	if err := json.Unmarshal([]byte(f.docs[issuer]), meta); err != nil {
+		return nil, err
+	}
 	if err := json.Unmarshal([]byte(f.docs[issuer]), &meta.Document); err != nil {
 		return nil, err
 	}
@@ -102,6 +105,9 @@ func newRouterWith(t *testing.T, deps Deps, sessions *fakeSessions) http.Handler
 	}
 	if deps.Used == nil {
 		deps.Used = newFakeUsed()
+	}
+	if deps.Userinfo == nil {
+		deps.Userinfo = sessions
 	}
 	router := chi.NewRouter()
 	// the gateway's own routes of a provider, as authflow registers them
@@ -255,15 +261,19 @@ func TestProviderPagesWithRutoToken(t *testing.T) {
 func TestOwnEndpointsAreNotSentToTheProvider(t *testing.T) {
 	h := newRouter(t, &fakeMeta{docs: map[string]string{"http://kc.test/realms/corp": keycloakDoc}}, newKeys(t))
 
-	for p, status := range map[string]int{
-		"auth":     http.StatusBadRequest, // served: no redirect_uri
-		"token":    http.StatusMethodNotAllowed,
-		"userinfo": http.StatusNotFound, // not built yet
-		"logout":   http.StatusNotFound,
+	// in order: the logout ends the session
+	for _, c := range []struct {
+		path   string
+		status int
+	}{
+		{"auth", http.StatusBadRequest}, // served: no redirect_uri
+		{"token", http.StatusMethodNotAllowed},
+		{"userinfo", http.StatusOK},  // served: by the session in the cookies
+		{"logout", http.StatusFound}, // served: to the gateway root
 	} {
-		rec := get(t, h, "/_auth/corp/crm/realms/corp/protocol/openid-connect/"+p+"?client_id=crm")
-		assert.Equal(t, status, rec.Code, p)
-		assert.Empty(t, rec.Header().Get("Location"), p)
+		rec := get(t, h, "/_auth/corp/crm/realms/corp/protocol/openid-connect/"+c.path+"?client_id=crm")
+		assert.Equal(t, c.status, rec.Code, c.path)
+		assert.NotContains(t, rec.Header().Get("Location"), "kc.test", c.path)
 	}
 }
 
