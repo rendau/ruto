@@ -4,7 +4,6 @@ import {
   NAlert,
   NButton,
   NCheckbox,
-  NDynamicTags,
   NIcon,
   NInput,
   NInputNumber,
@@ -14,14 +13,7 @@ import {
 } from "naive-ui";
 import { AddOutline, SaveOutline } from "@vicons/ionicons5";
 import { getRoot, setRoot } from "@/api/root";
-import {
-  emptyAuth,
-  emptyCompression,
-  emptyJwtClient,
-  emptyLogging,
-  emptyRootJwt,
-  normalizeRootJwt
-} from "@/api/normalize";
+import { emptyAuth, emptyCompression, emptyLogging, emptyRootJwt, normalizeRootJwt } from "@/api/normalize";
 import { apiErrorMessage } from "@/api/http";
 import { useRootStore } from "@/stores/root";
 import { useAuthStore } from "@/stores/auth";
@@ -32,7 +24,6 @@ import SectionCard from "@/components/common/SectionCard.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
-import JwtClientEditor from "@/components/editors/JwtClientEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import SeenOriginsPanel from "@/components/root/SeenOriginsPanel.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
@@ -114,24 +105,12 @@ function removeJwtProvider(index: number): void {
   jwtProviders.value.splice(index, 1);
 }
 
-// The default login client is optional: without it the gateway does not log
-// users in through this provider.
-function toggleDefaultClient(provider: RootJwt, enabled: boolean): void {
-  provider.client = enabled ? emptyJwtClient() : undefined;
-}
-
 function cleanProvider(item: RootJwt): RootJwt {
-  const client = item.client
-    ? { id: item.client.id.trim(), secret: item.client.secret.trim(), scopes: item.client.scopes }
-    : undefined;
   return {
     name: item.name.trim(),
     jwk_url: item.jwk_url.trim(),
     issuer: item.issuer.trim(),
-    internal_url: item.internal_url.trim(),
-    public_url: item.public_url.trim(),
-    client,
-    exchange_scopes: (item.exchange_scopes || []).map((scope) => scope.trim()).filter(Boolean)
+    internal_url: item.internal_url.trim()
   };
 }
 
@@ -262,7 +241,7 @@ onMounted(load);
 
         <SectionCard
           title="JWT providers"
-          description="Who signs the tokens JWT auth trusts. Auth methods refer to a provider by name; a provider without a name serves only methods with no provider set. With an issuer the gateway reads the provider's OpenID discovery document and with a login client logs users in itself: fronts log in through its OpenID Connect broker (/_auth/<name>/<front client id>); the provider sends the browser back to /_auth/<name>/callback"
+          description="Who signs the tokens JWT auth trusts: the gateway checks the bearer token of a request by the provider's keys. Auth methods refer to a provider by name; a provider without a name serves only methods with no provider set. With an issuer the gateway takes the keys address from the provider's OpenID discovery document"
         >
           <div class="providers">
             <RecordCard
@@ -276,69 +255,39 @@ onMounted(load);
                 <span class="provider__name" :class="{ muted: !value.name.trim() }">
                   {{ value.name.trim() || "no name" }}
                 </span>
-                <NTag
-                  size="small"
-                  :bordered="false"
-                  :type="value.issuer.trim() ? 'success' : 'default'"
-                >
-                  {{ value.issuer.trim() ? "login" : "keys only" }}
-                </NTag>
                 <span class="provider__url mono">
                   {{ value.issuer.trim() || value.jwk_url.trim() }}
                 </span>
               </template>
-                <div class="provider-row">
-                  <label class="field provider-row__name">
-                    <span class="field__label">Name</span>
-                    <NInput v-model:value="value.name" placeholder="e.g. corp" />
-                  </label>
-                  <label class="field provider-row__field">
-                    <span class="field__label">JWKS url (optional with an issuer)</span>
-                    <NInput
-                      v-model:value="value.jwk_url"
-                      placeholder="e.g. https://issuer/.well-known/jwks.json"
-                    />
-                  </label>
-                </div>
-                <div class="provider-row">
-                  <label class="field provider-row__field">
-                    <span class="field__label">Issuer (enables login)</span>
-                    <NInput
-                      v-model:value="value.issuer"
-                      placeholder="e.g. https://id.example.com/realms/corp"
-                    />
-                  </label>
-                  <label class="field provider-row__field">
-                    <span class="field__label">Internal url (for the gateway's own calls)</span>
-                    <NInput
-                      v-model:value="value.internal_url"
-                      placeholder="e.g. http://keycloak:8080/realms/corp"
-                    />
-                  </label>
-                </div>
-                <template v-if="value.issuer.trim()">
-                  <label class="field">
-                    <span class="field__label">Gateway public url (for the return address)</span>
-                    <NInput v-model:value="value.public_url" placeholder="default: base URL" />
-                  </label>
-                  <NCheckbox
-                    :checked="!!value.client"
-                    @update:checked="(checked: boolean) => toggleDefaultClient(value, checked)"
-                  >
-                    Default login client (shared login for every app naming this provider)
-                  </NCheckbox>
-                  <JwtClientEditor v-if="value.client" v-model="value.client" />
-                  <div class="field">
-                    <span class="field__label">Exchange scopes</span>
-                    <NDynamicTags
-                      :value="value.exchange_scopes || []"
-                      @update:value="(scopes: string[]) => (value.exchange_scopes = scopes)"
-                    />
-                    <span class="muted field__hint">
-                      Scopes asked for when the gateway exchanges the shared token for an app token (Keycloak: roles)
-                    </span>
-                  </div>
-                </template>
+              <div class="provider-row">
+                <label class="field provider-row__name">
+                  <span class="field__label">Name</span>
+                  <NInput v-model:value="value.name" placeholder="e.g. corp" />
+                </label>
+                <label class="field provider-row__field">
+                  <span class="field__label">JWKS url (optional with an issuer)</span>
+                  <NInput
+                    v-model:value="value.jwk_url"
+                    placeholder="e.g. https://issuer/.well-known/jwks.json"
+                  />
+                </label>
+              </div>
+              <div class="provider-row">
+                <label class="field provider-row__field">
+                  <span class="field__label">Issuer (keys from its discovery document)</span>
+                  <NInput
+                    v-model:value="value.issuer"
+                    placeholder="e.g. https://id.example.com/realms/corp"
+                  />
+                </label>
+                <label class="field provider-row__field">
+                  <span class="field__label">Internal url (issuer address inside the cluster)</span>
+                  <NInput
+                    v-model:value="value.internal_url"
+                    placeholder="e.g. http://keycloak:8080/realms/corp"
+                  />
+                </label>
+              </div>
             </RecordCard>
             <NButton dashed block @click="addJwtProvider()">
               <template #icon><NIcon :component="AddOutline" /></template>
@@ -426,10 +375,6 @@ onMounted(load);
 .field__label {
   font-size: 12px;
   color: var(--c-text-3);
-}
-
-.field__hint {
-  font-size: 12px;
 }
 
 .general__check {

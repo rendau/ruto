@@ -73,13 +73,6 @@ export interface AuthMethodJwt {
   roles: string[];
 }
 
-// A registered OAuth client of a provider the gateway logs users in with.
-export interface JwtClient {
-  id: string;
-  secret: string;
-  scopes: string[];
-}
-
 export interface AuthMethodIpValidationItem {
   name: string;
   ip: string;
@@ -131,18 +124,14 @@ export interface RootCors {
   allow_headers: string[];
 }
 
-// A JWT provider. With issuer set it is an OpenID Connect server: the gateway
-// reads its discovery document (jwk_url may stay empty) and logs users in with
-// client, the shared login client. exchange_scopes are asked for when the
-// gateway exchanges the shared login token for an app token (AppJwt).
+// A JWT provider. With issuer set the gateway takes the address of its keys
+// from the provider's OpenID discovery document (jwk_url may stay empty);
+// internal_url is the same address from inside the cluster.
 export interface RootJwt {
   name: string;
   jwk_url: string;
   issuer: string;
   internal_url: string;
-  public_url: string;
-  client?: JwtClient;
-  exchange_scopes?: string[];
 }
 
 export interface RootTransform {
@@ -198,18 +187,6 @@ export interface AppMain {
   logging: Logging;
   variables: Variable[];
   compression: Compression;
-  // Token exchange (RFC 8693), one entry per provider: the gateway exchanges
-  // the shared login token for a token with this audience and hands it to the
-  // backend. No entry = the backend gets the shared login token.
-  jwt: AppJwt[];
-}
-
-// provider: name of a root JWT provider; audience: what the gateway asks the
-// provider for in the exchange (Keycloak: client_id of the client holding the
-// app's roles).
-export interface AppJwt {
-  provider: string;
-  audience: string;
 }
 
 export interface AppListRep {

@@ -13,13 +13,6 @@ export const useRootStore = defineStore("root", () => {
   const jwtProviderNames = computed(() =>
     (root.value?.jwt || []).map((item) => item.name.trim()).filter(Boolean)
   );
-  // Providers that can exchange tokens for an app: those with an issuer.
-  const loginProviderNames = computed(() =>
-    (root.value?.jwt || [])
-      .filter((item) => item.issuer?.trim())
-      .map((item) => item.name.trim())
-      .filter(Boolean)
-  );
 
   async function loadJwtKids(urls?: string[]): Promise<void> {
     const list = (urls ?? (root.value?.jwt || []).map((item) => item.jwk_url || ""))
@@ -71,7 +64,6 @@ export const useRootStore = defineStore("root", () => {
     loaded,
     jwtKids,
     jwtProviderNames,
-    loginProviderNames,
     baseUrl,
     load,
     refresh: load,

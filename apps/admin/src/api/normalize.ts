@@ -9,8 +9,6 @@ import type {
   AuthMethodIpValidation,
   AuthMethodIpValidationItem,
   AuthMethodJwt,
-  AppJwt,
-  JwtClient,
   RootJwt,
   EndpointMain,
   Logging,
@@ -236,17 +234,8 @@ export function variablesToMap(variables?: RawVariables): Record<string, string>
 // with an ordered array; these casts bridge the two representations.
 type WithRawVariables<T> = Omit<T, "variables"> & { variables?: RawVariables };
 
-export function emptyJwtClient(): JwtClient {
-  return { id: "", secret: "", scopes: [] };
-}
-
-export function normalizeJwtClient(value?: JwtClient | null): JwtClient | undefined {
-  if (!value) return undefined;
-  return { id: value.id || "", secret: value.secret || "", scopes: [...(value.scopes || [])] };
-}
-
 export function emptyRootJwt(): RootJwt {
-  return { name: "", jwk_url: "", issuer: "", internal_url: "", public_url: "", exchange_scopes: [] };
+  return { name: "", jwk_url: "", issuer: "", internal_url: "" };
 }
 
 export function normalizeRootJwt(value?: Partial<RootJwt> | null): RootJwt {
@@ -254,17 +243,7 @@ export function normalizeRootJwt(value?: Partial<RootJwt> | null): RootJwt {
     name: value?.name || "",
     jwk_url: value?.jwk_url || "",
     issuer: value?.issuer || "",
-    internal_url: value?.internal_url || "",
-    public_url: value?.public_url || "",
-    client: normalizeJwtClient(value?.client),
-    exchange_scopes: [...(value?.exchange_scopes || [])]
-  };
-}
-
-export function normalizeAppJwt(value?: Partial<AppJwt> | null): AppJwt {
-  return {
-    provider: value?.provider || "",
-    audience: value?.audience || ""
+    internal_url: value?.internal_url || ""
   };
 }
 
@@ -310,8 +289,7 @@ export function normalizeApp(value: AppMain): AppMain {
     auth: normalizeAuth(value?.auth),
     logging: normalizeLogging(value?.logging),
     variables: variablesToArray(raw.variables),
-    compression: normalizeCompression(value?.compression),
-    jwt: (value?.jwt || []).map((item) => normalizeAppJwt(item))
+    compression: normalizeCompression(value?.compression)
   };
 }
 

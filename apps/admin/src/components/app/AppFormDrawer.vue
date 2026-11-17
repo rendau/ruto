@@ -14,11 +14,10 @@ import {
   NIcon,
   NInput,
   NInputGroup,
-  NSelect,
   useMessage,
   type FormItemRule
 } from "naive-ui";
-import { AddOutline, SearchOutline } from "@vicons/ionicons5";
+import { SearchOutline } from "@vicons/ionicons5";
 import { createApp, getAppSwaggerUrlByBackendUrl, updateApp } from "@/api/app";
 import { apiErrorMessage } from "@/api/http";
 import { emptyApp, hasCompressionOverrides } from "@/lib/entities";
@@ -28,14 +27,13 @@ import { useIsMobile } from "@/composables/useIsMobile";
 import { useAppsStore } from "@/stores/apps";
 import { useAuthStore } from "@/stores/auth";
 import { useRootStore } from "@/stores/root";
-import RecordCard from "@/components/common/RecordCard.vue";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import KeyValueTextarea from "@/components/editors/KeyValueTextarea.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
-import type { AppCreateRep, AppJwt, AppMain } from "@/api/types";
+import type { AppCreateRep, AppMain } from "@/api/types";
 
 const router = useRouter();
 const message = useMessage();
@@ -72,19 +70,8 @@ function nonDefaultSections(): string[] {
   if (hasCompressionOverrides(model.compression)) {
     names.push("compression");
   }
-  if (model.jwt?.length) {
-    names.push("jwt");
-  }
   return names;
 }
-
-function newAppJwt(): AppJwt {
-  return { provider: "", audience: "" };
-}
-
-const providerOptions = computed(() =>
-  rootStore.loginProviderNames.map((name) => ({ label: name, value: name }))
-);
 
 const groupOptions = computed(() => {
   const query = model.group.trim().toLowerCase();
@@ -253,48 +240,6 @@ async function detectSwagger(): Promise<void> {
             </p>
             <VariableEditor v-model="model.variables" :available-variables="inheritedVariables" />
           </NCollapseItem>
-          <NCollapseItem title="App token (exchange)" name="jwt">
-            <p class="muted form-hint">
-              The gateway exchanges the shared login token for a token with this audience and hands it to
-              the backend; leave empty to pass the shared token.
-            </p>
-            <div class="login-clients">
-              <RecordCard
-                v-for="(value, index) in model.jwt"
-                :key="index"
-                remove-label="Remove token exchange"
-                @remove="model.jwt.splice(index, 1)"
-              >
-                <template #head>
-                  <span class="muted">{{ index + 1 }}</span>
-                  <span class="login-client__name" :class="{ muted: !value.provider }">
-                    {{ value.provider || "no provider" }}
-                  </span>
-                  <span class="login-client__id mono">{{ value.audience }}</span>
-                </template>
-                  <div class="form-grid">
-                    <label class="field">
-                      <span class="field__label">Provider (a root provider with an issuer)</span>
-                      <NSelect
-                        v-model:value="value.provider"
-                        filterable
-                        tag
-                        placeholder="Provider name"
-                        :options="providerOptions"
-                      />
-                    </label>
-                    <label class="field">
-                      <span class="field__label">Audience (Keycloak: client id holding the app's roles)</span>
-                      <NInput v-model:value="value.audience" placeholder="e.g. orders" />
-                    </label>
-                  </div>
-              </RecordCard>
-              <NButton dashed block @click="model.jwt.push(newAppJwt())">
-                <template #icon><NIcon :component="AddOutline" /></template>
-                Add token exchange
-              </NButton>
-            </div>
-          </NCollapseItem>
         </NCollapse>
       </NForm>
 
@@ -366,21 +311,6 @@ async function detectSwagger(): Promise<void> {
 .form-hint code {
   font-family: var(--font-mono);
   color: var(--c-text-2);
-}
-
-.login-clients {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.login-client__name {
-  font-weight: 600;
-}
-
-.login-client__id {
-  font-size: 12px;
-  color: var(--c-text-3);
 }
 
 @media (max-width: 560px) {
