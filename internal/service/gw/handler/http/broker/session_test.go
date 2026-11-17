@@ -114,6 +114,37 @@ func TestUserinfoWithToken(t *testing.T) {
 	assert.Equal(t, `Bearer error="invalid_token"`, rec.Header().Get("WWW-Authenticate"))
 }
 
+// A front token left from an earlier login of the same person (the person
+// logged out through another front and in again) is not taken: its provider
+// session is over. A new one is exchanged for the current session.
+func TestFrontTokenOfEarlierLogin(t *testing.T) {
+	f := newFlow(t)
+	rep, front := f.login()
+	oldSid := f.sessions.session.Claims["sid"]
+
+	f.sessions.login("u-1")
+	rec := f.userinfo(rep.AccessToken, front)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, int32(2), f.sessions.exchanges.Load(), "exchanged anew")
+	fresh := cookieOf(t, rec, "ruto-ft_corp_crm")
+	claims, err := f.sessions.ParseProviderToken(fresh.Value)
+	require.NoError(t, err)
+	assert.NotEqual(t, oldSid, claims["sid"])
+	assert.Equal(t, f.sessions.session.Claims["sid"], claims["sid"])
+
+	// the new front token serves the session, renewed or not
+	front = &http.Cookie{Name: fresh.Name, Value: fresh.Value}
+	require.Equal(t, http.StatusOK, f.refresh(rep.RefreshToken, front).Code)
+	require.Equal(t, http.StatusOK, f.userinfo(rep.AccessToken, front).Code)
+	assert.Equal(t, int32(2), f.sessions.exchanges.Load())
+
+	// the refresh grant does not take an old one either
+	f.sessions.login("u-1")
+	rec = f.refresh(rep.RefreshToken, front)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.Equal(t, int32(3), f.sessions.exchanges.Load())
+}
+
 func TestUserinfoWithoutToken(t *testing.T) {
 	f := newFlow(t)
 

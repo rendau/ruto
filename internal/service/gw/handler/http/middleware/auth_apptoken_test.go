@@ -88,6 +88,9 @@ func newAppTokenProvider(t *testing.T) *appTokenProvider {
 			return
 		}
 		claims := jwtv5.MapClaims{"sub": sub, "aud": audience, "azp": "ruto", "exp": time.Now().Add(5 * time.Minute).Unix()}
+		if sid, ok := subject.Claims.(jwtv5.MapClaims)["sid"]; ok {
+			claims["sid"] = sid // the provider session goes on, as at Keycloak
+		}
 		if sub == "alice" {
 			claims["resource_access"] = map[string]any{audience: map[string]any{"roles": []string{"manager"}}}
 		}
@@ -111,6 +114,11 @@ func (p *appTokenProvider) sign(claims jwtv5.MapClaims) string {
 // (the answer to an exchange of one token is given again for a while).
 func (p *appTokenProvider) shared(sub string, ttl time.Duration) string {
 	return p.sign(jwtv5.MapClaims{"sub": sub, "aud": "ruto", "exp": time.Now().Add(ttl).Unix(), "jti": randomJti()})
+}
+
+// sharedOf is a shared token of sub in the provider session sid.
+func (p *appTokenProvider) sharedOf(sub, sid string, ttl time.Duration) string {
+	return p.sign(jwtv5.MapClaims{"sub": sub, "sid": sid, "aud": "ruto", "exp": time.Now().Add(ttl).Unix(), "jti": randomJti()})
 }
 
 func randomJti() string {
@@ -199,6 +207,12 @@ func responseCookies(rec *httptest.ResponseRecorder) map[string]*http.Cookie {
 	return result
 }
 
+func tokenClaims(t *testing.T, token string) jwtv5.MapClaims {
+	parsed, _, err := jwtv5.NewParser().ParseUnverified(token, jwtv5.MapClaims{})
+	require.NoError(t, err)
+	return parsed.Claims.(jwtv5.MapClaims)
+}
+
 func tokenAud(t *testing.T, token string) []string {
 	parsed, _, err := jwtv5.NewParser().ParseUnverified(token, jwtv5.MapClaims{})
 	require.NoError(t, err)
@@ -264,6 +278,73 @@ func TestAuthAppToken(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, int32(3), p.exchanges.Load())
 	assert.Equal(t, "Bearer "+appToken, backend.last().Get("Authorization"))
+}
+
+// An app token from the cookie serves only the login session it was got for:
+// with a live shared token of the same person and the same provider session.
+func TestAuthAppTokenSession(t *testing.T) {
+	p := setupAppTokenProvider(t)
+	backend := &backendSeen{}
+	handler := NewAuth(ordersEndpoint(true))(backend.handler())
+	backendToken := func() string {
+		return strings.TrimPrefix(backend.last().Get("Authorization"), "Bearer ")
+	}
+
+	rec := serve(handler, "", "ruto_corp="+p.sharedOf("alice", "s1", time.Hour))
+	require.Equal(t, http.StatusOK, rec.Code)
+	aliceApp := responseCookies(rec)["ruto_corp_orders"].Value
+	assert.Equal(t, "s1", tokenClaims(t, aliceApp)["sid"])
+	assert.Equal(t, int32(1), p.exchanges.Load())
+
+	// The same session, the shared token renewed: the cookie serves, no exchange.
+	rec = serve(handler, "", "ruto_corp="+p.sharedOf("alice", "s1", time.Hour)+"; ruto_corp_orders="+aliceApp)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, int32(1), p.exchanges.Load())
+	assert.Empty(t, rec.Result().Cookies())
+	assert.Equal(t, aliceApp, backendToken())
+
+	// The app token alone, without the session: nothing goes to the backend.
+	seen := len(backend.headers)
+	rec = serve(handler, "", "ruto_corp_orders="+aliceApp)
+	require.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Equal(t, `Bearer error="invalid_token"`, rec.Header().Get("WWW-Authenticate"))
+	rec = serve(handler, "", "ruto_corp="+p.sharedOf("alice", "s1", -time.Minute)+"; ruto_corp_orders="+aliceApp)
+	require.Equal(t, http.StatusUnauthorized, rec.Code, "the shared token has expired")
+	assert.Len(t, backend.headers, seen)
+	assert.Equal(t, int32(1), p.exchanges.Load())
+
+	// alice logged in again (a new provider session): exchanged anew.
+	rec = serve(handler, "", "ruto_corp="+p.sharedOf("alice", "s2", time.Hour)+"; ruto_corp_orders="+aliceApp)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, int32(2), p.exchanges.Load())
+	assert.Equal(t, "s2", tokenClaims(t, backendToken())["sid"])
+	assert.Equal(t, backendToken(), responseCookies(rec)["ruto_corp_orders"].Value)
+
+	// bob logged in over alice's session (prompt=login): alice's token is not
+	// taken, bob has nothing in orders.
+	seen = len(backend.headers)
+	rec = serve(handler, "", "ruto_corp="+p.sharedOf("bob", "s3", time.Hour)+"; ruto_corp_orders="+aliceApp)
+	require.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Len(t, backend.headers, seen, "alice's token does not reach the backend")
+	assert.Equal(t, int32(3), p.exchanges.Load())
+
+	// carol gets a token of her own, without the role.
+	rec = serve(handler, "", "ruto_corp="+p.sharedOf("carol", "s4", time.Hour)+"; ruto_corp_orders="+aliceApp)
+	require.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Equal(t, "carol", tokenClaims(t, responseCookies(rec)["ruto_corp_orders"].Value)["sub"])
+
+	// A provider without sid binds by the person: another person's token is
+	// not taken, the person's own one serves.
+	rec = serve(handler, "", "ruto_corp="+p.shared("alice", time.Hour))
+	require.Equal(t, http.StatusOK, rec.Code)
+	plainApp := responseCookies(rec)["ruto_corp_orders"].Value
+	exchanges := p.exchanges.Load()
+	rec = serve(handler, "", "ruto_corp="+p.shared("alice", time.Hour)+"; ruto_corp_orders="+plainApp)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, exchanges, p.exchanges.Load())
+	rec = serve(handler, "", "ruto_corp="+p.shared("carol", time.Hour)+"; ruto_corp_orders="+plainApp)
+	require.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Equal(t, exchanges+1, p.exchanges.Load())
 }
 
 func TestAuthAppTokenRefusals(t *testing.T) {

@@ -32,6 +32,7 @@ type fakeSessions struct {
 	mu         sync.Mutex
 	session    *authflow.Session
 	sessionErr error
+	closed     map[string]bool     // provider sessions (sid) that are over
 	roles      map[string][]string // client roles of the person by client
 
 	exchangeErr error
@@ -50,18 +51,36 @@ func newFakeSessions(t *testing.T) *fakeSessions {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
-	f := &fakeSessions{t: t, key: key, roles: map[string][]string{"crm": {"admin"}}, logins: map[string]string{}}
+	f := &fakeSessions{t: t, key: key, roles: map[string][]string{"crm": {"admin"}}, logins: map[string]string{}, closed: map[string]bool{}}
 	f.login("u-1")
 	return f
 }
 
-// login gives the gateway a live session of sub, like after a provider login.
+// login gives the gateway a live session of sub, like after a provider login:
+// a provider session (sid) of its own, the earlier one is over.
 func (f *fakeSessions) login(sub string) {
+	f.mu.Lock()
+	if f.session != nil {
+		f.closed[f.session.Claims["sid"].(string)] = true
+	}
+	f.mu.Unlock()
+	f.startSession(sub, "kc-"+randomToken(8))
+}
+
+// renew gives the session a fresh shared token, in the same provider session.
+func (f *fakeSessions) renew(sub string) {
+	f.mu.Lock()
+	sid := f.session.Claims["sid"].(string)
+	f.mu.Unlock()
+	f.startSession(sub, sid)
+}
+
+func (f *fakeSessions) startSession(sub, sid string) {
 	now := time.Now()
 	claims := jwt.MapClaims{
 		"iss": providerIssuer, "sub": sub, "aud": "ruto", "azp": "ruto",
 		"exp": now.Add(5 * time.Minute).Unix(), "iat": now.Unix(), "auth_time": now.Add(-time.Minute).Unix(),
-		"sid": "kc-session", "preferred_username": "alice", "email": "alice@example.test",
+		"sid": sid, "preferred_username": "alice", "email": "alice@example.test",
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -78,6 +97,9 @@ func (f *fakeSessions) login(sub string) {
 func (f *fakeSessions) logout(err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.session != nil {
+		f.closed[f.session.Claims["sid"].(string)] = true
+	}
 	f.session, f.sessionErr = nil, err
 }
 
@@ -149,7 +171,7 @@ func (f *fakeSessions) Exchange(_ context.Context, _, subjectToken, audience str
 	now := time.Now()
 	return f.sign(jwt.MapClaims{
 		"iss": providerIssuer, "sub": subject["sub"], "aud": audience, "azp": "ruto",
-		"exp": now.Add(5 * time.Minute).Unix(), "iat": now.Unix(), "sid": "kc-session",
+		"exp": now.Add(5 * time.Minute).Unix(), "iat": now.Unix(), "sid": subject["sid"],
 		"preferred_username": subject["preferred_username"], "email": subject["email"],
 		"resource_access": map[string]any{audience: map[string]any{"roles": f.roles[audience]}},
 	}), nil
@@ -211,13 +233,16 @@ func (f *fakeSessions) FreshSession(w http.ResponseWriter, r *http.Request) (*au
 		return nil, err
 	}
 	f.renewals.Add(1)
-	f.login(current.Claims["sub"].(string))
+	f.renew(current.Claims["sub"].(string))
 	return f.Session(w, r)
 }
 
 func (f *fakeSessions) Logout(w http.ResponseWriter, r *http.Request, redirect, state string) {
 	f.mu.Lock()
 	f.loggedOut = append(f.loggedOut, redirect+"|"+state)
+	if f.session != nil {
+		f.closed[f.session.Claims["sid"].(string)] = true
+	}
 	f.session, f.sessionErr = nil, authflow.ErrNoSession
 	f.mu.Unlock()
 	http.Redirect(w, r, redirect, http.StatusFound)
@@ -228,13 +253,16 @@ func (f *fakeSessions) ClearCookie(w http.ResponseWriter, name, path string) {
 }
 
 // Userinfo answers with the claims of the token it was asked with, like a
-// provider's userinfo.
+// provider's userinfo; a token of a provider session that is over is refused.
 func (f *fakeSessions) Userinfo(_ context.Context, endpoint, token string) (*oidc.UserinfoResponse, error) {
 	f.mu.Lock()
 	f.userinfoCalls = append(f.userinfoCalls, endpoint)
 	f.mu.Unlock()
 	claims, err := f.ParseProviderToken(token)
-	if err != nil {
+	f.mu.Lock()
+	closed := err == nil && f.closed[claims["sid"].(string)]
+	f.mu.Unlock()
+	if err != nil || closed {
 		return &oidc.UserinfoResponse{Status: http.StatusUnauthorized, ContentType: "text/plain", Body: []byte("invalid token")}, nil
 	}
 	body, _ := json.Marshal(map[string]any{

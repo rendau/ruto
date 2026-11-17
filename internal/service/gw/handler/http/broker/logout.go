@@ -12,7 +12,9 @@ import (
 // the front's post_logout_redirect_uri, checked like a login return address.
 // The id_token_hint of the front (a ruto token) is not needed: the provider
 // gets its own id token from the refresh cookie. The front tokens of other
-// fronts stay, but without a session they serve nothing and expire.
+// fronts stay (the gateway does not know their names) and are not used again:
+// without a session there is nothing to use them for, and after a new login
+// frontToken takes a front token only of the new session.
 func (u *unit) endSession(w http.ResponseWriter, r *http.Request, client string) {
 	w.Header().Set("Cache-Control", "no-store")
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {

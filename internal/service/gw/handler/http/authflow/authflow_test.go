@@ -590,6 +590,34 @@ func TestLogoutDropsAppTokens(t *testing.T) {
 	assert.Equal(t, publicUrl+"/bye", rec.Header().Get("Location"), "no session, straight to the return address")
 }
 
+// A new login drops the app tokens of the earlier one: they may be of
+// another person or of a closed session. A renewal keeps them, the session is
+// the same.
+func TestLoginDropsAppTokens(t *testing.T) {
+	op := newFakeOP(t)
+	snapshot := rootModel.NewEmpty()
+	snapshot.Jwt = []rootModel.RootJwt{op.provider(t, &authModel.JwtClient{Id: "ruto", Secret: "s3cret"})}
+	snapshot.Apps = []*appModel.App{
+		{Active: true, Name: "orders", PathPrefix: "orders", Backend: appModel.Backend{Url: "http://orders:8080"}, Jwt: []appModel.AppJwt{{Provider: "corp", Audience: "orders"}}},
+		{Active: true, Name: "shop", PathPrefix: "shop", Backend: appModel.Backend{Url: "http://shop:8080"}},
+	}
+	u := newUnits(t, snapshot)["corp"]
+
+	_, q, loginCookie := login(t, op, u, testRet, nil)
+	rec, _, err := callback(u, "state="+q.Get("state")+"&code=good-code", loginCookie)
+	require.NoError(t, err)
+	assert.NotEmpty(t, cookieByName(t, rec, "ruto_corp").Value, "the session is set")
+	orders := cookieByName(t, rec, "ruto_corp_orders")
+	assert.Equal(t, -1, orders.MaxAge)
+	assert.Equal(t, "/orders", orders.Path)
+
+	rec, err = renewWith(u, sessionCookieOf("ruto-rt_corp", "/_auth/corp", sessionCookie{RefreshToken: "refresh-1"}))
+	require.NoError(t, err)
+	for _, c := range rec.Result().Cookies() {
+		assert.NotEqual(t, "ruto_corp_orders", c.Name, "a renewal keeps the app tokens")
+	}
+}
+
 func TestIdTokenIsChecked(t *testing.T) {
 	cases := []struct {
 		name  string

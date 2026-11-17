@@ -120,25 +120,30 @@ func (a *Jwt) Authorize(req *model.AuthRequest) model.Result {
 	return result
 }
 
-// authorizeAppToken lets the request in by the app token: a live one from the
-// app's cookie, or a new one exchanged for the shared token and put into the
-// cookies of every app with the same audience. The roles are the app token's;
-// the backend gets the app token and not the shared one.
+// authorizeAppToken lets the request in by the app token, always on a live
+// shared token: a live app token from the app's cookie when it is of the
+// shared token's login session (apptoken.SameSession), otherwise a new one
+// exchanged for the shared token and put into the cookies of every app with
+// the same audience. An app token alone, without the session it was got for,
+// or left from another login (another person, a closed session) lets nothing
+// in. The roles are the app token's; the backend gets the app token and not
+// the shared one.
 func (a *Jwt) authorizeAppToken(req *model.AuthRequest) model.Result {
-	if token := req.ExtractCookie(a.exchange.Cookie.Name); token != "" {
-		if claims, err := a.parseAppToken(token); err == nil && !expiresSoon(claims) {
-			return a.letInByAppToken(req, token, claims)
-		}
-	}
-
 	shared := req.ExtractCookie(a.cookieName)
 	if shared == "" {
 		req.SetChallenge(invalidTokenChallenge)
 		return model.NoCredentials
 	}
-	if _, err := a.parse(shared); err != nil {
+	sharedClaims, err := a.parse(shared)
+	if err != nil {
 		req.SetChallenge(invalidTokenChallenge)
 		return model.InvalidCredentials
+	}
+
+	if token := req.ExtractCookie(a.exchange.Cookie.Name); token != "" {
+		if claims, err := a.parseAppToken(token); err == nil && !expiresSoon(claims) && apptoken.SameSession(sharedClaims, claims) {
+			return a.letInByAppToken(req, token, claims)
+		}
 	}
 
 	token, err := a.exchanger.Exchange(req.Context(), a.provider, shared, a.exchange.Audience)
@@ -172,6 +177,16 @@ func (a *Jwt) authorizeAppToken(req *model.AuthRequest) model.Result {
 		slog.Warn("jwt: the exchanged token cannot be verified",
 			"provider", a.provider, "audience", a.exchange.Audience, "error", err)
 		return model.Unavailable
+	}
+	if sub, _ := sharedClaims["sub"].(string); claims["sub"] != sub {
+		slog.Warn("jwt: the exchanged token is for another person",
+			"provider", a.provider, "audience", a.exchange.Audience)
+		return model.Unavailable
+	}
+	if !apptoken.SameSession(sharedClaims, claims) {
+		// Served, but the cookie will not be taken: every request exchanges.
+		slog.Warn("jwt: the exchanged token names another provider session (sid) than the shared token",
+			"provider", a.provider, "audience", a.exchange.Audience)
 	}
 	a.keepAppToken(req, token, claims)
 

@@ -185,6 +185,9 @@ func (u *Unit) Callback(w http.ResponseWriter, r *http.Request) (string, error) 
 	}
 
 	u.setSession(w, tokens)
+	// The app tokens of an earlier login (another person, a closed session)
+	// must not serve the new one.
+	u.clearAppCookies(w)
 	return ret, nil
 }
 
@@ -289,9 +292,7 @@ func (u *Unit) Logout(w http.ResponseWriter, r *http.Request, redirect, state st
 	session := u.readSession(r)
 	u.clearCookie(w, u.cookieName, "/")
 	u.clearCookie(w, u.refreshCookieName(), u.basePath)
-	for _, c := range u.appCookies {
-		u.clearCookie(w, c.Name, c.Path)
-	}
+	u.clearAppCookies(w)
 
 	if session.IdToken != "" {
 		meta, err := oidc.Ins().Metadata(r.Context(), u.provider.Issuer, u.provider.InternalUrl)
@@ -320,6 +321,12 @@ func (u *Unit) Logout(w http.ResponseWriter, r *http.Request, redirect, state st
 		}
 	}
 	http.Redirect(w, r, redirect, http.StatusFound)
+}
+
+func (u *Unit) clearAppCookies(w http.ResponseWriter) {
+	for _, c := range u.appCookies {
+		u.clearCookie(w, c.Name, c.Path)
+	}
 }
 
 // readSession decodes the refresh cookie; a missing or malformed one is an

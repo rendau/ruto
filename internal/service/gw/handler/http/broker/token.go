@@ -172,8 +172,9 @@ func (u *unit) rutoTokenClaims(token, client string) (jwt.MapClaims, bool) {
 }
 
 // frontToken returns the claims ruto's tokens of the front are built on: the
-// front token from its cookie when it is live and of the same person,
-// otherwise the shared token exchanged for the front's client, put into the
+// front token from its cookie when it is live and of the current login
+// session (apptoken.SameSession: a cookie left from an earlier login, of the
+// same person too, is not taken), otherwise the shared token exchanged for the front's client, put into the
 // front's cookie and into the cookies of the apps whose audience is the
 // client (one exchange for both). A provider that refuses the exchange on the
 // merits (the person has nothing in this front) leaves the shared token's
@@ -184,7 +185,7 @@ func (u *unit) rutoTokenClaims(token, client string) (jwt.MapClaims, bool) {
 func (u *unit) frontToken(w http.ResponseWriter, r *http.Request, client string, session *authflow.Session, sub string) (string, jwt.MapClaims, error) {
 	cookieName := constant.JwtFrontCookieName(u.name, client)
 	if cookie, err := r.Cookie(cookieName); err == nil && cookie.Value != "" {
-		if claims, ok := u.liveFrontToken(cookie.Value, client, sub); ok {
+		if claims, ok := u.liveFrontToken(cookie.Value, client, session.Claims); ok {
 			return cookie.Value, claims, nil
 		}
 	}
@@ -230,13 +231,11 @@ func (u *unit) frontToken(w http.ResponseWriter, r *http.Request, client string,
 }
 
 // liveFrontToken checks a front token from the cookie: the provider's, for
-// the front's client, of the same person, with frontTokenMargin to spare.
-func (u *unit) liveFrontToken(token, client, sub string) (jwt.MapClaims, bool) {
+// the front's client, of the session of shared, with frontTokenMargin to
+// spare.
+func (u *unit) liveFrontToken(token, client string, shared jwt.MapClaims) (jwt.MapClaims, bool) {
 	claims, err := u.sessions.ParseProviderToken(token)
-	if err != nil || !audienceHas(claims, client) {
-		return nil, false
-	}
-	if got, _ := claims["sub"].(string); got != sub {
+	if err != nil || !audienceHas(claims, client) || !apptoken.SameSession(shared, claims) {
 		return nil, false
 	}
 	exp, err := claims.GetExpirationTime()
