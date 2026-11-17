@@ -3,7 +3,7 @@
 Управляемый API-gateway: `core` (control plane) хранит конфигурацию и публикует snapshot, `gateway` (data plane) проксирует трафик на backend'ы по этому snapshot.
 
 📚 **Документация для погружения — в [`docs/`](docs/README.md):**
-[обзор](docs/overview.md) · [архитектура](docs/architecture.md) · [вход через шлюз](docs/sso.md) · [стиль кода](docs/code-style.md) · [онбординг](docs/onboarding.md) · [gateway gRPC](docs/gateway-grpc.md).
+[обзор](docs/overview.md) · [архитектура](docs/architecture.md) · [стиль кода](docs/code-style.md) · [онбординг](docs/onboarding.md) · [gateway gRPC](docs/gateway-grpc.md).
 
 ## Backends
 

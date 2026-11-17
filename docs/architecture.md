@@ -39,17 +39,13 @@ internal/service/gw/
   server/http/          обёртка http.Server с горячей заменой handler'а
   server/grpc/          обёртка grpc-прокси-сервера с горячей заменой handler'а
   handler/http/         сборка chi-роутера из snapshot
-    authflow/           сессия шлюза у провайдера без своих маршрутов: уход на вход и callback (OpenID Connect + PKCE), куки, обновление по refresh-токену, выход; поверх неё работает брокер
-    broker/             шлюз как OpenID-провайдер для фронтов: /_auth/<провайдер>/<клиент>/… (discovery, JWKS ruto, authorize, token, userinfo, end_session) и /_auth/<провайдер>/callback
     middleware/         cors, compression, auth, cache, backend_request_params, metrics, request_log, chain
     proxy/              httputil.ReverseProxy на backend
   handler/grpc/         маршрутизация gRPC по (x-ruto-app-name + method path) → backend
   service/auth/         движок авторизации (методы basic/api_key/jwt/ip_validation)
     authorizer/         реализации каждого метода проверки
   service/jwk/          загрузка и кэш JWK (ключи для JWT)
-  service/oidc/         OpenID-провайдеры: discovery с кэшем, обмен кода, refresh и обмен токена на token endpoint
-  service/apptoken/     токен приложения: обмен общего токена под аудиторию приложения, раскладка отказов
-  service/rutokey/      ключ подписи токенов ruto (брокер), его kid и JWKS
+  service/oidc/         discovery OpenID-провайдеров с кэшем: адрес ключей (jwks_uri) для провайдера с issuer
   service/cache/        хранилище ответов для кэша endpoint'ов (в памяти, фоновая очистка)
   service/compress/     пулы кодировщиков br / zstd / gzip для сжатия ответов
   service/log, metrics  кросс-срезовые сервисы
@@ -65,7 +61,7 @@ internal/service/gw/
             Compression        сжатие ответа клиенту; к backend'у — без Accept-Encoding (если включено)
             Metrics            учёт запроса в prometheus
             RequestLog         access-log (если включён)
-            Auth               проверка методов авторизации endpoint'а; токен из куки ruto_<provider> → + Authorization: Bearer backend'у
+            Auth               проверка методов авторизации endpoint'а
             BrowserCache       Cache-Control для клиента (если включён)
             ServerCache        ответ из кэша шлюза / сохранение ответа (если включён)
             BackendRequestParams  подстановка заголовков/query из vars
@@ -74,9 +70,7 @@ internal/service/gw/
 
 Сборка роутера — `gw/handler/http/service.go:buildHandler`: для каждого активного App берётся `PathPrefix`, для каждого активного HTTP-endpoint строится путь `path_prefix[/http.path]`, оборачивается в цепочку middleware и регистрируется в chi (метод `*` → любой метод). Сверху навешивается CORS из `Root.Cors`.
 
-**Токен из куки.** Метод `jwt` с `provider` читает токен и из куки `ruto_<provider>`, если в запросе нет `Authorization: Bearer` и `auth_token`. Принятый из куки токен middleware Auth дописывает в запрос как `Authorization: Bearer …` (только если клиент не прислал свой `Authorization`), а куку оставляет: backend'ы на заголовке и backend'ы на куке работают одинаково. Auth стоит раньше ServerCache, поэтому ключ кэша видит подставленный заголовок и различает пользователей и по куке. Заголовок `Cookie` в access-логе маскируется. В gRPC кука в метаданных так же проходит проверку, но `authorization` в метаданные backend'а не добавляется.
-
-**Вход через провайдера.** Провайдер с `issuer` — OpenID Connect сервер, через который gateway сам логинит пользователей (код с PKCE, токены в httpOnly-куках). Для каждого провайдера с клиентом `buildHandler` до маршрутов приложений регистрирует маршруты брокера `gw/handler/http/broker`: адрес возврата от провайдера `/_auth/<провайдер>/callback` и `/_auth/<провайдер>/<клиент>/…` (discovery для фронта, ключи ruto из `gw/service/rutokey`, вход фронта, токены ruto, userinfo и выход поверх сессии `gw/handler/http/authflow`, у которой своих маршрутов нет); discovery провайдера, обмен кода и refresh — `gw/service/oidc`. Горячий путь входом не затрагивается, кроме приложений со своей аудиторией (`App.jwt[]`): им метод `jwt` меняет общий токен на токен приложения (`gw/service/apptoken`, RFC 8693) и держит его в куке на пути приложения. Как устроены маршруты, куки, обновление сессии, ошибки входа и брокер — в [sso.md](sso.md).
+**JWT.** Метод `jwt` берёт токен из `Authorization: Bearer` или query-параметра `auth_token`, проверяет подпись ключом провайдера (по `kid` токена), срок (`exp`, если есть) и роли (`jwt.roles`) и передаёт запрос backend'у без изменений. Куки шлюз не читает и токенов не выдаёт: входом занимается сам фронт (SDK Keycloak/auth со своим клиентом).
 
 **Заголовки X-Forwarded-\*.** Прокси (`gw/handler/http/proxy`) ставит их для всех приложений одинаково, без настройки — как nginx с `$proxy_add_x_forwarded_for`:
 - `X-Forwarded-For` — входящий `X-Forwarded-For` (если был) + IP того, кто прислал запрос в ruto: `198.51.100.1, 10.0.0.5`;
@@ -135,11 +129,11 @@ Snapshot — это центральный механизм синхрониза
 
 Миграция может править опубликованный снапшот прямо в SQL (а не удалять его: пересборка из конфига опубликовала бы неопубликованные правки). При старте core пересчитывает хеш снапшота по сохранённым данным (`ensure` в `internal/usecase/snapshot`): gateway'и перечитывают его, а «неопубликованных изменений» не появляется.
 
-`Snapshot.Get` отдаёт конфигурацию целиком, с секретами в открытом виде (пароли, api-ключи, переменные), поэтому он **только gRPC, без REST-маршрута** — как и служебные `Gateway.Heartbeat` / `Gateway.Subscribe`, которыми пользуется только gateway. gRPC-порт core должен оставаться внутренним (наружу публикуется лишь HTTP с `/api/*` и админкой). `Snapshot.GetVersion` (только hash) доступен и в REST — по нему админка сравнивает версии gateway'ев. Вместе со снимком `Snapshot.Get` отдаёт **настройки gateway'ев** (`gateway`: Redis для склейки обновлений сессий, ключ шифрования refresh-куки и ключ подписи токенов ruto для брокера, см. [sso.md](sso.md)) — они берутся из env core (`GW_REDIS_*`, иначе `REDIS_*`; ключи — HKDF от `GW_COOKIE_SECRET`, иначе от `ADMIN_JWT_SECRET`, у каждого своя метка), не хранятся и в версию снимка не входят; их версия — отдельное поле `settings_version` в `GetVersion` (HMAC ключом `ADMIN_JWT_SECRET`). `Snapshot.Deploy` требует вошедшего пользователя.
+`Snapshot.Get` отдаёт конфигурацию целиком, с секретами в открытом виде (пароли, api-ключи, переменные), поэтому он **только gRPC, без REST-маршрута** — как и служебные `Gateway.Heartbeat` / `Gateway.Subscribe`, которыми пользуется только gateway. gRPC-порт core должен оставаться внутренним (наружу публикуется лишь HTTP с `/api/*` и админкой). `Snapshot.GetVersion` (только hash) доступен и в REST — по нему админка сравнивает версии gateway'ев. `Snapshot.Deploy` требует вошедшего пользователя.
 
 **На стороне gateway** (`internal/service/gw/core_client`) — три независимые горутины:
 1. **`refreshWorker`** — единственная горутина, выполняющая `refresh()` (проверка версии + применение). Делает **одну** проверку при старте, дальше реагирует только на триггеры из `triggerCh`. **Периодического опроса версии нет.** Единственный потребитель `triggerCh` гарантирует, что проверки версии и применение snapshot **никогда не идут параллельно**.
-2. `refresh()` шлёт `GetVersion`; если не изменились ни версия, ни `settings_version` — выходит. Иначе — `Get`: сменились настройки — зовёт `onSettings` (= `gw.applySettings`: Redis для `oidc`, ключ refresh-куки для `authflow`, ключ подписи для `rutokey` и его `kid` для распознавания токенов ruto); сменилась версия — декодирует в `rootModel.Root` и зовёт `onConfig` (= `gw.Service.SetConfig`). Смена одних настроек маршруты не пересобирает.
+2. `refresh()` шлёт `GetVersion`; если версия не изменилась — выходит. Если изменилась — `Get`, декодирует в `rootModel.Root`, зовёт `onConfig` (= `gw.Service.SetConfig`).
 3. **`heartbeatWorker`** — раз в `HeartbeatInterval` (30s) шлёт `Gateway.Heartbeat` (id, host, версия, память, горутины, последняя ошибка) для мониторинга в админке. Полностью независим от refresh: это только liveness/телеметрия.
 4. **`subscribeWorker`** — push-канал (см. ниже).
 

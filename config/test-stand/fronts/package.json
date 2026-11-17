@@ -1,9 +1,0 @@
-{
-  "name": "ruto-test-stand-fronts",
-  "private": true,
-  "description": "Libraries of the test fronts that log in through the gateway's broker: keycloak-js (like crm) and oidc-client-ts (what auth-js is built on, like cart-fe). The pages load them straight from node_modules.",
-  "dependencies": {
-    "keycloak-js": "26.2.5",
-    "oidc-client-ts": "3.5.0"
-  }
-}
