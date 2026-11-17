@@ -1,9 +1,9 @@
 // Package authflow serves the gateway's own login routes,
-// /_auth/<provider>/login|callback|refresh|logout|me: the OpenID Connect
+// /_auth/<provider>/login|callback|refresh|logout: the OpenID Connect
 // authorization code flow with PKCE, ending in the access and refresh cookies
-// that the jwt auth method reads on every other request, the renewal of those
-// cookies with the refresh token, and a front's view of the session (who is
-// logged in, with what roles).
+// that the jwt auth method reads on every other request, and the renewal of
+// those cookies with the refresh token. The broker logs fronts in on top of
+// this session; a simple page without an SDK may use the routes directly.
 //
 // A login unit is a provider with its default client, shared by every app that
 // names the provider. Units know nothing about proxying, apps' endpoints or
@@ -100,7 +100,6 @@ func (u *Unit) register(router chi.Router) {
 	// so another site cannot make the browser renew the session.
 	router.Post(u.basePath+"/refresh", u.refresh)
 	router.Get(u.basePath+"/logout", u.logout)
-	router.Get(u.basePath+"/me", u.me)
 }
 
 // originOf returns "scheme://host[:port]" of an absolute http(s) url, lower

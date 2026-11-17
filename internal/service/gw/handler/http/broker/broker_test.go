@@ -283,7 +283,7 @@ func TestClientNames(t *testing.T) {
 	rec := get(t, h, "/_auth/corp/login")
 	assert.Equal(t, "own login", rec.Body.String(), "the gateway's own route wins")
 
-	for _, client := range []string{"login", "callback", "refresh", "logout", "me", "logged-out", ".hidden", "a%2Fb"} {
+	for _, client := range []string{"login", "callback", "refresh", "logout", "logged-out", ".hidden", "a%2Fb"} {
 		rec := get(t, h, "/_auth/corp/"+client+"/realms/corp/.well-known/openid-configuration")
 		assert.Equal(t, http.StatusNotFound, rec.Code, client)
 	}

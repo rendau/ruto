@@ -262,7 +262,7 @@ onMounted(load);
 
         <SectionCard
           title="JWT providers"
-          description="Who signs the tokens JWT auth trusts. Auth methods refer to a provider by name; a provider without a name serves only methods with no provider set. With an issuer the gateway reads the provider's OpenID discovery document and can log users in itself (/_auth/<name>/login)"
+          description="Who signs the tokens JWT auth trusts. Auth methods refer to a provider by name; a provider without a name serves only methods with no provider set. With an issuer the gateway reads the provider's OpenID discovery document and with a login client logs users in itself: fronts log in through its OpenID Connect broker (/_auth/<name>/<front client id>), simple pages through /_auth/<name>/login"
         >
           <div class="providers">
             <RecordCard

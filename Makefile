@@ -5,7 +5,6 @@ GATEWAY_BINARY_NAME = gateway
 BUILD_PATH = cmd/build
 SERVICE_NAME = ruto_v1
 ADMIN_PATH = apps/admin
-SDK_JS_PATH = sdk/js
 
 # Тулчейн генерации proto — локально в проекте (bin/, в .gitignore), версии закреплены:
 # у всех разработчиков генерация даёт одинаковый вывод. protoc-gen-go и grpc-gateway берутся
@@ -54,15 +53,6 @@ build-admin:
 	pnpm --dir $(ADMIN_PATH) build
 
 build-prod: build-all build-admin
-
-# JS SDK входа через шлюз (sdk/js): dist/ нужен тестовым фронтам стенда (config/test-stand/fronts)
-build-sdk:
-	pnpm --dir $(SDK_JS_PATH) install
-	pnpm --dir $(SDK_JS_PATH) build
-
-test-sdk:
-	pnpm --dir $(SDK_JS_PATH) install
-	pnpm --dir $(SDK_JS_PATH) test
 
 clean:
 	rm -rf $(BUILD_PATH)

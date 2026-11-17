@@ -6,7 +6,7 @@
 | --- | --- |
 | [overview.md](overview.md) | Что такое ruto, два бэкенда, ключевые понятия, карта репозитория |
 | [architecture.md](architecture.md) | Слои, поток запроса, механизм snapshot, конфигурационный pipeline |
-| [sso.md](sso.md) | Вход через шлюз: OpenID Connect провайдер, куки, обновление сессии, `me`, JS SDK |
+| [sso.md](sso.md) | Вход через шлюз: OpenID Connect провайдер, куки, обновление сессии, брокер для фронтов (вход стандартными SDK) |
 | [code-style.md](code-style.md) | Соглашения по коду и устоявшиеся паттерны |
 | [onboarding.md](onboarding.md) | Локальный запуск и пошаговые рецепты (добавить API / сущность / миграцию) |
 | [gateway-grpc.md](gateway-grpc.md) | Подключение внешних клиентов к gateway по gRPC |

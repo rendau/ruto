@@ -69,7 +69,7 @@ func BrokerPath(provider, client string) string {
 // brokerReservedClients are taken by the gateway's own routes under
 // /_auth/<provider>.
 var brokerReservedClients = map[string]struct{}{
-	"login": {}, "callback": {}, "refresh": {}, "logout": {}, "me": {}, "logged-out": {},
+	"login": {}, "callback": {}, "refresh": {}, "logout": {}, "logged-out": {},
 }
 
 // BrokerClientIsValid tells a client name the broker serves: one plain path

@@ -14,7 +14,6 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/broker"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
-	"github.com/rendau/ruto/internal/service/gw/handler/http/sdkjs"
 	"github.com/rendau/ruto/internal/service/gw/service/apptoken"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
 	"github.com/rendau/ruto/internal/service/gw/service/oidc"
@@ -66,7 +65,6 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 		Used:      oidc.Ins(),
 		Userinfo:  oidc.Ins(),
 	})
-	sdkjs.Register(router)
 
 	for _, app := range snapshot.ActiveApps() {
 		endpoints := app.ActiveEndpoints()

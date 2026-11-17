@@ -387,34 +387,6 @@ func (u *Unit) Logout(w http.ResponseWriter, r *http.Request, redirect, state st
 	http.Redirect(w, r, redirect, http.StatusFound)
 }
 
-// me tells a front who the access cookie of this unit belongs to: the claims
-// of the access token, as they are. The gateway does not pick or rename them,
-// providers put the username and the roles in different places and a front
-// may need a claim of its own; what matters is that the token itself stays in
-// the httpOnly cookie, since claims without a signature cannot be presented
-// anywhere. Only the cookie is read, not the Authorization header: a client
-// that holds a bearer token has the claims already. A missing, foreign or
-// expired cookie is 401, which a front treats like any other 401: refresh,
-// then repeat.
-func (u *Unit) me(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-store")
-
-	cookie, err := r.Cookie(u.cookieName)
-	if err != nil || cookie.Value == "" {
-		http.Error(w, "no session: log in", http.StatusUnauthorized)
-		return
-	}
-
-	claims, err := u.parseAccessToken(cookie.Value)
-	if err != nil {
-		http.Error(w, "session is not valid: refresh or log in", http.StatusUnauthorized)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(claims)
-}
-
 // readSession decodes the refresh cookie; a missing or malformed one is an
 // empty session.
 func (u *Unit) readSession(r *http.Request) sessionCookie {
