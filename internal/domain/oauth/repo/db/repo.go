@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rendau/mobone/v2"
@@ -45,6 +46,9 @@ func (r *Repo) ListGrants(ctx context.Context, pars *domainModel.GrantListReq) (
 	expressions := map[string][]any{}
 	if pars.UsrId != nil {
 		conditions["usr_id"] = *pars.UsrId
+	}
+	if pars.ClientName != nil {
+		conditions["client_name"] = *pars.ClientName
 	}
 	if pars.Connected != nil {
 		if *pars.Connected {
@@ -105,6 +109,23 @@ func (r *Repo) CreateGrant(ctx context.Context, obj *domainModel.Grant) (string,
 func (r *Repo) DeleteGrant(ctx context.Context, id string) error {
 	if err := r.ModelStore.Delete(ctx, &repoModel.GrantUpsert{PKId: id}); err != nil {
 		return fmt.Errorf("ModelStore.Delete: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repo) DeleteGrants(ctx context.Context, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	query, args, err := r.QB.Delete("oauth_grant").Where(squirrel.Eq{"id": ids}).ToSql()
+	if err != nil {
+		return fmt.Errorf("ToSql: %w", err)
+	}
+
+	if _, err = r.ModelStore.GetConnection(ctx).Exec(ctx, query, args...); err != nil {
+		return fmt.Errorf("Exec: %w", err)
 	}
 
 	return nil

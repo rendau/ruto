@@ -43,8 +43,9 @@ type Grant struct {
 type GrantListReq struct {
 	commonModel.ListParams
 
-	UsrId     *int64
-	Connected *bool
+	UsrId      *int64
+	ClientName *string
+	Connected  *bool
 }
 
 // Token is an authorization code, access or refresh token of a grant. Hash is

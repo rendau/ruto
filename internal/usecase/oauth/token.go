@@ -115,6 +115,21 @@ func (u *Usecase) Token(ctx context.Context, req *TokenReq) (*TokenRep, error) {
 			return fmt.Errorf("svc.MarkGrantConnected: %w", err)
 		}
 
+		if req.GrantType == grantTypeAuthorizationCode {
+			replaced, err := u.svc.ReplaceSameClientGrants(ctx, grant)
+			if err != nil {
+				return fmt.Errorf("svc.ReplaceSameClientGrants: %w", err)
+			}
+			for _, v := range replaced {
+				slog.Info("oauth: connection replaced by a reconnect",
+					"grant_id", v.Id,
+					"new_grant_id", grant.Id,
+					"client_name", v.ClientName,
+					"usr_id", v.UsrId,
+				)
+			}
+		}
+
 		tokens, err := u.svc.IssueTokens(ctx, grant.Id, map[string]time.Duration{
 			model.TokenKindAccess:  u.conf.AccessTTL,
 			model.TokenKindRefresh: u.conf.RefreshTTL,

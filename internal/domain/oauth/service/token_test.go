@@ -105,3 +105,21 @@ func TestClientCodec(t *testing.T) {
 		assert.NotEqual(t, codec.Secret(id), id)
 	})
 }
+
+func TestSameRedirect(t *testing.T) {
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		{"https://claude.ai/api/mcp/auth_callback", "https://claude.ai/api/mcp/auth_callback", true},
+		{"https://claude.ai/api/mcp/auth_callback", "https://claude.com/api/mcp/auth_callback", false},
+		{"https://claude.ai/api/mcp/auth_callback", "https://claude.ai/other", false},
+		{"https://claude.ai:8443/cb", "https://claude.ai/cb", false},
+		{"http://localhost:50001/callback", "http://localhost:50002/callback", true},
+		{"http://127.0.0.1:50001/callback", "http://localhost:50001/callback", false},
+		{"http://localhost:50001/callback", "http://localhost:50001/other", false},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.want, SameRedirect(c.a, c.b), "%s vs %s", c.a, c.b)
+	}
+}

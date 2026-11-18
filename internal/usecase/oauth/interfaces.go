@@ -14,6 +14,7 @@ type ServiceI interface {
 	GetGrant(ctx context.Context, id string, errNE bool) (*model.Grant, bool, error)
 	CreateGrant(ctx context.Context, obj *model.Grant) (string, error)
 	DeleteGrant(ctx context.Context, id string) error
+	ReplaceSameClientGrants(ctx context.Context, grant *model.Grant) ([]*model.Grant, error)
 	MarkGrantConnected(ctx context.Context, id string) error
 	TouchGrantLastUsed(ctx context.Context, id string) error
 

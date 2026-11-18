@@ -12,6 +12,7 @@ type RepoDbI interface {
 	GetGrant(ctx context.Context, id string) (*model.Grant, bool, error)
 	CreateGrant(ctx context.Context, obj *model.Grant) (string, error)
 	DeleteGrant(ctx context.Context, id string) error
+	DeleteGrants(ctx context.Context, ids []string) error
 	MarkGrantConnected(ctx context.Context, id string) error
 	TouchGrantLastUsed(ctx context.Context, id string) error
 

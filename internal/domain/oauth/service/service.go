@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/samber/lo"
+
+	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	"github.com/rendau/ruto/internal/domain/oauth/model"
 	"github.com/rendau/ruto/internal/errs"
 )
@@ -50,6 +53,38 @@ func (s *Service) DeleteGrant(ctx context.Context, id string) error {
 		return fmt.Errorf("repoDb.DeleteGrant: %w", err)
 	}
 	return nil
+}
+
+// ReplaceSameClientGrants deletes the other connections of the grant's user
+// made by the same client app: same client name and redirect URI (any port on
+// loopback). Clients register anew on every reconnect, so without this the
+// abandoned connections linger until their refresh tokens expire. Pending
+// grants are left alone: a consent may be in progress in another tab, and the
+// cleanup removes abandoned ones anyway.
+func (s *Service) ReplaceSameClientGrants(ctx context.Context, grant *model.Grant) ([]*model.Grant, error) {
+	items, _, err := s.repoDb.ListGrants(ctx, &model.GrantListReq{
+		ListParams: commonModel.ListParams{Sort: []string{"created_at"}},
+		UsrId:      &grant.UsrId,
+		ClientName: &grant.ClientName,
+		Connected:  new(true),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("repoDb.ListGrants: %w", err)
+	}
+
+	replaced := lo.Filter(items, func(v *model.Grant, _ int) bool {
+		return v.Id != grant.Id && SameRedirect(v.RedirectUri, grant.RedirectUri)
+	})
+	if len(replaced) == 0 {
+		return nil, nil
+	}
+
+	ids := lo.Map(replaced, func(v *model.Grant, _ int) string { return v.Id })
+	if err = s.repoDb.DeleteGrants(ctx, ids); err != nil {
+		return nil, fmt.Errorf("repoDb.DeleteGrants: %w", err)
+	}
+
+	return replaced, nil
 }
 
 func (s *Service) MarkGrantConnected(ctx context.Context, id string) error {

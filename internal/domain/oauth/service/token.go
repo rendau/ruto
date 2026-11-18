@@ -91,6 +91,24 @@ func RedirectAllowed(allowed []string, uri string) bool {
 	return false
 }
 
+// SameRedirect tells whether two redirect URIs belong to the same client app.
+// Loopback ports are ignored: native clients (Claude Code) listen on a random
+// port each time.
+func SameRedirect(a, b string) bool {
+	ua, errA := url.Parse(a)
+	ub, errB := url.Parse(b)
+	if errA != nil || errB != nil {
+		return a == b
+	}
+	if !strings.EqualFold(ua.Scheme, ub.Scheme) || !strings.EqualFold(ua.Hostname(), ub.Hostname()) {
+		return false
+	}
+	if !isLoopback(ua.Hostname()) && ua.Port() != ub.Port() {
+		return false
+	}
+	return strings.TrimSuffix(ua.Path, "/") == strings.TrimSuffix(ub.Path, "/")
+}
+
 func isLoopback(host string) bool {
 	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }

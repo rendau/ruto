@@ -47,6 +47,9 @@ func (r *memRepo) ListGrants(_ context.Context, pars *model.GrantListReq) ([]*mo
 		if pars.UsrId != nil && g.UsrId != *pars.UsrId {
 			continue
 		}
+		if pars.ClientName != nil && g.ClientName != *pars.ClientName {
+			continue
+		}
 		if pars.Connected != nil && (g.ConnectedAt != nil) != *pars.Connected {
 			continue
 		}
@@ -83,6 +86,15 @@ func (r *memRepo) DeleteGrant(_ context.Context, id string) error {
 	for hash, t := range r.tokens {
 		if t.GrantId == id {
 			delete(r.tokens, hash)
+		}
+	}
+	return nil
+}
+
+func (r *memRepo) DeleteGrants(ctx context.Context, ids []string) error {
+	for _, id := range ids {
+		if err := r.DeleteGrant(ctx, id); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -489,4 +501,89 @@ func TestDisabled(t *testing.T) {
 
 	_, err = env.uc.SessionFromToken(context.Background(), "rto_x")
 	assert.ErrorIs(t, err, errs.NotAuthorized)
+}
+
+func TestReconnectReplacesConnection(t *testing.T) {
+	env := newTestEnv(t)
+
+	connect := func(t *testing.T, name, redirect string) *TokenRep {
+		t.Helper()
+		client, err := env.uc.Register(context.Background(), &RegisterReq{
+			RedirectUris:            []string{redirect},
+			ClientName:              name,
+			TokenEndpointAuthMethod: "none",
+		})
+		require.NoError(t, err)
+
+		req := env.authorizeReq(client.ClientId)
+		req.RedirectUri = redirect
+		location, err := env.uc.Authorize(env.admin, req, true)
+		require.NoError(t, err)
+		parsed, err := url.Parse(location)
+		require.NoError(t, err)
+
+		tokens, err := env.uc.Token(context.Background(), &TokenReq{
+			GrantType:    "authorization_code",
+			Code:         parsed.Query().Get("code"),
+			RedirectUri:  redirect,
+			CodeVerifier: testVerifier,
+			ClientId:     client.ClientId,
+		})
+		require.NoError(t, err)
+		return tokens
+	}
+
+	grantNames := func(t *testing.T) []string {
+		t.Helper()
+		grants, err := env.uc.ListGrants(env.admin)
+		require.NoError(t, err)
+		names := make([]string, 0, len(grants))
+		for _, g := range grants {
+			names = append(names, g.ClientName+" "+g.RedirectUri)
+		}
+		return names
+	}
+
+	first := connect(t, "Claude", testRedirect)
+	cli := connect(t, "Claude Code", "http://localhost:50001/callback")
+	other := connect(t, "Other app", testRedirect)
+
+	second := connect(t, "Claude", testRedirect)
+
+	_, err := env.uc.SessionFromToken(context.Background(), first.AccessToken)
+	assert.ErrorIs(t, err, errs.NotAuthorized, "the old connection of the same app is removed")
+	_, err = env.uc.SessionFromToken(context.Background(), second.AccessToken)
+	require.NoError(t, err)
+	_, err = env.uc.SessionFromToken(context.Background(), other.AccessToken)
+	require.NoError(t, err, "another app with the same redirect stays")
+
+	connect(t, "Claude Code", "http://localhost:50002/callback")
+	_, err = env.uc.SessionFromToken(context.Background(), cli.AccessToken)
+	assert.ErrorIs(t, err, errs.NotAuthorized, "loopback port does not matter")
+
+	assert.ElementsMatch(t, []string{
+		"Claude " + testRedirect,
+		"Other app " + testRedirect,
+		"Claude Code http://localhost:50002/callback",
+	}, grantNames(t))
+
+	t.Run("refresh replaces nothing", func(t *testing.T) {
+		_, err := env.uc.Token(context.Background(), &TokenReq{
+			GrantType:    "refresh_token",
+			RefreshToken: other.RefreshToken,
+			ClientId:     mustGrantClient(t, env, other.AccessToken),
+		})
+		require.NoError(t, err)
+		assert.Len(t, grantNames(t), 3)
+	})
+}
+
+func mustGrantClient(t *testing.T, env *testEnv, accessToken string) string {
+	t.Helper()
+	session, err := env.uc.SessionFromToken(context.Background(), accessToken)
+	require.NoError(t, err)
+	grant, found, err := env.repo.GetGrant(context.Background(), session.ApiKeyId)
+	require.NoError(t, err)
+	require.True(t, found)
+	return grant.ClientId
 }
