@@ -53,6 +53,8 @@ func (a *App) Init() error {
 		configGateway.Conf.BackendIdleConnTimeout,
 		int64(configGateway.Conf.CacheMaxSizeMb)<<20,
 		configGateway.Conf.CacheSweepInterval,
+		configGateway.Conf.RateLimitMaxKeys,
+		configGateway.Conf.TrustedProxyAddresses,
 	)
 	if err != nil {
 		return fmt.Errorf("gw-server New: %w", err)

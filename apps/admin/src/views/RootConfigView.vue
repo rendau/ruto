@@ -13,11 +13,19 @@ import {
 } from "naive-ui";
 import { AddOutline, SaveOutline } from "@vicons/ionicons5";
 import { getRoot, setRoot } from "@/api/root";
-import { emptyAuth, emptyCompression, emptyLogging, emptyRootJwt, normalizeRootJwt } from "@/api/normalize";
+import {
+  emptyAuth,
+  emptyCompression,
+  emptyLogging,
+  emptyRateLimit,
+  emptyRootJwt,
+  normalizeRootJwt
+} from "@/api/normalize";
 import { apiErrorMessage } from "@/api/http";
 import { useRootStore } from "@/stores/root";
 import { useAuthStore } from "@/stores/auth";
 import { arrayToLines, linesToArray } from "@/lib/forms";
+import { rateLimitError } from "@/lib/rateLimit";
 import PageContainer from "@/components/common/PageContainer.vue";
 import RecordCard from "@/components/common/RecordCard.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
@@ -25,6 +33,7 @@ import SwitchField from "@/components/common/SwitchField.vue";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
+import RateLimitEditor from "@/components/editors/RateLimitEditor.vue";
 import SeenOriginsPanel from "@/components/root/SeenOriginsPanel.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import type { RootJwt, RootMain } from "@/api/types";
@@ -54,7 +63,8 @@ function emptyRoot(): RootMain {
     log_own_response_errors: false,
     variables: [],
     transform: { max_workers: 0 },
-    compression: emptyCompression()
+    compression: emptyCompression(),
+    rate_limit: emptyRateLimit()
   };
 }
 
@@ -125,6 +135,11 @@ watch(
 
 async function save(): Promise<void> {
   if (!canEdit.value) return;
+  const rateLimitProblem = rateLimitError(model.rate_limit);
+  if (rateLimitProblem) {
+    message.error(rateLimitProblem);
+    return;
+  }
   saving.value = true;
   try {
     const payload: RootMain = {
@@ -327,6 +342,13 @@ onMounted(load);
           description="Defaults for every application: what the gateway asks the backend for and how it compresses responses to clients"
         >
           <CompressionEditor v-model="model.compression" root />
+        </SectionCard>
+
+        <SectionCard
+          title="Rate limit"
+          description="Request limits for the whole gateway: a Root rule counts a client's requests across every application"
+        >
+          <RateLimitEditor v-model="model.rate_limit" root />
         </SectionCard>
 
         <SectionCard

@@ -47,6 +47,7 @@ import SwitchField from "@/components/common/SwitchField.vue";
 import AuthSummary from "@/components/display/AuthSummary.vue";
 import CompressionSummary from "@/components/display/CompressionSummary.vue";
 import LoggingSummary from "@/components/display/LoggingSummary.vue";
+import RateLimitSummary from "@/components/display/RateLimitSummary.vue";
 import EndpointFormDrawer from "@/components/endpoint/EndpointFormDrawer.vue";
 import EndpointDetailDrawer from "@/components/endpoint/EndpointDetailDrawer.vue";
 import EndpointTestPanel from "@/components/endpoint/EndpointTestPanel.vue";
@@ -502,6 +503,10 @@ onBeforeUnmount(() => {
 
             <SectionCard title="Compression">
               <CompressionSummary :compression="app.compression" />
+            </SectionCard>
+
+            <SectionCard title="Rate limit">
+              <RateLimitSummary :rate-limit="app.rate_limit" />
             </SectionCard>
 
             <SectionCard title="Variables">

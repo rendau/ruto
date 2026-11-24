@@ -14,6 +14,9 @@ import type {
   Logging,
   Compression,
   CompressionAlgorithm,
+  RateLimit,
+  RateLimitKey,
+  RateLimitRule,
   RootMain,
   RootTransform,
   Transform,
@@ -87,6 +90,57 @@ export function normalizeCompression(value?: Compression | null): Compression {
     algorithms,
     min_size: Math.max(0, Math.trunc(value.min_size || 0)),
     content_types: contentTypes
+  };
+}
+
+export function emptyRateLimit(): RateLimit {
+  return { mode: "extend", rules: [] };
+}
+
+export function emptyRateLimitRule(): RateLimitRule {
+  return { name: "", key: "ip", requests: 100, period: "1m" };
+}
+
+const RATE_LIMIT_KEYS: RateLimitKey[] = ["ip", "token", "all"];
+
+// Text fields are kept as typed (trimmed on save) so the editor doesn't eat spaces.
+function normalizeRateLimitRule(value: RateLimitRule): RateLimitRule {
+  const key = String(value.key || "").trim().toLowerCase() as RateLimitKey;
+  const rule: RateLimitRule = {
+    name: typeof value.name === "string" ? value.name : "",
+    key: RATE_LIMIT_KEYS.includes(key) ? key : "ip",
+    requests: Math.max(0, Math.trunc(Number(value.requests) || 0)),
+    period: typeof value.period === "string" ? value.period : ""
+  };
+  if (value.scope) {
+    rule.scope = value.scope;
+  }
+  return rule;
+}
+
+export function normalizeRateLimit(value?: RateLimit | null): RateLimit {
+  if (!value) {
+    return emptyRateLimit();
+  }
+  return {
+    mode: value.mode === "replace" ? "replace" : "extend",
+    rules: (Array.isArray(value.rules) ? value.rules : [])
+      .filter((rule): rule is RateLimitRule => Boolean(rule))
+      .map(normalizeRateLimitRule)
+  };
+}
+
+// scope is computed by the server for the effective view and is never stored.
+function serializeRateLimit(value?: RateLimit | null): RateLimit {
+  const normalized = normalizeRateLimit(value);
+  return {
+    mode: normalized.mode,
+    rules: normalized.rules.map((rule) => ({
+      name: rule.name.trim(),
+      key: rule.key,
+      requests: rule.requests,
+      period: rule.period.trim()
+    }))
   };
 }
 
@@ -265,7 +319,8 @@ export function normalizeRoot(value: RootMain): RootMain {
     log_own_response_errors: Boolean(value?.log_own_response_errors),
     variables: variablesToArray(raw.variables),
     transform: normalizeRootTransform(value?.transform),
-    compression: normalizeCompression(value?.compression)
+    compression: normalizeCompression(value?.compression),
+    rate_limit: normalizeRateLimit(value?.rate_limit)
   };
 }
 
@@ -289,7 +344,8 @@ export function normalizeApp(value: AppMain): AppMain {
     auth: normalizeAuth(value?.auth),
     logging: normalizeLogging(value?.logging),
     variables: variablesToArray(raw.variables),
-    compression: normalizeCompression(value?.compression)
+    compression: normalizeCompression(value?.compression),
+    rate_limit: normalizeRateLimit(value?.rate_limit)
   };
 }
 
@@ -326,18 +382,31 @@ export function normalizeEndpoint(value: EndpointMain): EndpointMain {
     variables: variablesToArray(raw.variables),
     transform: normalizeTransform(value?.transform),
     cache: normalizeCache(value?.cache),
-    compression: normalizeCompression(value?.compression)
+    compression: normalizeCompression(value?.compression),
+    rate_limit: normalizeRateLimit(value?.rate_limit)
   };
 }
 
 export function serializeRoot(value: RootMain): unknown {
-  return { ...normalizeRoot(value), variables: variablesToMap(value?.variables) };
+  return {
+    ...normalizeRoot(value),
+    variables: variablesToMap(value?.variables),
+    rate_limit: serializeRateLimit(value?.rate_limit)
+  };
 }
 
 export function serializeApp(value: AppMain): unknown {
-  return { ...normalizeApp(value), variables: variablesToMap(value?.variables) };
+  return {
+    ...normalizeApp(value),
+    variables: variablesToMap(value?.variables),
+    rate_limit: serializeRateLimit(value?.rate_limit)
+  };
 }
 
 export function serializeEndpoint(value: EndpointMain): unknown {
-  return { ...normalizeEndpoint(value), variables: variablesToMap(value?.variables) };
+  return {
+    ...normalizeEndpoint(value),
+    variables: variablesToMap(value?.variables),
+    rate_limit: serializeRateLimit(value?.rate_limit)
+  };
 }

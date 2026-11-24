@@ -5,7 +5,9 @@ import type {
   CompressionBackend,
   CompressionResponse,
   LoggingLevel,
-  LoggingMode
+  LoggingMode,
+  RateLimitKey,
+  RateLimitMode
 } from "@/api/types";
 
 export const HTTP_METHODS = [
@@ -96,3 +98,22 @@ export const COMPRESSION_ALGORITHM_OPTIONS: { label: string; value: CompressionA
   { label: "zstd (Zstandard)", value: "zstd" },
   { label: "gzip", value: "gzip" }
 ];
+
+export const RATE_LIMIT_MODE_OPTIONS: { label: string; value: RateLimitMode }[] = [
+  { label: "extend (add to the inherited rules)", value: "extend" },
+  { label: "replace (only the rules set here)", value: "replace" }
+];
+
+export const RATE_LIMIT_KEY_OPTIONS: { label: string; value: RateLimitKey }[] = [
+  { label: "per client IP", value: "ip" },
+  { label: "per token (Authorization header)", value: "token" },
+  { label: "all requests together", value: "all" }
+];
+
+export const RATE_LIMIT_KEY_LABEL: Record<RateLimitKey, string> = {
+  ip: "per client IP",
+  token: "per token",
+  all: "all together"
+};
+
+export const RATE_LIMIT_PERIOD_PRESETS = ["1s", "10s", "1m", "10m", "1h", "24h"];

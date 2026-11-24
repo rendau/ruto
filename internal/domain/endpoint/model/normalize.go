@@ -70,6 +70,9 @@ func (m *Endpoint) Normalize() error {
 	if err := m.Compression.Normalize(); err != nil {
 		return fmt.Errorf("compression: %w", err)
 	}
+	if err := m.RateLimit.Normalize(); err != nil {
+		return fmt.Errorf("rate_limit: %w", err)
+	}
 
 	return nil
 }

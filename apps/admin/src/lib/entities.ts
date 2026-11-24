@@ -1,5 +1,11 @@
-import { emptyCache, emptyCompression, emptyLogging, emptyTransform } from "@/api/normalize";
-import type { AppMain, Auth, Compression, EndpointMain } from "@/api/types";
+import {
+  emptyCache,
+  emptyCompression,
+  emptyLogging,
+  emptyRateLimit,
+  emptyTransform
+} from "@/api/normalize";
+import type { AppMain, Auth, Compression, EndpointMain, RateLimit } from "@/api/types";
 
 // New entities default auth to "enabled + extend" with no methods — i.e. inherit
 // the parent's auth and add nothing. This is the baseline treated as "default".
@@ -20,7 +26,8 @@ export function emptyApp(): AppMain {
     auth: defaultAuth(),
     logging: emptyLogging(),
     variables: [],
-    compression: emptyCompression()
+    compression: emptyCompression(),
+    rate_limit: emptyRateLimit()
   };
 }
 
@@ -41,7 +48,8 @@ export function emptyEndpoint(appId: string): EndpointMain {
     variables: [],
     transform: emptyTransform(),
     cache: emptyCache(),
-    compression: emptyCompression()
+    compression: emptyCompression(),
+    rate_limit: emptyRateLimit()
   };
 }
 
@@ -54,4 +62,9 @@ export function hasCompressionOverrides(c: Compression): boolean {
     c.min_size > 0 ||
     c.content_types.length > 0
   );
+}
+
+// True when the level does more than inherit the parent's rules as they are.
+export function hasRateLimitOverrides(r: RateLimit): boolean {
+  return r.mode === "replace" || r.rules.length > 0;
 }

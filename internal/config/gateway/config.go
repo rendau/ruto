@@ -29,6 +29,11 @@ var Conf = struct {
 	// memory ceiling for responses of endpoints with server cache, see gw/service/cache
 	CacheMaxSizeMb     int           `env:"CACHE_MAX_SIZE_MB" envDefault:"256"`
 	CacheSweepInterval time.Duration `env:"CACHE_SWEEP_INTERVAL" envDefault:"30s"`
+
+	// ceiling on rate-limit counters (client × rule), ~85 bytes each, so the
+	// default takes up to ~45 MB; at the ceiling the least used are evicted,
+	// see gw/service/ratelimit
+	RateLimitMaxKeys int `env:"RATE_LIMIT_MAX_KEYS" envDefault:"500000"`
 }{}
 
 func init() {

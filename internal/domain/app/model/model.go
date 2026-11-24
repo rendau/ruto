@@ -10,6 +10,7 @@ import (
 	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
+	rateLimitModel "github.com/rendau/ruto/internal/domain/ratelimit/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
@@ -26,6 +27,7 @@ type App struct {
 	Logging            loggingModel.Logging         `json:"logging"`
 	Variables          varsModel.Vars               `json:"variables"`
 	Compression        compressionModel.Compression `json:"compression"`
+	RateLimit          rateLimitModel.RateLimit     `json:"rate_limit"`
 
 	Endpoints []*endpointModel.Endpoint `json:"endpoints"` // not stored in db
 }

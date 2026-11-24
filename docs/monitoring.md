@@ -51,3 +51,17 @@ GRAYLOG_QUERY=                       # optional extra Lucene query AND-ed to eve
 - Log search matches the `access log` marker plus the `endpoint_id` — for Graylog it works
   both with extracted fields and with the raw JSON line in `message`.
 - Apps/endpoints with `exclude_from_metrics` produce no series; the admin hides their charts.
+
+## Rate limit
+
+The gateway exports (same `<ns>_ruto_` prefix):
+
+- `gw_rate_limit_rejected_total{app, app_id, endpoint_id, protocol, scope, rule}` — requests
+  rejected by a rate-limit rule (`rule` is the rule name, or `"<key> <requests>/<period>"`).
+  Not exported for apps/endpoints with `exclude_from_metrics`.
+- `gw_rate_limit_evicted_total` — counters dropped because the key table was full
+  (`RATE_LIMIT_MAX_KEYS`); a steady rise means a flood of distinct clients or a cap too low.
+- `gw_rate_limit_keys` — counters in memory, as of the last sweep (every 30s).
+
+A rejected HTTP request is a `429` (not an error in the charts); a rejected gRPC call is
+`ResourceExhausted`, which the error rate above counts as a failure.

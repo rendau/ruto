@@ -15,8 +15,12 @@ import (
 	localGrpc "github.com/rendau/ruto/internal/service/gw/server/grpc"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
+	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
+	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
+
+const rateLimitSweepInterval = 30 * time.Second
 
 type Service struct {
 	globalCtx     context.Context
@@ -24,6 +28,8 @@ type Service struct {
 	httpTransport *http.Transport
 	cache         *cache.Service
 	cacheSweep    time.Duration
+	rateLimits    *ratelimit.Store
+	limits        *ratelimit.Service
 	grpcServer    *localGrpc.Service
 	grpcConns     *handlerGrpc.Conns
 	coreClient    *core_client.Service
@@ -37,8 +43,12 @@ func New(
 	backendIdleConnTimeout time.Duration,
 	cacheMaxSize int64,
 	cacheSweepInterval time.Duration,
+	rateLimitMaxKeys int,
+	trustedProxyAddresses []string,
 ) (*Service, error) {
 	var err error
+
+	rateLimits := ratelimit.New(rateLimitMaxKeys)
 
 	service := &Service{
 		globalCtx:     globalCtx,
@@ -46,6 +56,8 @@ func New(
 		httpTransport: proxy.NewTransport(backendIdleConnTimeout),
 		cache:         cache.New(cacheMaxSize),
 		cacheSweep:    cacheSweepInterval,
+		rateLimits:    rateLimits,
+		limits:        ratelimit.NewService(rateLimits, clientip.New(trustedProxyAddresses)),
 	}
 	if grpcPort > 0 {
 		service.grpcServer = localGrpc.New(grpcPort)
@@ -64,6 +76,7 @@ func New(
 func (s *Service) Start() {
 	s.coreClient.Start()
 	go s.cache.Run(s.globalCtx, s.cacheSweep)
+	go s.rateLimits.Run(s.globalCtx, rateLimitSweepInterval)
 	s.httpServer.Start()
 	if s.grpcServer != nil {
 		s.grpcServer.Start()
@@ -100,14 +113,14 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache)
+	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache, s.limits)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}
 	s.httpServer.SetHandler(httpHandler)
 
 	if s.grpcServer != nil {
-		grpcHandler, grpcErr := handlerGrpc.New(conf, s.grpcConns)
+		grpcHandler, grpcErr := handlerGrpc.New(conf, s.grpcConns, s.limits)
 		if grpcErr != nil {
 			return fmt.Errorf("handlerGrpc.New: %w", grpcErr)
 		}

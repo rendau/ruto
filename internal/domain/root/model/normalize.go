@@ -45,6 +45,9 @@ func (m *Root) Normalize() error {
 		return fmt.Errorf("compression: %w", err)
 	}
 	m.Compression = compressionModel.Merge(compressionModel.Default(), m.Compression)
+	if err := m.RateLimit.Normalize(); err != nil {
+		return fmt.Errorf("rate_limit: %w", err)
+	}
 	for i := range m.Apps {
 		if err := m.Apps[i].Normalize(); err != nil {
 			return fmt.Errorf("apps[%d]: %w", i, err)

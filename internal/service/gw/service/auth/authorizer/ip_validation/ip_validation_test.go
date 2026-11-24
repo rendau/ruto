@@ -67,3 +67,45 @@ func TestAuthorizeTrustedProxyFlow(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthorizeIgnoresSpoofableClientHeaders(t *testing.T) {
+	authorizer := New(&authModel.AuthMethodIPValidation{
+		AllowedIps: []authModel.AuthMethodIPValidationItem{{Ip: "1.1.1.1"}},
+	}, []string{"10.0.0.0/8"})
+
+	for _, header := range []string{"Cf-Connecting-Ip", "True-Client-Ip", "X-Client-Ip", "X-Cluster-Client-Ip"} {
+		t.Run(header, func(t *testing.T) {
+			// traefik appended the real client; the header is the client's own
+			req := &authReqModel.AuthRequest{Headers: http.Header{
+				"X-Forwarded-For": {"203.0.113.10"},
+				header:            {"1.1.1.1"},
+			}}
+			req.SetRemoteAddr("10.0.0.10:443")
+			require.Equal(t, authReqModel.Denied, authorizer.Authorize(req))
+
+			// nor without X-Forwarded-For
+			req = &authReqModel.AuthRequest{Headers: http.Header{header: {"1.1.1.1"}}}
+			req.SetRemoteAddr("10.0.0.10:443")
+			require.Equal(t, authReqModel.Denied, authorizer.Authorize(req))
+		})
+	}
+}
+
+func TestAuthorizeRealIPOnlyWithoutForwardedFor(t *testing.T) {
+	authorizer := New(&authModel.AuthMethodIPValidation{
+		AllowedIps: []authModel.AuthMethodIPValidationItem{{Ip: "1.1.1.1"}},
+	}, []string{"10.0.0.0/8"})
+
+	req := &authReqModel.AuthRequest{Headers: http.Header{"X-Real-Ip": {"1.1.1.1"}}}
+	req.SetRemoteAddr("10.0.0.10:443")
+	require.Equal(t, authReqModel.Allowed, authorizer.Authorize(req))
+
+	req = &authReqModel.AuthRequest{Headers: http.Header{"X-Real-Ip": {"1.1.1.1"}, "X-Forwarded-For": {"203.0.113.10"}}}
+	req.SetRemoteAddr("10.0.0.10:443")
+	require.Equal(t, authReqModel.Denied, authorizer.Authorize(req))
+
+	// an untrusted peer is never taken for another address
+	req = &authReqModel.AuthRequest{Headers: http.Header{"X-Real-Ip": {"1.1.1.1"}}}
+	req.SetRemoteAddr("203.0.113.10:443")
+	require.Equal(t, authReqModel.Denied, authorizer.Authorize(req))
+}

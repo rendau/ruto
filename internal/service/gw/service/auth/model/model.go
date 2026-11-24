@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/samber/lo"
@@ -20,7 +21,7 @@ type AuthRequest struct {
 	basic          authBasic
 	apiKeyByHeader map[string]string
 	remoteIP       netip.Addr
-	ipAddrs        authIPs
+	forwardedFor   authIPs
 }
 
 type authToken struct {
@@ -66,29 +67,21 @@ func (r *AuthRequest) ExtractToken() (finalResult string) {
 		r.token.isSet = true
 	}()
 
-	value := r.findValue("Authorization", "auth_token")
-	if value == "" {
-		return ""
-	}
+	return ParseBearer(r.findValue("Authorization", "auth_token"))
+}
 
+// ParseBearer gives the token of an Authorization value: "Bearer <token>" in
+// any case and spacing, or a bare token; "" for anything else.
+func ParseBearer(value string) string {
 	parts := strings.Fields(value)
-	if len(parts) == 0 {
-		return ""
-	}
-
-	if len(parts) == 1 {
+	switch {
+	case len(parts) == 1:
 		return parts[0]
-	}
-
-	if len(parts) != 2 {
+	case len(parts) == 2 && strings.EqualFold(parts[0], "bearer"):
+		return parts[1]
+	default:
 		return ""
 	}
-
-	if !strings.EqualFold(parts[0], "bearer") {
-		return ""
-	}
-
-	return parts[1]
 }
 
 func (r *AuthRequest) ExtractBasic() (finalUsername string, finalPassword string) {
@@ -102,27 +95,27 @@ func (r *AuthRequest) ExtractBasic() (finalUsername string, finalPassword string
 		r.basic.isSet = true
 	}()
 
-	headerValue := r.getHeaderValue("Authorization")
-	if headerValue == "" {
-		return "", ""
-	}
+	user, pass, _ := ParseBasic(r.getHeaderValue("Authorization"))
+	return user, pass
+}
 
-	parts := strings.Fields(headerValue)
+// ParseBasic decodes a "Basic <base64 user:password>" Authorization value.
+func ParseBasic(value string) (string, string, bool) {
+	parts := strings.Fields(value)
 	if len(parts) != 2 || !strings.EqualFold(parts[0], "basic") {
-		return "", ""
+		return "", "", false
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(parts[1])
 	if err != nil {
-		return "", ""
+		return "", "", false
 	}
 
 	user, pass, ok := strings.Cut(string(decoded), ":")
 	if !ok {
-		return "", ""
+		return "", "", false
 	}
-
-	return user, pass
+	return user, pass, true
 }
 
 func (r *AuthRequest) ExtractAPIKey(header string) (finalResult string) {
@@ -141,54 +134,37 @@ func (r *AuthRequest) ExtractAPIKey(header string) (finalResult string) {
 	return value
 }
 
-func (r *AuthRequest) ExtractIPAddrs() (finalResult []netip.Addr) {
-	if r.ipAddrs.isSet {
-		return r.ipAddrs.value
+// ExtractForwardedFor gives the X-Forwarded-For addresses in order, across all
+// the header lines; an entry that is not an address is kept as an invalid
+// Addr, so a reader walking from the right can tell the chain is broken.
+func (r *AuthRequest) ExtractForwardedFor() (finalResult []netip.Addr) {
+	if r.forwardedFor.isSet {
+		return r.forwardedFor.value
 	}
 
 	defer func() {
-		r.ipAddrs.value = finalResult
-		r.ipAddrs.isSet = true
+		r.forwardedFor.value = finalResult
+		r.forwardedFor.isSet = true
 	}()
 
-	result := make([]netip.Addr, 0, 10)
-	seen := make(map[netip.Addr]struct{}, 10)
-
-	appendParsedIP := func(ip netip.Addr) {
-		if _, ok := seen[ip]; ok {
-			return
-		}
-		seen[ip] = struct{}{}
-		result = append(result, ip)
-	}
-
-	appendIP := func(raw string) {
-		if raw = strings.TrimSpace(raw); raw == "" {
-			return
-		}
-		ip, err := netip.ParseAddr(raw)
-		if err != nil {
-			return
-		}
-		appendParsedIP(ip)
-	}
-
-	appendIPList := func(raw string) {
-		if raw == "" {
-			return
-		}
-		for _, x := range strings.Split(raw, ",") {
-			appendIP(x)
+	var result []netip.Addr
+	for _, line := range r.getHeaderValues("X-Forwarded-For") {
+		for raw := range strings.SplitSeq(line, ",") {
+			if raw = strings.TrimSpace(raw); raw == "" {
+				continue
+			}
+			ip, _ := parseRemoteAddrIP(raw)
+			result = append(result, ip)
 		}
 	}
-	appendIPList(r.getHeaderValue("X-Forwarded-For"))
-	appendIP(r.getHeaderValue("X-Real-Ip"))
-	appendIP(r.getHeaderValue("Cf-Connecting-Ip"))
-	appendIP(r.getHeaderValue("True-Client-Ip"))
-	appendIP(r.getHeaderValue("X-Client-Ip"))
-	appendIP(r.getHeaderValue("X-Cluster-Client-Ip"))
 
 	return result
+}
+
+// ExtractRealIP gives the X-Real-Ip address, invalid when there is none.
+func (r *AuthRequest) ExtractRealIP() netip.Addr {
+	ip, _ := parseRemoteAddrIP(r.getHeaderValue("X-Real-Ip"))
+	return ip
 }
 
 func (r *AuthRequest) ExtractRemoteAddrIP() netip.Addr {
@@ -223,6 +199,15 @@ func (r *AuthRequest) findValue(headerKey, queryParamKey string) string {
 		val = r.getQueryParamValue(queryParamKey)
 	}
 	return val
+}
+
+// getHeaderValues gives every line of a header, also under the lowercase key
+// gRPC metadata uses.
+func (r *AuthRequest) getHeaderValues(key string) []string {
+	if len(r.Headers) == 0 {
+		return nil
+	}
+	return append(slices.Clip(r.Headers.Values(key)), r.Headers[strings.ToLower(key)]...)
 }
 
 func (r *AuthRequest) getHeaderValue(key string) string {

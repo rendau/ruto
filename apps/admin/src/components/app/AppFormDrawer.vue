@@ -20,7 +20,8 @@ import {
 import { SearchOutline } from "@vicons/ionicons5";
 import { createApp, getAppSwaggerUrlByBackendUrl, updateApp } from "@/api/app";
 import { apiErrorMessage } from "@/api/http";
-import { emptyApp, hasCompressionOverrides } from "@/lib/entities";
+import { emptyApp, hasCompressionOverrides, hasRateLimitOverrides } from "@/lib/entities";
+import { rateLimitError } from "@/lib/rateLimit";
 import { useAppForm } from "@/composables/useAppForm";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useIsMobile } from "@/composables/useIsMobile";
@@ -30,6 +31,7 @@ import { useRootStore } from "@/stores/root";
 import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
+import RateLimitEditor from "@/components/editors/RateLimitEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import KeyValueTextarea from "@/components/editors/KeyValueTextarea.vue";
 import SwitchField from "@/components/common/SwitchField.vue";
@@ -70,6 +72,9 @@ function nonDefaultSections(): string[] {
   if (hasCompressionOverrides(model.compression)) {
     names.push("compression");
   }
+  if (hasRateLimitOverrides(model.rate_limit)) {
+    names.push("rate-limit");
+  }
   return names;
 }
 
@@ -101,6 +106,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<AppMain, AppCreate
   create: () => createApp(model),
   update: () => updateApp(model),
   messages: { created: "Application created", updated: "Application saved" },
+  validate: validateRateLimit,
   onSaved: (created) => {
     void appsStore.refresh();
     window.dispatchEvent(new CustomEvent("app:saved", { detail: { id: created?.id || model.id } }));
@@ -110,6 +116,16 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<AppMain, AppCreate
     }
   }
 });
+
+function validateRateLimit(): boolean {
+  const problem = rateLimitError(model.rate_limit);
+  if (!problem) return true;
+  if (!expandedNames.value.includes("rate-limit")) {
+    expandedNames.value = [...expandedNames.value, "rate-limit"];
+  }
+  message.error(problem);
+  return false;
+}
 
 async function detectSwagger(): Promise<void> {
   if (!model.backend.url.trim()) return;
@@ -232,6 +248,10 @@ async function detectSwagger(): Promise<void> {
           <NCollapseItem title="Compression" name="compression">
             <p class="muted form-hint">Inherited from Root unless overridden here.</p>
             <CompressionEditor v-model="model.compression" />
+          </NCollapseItem>
+          <NCollapseItem title="Rate limit" name="rate-limit">
+            <p class="muted form-hint">Added to the Root rules unless the mode is replace.</p>
+            <RateLimitEditor v-model="model.rate_limit" />
           </NCollapseItem>
           <NCollapseItem title="Variables" name="variables">
             <p class="muted form-hint">

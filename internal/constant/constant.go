@@ -1,5 +1,7 @@
 package constant
 
+import "time"
+
 const (
 	ServiceName = "ruto"
 )
@@ -12,6 +14,29 @@ const (
 func AuthModeIsValid(v string) bool {
 	return v == AuthModeExtend || v == AuthModeReplace
 }
+
+const (
+	RateLimitModeExtend  = "extend"
+	RateLimitModeReplace = "replace"
+
+	RateLimitKeyIP    = "ip"    // one client address (IPv6 by its /64 network)
+	RateLimitKeyToken = "token" // one Authorization header value; none — by ip
+	RateLimitKeyAll   = "all"   // every request together
+)
+
+func RateLimitModeIsValid(v string) bool {
+	return v == RateLimitModeExtend || v == RateLimitModeReplace
+}
+
+func RateLimitKeyIsValid(v string) bool {
+	return v == RateLimitKeyIP || v == RateLimitKeyToken || v == RateLimitKeyAll
+}
+
+const (
+	RateLimitMinPeriod   = time.Second
+	RateLimitMaxPeriod   = 24 * time.Hour
+	RateLimitMaxRequests = 1_000_000_000
+)
 
 // AuthAPIKeyDefaultHeader carries the api key when an api_key method sets no header.
 const AuthAPIKeyDefaultHeader = "x-api-key"

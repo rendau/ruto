@@ -18,19 +18,22 @@ import (
 	serviceAuth "github.com/rendau/ruto/internal/service/gw/service/auth"
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"
+	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
 
 type Service struct {
 	conns             *Conns
+	limits            *ratelimit.Service
 	routes            map[string]*route
 	reflectionRoutes  map[string]*reflectionRoute
 	transparentHandle gogrpc.StreamHandler
 }
 
-// New builds the handler for a snapshot. conns is owned by the caller and
-// outlives the handler, see Conns.
-func New(snapshot *domRootModel.Root, conns *Conns) (*Service, error) {
-	service := &Service{conns: conns}
+// New builds the handler for a snapshot. conns and limits are owned by the
+// caller and outlive the handler, see Conns. A nil limits turns rate limiting
+// off.
+func New(snapshot *domRootModel.Root, conns *Conns, limits *ratelimit.Service) (*Service, error) {
+	service := &Service{conns: conns, limits: limits}
 	service.transparentHandle = proxy.TransparentHandler(service.director)
 
 	routes, err := service.buildRoutes(snapshot)
@@ -84,6 +87,7 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root) (map[string]*route, e
 			rt.handler = chain(s.transparentHandle,
 				newMetricsMiddleware(metricsService),
 				newRequestLogMiddleware(logService, app, ep),
+				newRateLimitMiddleware(s.limits.Endpoint(app, ep, "GRPC "+routeName)),
 				newAuthMiddleware(authService),
 			)
 

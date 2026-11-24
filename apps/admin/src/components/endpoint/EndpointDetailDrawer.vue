@@ -44,6 +44,7 @@ import KeyValueGrid from "@/components/common/KeyValueGrid.vue";
 import AuthSummary from "@/components/display/AuthSummary.vue";
 import CompressionSummary from "@/components/display/CompressionSummary.vue";
 import LoggingSummary from "@/components/display/LoggingSummary.vue";
+import RateLimitSummary from "@/components/display/RateLimitSummary.vue";
 import TrafficPanel from "@/components/monitoring/TrafficPanel.vue";
 import EndpointLogsPanel from "@/components/monitoring/EndpointLogsPanel.vue";
 import type { AppMain, EndpointMain, MonitoringStatus, Variable } from "@/api/types";
@@ -298,6 +299,10 @@ function remove(): void {
                     <CompressionSummary :compression="item.compression" />
                   </div>
                   <div>
+                    <span class="section-label">Rate limit</span>
+                    <RateLimitSummary :rate-limit="item.rate_limit" />
+                  </div>
+                  <div>
                     <span class="section-label">Variables</span>
                     <KeyValueGrid :items="item.variables" empty-text="No variables" />
                   </div>
@@ -339,6 +344,10 @@ function remove(): void {
                   <div v-if="item.type === 'http'">
                     <span class="section-label">Compression</span>
                     <CompressionSummary :compression="effective.compression" />
+                  </div>
+                  <div>
+                    <span class="section-label">Rate limit</span>
+                    <RateLimitSummary :rate-limit="effective.rate_limit" effective />
                   </div>
                   <div>
                     <span class="section-label">Variables</span>

@@ -5,6 +5,7 @@ import (
 	commonModel "github.com/rendau/ruto/internal/domain/common/model"
 	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
+	rateLimitModel "github.com/rendau/ruto/internal/domain/ratelimit/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
@@ -32,6 +33,7 @@ type Endpoint struct {
 	Transform          Transform                    `json:"transform"`
 	Cache              Cache                        `json:"cache"`
 	Compression        compressionModel.Compression `json:"compression"`
+	RateLimit          rateLimitModel.RateLimit     `json:"rate_limit"`
 }
 
 // Cache configures response caching of an http endpoint. Server keeps

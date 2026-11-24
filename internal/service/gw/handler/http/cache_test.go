@@ -57,7 +57,7 @@ func newCacheTestService(t *testing.T, ep *endpointModel.Endpoint, respHeader ht
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot, proxy.NewTransport(0), cache.New(1<<20))
+	service, err := New(snapshot, proxy.NewTransport(0), cache.New(1<<20), nil)
 	require.NoError(t, err)
 
 	return service, &hits

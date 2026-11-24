@@ -3,9 +3,12 @@ package grpc
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 
 	gogrpc "google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"github.com/rendau/ruto/internal/constant"
@@ -16,17 +19,18 @@ import (
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
 	"github.com/rendau/ruto/internal/service/gw/service/logmask"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"
+	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
 
 type middleware func(gogrpc.StreamHandler) gogrpc.StreamHandler
 
-// errAuthReject is a sentinel matched via errors.Is to recognize the gateway's
-// own auth rejection (vs an Unauthenticated returned by a backend).
-var errAuthReject = errors.New("gateway auth reject")
+// errOwnReject is a sentinel matched via errors.Is to recognize the gateway's
+// own rejection — auth or rate limit — vs the same code returned by a backend.
+var errOwnReject = errors.New("gateway own reject")
 
 // authRejectError is the gateway's own auth rejection. It carries a proper gRPC
 // Unauthenticated/PermissionDenied status for the client while remaining
-// detectable via errors.Is(err, errAuthReject) in the logging layer.
+// detectable via errors.Is(err, errOwnReject) in the logging layer.
 type authRejectError struct {
 	forbidden bool
 }
@@ -45,7 +49,22 @@ func (e *authRejectError) GRPCStatus() *status.Status {
 	return status.New(codes.Unauthenticated, e.Error())
 }
 
-func (e *authRejectError) Is(target error) bool { return target == errAuthReject }
+func (e *authRejectError) Is(target error) bool { return target == errOwnReject }
+
+// rateLimitError is the gateway's own rejection by a rate-limit rule.
+type rateLimitError struct {
+	retryAfter int
+}
+
+func (e *rateLimitError) Error() string {
+	return "rate limit exceeded, retry after " + strconv.Itoa(e.retryAfter) + "s"
+}
+
+func (e *rateLimitError) GRPCStatus() *status.Status {
+	return status.New(codes.ResourceExhausted, e.Error())
+}
+
+func (e *rateLimitError) Is(target error) bool { return target == errOwnReject }
 
 func chain(h gogrpc.StreamHandler, middlewares ...middleware) gogrpc.StreamHandler {
 	for i := len(middlewares) - 1; i >= 0; i-- {
@@ -71,6 +90,34 @@ func newAuthMiddleware(service *serviceAuth.Service) middleware {
 			}
 
 			return next(srv, stream)
+		}
+	}
+}
+
+// newRateLimitMiddleware goes before auth, so attempts with wrong credentials
+// are counted too (see NewRateLimit of the http handler for how). gRPC has no Retry-After: the wait goes in the status
+// message and in the "retry-after" trailer, in seconds.
+func newRateLimitMiddleware(limiter *ratelimit.Endpoint) middleware {
+	if limiter == nil {
+		return func(next gogrpc.StreamHandler) gogrpc.StreamHandler { return next }
+	}
+
+	return func(next gogrpc.StreamHandler) gogrpc.StreamHandler {
+		return func(srv any, stream gogrpc.ServerStream) error {
+			md := metadataFromContext(stream.Context())
+
+			ok, retryAfter := limiter.Check(ratelimit.Request{
+				RemoteAddr:    remoteAddrFromContext(stream.Context()),
+				Header:        headersFromMetadata(md),
+				Authorization: strings.TrimSpace(metadataFirstValue(md, metadataHeaderAuthorization)),
+			})
+			if ok {
+				return next(srv, stream)
+			}
+
+			seconds := ratelimit.RetryAfterSeconds(retryAfter)
+			stream.SetTrailer(metadata.Pairs(metadataHeaderRetryAfter, strconv.Itoa(seconds)))
+			return &rateLimitError{retryAfter: seconds}
 		}
 	}
 }
@@ -107,7 +154,7 @@ func newRequestLogMiddleware(
 
 				err = next(srv, stream)
 
-				return fields, statusLabelFromError(err), err, errors.Is(err, errAuthReject)
+				return fields, statusLabelFromError(err), err, errors.Is(err, errOwnReject)
 			})
 			return err
 		}

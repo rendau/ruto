@@ -7,6 +7,7 @@ import (
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	compressionModel "github.com/rendau/ruto/internal/domain/compression/model"
 	loggingModel "github.com/rendau/ruto/internal/domain/logging/model"
+	rateLimitModel "github.com/rendau/ruto/internal/domain/ratelimit/model"
 	varsModel "github.com/rendau/ruto/internal/domain/vars/model"
 )
 
@@ -22,6 +23,7 @@ type Root struct {
 	// Compression is always complete on a root: Normalize fills the empty
 	// fields with the defaults.
 	Compression compressionModel.Compression `json:"compression"`
+	RateLimit   rateLimitModel.RateLimit     `json:"rate_limit"`
 
 	Apps []*appModel.App `json:"apps"` // not stored in db
 }

@@ -113,6 +113,28 @@ export interface Compression {
   content_types: string[];
 }
 
+// ---- Rate limit -----------------------------------------------------------
+
+export type RateLimitMode = "extend" | "replace";
+export type RateLimitKey = "ip" | "token" | "all";
+
+// No more than `requests` per `period` (a Go duration, 1s..24h), counted per key.
+export interface RateLimitRule {
+  name: string;
+  key: RateLimitKey;
+  requests: number;
+  period: string;
+  // Where the rule is written: "root", "app:<id>" or "endpoint:<id>". Present
+  // only in the inherited (effective) view; never stored, stripped on save.
+  scope?: string;
+}
+
+// extend adds the level's rules to the inherited ones, replace keeps only its own.
+export interface RateLimit {
+  mode: RateLimitMode;
+  rules: RateLimitRule[];
+}
+
 // ---- Root -----------------------------------------------------------------
 
 export interface RootCors {
@@ -150,6 +172,7 @@ export interface RootMain {
   variables: Variable[];
   transform: RootTransform;
   compression: Compression;
+  rate_limit: RateLimit;
 }
 
 export interface RootJwtKidsReq {
@@ -187,6 +210,7 @@ export interface AppMain {
   logging: Logging;
   variables: Variable[];
   compression: Compression;
+  rate_limit: RateLimit;
 }
 
 export interface AppListRep {
@@ -311,6 +335,7 @@ export interface EndpointMain {
   transform: Transform;
   cache: EndpointCache;
   compression: Compression;
+  rate_limit: RateLimit;
 }
 
 export interface EndpointListRep {

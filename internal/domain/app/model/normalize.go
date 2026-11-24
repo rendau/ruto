@@ -37,6 +37,9 @@ func (m *App) Normalize() error {
 	if err := m.Compression.Normalize(); err != nil {
 		return fmt.Errorf("compression: %w", err)
 	}
+	if err := m.RateLimit.Normalize(); err != nil {
+		return fmt.Errorf("rate_limit: %w", err)
+	}
 	for i := range m.Endpoints {
 		if err := m.Endpoints[i].Normalize(); err != nil {
 			return fmt.Errorf("endpoints[%d]: %w", i, err)

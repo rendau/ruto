@@ -13,10 +13,12 @@ import {
   NRadioButton,
   NRadioGroup,
   NSelect,
+  useMessage,
   type FormItemRule
 } from "naive-ui";
 import { createEndpoint, updateEndpoint } from "@/api/endpoint";
-import { emptyEndpoint, hasCompressionOverrides } from "@/lib/entities";
+import { emptyEndpoint, hasCompressionOverrides, hasRateLimitOverrides } from "@/lib/entities";
+import { rateLimitError } from "@/lib/rateLimit";
 import { hasWildcard, wildcardPathError } from "@/lib/endpointPath";
 import { useEntityForm } from "@/composables/useEntityForm";
 import { useIsMobile } from "@/composables/useIsMobile";
@@ -27,6 +29,7 @@ import AuthEditor from "@/components/editors/AuthEditor.vue";
 import CacheEditor from "@/components/editors/CacheEditor.vue";
 import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
+import RateLimitEditor from "@/components/editors/RateLimitEditor.vue";
 import TransformEditor from "@/components/editors/TransformEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import KeyValueTextarea from "@/components/editors/KeyValueTextarea.vue";
@@ -42,6 +45,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ "update:show": [value: boolean]; saved: [] }>();
 
+const message = useMessage();
 const rootStore = useRootStore();
 const authStore = useAuthStore();
 const isMobile = useIsMobile();
@@ -75,6 +79,9 @@ function nonDefaultSections(): string[] {
   }
   if (model.type === "http" && hasCompressionOverrides(model.compression)) {
     names.push("compression");
+  }
+  if (hasRateLimitOverrides(model.rate_limit)) {
+    names.push("rate-limit");
   }
   return names;
 }
@@ -130,11 +137,22 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<EndpointMain, Endp
   create: () => createEndpoint(model),
   update: () => updateEndpoint(model),
   messages: { created: "Endpoint created", updated: "Endpoint saved" },
+  validate: validateRateLimit,
   onSaved: () => {
     emit("saved");
     close();
   }
 });
+
+function validateRateLimit(): boolean {
+  const problem = rateLimitError(model.rate_limit);
+  if (!problem) return true;
+  if (!expandedNames.value.includes("rate-limit")) {
+    expandedNames.value = [...expandedNames.value, "rate-limit"];
+  }
+  message.error(problem);
+  return false;
+}
 
 function applyPrefill(): void {
   const prefill = props.prefill;
@@ -296,6 +314,12 @@ function close(): void {
           <NCollapseItem v-if="model.type === 'http'" title="Compression" name="compression">
             <p class="muted form-hint">Inherited from the application unless overridden here.</p>
             <CompressionEditor v-model="model.compression" />
+          </NCollapseItem>
+          <NCollapseItem title="Rate limit" name="rate-limit">
+            <p class="muted form-hint">
+              Added to the application and Root rules unless the mode is replace.
+            </p>
+            <RateLimitEditor v-model="model.rate_limit" />
           </NCollapseItem>
         </NCollapse>
       </NForm>
