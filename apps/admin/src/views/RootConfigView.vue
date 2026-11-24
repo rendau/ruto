@@ -26,6 +26,7 @@ import { useRootStore } from "@/stores/root";
 import { useAuthStore } from "@/stores/auth";
 import { arrayToLines, linesToArray } from "@/lib/forms";
 import { rateLimitError } from "@/lib/rateLimit";
+import { trustedClientsError } from "@/lib/ip";
 import PageContainer from "@/components/common/PageContainer.vue";
 import RecordCard from "@/components/common/RecordCard.vue";
 import SectionCard from "@/components/common/SectionCard.vue";
@@ -35,6 +36,7 @@ import CompressionEditor from "@/components/editors/CompressionEditor.vue";
 import LoggingEditor from "@/components/editors/LoggingEditor.vue";
 import RateLimitEditor from "@/components/editors/RateLimitEditor.vue";
 import SeenOriginsPanel from "@/components/root/SeenOriginsPanel.vue";
+import TrustedClientsEditor from "@/components/editors/TrustedClientsEditor.vue";
 import VariableEditor from "@/components/editors/VariableEditor.vue";
 import type { RootJwt, RootMain } from "@/api/types";
 
@@ -64,7 +66,8 @@ function emptyRoot(): RootMain {
     variables: [],
     transform: { max_workers: 0 },
     compression: emptyCompression(),
-    rate_limit: emptyRateLimit()
+    rate_limit: emptyRateLimit(),
+    trusted_clients: []
   };
 }
 
@@ -135,9 +138,9 @@ watch(
 
 async function save(): Promise<void> {
   if (!canEdit.value) return;
-  const rateLimitProblem = rateLimitError(model.rate_limit);
-  if (rateLimitProblem) {
-    message.error(rateLimitProblem);
+  const problem = rateLimitError(model.rate_limit) || trustedClientsError(model.trusted_clients);
+  if (problem) {
+    message.error(problem);
     return;
   }
   saving.value = true;
@@ -349,6 +352,13 @@ onMounted(load);
           description="Request limits for the whole gateway: a Root rule counts a client's requests across every application"
         >
           <RateLimitEditor v-model="model.rate_limit" root />
+        </SectionCard>
+
+        <SectionCard
+          title="Trusted clients"
+          description="Clients the gateway never rate-limits and never blocks, e.g. your own back office or 1C server"
+        >
+          <TrustedClientsEditor v-model="model.trusted_clients" />
         </SectionCard>
 
         <SectionCard

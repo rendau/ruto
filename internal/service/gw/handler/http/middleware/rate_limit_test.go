@@ -19,7 +19,7 @@ import (
 
 func TestRateLimit_RejectionIsGatewaysOwnResponse(t *testing.T) {
 	limits := ratelimit.NewService(ratelimit.New(100), clientip.New(nil))
-	limiter := limits.Endpoint(&domAppModel.App{Id: "a"}, &domEndpointModel.Endpoint{
+	limiter := limits.Endpoint(nil, &domAppModel.App{Id: "a"}, &domEndpointModel.Endpoint{
 		Id: "e",
 		RateLimit: rateLimitModel.RateLimit{Rules: []*rateLimitModel.Rule{
 			{Key: "ip", Requests: 1, Period: "1m", ParsedPeriod: time.Minute, Scope: "endpoint:e"},

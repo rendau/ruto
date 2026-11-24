@@ -43,6 +43,12 @@ withDefaults(
         </dd>
       </div>
       <div class="gw-card__item">
+        <dt class="gw-card__term">Blocklist</dt>
+        <dd class="gw-card__desc mono" :title="gateway.blocklist_version || 'Not reported yet'">
+          {{ gateway.blocklist_version ? gateway.blocklist_version.slice(0, 8) : "—" }}
+        </dd>
+      </div>
+      <div class="gw-card__item">
         <dt class="gw-card__term">Applied age</dt>
         <dd class="gw-card__desc">{{ formatUnixAge(gateway.last_apply_at_unix) }}</dd>
       </div>

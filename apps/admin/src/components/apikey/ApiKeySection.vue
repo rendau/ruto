@@ -8,7 +8,10 @@ import {
   NIcon,
   NInput,
   NModal,
+  NRadio,
+  NRadioGroup,
   NSpin,
+  NTag,
   useMessage,
   type FormInst,
   type FormRules
@@ -19,8 +22,9 @@ import { apiErrorMessage } from "@/api/http";
 import { useConfirm } from "@/composables/useConfirm";
 import { useClipboard } from "@/composables/useClipboard";
 import { formatUnixAge, formatUnixDateTime } from "@/lib/datetime";
+import { API_KEY_SCOPE_LABEL, API_KEY_SCOPE_OPTIONS } from "@/constants/enums";
 import SectionCard from "@/components/common/SectionCard.vue";
-import type { ApiKeyMain } from "@/api/types";
+import type { ApiKeyMain, ApiKeyScope } from "@/api/types";
 
 const message = useMessage();
 const { confirmDelete } = useConfirm();
@@ -32,7 +36,7 @@ const loading = ref(false);
 const showCreate = ref(false);
 const creating = ref(false);
 const formRef = ref<FormInst | null>(null);
-const model = reactive({ name: "" });
+const model = reactive<{ name: string; scope: ApiKeyScope }>({ name: "", scope: "full" });
 const rules: FormRules = {
   name: [{ required: true, message: "Name is required", trigger: ["blur", "input"] }]
 };
@@ -56,6 +60,7 @@ async function fetchKeys(): Promise<void> {
 
 function openCreate(): void {
   model.name = "";
+  model.scope = "full";
   showCreate.value = true;
 }
 
@@ -68,7 +73,7 @@ async function submitCreate(): Promise<void> {
   creating.value = true;
   try {
     const name = model.name.trim();
-    const rep = await createApiKey(name);
+    const rep = await createApiKey({ name, scope: model.scope });
     showCreate.value = false;
     createdName.value = name;
     createdKey.value = rep.key;
@@ -88,7 +93,7 @@ function closeCreated(): void {
 function remove(key: ApiKeyMain): void {
   confirmDelete({
     title: "Delete API key",
-    content: `Delete key "${key.name}"? Agents using it lose access immediately.`,
+    content: `Delete key "${key.name}"? Agents using it lose access immediately, and the active blocks made with it are lifted.`,
     onConfirm: async () => {
       try {
         await deleteApiKey(key.id);
@@ -105,7 +110,10 @@ onMounted(fetchKeys);
 </script>
 
 <template>
-  <SectionCard title="API keys" description="Access for AI agents to the built-in MCP server">
+  <SectionCard
+    title="API keys"
+    description="Access for AI agents to the built-in MCP server and for services such as pulse"
+  >
     <template #extra>
       <NButton size="small" type="primary" @click="openCreate">
         <template #icon><NIcon :component="AddOutline" /></template>
@@ -115,9 +123,11 @@ onMounted(fetchKeys);
 
     <NAlert type="info" :bordered="false" :show-icon="false" class="keys__hint">
       An AI agent connects to the MCP server with <code>Authorization: Bearer &lt;key&gt;</code>.
-      The key works only on the MCP endpoint, never on the admin API. Agents can read the
+      A full key works only on the MCP endpoint, never on the admin API. Agents can read the
       configuration and propose changes; every change waits for an administrator under
       <RouterLink :to="{ name: 'change-requests' }" class="keys__link">Change requests</RouterLink>.
+      A block list key (for pulse) can only list, block and unblock clients — over MCP or
+      <code>/api/blocked_client</code> — with the agent limits.
     </NAlert>
 
     <NSpin :show="loading">
@@ -128,6 +138,14 @@ onMounted(fetchKeys);
             <div class="key-row__head">
               <span class="key-row__name">{{ key.name }}</span>
               <code class="key-row__prefix">{{ key.key_prefix }}…</code>
+              <NTag
+                size="tiny"
+                :bordered="false"
+                :type="key.scope === 'blocklist' ? 'info' : 'default'"
+                :title="API_KEY_SCOPE_OPTIONS.find((item) => item.value === key.scope)?.description"
+              >
+                {{ API_KEY_SCOPE_LABEL[key.scope] }}
+              </NTag>
             </div>
             <div class="key-row__meta muted">
               <span>Created {{ formatUnixDateTime(key.created_at_unix, "—") }}</span>
@@ -142,7 +160,8 @@ onMounted(fetchKeys);
             circle
             size="small"
             type="error"
-            title="Delete"
+            title="Delete (also lifts the active blocks made with this key)"
+            aria-label="Delete key"
             @click="remove(key)"
           >
             <template #icon><NIcon :component="TrashOutline" /></template>
@@ -150,6 +169,11 @@ onMounted(fetchKeys);
         </div>
       </div>
       <p v-else-if="!loading" class="muted keys__empty">No API keys yet.</p>
+      <p v-if="keys.length" class="muted keys__note">
+        Deleting a key also lifts the active blocks it made on the
+        <RouterLink :to="{ name: 'blocked-clients' }" class="keys__link">Blocked clients</RouterLink>
+        page.
+      </p>
     </NSpin>
 
     <NModal
@@ -175,6 +199,16 @@ onMounted(fetchKeys);
             :input-props="{ autocomplete: 'off' }"
             @keydown.enter.prevent="submitCreate"
           />
+        </NFormItem>
+        <NFormItem label="Scope" path="scope">
+          <NRadioGroup v-model:value="model.scope" class="scope-options">
+            <NRadio v-for="option in API_KEY_SCOPE_OPTIONS" :key="option.value" :value="option.value">
+              <span class="scope-option">
+                <span class="scope-option__label">{{ option.label }}</span>
+                <span class="scope-option__desc muted">{{ option.description }}</span>
+              </span>
+            </NRadio>
+          </NRadioGroup>
         </NFormItem>
       </NForm>
       <template #footer>
@@ -291,6 +325,32 @@ onMounted(fetchKeys);
   gap: 4px 14px;
   flex-wrap: wrap;
   font-size: 12px;
+}
+
+.keys__note {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+.scope-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scope-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scope-option__label {
+  font-size: 13.5px;
+}
+
+.scope-option__desc {
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .keys__empty {

@@ -29,8 +29,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// ApiKey manages the caller's keys for the built-in MCP server. Admins only,
-// from an admin login.
+// ApiKey manages the caller's keys for the built-in MCP server and for
+// services such as pulse. Admins only, from an admin login.
 type ApiKeyClient interface {
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ApiKeyListRep, error)
 	Create(ctx context.Context, in *ApiKeyCreateReq, opts ...grpc.CallOption) (*ApiKeyCreateRep, error)
@@ -79,8 +79,8 @@ func (c *apiKeyClient) Delete(ctx context.Context, in *ApiKeyDeleteReq, opts ...
 // All implementations must embed UnimplementedApiKeyServer
 // for forward compatibility.
 //
-// ApiKey manages the caller's keys for the built-in MCP server. Admins only,
-// from an admin login.
+// ApiKey manages the caller's keys for the built-in MCP server and for
+// services such as pulse. Admins only, from an admin login.
 type ApiKeyServer interface {
 	List(context.Context, *emptypb.Empty) (*ApiKeyListRep, error)
 	Create(context.Context, *ApiKeyCreateReq) (*ApiKeyCreateRep, error)

@@ -58,6 +58,9 @@ const upToDate = computed(
           <DefRow label="Target version">
             <span class="mono">{{ snapshotStore.version.slice(0, 16) || "—" }}</span>
           </DefRow>
+          <DefRow label="Blocklist version">
+            <CopyText :value="gateway.blocklist_version" label="Blocklist version" placeholder="not reported yet" wrap />
+          </DefRow>
           <DefRow label="Last applied">
             {{ formatUnixDateTime(gateway.last_apply_at_unix) }}
             <span class="muted">({{ formatUnixAge(gateway.last_apply_at_unix) }})</span>

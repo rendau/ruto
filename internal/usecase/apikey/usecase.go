@@ -1,6 +1,7 @@
 package apikey
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
@@ -18,20 +19,22 @@ import (
 const touchInterval = time.Minute
 
 type Usecase struct {
-	svc        ServiceI
-	usrSvc     UsrServiceI
-	sessionSvc SessionServiceI
+	svc            ServiceI
+	usrSvc         UsrServiceI
+	sessionSvc     SessionServiceI
+	blockedClients BlockedClientsI
 
 	touchMu   sync.Mutex
 	lastTouch map[string]time.Time
 }
 
-func New(svc ServiceI, usrSvc UsrServiceI, sessionSvc SessionServiceI) *Usecase {
+func New(svc ServiceI, usrSvc UsrServiceI, sessionSvc SessionServiceI, blockedClients BlockedClientsI) *Usecase {
 	return &Usecase{
-		svc:        svc,
-		usrSvc:     usrSvc,
-		sessionSvc: sessionSvc,
-		lastTouch:  map[string]time.Time{},
+		svc:            svc,
+		usrSvc:         usrSvc,
+		sessionSvc:     sessionSvc,
+		blockedClients: blockedClients,
+		lastTouch:      map[string]time.Time{},
 	}
 }
 
@@ -52,8 +55,9 @@ func (u *Usecase) List(ctx context.Context) ([]*model.ApiKey, error) {
 }
 
 // Create issues a key for the caller and returns (id, key); the key is not
-// retrievable afterwards.
-func (u *Usecase) Create(ctx context.Context, name string) (string, string, error) {
+// retrievable afterwards. scope: model.ScopeFull (default) or
+// model.ScopeBlocklist.
+func (u *Usecase) Create(ctx context.Context, name, scope string) (string, string, error) {
 	session, err := u.requireHumanAdmin(ctx)
 	if err != nil {
 		return "", "", err
@@ -62,6 +66,10 @@ func (u *Usecase) Create(ctx context.Context, name string) (string, string, erro
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return "", "", errs.NameRequired
+	}
+	scope = cmp.Or(strings.TrimSpace(scope), model.ScopeFull)
+	if scope != model.ScopeFull && scope != model.ScopeBlocklist {
+		return "", "", errs.ErrFull{Err: errs.InvalidRequest, Desc: `scope: "full" or "blocklist"`}
 	}
 
 	key, hash, prefix, err := apikeyService.GenerateKey()
@@ -74,6 +82,7 @@ func (u *Usecase) Create(ctx context.Context, name string) (string, string, erro
 		Name:      name,
 		KeyHash:   hash,
 		KeyPrefix: prefix,
+		Scope:     scope,
 	})
 	if err != nil {
 		return "", "", fmt.Errorf("svc.Create: %w", err)
@@ -103,27 +112,39 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("svc.Delete: %w", err)
 	}
 
+	// after the delete, so the key cannot add a block in between
+	if _, err = u.blockedClients.RemoveKeyBlocks(ctx, item.Id, item.Name); err != nil {
+		return fmt.Errorf("blockedClients.RemoveKeyBlocks: %w", err)
+	}
+
 	return nil
 }
 
-// SessionFromKey authenticates an MCP request. The session is built from the
-// live user record, so revoking admin rights or deactivating the user disables
-// the key at once.
+// SessionFromKey authenticates a request with a key (scope aside: the
+// BlockedClient methods of /api accept any scope).
 func (u *Usecase) SessionFromKey(ctx context.Context, key string) (*sessionModel.Session, error) {
+	session, _, err := u.Authenticate(ctx, key)
+	return session, err
+}
+
+// Authenticate resolves a key into a session and the key's scope. The session
+// is built from the live user record, so revoking admin rights or
+// deactivating the user disables the key at once.
+func (u *Usecase) Authenticate(ctx context.Context, key string) (*sessionModel.Session, string, error) {
 	item, found, err := u.svc.GetByKey(ctx, key)
 	if err != nil {
-		return nil, fmt.Errorf("svc.GetByKey: %w", err)
+		return nil, "", fmt.Errorf("svc.GetByKey: %w", err)
 	}
 	if !found {
-		return nil, errs.NotAuthorized
+		return nil, "", errs.NotAuthorized
 	}
 
 	usr, found, err := u.usrSvc.Get(ctx, item.UsrId, false)
 	if err != nil {
-		return nil, fmt.Errorf("usrSvc.Get: %w", err)
+		return nil, "", fmt.Errorf("usrSvc.Get: %w", err)
 	}
 	if !found || !usr.Active || !usr.IsAdmin {
-		return nil, errs.NotAuthorized
+		return nil, "", errs.NotAuthorized
 	}
 
 	u.touchLastUsed(ctx, item.Id)
@@ -135,7 +156,7 @@ func (u *Usecase) SessionFromKey(ctx context.Context, key string) (*sessionModel
 		AppIds:     usr.AppIds,
 		ApiKeyId:   item.Id,
 		ApiKeyName: item.Name,
-	}, nil
+	}, cmp.Or(item.Scope, model.ScopeFull), nil
 }
 
 func (u *Usecase) requireHumanAdmin(ctx context.Context) (*sessionModel.Session, error) {

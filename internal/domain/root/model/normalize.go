@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -47,6 +48,11 @@ func (m *Root) Normalize() error {
 	m.Compression = compressionModel.Merge(compressionModel.Default(), m.Compression)
 	if err := m.RateLimit.Normalize(); err != nil {
 		return fmt.Errorf("rate_limit: %w", err)
+	}
+	for i := range m.TrustedClients {
+		if err := m.TrustedClients[i].Normalize(); err != nil {
+			return fmt.Errorf("trusted_clients[%d]: %w", i, err)
+		}
 	}
 	for i := range m.Apps {
 		if err := m.Apps[i].Normalize(); err != nil {
@@ -157,4 +163,64 @@ func parseMaxAge(raw string) (time.Duration, error) {
 		return 0, fmt.Errorf("must be seconds or a duration like 24h")
 	}
 	return d, nil
+}
+
+func (m *RootTrustedClient) Normalize() error {
+	m.Name = strings.TrimSpace(m.Name)
+	prefix, err := ParseClientPrefix(m.Ip)
+	if err != nil {
+		return fmt.Errorf("ip: %w", err)
+	}
+	// a trusted network skips every block and rate limit, so a typo like
+	// 0.0.0.0/0 must not switch the protection off for everyone
+	if minBits := trustedClientMinBits(prefix); prefix.Bits() < minBits {
+		return fmt.Errorf("ip: network %s is too wide: at most /%d", prefix, minBits)
+	}
+	m.Prefix = prefix
+	m.Ip = prefix.String()
+	return nil
+}
+
+// ParseClientPrefix reads a client address or network ("203.0.113.7",
+// "203.0.113.0/24", "2001:db8::/64") as a masked prefix; an IPv4-mapped IPv6
+// address becomes plain IPv4, the way the gateway sees client addresses.
+func ParseClientPrefix(raw string) (netip.Prefix, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return netip.Prefix{}, fmt.Errorf("empty")
+	}
+	if !strings.Contains(raw, "/") {
+		addr, err := netip.ParseAddr(raw)
+		if err != nil {
+			return netip.Prefix{}, fmt.Errorf("not an address or network")
+		}
+		addr = addr.Unmap().WithZone("")
+		return netip.PrefixFrom(addr, addr.BitLen()), nil
+	}
+	prefix, err := netip.ParsePrefix(raw)
+	if err != nil {
+		return netip.Prefix{}, fmt.Errorf("not an address or network")
+	}
+	if prefix.Addr().Is4In6() && prefix.Bits() >= 96 {
+		prefix = netip.PrefixFrom(prefix.Addr().Unmap(), prefix.Bits()-96)
+	}
+	return prefix.Masked(), nil
+}
+
+// TrustedPrefix reports the trusted client covering ip, if any.
+func (m *Root) TrustedPrefix(ip netip.Addr) (*RootTrustedClient, bool) {
+	ip = ip.Unmap()
+	for i := range m.TrustedClients {
+		if m.TrustedClients[i].Prefix.Contains(ip) {
+			return &m.TrustedClients[i], true
+		}
+	}
+	return nil, false
+}
+
+func trustedClientMinBits(prefix netip.Prefix) int {
+	if prefix.Addr().Is4() {
+		return 8
+	}
+	return 32
 }

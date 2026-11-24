@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/ruto_v1";
+
+// BlockedClient is the gateway-wide block list of client addresses. Unlike the
+// configuration it takes effect at once: no change request and no publish —
+// core pushes "check_blocklist" through Gateway.Subscribe and the gateways
+// reload the active list. A blocked client gets 403 on every route.
+service BlockedClient {
+  // List returns the block list for the admin, newest first.
+  rpc List(BlockedClientListReq) returns (BlockedClientListRep) {
+    option (google.api.http) = { get: "/blocked_client" };
+  };
+  // Create blocks an address or network, or prolongs an active block of the
+  // same one.
+  rpc Create(BlockedClientCreateReq) returns (BlockedClientMain) {
+    option (google.api.http) = { post: "/blocked_client" body: "*" };
+  };
+  // Remove lifts an active block; the row stays in the history.
+  rpc Remove(BlockedClientRemoveReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/blocked_client/{id}/remove" body: "*" };
+  };
+
+  // RemoveAgentBlocks lifts every active block made by agents (source agent),
+  // or only those of one api key — the kill switch when an agent misbehaves.
+  // Admins only, from an admin login. Deleting an api key does the same for
+  // its blocks.
+  rpc RemoveAgentBlocks(BlockedClientRemoveAgentBlocksReq) returns (BlockedClientRemoveAgentBlocksRep) {
+    option (google.api.http) = { post: "/blocked_client/remove_agent_blocks" body: "*" };
+  };
+
+  // for gateways
+  rpc GetVersion(google.protobuf.Empty) returns (BlockedClientVersion);
+  rpc GetActive(google.protobuf.Empty) returns (BlockedClientActiveRep);
+}
+
+message BlockedClientListReq {
+  // include lifted and expired blocks (history), not only the active ones
+  bool with_history = 1;
+}
+
+message BlockedClientListRep {
+  repeated BlockedClientMain results = 1;
+}
+
+message BlockedClientCreateReq {
+  // an address or a network in CIDR notation, e.g. 203.0.113.7, 203.0.113.0/24, 2001:db8:1:2::/64
+  string ip = 1;
+  string reason = 2;
+  // how long the block lasts; 0 = without end (admins only)
+  int64 duration_seconds = 3;
+}
+
+message BlockedClientRemoveReq {
+  string id = 1;
+  string reason = 2;
+}
+
+message BlockedClientRemoveAgentBlocksReq {
+  // empty = blocks of every key
+  string api_key_id = 1;
+  string reason = 2;
+}
+
+message BlockedClientRemoveAgentBlocksRep {
+  int64 removed = 1;
+}
+
+message BlockedClientMain {
+  string id = 1;
+  // normalized network, e.g. 203.0.113.7/32
+  string ip = 2;
+  string reason = 3;
+  // who blocked: user name, or the user and api key name for an agent
+  string created_by = 4;
+  // "admin" (a person in the admin) | "agent" (an API key: pulse, MCP agents)
+  string source = 5;
+  int64 created_at_unix = 6;
+  int64 updated_at_unix = 7;
+  // 0 = without end
+  int64 expires_at_unix = 8;
+  int64 removed_at_unix = 9;
+  string removed_by = 10;
+  string remove_reason = 11;
+  // active = not removed and not expired
+  bool active = 12;
+  // the api key an agent block was made with (empty for a person's block)
+  string api_key_id = 13;
+}
+
+message BlockedClientVersion {
+  string version = 1;
+}
+
+message BlockedClientActiveRep {
+  string version = 1;
+  repeated BlockedClientRule rules = 2;
+}
+
+message BlockedClientRule {
+  // normalized network, e.g. 203.0.113.7/32
+  string ip = 1;
+  // 0 = without end; the gateway drops a rule past it without waiting for core
+  int64 expires_at_unix = 2;
+}

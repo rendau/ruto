@@ -54,7 +54,8 @@ const navLinks = computed(() => {
   const links: NavLink[] = [
     { name: "dashboard", label: "Dashboard" },
     { name: "gateways", label: "Gateways" },
-    { name: "root-config", label: "Root config" }
+    { name: "root-config", label: "Root config" },
+    { name: "blocked-clients", label: "Blocked clients" }
   ];
   if (authStore.isAdmin) {
     links.push({ name: "users", label: "Users" });

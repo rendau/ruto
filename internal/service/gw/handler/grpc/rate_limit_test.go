@@ -31,7 +31,7 @@ func TestRateLimit_ResourceExhausted(t *testing.T) {
 	snapshot.InheritDown()
 
 	limits := ratelimit.NewService(ratelimit.New(1000), clientip.New(nil))
-	svc, err := New(snapshot, NewConns(), limits)
+	svc, err := New(snapshot, NewConns(), limits, nil)
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)

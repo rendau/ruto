@@ -11,8 +11,6 @@ import (
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
 
-const notificationTypeCheckVersion = "check_version"
-
 type Gateway struct {
 	ruto_v1.UnsafeGatewayServer
 	usecase *usecase.Usecase
@@ -41,7 +39,7 @@ func (h *Gateway) List(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.GatewayL
 // Subscribe holds a long-lived server stream open for one connected gateway.
 // The usecase blocks here for the lifetime of the stream, pushing a
 // notification through stream.Send whenever the gateway should re-check the
-// snapshot version. It returns when the gateway disconnects (stream context
+// snapshot version ("check_version") or the block list ("check_blocklist"). It returns when the gateway disconnects (stream context
 // done) or a send fails.
 func (h *Gateway) Subscribe(req *ruto_v1.GatewaySubscribeRequest, stream grpc.ServerStreamingServer[ruto_v1.GatewayNotification]) error {
 	gatewayID := ""
@@ -49,7 +47,7 @@ func (h *Gateway) Subscribe(req *ruto_v1.GatewaySubscribeRequest, stream grpc.Se
 		gatewayID = req.GatewayId
 	}
 
-	return h.usecase.Subscribe(stream.Context(), gatewayID, func() error {
-		return stream.Send(&ruto_v1.GatewayNotification{Type: notificationTypeCheckVersion})
+	return h.usecase.Subscribe(stream.Context(), gatewayID, func(kind string) error {
+		return stream.Send(&ruto_v1.GatewayNotification{Type: kind})
 	})
 }

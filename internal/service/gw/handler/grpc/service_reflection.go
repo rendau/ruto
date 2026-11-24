@@ -55,6 +55,10 @@ func (s *Service) buildReflectionRoutes(snapshot *domRootModel.Root) map[string]
 
 func (s *Service) ServerReflectionInfo(stream reflectionv1.ServerReflection_ServerReflectionInfoServer) error {
 	md := metadataFromContext(stream.Context())
+	if s.blocked(stream.Context(), md) {
+		return errBlocked
+	}
+
 	rt := s.resolveReflectionRoute(md)
 	if rt == nil {
 		return status.Error(codes.NotFound, "route not found")

@@ -5,7 +5,10 @@
 //
 // Security model: an agent reads the configuration with every secret masked
 // (see package secretref) and never writes it directly. Every change is
-// proposed as a change request that a person applies in the admin UI.
+// proposed as a change request that a person applies in the admin UI. The one
+// exception is the block list of client addresses (block_client,
+// unblock_client): it applies at once, within the guards of
+// usecase/blockedclient.
 package mcp
 
 import (
@@ -17,12 +20,15 @@ import (
 	"time"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/samber/lo"
 
+	apiKeyModel "github.com/rendau/ruto/internal/domain/apikey/model"
 	oauthService "github.com/rendau/ruto/internal/domain/oauth/service"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	sessionService "github.com/rendau/ruto/internal/domain/session/service"
 	usecaseApiKey "github.com/rendau/ruto/internal/usecase/apikey"
 	usecaseApp "github.com/rendau/ruto/internal/usecase/app"
+	usecaseBlockedClient "github.com/rendau/ruto/internal/usecase/blockedclient"
 	usecaseChangeRequest "github.com/rendau/ruto/internal/usecase/changerequest"
 	usecaseEndpoint "github.com/rendau/ruto/internal/usecase/endpoint"
 	usecaseGateway "github.com/rendau/ruto/internal/usecase/gateway"
@@ -52,7 +58,8 @@ Rules:
    A variable can be used in other fields as {{NAME}}; the gateway substitutes it.
 4. update_* operations take the full object (as returned by get_*, edited) and the version you read it with. If the object changed meanwhile the proposal fails: read it again.
 5. One request is applied as a whole or not at all. Group related changes (an app and its endpoints) into one request; a new app can be referenced by later operations through its ref ("$name").
-6. Publishing makes changes reach the gateways. Set publish=true to ask for publishing right after the request is applied; the person decides. get_publish_status shows the published version, whether there are unpublished changes and which gateways already run the latest version.`
+6. Publishing makes changes reach the gateways. Set publish=true to ask for publishing right after the request is applied; the person decides. get_publish_status shows the published version, whether there are unpublished changes and which gateways already run the latest version.
+7. The block list of client addresses is the one exception to rule 1: block_client and unblock_client apply IMMEDIATELY, without a change request or publishing — a blocked client gets 403 on every route within seconds. Block only on clear evidence (e.g. a scan or brute force seen in logs or metrics), always with a reason and the shortest sensible duration (default 24h, at most 168h). You cannot block private or special ranges (10/8, 192.168/16, 127/8, fc00::/7 ...), networks wider than /24 (IPv4) or /48 (IPv6), anything overlapping a trusted client (root trusted_clients) or a network a person unblocked in the last 7 days; you can lift only blocks made by agents; all agents together may make at most 60 new blocks per hour and hold at most 500. Trusted clients (the whitelist) change only through propose_changes update_root and wait for a person.`
 )
 
 type Handler struct {
@@ -69,6 +76,7 @@ type Handler struct {
 	snapshotUc      *usecaseSnapshot.Usecase
 	gatewayUc       *usecaseGateway.Usecase
 	monitoringUc    *usecaseMonitoring.Usecase
+	blockedClientUc *usecaseBlockedClient.Usecase
 }
 
 func New(
@@ -84,6 +92,7 @@ func New(
 	snapshotUc *usecaseSnapshot.Usecase,
 	gatewayUc *usecaseGateway.Usecase,
 	monitoringUc *usecaseMonitoring.Usecase,
+	blockedClientUc *usecaseBlockedClient.Usecase,
 ) *Handler {
 	return &Handler{
 		sessionSvc:      sessionSvc,
@@ -98,13 +107,27 @@ func New(
 		snapshotUc:      snapshotUc,
 		gatewayUc:       gatewayUc,
 		monitoringUc:    monitoringUc,
+		blockedClientUc: blockedClientUc,
 	}
 }
 
 type ctxKeyT int
 
-// ctxKeyPrincipal holds the id of the api key or OAuth grant of a request.
-const ctxKeyPrincipal ctxKeyT = iota
+const (
+	// ctxKeyPrincipal holds the id of the api key or OAuth grant of a request.
+	ctxKeyPrincipal ctxKeyT = iota
+	// ctxKeyScope holds the scope of that key (apiKeyModel.Scope*).
+	ctxKeyScope
+)
+
+// blocklistTools are all a key with scope "blocklist" may call.
+var blocklistTools = map[string]bool{
+	"list_blocked_clients": true,
+	"block_client":         true,
+	"unblock_client":       true,
+}
+
+const blocklistInstructions = `ruto is an API gateway. This key may only manage the block list of client addresses: list_blocked_clients, block_client, unblock_client. They apply IMMEDIATELY, without a change request or publishing — a blocked client gets 403 on every route within seconds. Block only on clear evidence (e.g. a scan or brute force seen in logs or metrics), always with a reason and the shortest sensible duration (default 24h, at most 168h). You cannot block private or special ranges, networks wider than /24 (IPv4) or /48 (IPv6), anything overlapping a trusted client, or a network a person unblocked in the last 7 days; you can lift only blocks made by agents. All agents together may make at most 60 new blocks per hour and hold at most 500.`
 
 // HTTPHandler serves streamable HTTP MCP, authenticating every request, and,
 // with OAuth enabled, the OAuth endpoints next to it.
@@ -114,7 +137,8 @@ func (h *Handler) HTTPHandler() http.Handler {
 		if principal == "" {
 			return nil
 		}
-		return h.newSessionServer(principal)
+		scope, _ := r.Context().Value(ctxKeyScope).(string)
+		return h.newSessionServer(principal, scope)
 	}, &mcpsdk.StreamableHTTPOptions{
 		SessionTimeout: sessionIdleTimeout,
 	})
@@ -144,7 +168,7 @@ func (h *Handler) authMiddleware(next http.Handler, oauth *oauthEndpoints) http.
 			return
 		}
 
-		session, err := h.authenticate(r.Context(), credential)
+		session, scope, err := h.authenticate(r.Context(), credential)
 		if err != nil {
 			slog.Warn("mcp: credential rejected", "credential", credentialKind(r), "client_ip", clientIP(r), "error", err)
 			unauthorized(w, oauth, "invalid_token", "ruto mcp: invalid api key or token")
@@ -152,16 +176,19 @@ func (h *Handler) authMiddleware(next http.Handler, oauth *oauthEndpoints) http.
 		}
 
 		ctx := context.WithValue(r.Context(), ctxKeyPrincipal, session.ApiKeyId)
+		ctx = context.WithValue(ctx, ctxKeyScope, scope)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-// authenticate resolves an api key (rtk_) or an OAuth access token (rto_).
-func (h *Handler) authenticate(ctx context.Context, credential string) (*sessionModel.Session, error) {
+// authenticate resolves an api key (rtk_) or an OAuth access token (rto_)
+// into a session and its scope; OAuth connections have the full scope.
+func (h *Handler) authenticate(ctx context.Context, credential string) (*sessionModel.Session, string, error) {
 	if strings.HasPrefix(credential, oauthService.AccessTokenPrefix) {
-		return h.oauthUc.SessionFromToken(ctx, credential)
+		session, err := h.oauthUc.SessionFromToken(ctx, credential)
+		return session, apiKeyModel.ScopeFull, err
 	}
-	return h.apiKeyUc.SessionFromKey(ctx, credential)
+	return h.apiKeyUc.Authenticate(ctx, credential)
 }
 
 // unauthorized answers 401; with OAuth enabled it points the client to the
@@ -194,21 +221,28 @@ func bearerToken(headerValue string) string {
 type sessionServer struct {
 	h         *Handler
 	principal string
+	scope     string
 }
 
-func (h *Handler) newSessionServer(principal string) *mcpsdk.Server {
-	s := &sessionServer{h: h, principal: principal}
+// newSessionServer: a "blocklist" key sees only the block list tools (and
+// toolCtx refuses any other call); every other key — all of them.
+func (h *Handler) newSessionServer(principal, scope string) *mcpsdk.Server {
+	s := &sessionServer{h: h, principal: principal, scope: scope}
+	blocklistOnly := scope == apiKeyModel.ScopeBlocklist
 
 	srv := mcpsdk.NewServer(&mcpsdk.Implementation{
 		Name:    "ruto",
 		Title:   "ruto API gateway",
 		Version: serverVersion,
 	}, &mcpsdk.ServerOptions{
-		Instructions: serverInstructions,
+		Instructions: lo.Ternary(blocklistOnly, blocklistInstructions, serverInstructions),
 	})
 
-	s.registerReadTools(srv)
-	s.registerChangeTools(srv)
+	if !blocklistOnly {
+		s.registerReadTools(srv)
+		s.registerChangeTools(srv)
+	}
+	s.registerBlocklistTools(srv)
 
 	return srv
 }
@@ -224,12 +258,15 @@ func (s *sessionServer) toolCtx(ctx context.Context, req *mcpsdk.CallToolRequest
 		return nil, errKeyMismatch
 	}
 
-	session, err := s.h.authenticate(ctx, credential)
+	session, scope, err := s.h.authenticate(ctx, credential)
 	if err != nil {
 		return nil, errKeyInvalid
 	}
-	if session.ApiKeyId != s.principal {
+	if session.ApiKeyId != s.principal || scope != s.scope {
 		return nil, errKeyMismatch
+	}
+	if scope == apiKeyModel.ScopeBlocklist && (req.Params == nil || !blocklistTools[req.Params.Name]) {
+		return nil, errScope
 	}
 
 	return s.h.sessionSvc.WithContext(ctx, session), nil

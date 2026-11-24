@@ -1,5 +1,5 @@
 import { apiFetch } from "./http";
-import type { ApiKeyCreateRep, ApiKeyListRep, ApiKeyMain } from "./types";
+import type { ApiKeyCreateRep, ApiKeyCreateReq, ApiKeyListRep, ApiKeyMain } from "./types";
 
 // int64 fields arrive as strings from grpc-gateway.
 function normalizeApiKey(value: ApiKeyMain): ApiKeyMain {
@@ -8,7 +8,9 @@ function normalizeApiKey(value: ApiKeyMain): ApiKeyMain {
     name: value?.name || "",
     key_prefix: value?.key_prefix || "",
     created_at_unix: Number(value?.created_at_unix || 0),
-    last_used_at_unix: Number(value?.last_used_at_unix || 0)
+    last_used_at_unix: Number(value?.last_used_at_unix || 0),
+    // keys made before scopes existed have none and are full
+    scope: value?.scope === "blocklist" ? "blocklist" : "full"
   };
 }
 
@@ -18,10 +20,10 @@ export function listApiKeys(): Promise<ApiKeyListRep> {
   }));
 }
 
-export function createApiKey(name: string): Promise<ApiKeyCreateRep> {
+export function createApiKey(req: ApiKeyCreateReq): Promise<ApiKeyCreateRep> {
   return apiFetch<ApiKeyCreateRep>("/api_key", {
     method: "POST",
-    body: JSON.stringify({ name })
+    body: JSON.stringify(req)
   });
 }
 

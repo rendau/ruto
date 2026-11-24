@@ -21,6 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	"github.com/rendau/ruto/internal/service/gw/service/seen"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
@@ -41,9 +42,28 @@ const (
 	// subscribeReconnectDelay is how long to wait before re-opening the
 	// notification stream to core after it drops.
 	subscribeReconnectDelay = 2 * time.Second
+
+	// BlocklistPollInterval is how often the gateway checks the block list
+	// version on its own. Unlike the snapshot the block list is polled: it is
+	// changed by an agent during an attack, and a missed "check_blocklist"
+	// must not leave a block unapplied for long.
+	BlocklistPollInterval = 10 * time.Second
+
+	rpcTimeout = 5 * time.Second
+
+	notificationCheckBlocklist = "check_blocklist"
 )
 
 type configCallback func(*rootModel.Root) error
+
+// blocklistI is where the block list fetched from core goes, see
+// gw/service/blocklist.
+type blocklistI interface {
+	Set(version string, rules []blocklist.Rule)
+	Version() string
+	Applied() bool
+	Len() int
+}
 
 type Service struct {
 	globalCtx context.Context
@@ -52,6 +72,7 @@ type Service struct {
 	conn          *grpc.ClientConn
 	client        ruto_v1.SnapshotClient
 	gatewayClient ruto_v1.GatewayClient
+	blockedClient ruto_v1.BlockedClientClient
 	identity      *identity
 	startedAtUnix int64
 
@@ -74,12 +95,23 @@ type Service struct {
 	// tick), used right after a snapshot is applied so core learns about the
 	// new version without waiting for the next interval. Buffered/coalescing.
 	heartbeatTrigger chan struct{}
+
+	// blocks is the block list; blocklistWorker alone refreshes it, on a tick
+	// and on blocklistTrigger (a "check_blocklist" notification or a
+	// reconnect of the stream). Buffered/coalescing like triggerCh.
+	blocks           blocklistI
+	blocklistTrigger chan struct{}
+	blocklistPoll    time.Duration
+	// blocklistFailing is touched by blocklistWorker only: an unreachable
+	// core is reported once, not on every poll.
+	blocklistFailing bool
 }
 
 func New(
 	globalCtx context.Context,
 	address string,
 	onConfig configCallback,
+	blocks blocklistI,
 ) (*Service, error) {
 	var err error
 
@@ -90,6 +122,9 @@ func New(
 		startedAtUnix:    time.Now().Unix(),
 		triggerCh:        make(chan struct{}, 1),
 		heartbeatTrigger: make(chan struct{}, 1),
+		blocks:           blocks,
+		blocklistTrigger: make(chan struct{}, 1),
+		blocklistPoll:    BlocklistPollInterval,
 	}
 
 	if address != "" {
@@ -109,6 +144,9 @@ func New(
 		}
 		service.client = ruto_v1.NewSnapshotClient(service.conn)
 		service.gatewayClient = ruto_v1.NewGatewayClient(service.conn)
+		if blocks != nil {
+			service.blockedClient = ruto_v1.NewBlockedClientClient(service.conn)
+		}
 	}
 
 	return service, nil
@@ -121,6 +159,9 @@ func (s *Service) Start() {
 	if s.gatewayClient != nil {
 		go s.heartbeatWorker()
 		go s.subscribeWorker()
+	}
+	if s.blockedClient != nil {
+		go s.blocklistWorker()
 	}
 }
 
@@ -186,6 +227,14 @@ func (s *Service) trigger() {
 	}
 }
 
+// triggerBlocklist requests an early block list check without blocking.
+func (s *Service) triggerBlocklist() {
+	select {
+	case s.blocklistTrigger <- struct{}{}:
+	default:
+	}
+}
+
 // subscribeWorker keeps the notification stream to core open for the whole
 // lifetime of the gateway, reconnecting forever with a small delay whenever the
 // stream drops (core restart, network blip, etc.).
@@ -206,7 +255,8 @@ func (s *Service) subscribeWorker() {
 }
 
 // subscribeOnce opens one Subscribe stream and drains notifications until it
-// errors. Each notification just enqueues a refresh trigger.
+// errors. Each notification just enqueues a trigger: "check_blocklist" of the
+// block list, anything else of the snapshot.
 func (s *Service) subscribeOnce() error {
 	stream, err := s.gatewayClient.Subscribe(s.globalCtx, &ruto_v1.GatewaySubscribeRequest{
 		GatewayId: s.identity.GatewayID,
@@ -215,14 +265,22 @@ func (s *Service) subscribeOnce() error {
 		return fmt.Errorf("gatewayClient.Subscribe: %w", err)
 	}
 
+	// Blocks added while the stream was down were not pushed to us.
+	s.triggerBlocklist()
+
 	for {
-		if _, err = stream.Recv(); err != nil {
+		notification, recvErr := stream.Recv()
+		if recvErr != nil {
 			if s.globalCtx.Err() != nil {
 				return nil
 			}
-			return fmt.Errorf("stream.Recv: %w", err)
+			return fmt.Errorf("stream.Recv: %w", recvErr)
 		}
 
+		if notification.GetType() == notificationCheckBlocklist {
+			s.triggerBlocklist()
+			continue
+		}
 		s.trigger()
 	}
 }
@@ -275,7 +333,7 @@ func (s *Service) recordError(msg string) {
 }
 
 func (s *Service) fetchVersion() (string, error) {
-	ctx, cancel := context.WithTimeout(s.globalCtx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.globalCtx, rpcTimeout)
 	defer cancel()
 
 	versionRep, err := s.client.GetVersion(ctx, &emptypb.Empty{})
@@ -290,7 +348,7 @@ func (s *Service) fetchVersion() (string, error) {
 }
 
 func (s *Service) fetchAndApplyConfig() error {
-	ctx, cancel := context.WithTimeout(s.globalCtx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.globalCtx, rpcTimeout)
 	defer cancel()
 
 	configRep, err := s.client.Get(ctx, &emptypb.Empty{})
@@ -335,6 +393,11 @@ func (s *Service) sendHeartbeat() error {
 	ctx, cancel := context.WithTimeout(s.globalCtx, heartbeatTimeout)
 	defer cancel()
 
+	blocklistVersion := ""
+	if s.blocks != nil {
+		blocklistVersion = s.blocks.Version()
+	}
+
 	_, err := s.gatewayClient.Heartbeat(ctx, &ruto_v1.GatewayHeartbeatRequest{
 		GatewayId:        s.identity.GatewayID,
 		HostName:         s.identity.HostName,
@@ -346,6 +409,7 @@ func (s *Service) sendHeartbeat() error {
 		GoroutinesCount:  uint32(runtime.NumGoroutine()),
 		SeenPaths:        lo.Map(seenItems, encodeSeenPath),
 		SeenOrigins:      lo.Map(seenOrigins, encodeSeenOrigin),
+		BlocklistVersion: blocklistVersion,
 	})
 	if err != nil {
 		// Not delivered: keep the counters for the next heartbeat.

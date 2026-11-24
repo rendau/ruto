@@ -16,6 +16,7 @@ import (
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	domRootModel "github.com/rendau/ruto/internal/domain/root/model"
 	serviceAuth "github.com/rendau/ruto/internal/service/gw/service/auth"
+	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
@@ -24,16 +25,21 @@ import (
 type Service struct {
 	conns             *Conns
 	limits            *ratelimit.Service
+	blocks            *blocklist.Guard
 	routes            map[string]*route
 	reflectionRoutes  map[string]*reflectionRoute
 	transparentHandle gogrpc.StreamHandler
 }
 
-// New builds the handler for a snapshot. conns and limits are owned by the
-// caller and outlive the handler, see Conns. A nil limits turns rate limiting
-// off.
-func New(snapshot *domRootModel.Root, conns *Conns, limits *ratelimit.Service) (*Service, error) {
-	service := &Service{conns: conns, limits: limits}
+// New builds the handler for a snapshot. conns, limits and blocks are owned by
+// the caller and outlive the handler, see Conns. A nil limits turns rate
+// limiting off, a nil blocks the block list.
+func New(snapshot *domRootModel.Root, conns *Conns, limits *ratelimit.Service, blocks *blocklist.Service) (*Service, error) {
+	service := &Service{
+		conns:  conns,
+		limits: limits,
+		blocks: blocks.Guard(snapshot, blocklist.ProtocolGRPC),
+	}
 	service.transparentHandle = proxy.TransparentHandler(service.director)
 
 	routes, err := service.buildRoutes(snapshot)
@@ -87,7 +93,7 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root) (map[string]*route, e
 			rt.handler = chain(s.transparentHandle,
 				newMetricsMiddleware(metricsService),
 				newRequestLogMiddleware(logService, app, ep),
-				newRateLimitMiddleware(s.limits.Endpoint(app, ep, "GRPC "+routeName)),
+				newRateLimitMiddleware(s.limits.Endpoint(snapshot, app, ep, "GRPC "+routeName)),
 				newAuthMiddleware(authService),
 			)
 
@@ -104,7 +110,12 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 		return status.Error(codes.InvalidArgument, "missing method")
 	}
 
-	rt := s.resolveRoute(metadataFromContext(stream.Context()), fullMethod)
+	md := metadataFromContext(stream.Context())
+	if s.blocked(stream.Context(), md) {
+		return errBlocked
+	}
+
+	rt := s.resolveRoute(md, fullMethod)
 	if rt == nil {
 		return status.Error(codes.NotFound, "route not found")
 	}
@@ -123,6 +134,14 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 	}
 
 	return status.Errorf(codes.Internal, "gateway forward failed: %v", err)
+}
+
+// blocked goes before routing, rate limits and auth, for unknown methods too.
+func (s *Service) blocked(ctx context.Context, md metadata.MD) bool {
+	if !s.blocks.Active() {
+		return false
+	}
+	return s.blocks.Blocked(remoteAddrFromContext(ctx), headersFromMetadata(md))
 }
 
 func (s *Service) director(ctx context.Context, _ string) (context.Context, gogrpc.ClientConnInterface, error) {

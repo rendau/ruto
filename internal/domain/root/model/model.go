@@ -1,6 +1,8 @@
 package model
 
 import (
+	"net/netip"
+
 	"github.com/samber/lo"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
@@ -24,8 +26,22 @@ type Root struct {
 	// fields with the defaults.
 	Compression compressionModel.Compression `json:"compression"`
 	RateLimit   rateLimitModel.RateLimit     `json:"rate_limit"`
+	// TrustedClients are client addresses the gateway never rate-limits and
+	// never blocks (BlockedClient refuses a block that overlaps one). They are
+	// part of the configuration on purpose: a change goes through a change
+	// request and a publish, so an agent cannot lift limits on its own.
+	TrustedClients []RootTrustedClient `json:"trusted_clients"`
 
 	Apps []*appModel.App `json:"apps"` // not stored in db
+}
+
+// RootTrustedClient is an address or a network in CIDR notation; Normalize
+// stores it as a masked prefix ("192.168.0.0/16", "203.0.113.7/32").
+type RootTrustedClient struct {
+	Name string `json:"name"`
+	Ip   string `json:"ip"`
+
+	Prefix netip.Prefix `json:"-"`
 }
 
 // RootTransform holds gateway-wide defaults for endpoint transform scripts.

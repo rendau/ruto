@@ -24,3 +24,8 @@ type UsrServiceI interface {
 type SessionServiceI interface {
 	FromContext(ctx context.Context) *sessionModel.Session
 }
+
+// BlockedClientsI lifts the active blocks of a deleted key.
+type BlockedClientsI interface {
+	RemoveKeyBlocks(ctx context.Context, apiKeyId, keyName string) (int64, error)
+}

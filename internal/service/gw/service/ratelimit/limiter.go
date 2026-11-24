@@ -16,6 +16,7 @@ import (
 	domAppModel "github.com/rendau/ruto/internal/domain/app/model"
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rateLimitModel "github.com/rendau/ruto/internal/domain/ratelimit/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	authModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/metrics"
@@ -59,6 +60,8 @@ type Endpoint struct {
 	ep      *domEndpointModel.Endpoint
 	route   string
 	rules   []*rule
+	// the snapshot, when it has trusted clients: they are never limited
+	trusted *rootModel.Root
 }
 
 type rule struct {
@@ -69,8 +72,9 @@ type rule struct {
 	warn     throttle
 }
 
-// Endpoint returns the limiter of ep, or nil when no rule applies to it.
-func (s *Service) Endpoint(app *domAppModel.App, ep *domEndpointModel.Endpoint, route string) *Endpoint {
+// Endpoint returns the limiter of ep of snapshot, or nil when no rule applies
+// to it.
+func (s *Service) Endpoint(snapshot *rootModel.Root, app *domAppModel.App, ep *domEndpointModel.Endpoint, route string) *Endpoint {
 	if s == nil || len(ep.RateLimit.Rules) == 0 {
 		return nil
 	}
@@ -89,13 +93,18 @@ func (s *Service) Endpoint(app *domAppModel.App, ep *domEndpointModel.Endpoint, 
 	// twice would halve its limit.
 	rules = lo.UniqBy(rules, func(v *rule) uint64 { return v.hash })
 
-	return &Endpoint{
+	result := &Endpoint{
 		service: s,
 		app:     app,
 		ep:      ep,
 		route:   route,
 		rules:   rules,
 	}
+	if snapshot != nil && len(snapshot.TrustedClients) > 0 {
+		result.trusted = snapshot
+	}
+
+	return result
 }
 
 type taken struct {
@@ -105,9 +114,15 @@ type taken struct {
 
 // Check counts the request against every rule of the endpoint. It passes only
 // when every rule allows it; a rejected request is counted by none of them,
-// and retryAfter is the longest wait of the rules that rejected it.
+// and retryAfter is the longest wait of the rules that rejected it. A trusted
+// client of the snapshot is not counted at all.
 func (e *Endpoint) Check(req Request) (bool, time.Duration) {
 	var client clientAddr
+	if e.trusted != nil {
+		if _, ok := e.trusted.TrustedPrefix(client.strictAddr(e.service.clientIP, req)); ok {
+			return true, 0
+		}
+	}
 	takenBuf := [4]taken{}
 	takenList := takenBuf[:0]
 	var rejectedBy *rule
@@ -208,7 +223,10 @@ func credential(authorization string) (byte, string) {
 // clientAddr resolves the client address once per request, and only when a
 // rule needs it.
 type clientAddr struct {
-	addr     netip.Addr
+	addr netip.Addr
+	// strict is the client address alone, without falling back to the peer:
+	// trust is given only to an address the client really has.
+	strict   netip.Addr
 	resolved bool
 }
 
@@ -221,7 +239,8 @@ func (c *clientAddr) get(resolver *clientip.Resolver, req Request) netip.Addr {
 	authReq := authModel.NewAuthRequest()
 	authReq.SetHttpHeader(req.Header)
 	authReq.SetRemoteAddr(req.RemoteAddr)
-	c.addr = resolver.ClientIP(authReq)
+	c.strict = resolver.ClientIP(authReq)
+	c.addr = c.strict
 	// Every forwarded address is a trusted proxy: counting by the peer still
 	// limits it, while a shared "unknown" counter would be one for everyone.
 	if !c.addr.IsValid() {
@@ -229,6 +248,11 @@ func (c *clientAddr) get(resolver *clientip.Resolver, req Request) netip.Addr {
 	}
 
 	return c.addr
+}
+
+func (c *clientAddr) strictAddr(resolver *clientip.Resolver, req Request) netip.Addr {
+	c.get(resolver, req)
+	return c.strict
 }
 
 // limitAddr is the address a counter is kept for: an IPv6 client gets a whole

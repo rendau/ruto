@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	blockedClientModel "github.com/rendau/ruto/internal/domain/blockedclient/model"
 	changeRequestModel "github.com/rendau/ruto/internal/domain/changerequest/model"
 	handlerSystemP "github.com/rendau/ruto/internal/handler/system"
 	usecaseGateway "github.com/rendau/ruto/internal/usecase/gateway"
@@ -31,6 +33,10 @@ func (s *testSystemUsecase) HasUnpublishedChanges(_ context.Context) (bool, erro
 
 func (s *testSystemUsecase) PendingChangeRequests(_ context.Context, stuckAfter time.Duration) (*changeRequestModel.PendingStats, error) {
 	return &changeRequestModel.PendingStats{Count: 3, Stuck: 1, OldestAt: new(time.Now().Add(-stuckAfter - time.Hour))}, nil
+}
+
+func (s *testSystemUsecase) BlockedClients(_ context.Context, agentsWithin time.Duration) (*blockedClientModel.Stats, error) {
+	return &blockedClientModel.Stats{Active: 5, ByAgentsSince: lo.Ternary(agentsWithin == 24*time.Hour, int64(2), 0)}, nil
 }
 
 func (s *testSystemUsecase) RoutesVersion(_ context.Context) (string, error) {
@@ -121,8 +127,12 @@ func TestStatus(t *testing.T) {
 	}
 	assert.Equal(t, map[string]string{
 		"gateways_online": "ok", "gateways_lagging": "degraded", "gateways_silent": "degraded", "unpublished_changes": "ok",
+		"blocked_clients": "ok", "blocked_clients_by_agents_24h": "ok",
 	}, gauges)
 	assert.EqualValues(t, 2, values["gateways_online"])
+	// blocks are informational: they never make core degraded on their own
+	assert.EqualValues(t, 5, values["blocked_clients"])
+	assert.EqualValues(t, 2, values["blocked_clients_by_agents_24h"])
 
 	require.Len(t, status.Entities, 1)
 	entity := status.Entities[0]

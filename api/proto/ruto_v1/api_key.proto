@@ -7,8 +7,8 @@ import "google/protobuf/empty.proto";
 
 option go_package = "/ruto_v1";
 
-// ApiKey manages the caller's keys for the built-in MCP server. Admins only,
-// from an admin login.
+// ApiKey manages the caller's keys for the built-in MCP server and for
+// services such as pulse. Admins only, from an admin login.
 service ApiKey {
   rpc List(google.protobuf.Empty) returns (ApiKeyListRep) {
     option (google.api.http) = { get: "/api_key" };
@@ -27,6 +27,10 @@ message ApiKeyMain {
   string key_prefix = 3;
   int64 created_at_unix = 4;
   int64 last_used_at_unix = 5; // 0 = never used
+  // "full" — the MCP server (reads, change requests, block list);
+  // "blocklist" — only the block list: BlockedClient List/Create/Remove on
+  // /api and the block list MCP tools, nothing else (for pulse)
+  string scope = 6;
 }
 
 message ApiKeyListRep {
@@ -35,6 +39,8 @@ message ApiKeyListRep {
 
 message ApiKeyCreateReq {
   string name = 1;
+  // "full" (default) | "blocklist"
+  string scope = 2;
 }
 
 message ApiKeyCreateRep {

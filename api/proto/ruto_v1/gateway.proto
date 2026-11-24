@@ -23,7 +23,8 @@ message GatewaySubscribeRequest {
 }
 
 message GatewayNotification {
-  // type of notification, e.g. "check_version".
+  // type of notification: "check_version" (snapshot) or "check_blocklist"
+  // (BlockedClient.GetVersion).
   string type = 1;
 }
 
@@ -41,6 +42,8 @@ message GatewayHeartbeatRequest {
   repeated GatewaySeenPath seen_paths = 12;
   // Origin headers of requests since the previous heartbeat
   repeated GatewaySeenOrigin seen_origins = 13;
+  // BlockedClient version the gateway applies
+  string blocklist_version = 14;
 }
 
 message GatewaySeenOrigin {
@@ -76,4 +79,5 @@ message GatewayStateItem {
   string status = 11;
   uint64 memory_alloc_bytes = 12;
   uint32 goroutines_count = 13;
+  string blocklist_version = 14;
 }

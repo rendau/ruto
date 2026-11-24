@@ -24,7 +24,7 @@ import (
 func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_root",
-		Description: "Root configuration (gateway-wide CORS, JWT providers, auth, logging, variables, compression defaults, rate limits) with secrets masked, plus its version for update_root.",
+		Description: "Root configuration (gateway-wide CORS, JWT providers, auth, logging, variables, compression defaults, rate limits, trusted_clients) with secrets masked, plus its version for update_root. trusted_clients = [{name, ip}] is the whitelist: addresses or CIDR networks the gateway never rate-limits and never blocks; it changes only through propose_changes update_root (a person applies it), and block_client refuses any network overlapping it.",
 	}, s.getRoot)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
@@ -464,13 +464,14 @@ func (s *sessionServer) listSeenOrigins(ctx context.Context, req *mcpsdk.CallToo
 // ── Publishing ──────────────────────────────────────────
 
 type GatewayOut struct {
-	GatewayId       string `json:"gateway_id"`
-	HostName        string `json:"host_name"`
-	Status          string `json:"status"`
-	SnapshotVersion string `json:"snapshot_version"`
-	UpToDate        bool   `json:"up_to_date"`
-	LastApplyAt     string `json:"last_apply_at,omitempty"`
-	LastError       string `json:"last_error,omitempty"`
+	GatewayId        string `json:"gateway_id"`
+	HostName         string `json:"host_name"`
+	Status           string `json:"status"`
+	SnapshotVersion  string `json:"snapshot_version"`
+	UpToDate         bool   `json:"up_to_date"`
+	BlocklistVersion string `json:"blocklist_version,omitempty"`
+	LastApplyAt      string `json:"last_apply_at,omitempty"`
+	LastError        string `json:"last_error,omitempty"`
 }
 
 type PublishStatusOut struct {
@@ -503,12 +504,13 @@ func (s *sessionServer) getPublishStatus(ctx context.Context, req *mcpsdk.CallTo
 	}
 	result.Gateways = lo.Map(gateways, func(v *usecaseGateway.Item, _ int) GatewayOut {
 		out := GatewayOut{
-			GatewayId:       v.GatewayID,
-			HostName:        v.HostName,
-			Status:          v.Status,
-			SnapshotVersion: v.SnapshotVersion,
-			UpToDate:        v.SnapshotVersion == result.PublishedVersion,
-			LastError:       v.LastError,
+			GatewayId:        v.GatewayID,
+			HostName:         v.HostName,
+			Status:           v.Status,
+			SnapshotVersion:  v.SnapshotVersion,
+			UpToDate:         v.SnapshotVersion == result.PublishedVersion,
+			BlocklistVersion: v.BlocklistVersion,
+			LastError:        v.LastError,
 		}
 		if v.LastApplyAtUnix > 0 {
 			out.LastApplyAt = time.Unix(v.LastApplyAtUnix, 0).Format(time.RFC3339)

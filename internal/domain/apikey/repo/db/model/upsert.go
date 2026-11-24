@@ -11,6 +11,7 @@ type Upsert struct {
 	Name      string
 	KeyHash   string
 	KeyPrefix string
+	Scope     string
 }
 
 func (m *Upsert) CreateColumnMap() map[string]any {
@@ -19,6 +20,7 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 		"name":       m.Name,
 		"key_hash":   m.KeyHash,
 		"key_prefix": m.KeyPrefix,
+		"scope":      m.Scope,
 	}
 }
 
@@ -36,5 +38,6 @@ func DecodeUpsert(v *domainModel.ApiKey) *Upsert {
 		Name:      v.Name,
 		KeyHash:   v.KeyHash,
 		KeyPrefix: v.KeyPrefix,
+		Scope:     v.Scope,
 	}
 }

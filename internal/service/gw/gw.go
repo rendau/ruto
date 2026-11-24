@@ -14,6 +14,7 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 	localGrpc "github.com/rendau/ruto/internal/service/gw/server/grpc"
 	localHttp "github.com/rendau/ruto/internal/service/gw/server/http"
+	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
 	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
@@ -30,6 +31,7 @@ type Service struct {
 	cacheSweep    time.Duration
 	rateLimits    *ratelimit.Store
 	limits        *ratelimit.Service
+	blocks        *blocklist.Service
 	grpcServer    *localGrpc.Service
 	grpcConns     *handlerGrpc.Conns
 	coreClient    *core_client.Service
@@ -49,6 +51,9 @@ func New(
 	var err error
 
 	rateLimits := ratelimit.New(rateLimitMaxKeys)
+	// one resolver for rate limits and the block list: both must see the same
+	// client
+	clientIP := clientip.New(trustedProxyAddresses)
 
 	service := &Service{
 		globalCtx:     globalCtx,
@@ -57,7 +62,8 @@ func New(
 		cache:         cache.New(cacheMaxSize),
 		cacheSweep:    cacheSweepInterval,
 		rateLimits:    rateLimits,
-		limits:        ratelimit.NewService(rateLimits, clientip.New(trustedProxyAddresses)),
+		limits:        ratelimit.NewService(rateLimits, clientIP),
+		blocks:        blocklist.New(clientIP),
 	}
 	if grpcPort > 0 {
 		service.grpcServer = localGrpc.New(grpcPort)
@@ -65,7 +71,7 @@ func New(
 	}
 	service.ready.Store(false)
 
-	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig)
+	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig, service.blocks)
 	if err != nil {
 		return nil, fmt.Errorf("config_client.New: %w", err)
 	}
@@ -113,14 +119,14 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache, s.limits)
+	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache, s.limits, s.blocks)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}
 	s.httpServer.SetHandler(httpHandler)
 
 	if s.grpcServer != nil {
-		grpcHandler, grpcErr := handlerGrpc.New(conf, s.grpcConns, s.limits)
+		grpcHandler, grpcErr := handlerGrpc.New(conf, s.grpcConns, s.limits, s.blocks)
 		if grpcErr != nil {
 			return fmt.Errorf("handlerGrpc.New: %w", grpcErr)
 		}

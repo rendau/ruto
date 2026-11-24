@@ -62,3 +62,30 @@ export function formatDuration(seconds: number): string {
   if (parts.length === 0) parts.push(`${secs}s`);
   return parts.join(" ");
 }
+
+function shortSpan(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return hours < 10 && minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  return days < 7 && hours ? `${days}d ${hours}h` : `${days}d`;
+}
+
+// "in 5h 20m" for a moment ahead, "3d ago" for one behind.
+export function formatUnixRelative(
+  value: unknown,
+  fallback = "n/a",
+  nowUnix = Math.floor(Date.now() / 1000)
+): string {
+  const unix = parseUnix(value);
+  if (!Number.isFinite(unix) || unix <= 0) {
+    return fallback;
+  }
+  const diff = Math.floor(unix) - Math.floor(nowUnix);
+  return diff >= 0 ? `in ${shortSpan(diff)}` : `${shortSpan(-diff)} ago`;
+}

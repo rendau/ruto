@@ -1,6 +1,8 @@
 import type { SelectOption } from "naive-ui";
 import type {
+  ApiKeyScope,
   AuthMethodType,
+  BlockedClientSource,
   CompressionAlgorithm,
   CompressionBackend,
   CompressionResponse,
@@ -117,3 +119,47 @@ export const RATE_LIMIT_KEY_LABEL: Record<RateLimitKey, string> = {
 };
 
 export const RATE_LIMIT_PERIOD_PRESETS = ["1s", "10s", "1m", "10m", "1h", "24h"];
+
+// Agents (source agent) may block for at most 7 days; "no end" is for people only.
+export const BLOCK_DURATION_PRESETS: { label: string; seconds: number }[] = [
+  { label: "1 hour", seconds: 3600 },
+  { label: "24 hours", seconds: 86400 },
+  { label: "7 days", seconds: 7 * 86400 },
+  { label: "no end", seconds: 0 }
+];
+
+export const BLOCK_DURATION_UNIT_OPTIONS: { label: string; value: number }[] = [
+  { label: "minutes", value: 60 },
+  { label: "hours", value: 3600 },
+  { label: "days", value: 86400 }
+];
+
+export const BLOCKED_CLIENT_SOURCE_LABEL: Record<BlockedClientSource, string> = {
+  admin: "admin",
+  agent: "agent"
+};
+
+export const BLOCKED_CLIENT_SOURCE_TAG: Record<BlockedClientSource, TagType> = {
+  admin: "default",
+  agent: "warning"
+};
+
+export const API_KEY_SCOPE_OPTIONS: { label: string; value: ApiKeyScope; description: string }[] = [
+  {
+    label: "Full (MCP agent)",
+    value: "full",
+    description:
+      "The MCP server: reads the configuration, proposes change requests and manages the block list."
+  },
+  {
+    label: "Block list only (pulse)",
+    value: "blocklist",
+    description:
+      "Can only list, block and unblock clients, with the agent limits — nothing else. Give this one to pulse."
+  }
+];
+
+export const API_KEY_SCOPE_LABEL: Record<ApiKeyScope, string> = {
+  full: "full",
+  blocklist: "block list only"
+};

@@ -81,6 +81,17 @@ const columns: DataTableColumns<GatewayStateItem> = [
       )
   },
   {
+    title: "Blocklist",
+    key: "blocklist_version",
+    width: 110,
+    render: (row) =>
+      h(
+        "span",
+        { class: "mono muted", title: row.blocklist_version || "Not reported yet" },
+        row.blocklist_version ? row.blocklist_version.slice(0, 8) : "—"
+      )
+  },
+  {
     title: "Applied age",
     key: "last_apply_at_unix",
     width: 120,
@@ -182,7 +193,7 @@ onBeforeUnmount(() => {
         :loading="loading"
         :row-props="rowProps"
         :bordered="false"
-        :scroll-x="820"
+        :scroll-x="930"
       />
       <p v-if="!loading && gateways.length === 0" class="muted gw-empty">
         No gateways are currently connected.

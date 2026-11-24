@@ -69,7 +69,8 @@ func (x *GatewaySubscribeRequest) GetGatewayId() string {
 
 type GatewayNotification struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// type of notification, e.g. "check_version".
+	// type of notification: "check_version" (snapshot) or "check_blocklist"
+	// (BlockedClient.GetVersion).
 	Type          string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -125,9 +126,11 @@ type GatewayHeartbeatRequest struct {
 	// requests served by wildcard endpoints since the previous heartbeat
 	SeenPaths []*GatewaySeenPath `protobuf:"bytes,12,rep,name=seen_paths,json=seenPaths,proto3" json:"seen_paths,omitempty"`
 	// Origin headers of requests since the previous heartbeat
-	SeenOrigins   []*GatewaySeenOrigin `protobuf:"bytes,13,rep,name=seen_origins,json=seenOrigins,proto3" json:"seen_origins,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SeenOrigins []*GatewaySeenOrigin `protobuf:"bytes,13,rep,name=seen_origins,json=seenOrigins,proto3" json:"seen_origins,omitempty"`
+	// BlockedClient version the gateway applies
+	BlocklistVersion string `protobuf:"bytes,14,opt,name=blocklist_version,json=blocklistVersion,proto3" json:"blocklist_version,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *GatewayHeartbeatRequest) Reset() {
@@ -228,6 +231,13 @@ func (x *GatewayHeartbeatRequest) GetSeenOrigins() []*GatewaySeenOrigin {
 		return x.SeenOrigins
 	}
 	return nil
+}
+
+func (x *GatewayHeartbeatRequest) GetBlocklistVersion() string {
+	if x != nil {
+		return x.BlocklistVersion
+	}
+	return ""
 }
 
 type GatewaySeenOrigin struct {
@@ -446,6 +456,7 @@ type GatewayStateItem struct {
 	Status           string                 `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
 	MemoryAllocBytes uint64                 `protobuf:"varint,12,opt,name=memory_alloc_bytes,json=memoryAllocBytes,proto3" json:"memory_alloc_bytes,omitempty"`
 	GoroutinesCount  uint32                 `protobuf:"varint,13,opt,name=goroutines_count,json=goroutinesCount,proto3" json:"goroutines_count,omitempty"`
+	BlocklistVersion string                 `protobuf:"bytes,14,opt,name=blocklist_version,json=blocklistVersion,proto3" json:"blocklist_version,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -550,6 +561,13 @@ func (x *GatewayStateItem) GetGoroutinesCount() uint32 {
 	return 0
 }
 
+func (x *GatewayStateItem) GetBlocklistVersion() string {
+	if x != nil {
+		return x.BlocklistVersion
+	}
+	return ""
+}
+
 var File_ruto_v1_gateway_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_gateway_proto_rawDesc = "" +
@@ -559,7 +577,7 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"\n" +
 	"gateway_id\x18\x01 \x01(\tR\tgatewayId\")\n" +
 	"\x13GatewayNotification\x12\x12\n" +
-	"\x04type\x18\x01 \x01(\tR\x04type\"\xcb\x03\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\"\xf8\x03\n" +
 	"\x17GatewayHeartbeatRequest\x12\x1d\n" +
 	"\n" +
 	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x1b\n" +
@@ -574,7 +592,8 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"\x10goroutines_count\x18\v \x01(\rR\x0fgoroutinesCount\x127\n" +
 	"\n" +
 	"seen_paths\x18\f \x03(\v2\x18.ruto_v1.GatewaySeenPathR\tseenPaths\x12=\n" +
-	"\fseen_origins\x18\r \x03(\v2\x1a.ruto_v1.GatewaySeenOriginR\vseenOriginsJ\x04\b\x03\x10\x04\"j\n" +
+	"\fseen_origins\x18\r \x03(\v2\x1a.ruto_v1.GatewaySeenOriginR\vseenOrigins\x12+\n" +
+	"\x11blocklist_version\x18\x0e \x01(\tR\x10blocklistVersionJ\x04\b\x03\x10\x04\"j\n" +
 	"\x11GatewaySeenOrigin\x12\x16\n" +
 	"\x06origin\x18\x01 \x01(\tR\x06origin\x12\x12\n" +
 	"\x04hits\x18\x02 \x01(\x03R\x04hits\x12)\n" +
@@ -590,7 +609,7 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"\x11last_seen_at_unix\x18\a \x01(\x03R\x0elastSeenAtUnix\x12\x16\n" +
 	"\x06sample\x18\b \x01(\tR\x06sample\"J\n" +
 	"\x13GatewayListResponse\x123\n" +
-	"\aresults\x18\x01 \x03(\v2\x19.ruto_v1.GatewayStateItemR\aresults\"\x8f\x03\n" +
+	"\aresults\x18\x01 \x03(\v2\x19.ruto_v1.GatewayStateItemR\aresults\"\xbc\x03\n" +
 	"\x10GatewayStateItem\x12\x1d\n" +
 	"\n" +
 	"gateway_id\x18\x01 \x01(\tR\tgatewayId\x12\x1b\n" +
@@ -604,7 +623,8 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	" \x01(\x03R\x0elastSeenAtUnix\x12\x16\n" +
 	"\x06status\x18\v \x01(\tR\x06status\x12,\n" +
 	"\x12memory_alloc_bytes\x18\f \x01(\x04R\x10memoryAllocBytes\x12)\n" +
-	"\x10goroutines_count\x18\r \x01(\rR\x0fgoroutinesCountJ\x04\b\x03\x10\x042\xef\x01\n" +
+	"\x10goroutines_count\x18\r \x01(\rR\x0fgoroutinesCount\x12+\n" +
+	"\x11blocklist_version\x18\x0e \x01(\tR\x10blocklistVersionJ\x04\b\x03\x10\x042\xef\x01\n" +
 	"\aGateway\x12E\n" +
 	"\tHeartbeat\x12 .ruto_v1.GatewayHeartbeatRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
 	"\x04List\x12\x16.google.protobuf.Empty\x1a\x1c.ruto_v1.GatewayListResponse\"\x10\x82\xd3\xe4\x93\x02\n" +

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 	rateLimitModel "github.com/rendau/ruto/internal/domain/ratelimit/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
+	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
@@ -37,11 +39,12 @@ func rateLimitEndpoint(id, path string, rl rateLimitModel.RateLimit) *endpointMo
 // rateLimitSnapshot gives a fresh snapshot each call, as the gateway gets one
 // on every config change: two apps, /a (endpoints a1, a2) and /b (b1).
 type rateLimitSnapshot struct {
-	root rateLimitModel.RateLimit
-	app  rateLimitModel.RateLimit
-	eps  map[string]rateLimitModel.RateLimit
-	cors bool
-	auth *authModel.Auth
+	root    rateLimitModel.RateLimit
+	app     rateLimitModel.RateLimit
+	eps     map[string]rateLimitModel.RateLimit
+	cors    bool
+	auth    *authModel.Auth
+	trusted []rootModel.RootTrustedClient
 }
 
 func (c *rateLimitSnapshot) build(t *testing.T, backendURL string) *rootModel.Root {
@@ -58,6 +61,7 @@ func (c *rateLimitSnapshot) build(t *testing.T, backendURL string) *rootModel.Ro
 
 	snapshot := rootModel.NewEmpty()
 	snapshot.Cors.Enabled = c.cors
+	snapshot.TrustedClients = slices.Clone(c.trusted)
 	snapshot.RateLimit = clone(c.root)
 	snapshot.Apps = []*appModel.App{
 		{
@@ -95,6 +99,7 @@ type rateLimitEnv struct {
 	backend *httptest.Server
 	store   *ratelimit.Store
 	limits  *ratelimit.Service
+	blocks  *blocklist.Service
 }
 
 func newRateLimitEnv(t *testing.T, maxKeys int, trustedProxies ...string) *rateLimitEnv {
@@ -106,18 +111,20 @@ func newRateLimitEnv(t *testing.T, maxKeys int, trustedProxies ...string) *rateL
 	t.Cleanup(backend.Close)
 
 	store := ratelimit.New(maxKeys)
+	clientIP := clientip.New(trustedProxies)
 	return &rateLimitEnv{
 		t:       t,
 		backend: backend,
 		store:   store,
-		limits:  ratelimit.NewService(store, clientip.New(trustedProxies)),
+		limits:  ratelimit.NewService(store, clientIP),
+		blocks:  blocklist.New(clientIP),
 	}
 }
 
 func (e *rateLimitEnv) handler(conf *rateLimitSnapshot) *Service {
 	e.t.Helper()
 
-	service, err := New(conf.build(e.t, e.backend.URL), proxy.NewTransport(0), nil, e.limits)
+	service, err := New(conf.build(e.t, e.backend.URL), proxy.NewTransport(0), nil, e.limits, e.blocks)
 	require.NoError(e.t, err)
 	return service
 }

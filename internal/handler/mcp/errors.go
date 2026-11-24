@@ -9,6 +9,7 @@ import (
 var (
 	errKeyMismatch = errors.New("the api key or token of this call differs from the one the MCP session was opened with")
 	errKeyInvalid  = errors.New("the api key or token is not valid anymore")
+	errScope       = errors.New("this api key may only manage the block list (list_blocked_clients, block_client, unblock_client)")
 )
 
 // toolErr renders an error for the agent: the code and description of ruto

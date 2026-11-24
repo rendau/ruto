@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	blockedClientModel "github.com/rendau/ruto/internal/domain/blockedclient/model"
 	changeRequestModel "github.com/rendau/ruto/internal/domain/changerequest/model"
 	snapshotModel "github.com/rendau/ruto/internal/domain/snapshot/model"
 	usecaseGateway "github.com/rendau/ruto/internal/usecase/gateway"
@@ -28,4 +29,8 @@ type GatewaysPoolI interface {
 
 type ChangeRequestServiceI interface {
 	PendingStats(ctx context.Context, stuckAfter time.Duration) (*changeRequestModel.PendingStats, error)
+}
+
+type BlockedClientServiceI interface {
+	Stats(ctx context.Context, now, agentsSince time.Time) (*blockedClientModel.Stats, error)
 }

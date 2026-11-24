@@ -29,7 +29,7 @@ func (h *ApiKey) List(ctx context.Context, _ *emptypb.Empty) (*ruto_v1.ApiKeyLis
 }
 
 func (h *ApiKey) Create(ctx context.Context, req *ruto_v1.ApiKeyCreateReq) (*ruto_v1.ApiKeyCreateRep, error) {
-	id, key, err := h.usecase.Create(ctx, req.Name)
+	id, key, err := h.usecase.Create(ctx, req.Name, req.Scope)
 	if err != nil {
 		return nil, err
 	}

@@ -33,6 +33,7 @@
 | **Vars (переменные)** | Пары ключ-значение, наследуются вниз и подставляются (`interpolate`) в backend-заголовки, query-параметры и auth. |
 | **Compression (сжатие)** | Что просить у backend'а (без сжатия или как просит клиент) и как сжимать ответ клиенту: алгоритмы по приоритету (`br`, `zstd`, `gzip`), порог размера, типы содержимого. Наследуется Root → App → Endpoint: пустое поле берётся у родителя, у Root пустое заполняется значениями по умолчанию. |
 | **Rate limit (лимит запросов)** | Сколько запросов в заданный период (`period`) клиент может прислать: список правил `{name, key, requests, period}`, где `key` — по чему считать (`ip` — адрес клиента, `token` — токен из `Authorization` (у Basic — имя пользователя), `all` — все запросы вместе). Наследуется Root → App → Endpoint: `extend` (по умолчанию) добавляет правила уровня к унаследованным, `replace` оставляет только свои (пустой список — лимиты выше отключены). Правило считает запросы на том уровне, где записано: правило Root — по всему шлюзу, App — по приложению, Endpoint — по этому маршруту; запрос проходит, только если разрешили все правила. Сверх лимита клиент получает 429 (gRPC — `RESOURCE_EXHAUSTED`). У Root по умолчанию правил нет. |
+| **Trusted clients / blocked clients (белый и чёрный списки)** | `trusted_clients` в Root — адреса и сети (CIDR), которые шлюз никогда не блокирует и не ограничивает лимитами; часть конфигурации, меняется как root (агент — только заявкой). Чёрный список (`blocked_client`) — вне конфигурации: блокировка действует сразу, без заявки и публикации, клиент получает 403 на всех маршрутах. Блокируют администратор в админке, MCP-агент (`block_client`) и сервисы с ключом API (pulse, `POST /api/blocked_client`) — агенты в узких рамках: сеть не шире /24 (/48), без частных сетей, срок до 7 суток. См. [architecture.md](architecture.md#чёрный-и-белый-списки-клиентов). |
 | **Session** | Админ-сессия (JWT, секрет `ADMIN_JWT_SECRET`), прокидывается через `context`; на ней строится авторизация в usecase-слое. |
 
 ## Иерархия конфигурации
@@ -62,9 +63,10 @@ internal/
   errs/               sentinel-ошибки (тип Err string) + ErrFull
   domain/             доменный слой: <entity>/{model,service,repo}
     root, app, endpoint, usr, snapshot, session, auth, vars, common,
-    apikey, changerequest, secretref (маскирование секретов для MCP)
+    apikey, changerequest, secretref (маскирование секретов для MCP),
+    blockedclient (чёрный список адресов клиентов)
   usecase/            прикладной слой: оркестрация + авторизация
-    root, app, endpoint, usr, snapshot, stats, gateway, apikey, changerequest,
+    root, app, endpoint, usr, snapshot, stats, gateway, apikey, changerequest, blockedclient,
     system (состояние ruto для служебного порта, без проверки входа)
   handler/grpc/       транспорт core: gRPC-хендлеры + dto (encode/decode proto↔domain)
   handler/mcp/        встроенный MCP-сервер для AI-агентов (см. mcp-server.md)

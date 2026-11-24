@@ -162,6 +162,13 @@ export interface RootTransform {
   max_workers: number;
 }
 
+// A client the gateway never rate-limits and never blocks: an address or a
+// network in CIDR notation (the server stores "192.168.62.3" as "192.168.62.3/32").
+export interface RootTrustedClient {
+  name: string;
+  ip: string;
+}
+
 export interface RootMain {
   base_url: string;
   cors: RootCors;
@@ -173,6 +180,7 @@ export interface RootMain {
   transform: RootTransform;
   compression: Compression;
   rate_limit: RateLimit;
+  trusted_clients: RootTrustedClient[];
 }
 
 export interface RootJwtKidsReq {
@@ -469,6 +477,8 @@ export interface GatewayStateItem {
   memory_alloc_bytes: number;
   goroutines_count: number;
   status: GatewayStatus;
+  // version of the block list the gateway applies; "" until it reports one
+  blocklist_version: string;
 }
 
 export interface GatewayStateListRep {
@@ -554,7 +564,57 @@ export interface SeenOriginListRep {
   results: SeenOriginMain[];
 }
 
+// ---- Blocked clients (gateway-wide block list, applied without a publish) ---
+
+// admin = blocked from the admin, agent = with an API key (pulse, MCP agents)
+export type BlockedClientSource = "admin" | "agent";
+
+export interface BlockedClientMain {
+  id: string;
+  // normalized network, e.g. 203.0.113.7/32
+  ip: string;
+  reason: string;
+  created_by: string;
+  source: BlockedClientSource;
+  created_at_unix: number;
+  updated_at_unix: number;
+  // 0 = without end
+  expires_at_unix: number;
+  removed_at_unix: number;
+  removed_by: string;
+  remove_reason: string;
+  // not removed and not expired
+  active: boolean;
+  // the key an agent block was made with; "" for blocks made in the admin
+  api_key_id: string;
+}
+
+export interface BlockedClientListRep {
+  results: BlockedClientMain[];
+}
+
+export interface BlockedClientRemoveAgentBlocksReq {
+  // empty = the blocks of every key
+  api_key_id?: string;
+  reason: string;
+}
+
+export interface BlockedClientRemoveAgentBlocksRep {
+  removed: number;
+}
+
+export interface BlockedClientCreateReq {
+  ip: string;
+  reason: string;
+  // 0 = without end
+  duration_seconds: number;
+}
+
 // ---- API keys (built-in MCP server) ----------------------------------------
+
+// full = the MCP server (reads, change requests, block list);
+// blocklist = only list / block / unblock clients, with the agent limits (for pulse)
+export type ApiKeyScope = "full" | "blocklist";
 
 export interface ApiKeyMain {
   id: string;
@@ -563,6 +623,12 @@ export interface ApiKeyMain {
   created_at_unix: number;
   // 0 = never used
   last_used_at_unix: number;
+  scope: ApiKeyScope;
+}
+
+export interface ApiKeyCreateReq {
+  name: string;
+  scope: ApiKeyScope;
 }
 
 export interface ApiKeyListRep {

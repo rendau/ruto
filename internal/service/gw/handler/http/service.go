@@ -11,6 +11,7 @@ import (
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/middleware"
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
+	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
@@ -22,10 +23,17 @@ type Service struct {
 // New builds the handler for a snapshot. transport is owned by the caller and
 // outlives the handler: a transport per snapshot would leave the idle
 // connections of the previous one open after every config change. The same
-// holds for store and limits: cached responses and rate-limit counters survive
-// a config change. A nil limits turns rate limiting off.
-func New(snapshot *rootModel.Root, transport http.RoundTripper, store *cache.Service, limits *ratelimit.Service) (*Service, error) {
-	handler, err := buildHandler(snapshot, transport, store, limits)
+// holds for store, limits and blocks: cached responses, rate-limit counters and
+// the block list survive a config change. A nil limits turns rate limiting
+// off, a nil blocks the block list.
+func New(
+	snapshot *rootModel.Root,
+	transport http.RoundTripper,
+	store *cache.Service,
+	limits *ratelimit.Service,
+	blocks *blocklist.Service,
+) (*Service, error) {
+	handler, err := buildHandler(snapshot, transport, store, limits, blocks)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -39,7 +47,13 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.h.ServeHTTP(w, r)
 }
 
-func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *cache.Service, limits *ratelimit.Service) (_ http.Handler, finalErr error) {
+func buildHandler(
+	snapshot *rootModel.Root,
+	transport http.RoundTripper,
+	store *cache.Service,
+	limits *ratelimit.Service,
+	blocks *blocklist.Service,
+) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			finalErr = fmt.Errorf("panic: %v", r)
@@ -86,7 +100,7 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 				middleware.NewMetrics(app, ep, routePath),
 				middleware.NewSeenPaths(app, ep),
 				middleware.NewRequestLog(app, ep, routePath, snapshot.LogOwnResponseErrors),
-				middleware.NewRateLimit(limits.Endpoint(app, ep, ep.Http.Method+" "+routePath)),
+				middleware.NewRateLimit(limits.Endpoint(snapshot, app, ep, ep.Http.Method+" "+routePath)),
 				middleware.NewAuth(ep),
 				middleware.NewBrowserCache(ep),
 				middleware.NewServerCache(app, ep, store),
@@ -112,8 +126,13 @@ func buildHandler(snapshot *rootModel.Root, transport http.RoundTripper, store *
 		}
 	}
 
-	// Origins are counted outside CORS so that fronts it rejects show up too.
-	return middleware.NewSeenOrigins()(middleware.NewCors(snapshot.Cors)(router)), nil
+	// Origins are counted outside CORS so that fronts it rejects show up too;
+	// blocked clients are refused before anything else.
+	return middleware.Chain(router,
+		middleware.NewBlocklist(blocks.Guard(snapshot, blocklist.ProtocolHTTP)),
+		middleware.NewSeenOrigins(),
+		middleware.NewCors(snapshot.Cors),
+	), nil
 }
 
 func anyMethodOrder(ep *endpointModel.Endpoint) int {

@@ -28,6 +28,10 @@ type middleware func(gogrpc.StreamHandler) gogrpc.StreamHandler
 // own rejection — auth or rate limit — vs the same code returned by a backend.
 var errOwnReject = errors.New("gateway own reject")
 
+// errBlocked refuses a client on the block list; it is returned before the
+// route's middlewares, so no log or metrics middleware sees it.
+var errBlocked = status.Error(codes.PermissionDenied, "forbidden")
+
 // authRejectError is the gateway's own auth rejection. It carries a proper gRPC
 // Unauthenticated/PermissionDenied status for the client while remaining
 // detectable via errors.Is(err, errOwnReject) in the logging layer.

@@ -16,6 +16,7 @@ import (
 	"github.com/samber/lo"
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
+	blockedClientModel "github.com/rendau/ruto/internal/domain/blockedclient/model"
 	changeRequestModel "github.com/rendau/ruto/internal/domain/changerequest/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
@@ -33,6 +34,7 @@ type Usecase struct {
 	gatewayUc        GatewayUsecaseI
 	gatewaysPool     GatewaysPoolI
 	changeRequestSvc ChangeRequestServiceI
+	blockedClientSvc BlockedClientServiceI
 
 	// when core first saw the current published version: the start of the lag
 	// window (after a core restart — the restart time)
@@ -47,6 +49,7 @@ func New(
 	gatewayUc GatewayUsecaseI,
 	gatewaysPool GatewaysPoolI,
 	changeRequestSvc ChangeRequestServiceI,
+	blockedClientSvc BlockedClientServiceI,
 ) *Usecase {
 	return &Usecase{
 		snapshotSvc:      snapshotSvc,
@@ -54,6 +57,7 @@ func New(
 		gatewayUc:        gatewayUc,
 		gatewaysPool:     gatewaysPool,
 		changeRequestSvc: changeRequestSvc,
+		blockedClientSvc: blockedClientSvc,
 	}
 }
 
@@ -134,6 +138,17 @@ func (u *Usecase) PendingChangeRequests(ctx context.Context, stuckAfter time.Dur
 	result, err := u.changeRequestSvc.PendingStats(ctx, stuckAfter)
 	if err != nil {
 		return nil, fmt.Errorf("changeRequestSvc.PendingStats: %w", err)
+	}
+	return result, nil
+}
+
+// BlockedClients — active blocks and blocks made by agents (api keys: MCP,
+// pulse) within the last `agentsWithin`.
+func (u *Usecase) BlockedClients(ctx context.Context, agentsWithin time.Duration) (*blockedClientModel.Stats, error) {
+	now := time.Now()
+	result, err := u.blockedClientSvc.Stats(ctx, now, now.Add(-agentsWithin))
+	if err != nil {
+		return nil, fmt.Errorf("blockedClientSvc.Stats: %w", err)
 	}
 	return result, nil
 }

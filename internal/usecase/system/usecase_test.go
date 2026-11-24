@@ -11,6 +11,7 @@ import (
 
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
+	blockedClientModel "github.com/rendau/ruto/internal/domain/blockedclient/model"
 	changeRequestModel "github.com/rendau/ruto/internal/domain/changerequest/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
@@ -61,6 +62,12 @@ func (s *testChangeRequestService) PendingStats(_ context.Context, _ time.Durati
 	return &changeRequestModel.PendingStats{}, nil
 }
 
+type testBlockedClientService struct{}
+
+func (s *testBlockedClientService) Stats(_ context.Context, _, _ time.Time) (*blockedClientModel.Stats, error) {
+	return &blockedClientModel.Stats{Active: 3, ByAgentsSince: 1}, nil
+}
+
 func newTestUsecase(snapshot snapshotModel.Snapshot, current string, items []*usecaseGateway.Item, connected []string) *Usecase {
 	return New(
 		&testSnapshotService{stored: snapshot},
@@ -68,6 +75,7 @@ func newTestUsecase(snapshot snapshotModel.Snapshot, current string, items []*us
 		&testGatewayUsecase{items: items},
 		&testGatewaysPool{ids: connected},
 		&testChangeRequestService{},
+		&testBlockedClientService{},
 	)
 }
 

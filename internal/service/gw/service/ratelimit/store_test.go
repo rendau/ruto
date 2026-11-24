@@ -211,8 +211,8 @@ func TestEndpoint_RejectedRequestIsNotCountedByOtherRules(t *testing.T) {
 	login := &rateLimitModel.Rule{Key: "ip", Requests: 1, Period: "1m", ParsedPeriod: time.Minute, Scope: rateLimitModel.ScopeEndpoint("login")}
 	app := &domAppModel.App{Id: "a", Name: "a"}
 
-	loginEp := service.Endpoint(app, &domEndpointModel.Endpoint{Id: "login", RateLimit: rateLimitModel.RateLimit{Rules: []*rateLimitModel.Rule{gw, login}}}, "POST /a/login")
-	otherEp := service.Endpoint(app, &domEndpointModel.Endpoint{Id: "other", RateLimit: rateLimitModel.RateLimit{Rules: []*rateLimitModel.Rule{gw}}}, "GET /a/other")
+	loginEp := service.Endpoint(nil, app, &domEndpointModel.Endpoint{Id: "login", RateLimit: rateLimitModel.RateLimit{Rules: []*rateLimitModel.Rule{gw, login}}}, "POST /a/login")
+	otherEp := service.Endpoint(nil, app, &domEndpointModel.Endpoint{Id: "other", RateLimit: rateLimitModel.RateLimit{Rules: []*rateLimitModel.Rule{gw}}}, "GET /a/other")
 	require.NotNil(t, loginEp)
 
 	req := Request{RemoteAddr: "203.0.113.7:1000", Header: http.Header{}}
@@ -232,10 +232,10 @@ func TestEndpoint_NoRules(t *testing.T) {
 	s, _ := newTestStore(100)
 	service := NewService(s, clientip.New(nil))
 
-	assert.Nil(t, service.Endpoint(&domAppModel.App{}, &domEndpointModel.Endpoint{}, ""))
+	assert.Nil(t, service.Endpoint(nil, &domAppModel.App{}, &domEndpointModel.Endpoint{}, ""))
 
 	var none *Service
-	assert.Nil(t, none.Endpoint(&domAppModel.App{}, &domEndpointModel.Endpoint{}, ""))
+	assert.Nil(t, none.Endpoint(nil, &domAppModel.App{}, &domEndpointModel.Endpoint{}, ""))
 }
 
 func mustAddr(t *testing.T, s string) netip.Addr {
@@ -247,7 +247,7 @@ func mustAddr(t *testing.T, s string) netip.Addr {
 
 func BenchmarkEndpoint_Check(b *testing.B) {
 	service := NewService(New(1_000_000), clientip.New(nil))
-	ep := service.Endpoint(&domAppModel.App{Id: "a"}, &domEndpointModel.Endpoint{Id: "e", RateLimit: rateLimitModel.RateLimit{Rules: []*rateLimitModel.Rule{
+	ep := service.Endpoint(nil, &domAppModel.App{Id: "a"}, &domEndpointModel.Endpoint{Id: "e", RateLimit: rateLimitModel.RateLimit{Rules: []*rateLimitModel.Rule{
 		{Key: "ip", Requests: 1_000_000_000, ParsedPeriod: time.Minute, Scope: "root"},
 		{Key: "token", Requests: 1_000_000_000, ParsedPeriod: time.Minute, Scope: "endpoint:e"},
 	}}}, "")

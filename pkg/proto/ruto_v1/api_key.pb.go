@@ -30,8 +30,12 @@ type ApiKeyMain struct {
 	KeyPrefix      string                 `protobuf:"bytes,3,opt,name=key_prefix,json=keyPrefix,proto3" json:"key_prefix,omitempty"`
 	CreatedAtUnix  int64                  `protobuf:"varint,4,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
 	LastUsedAtUnix int64                  `protobuf:"varint,5,opt,name=last_used_at_unix,json=lastUsedAtUnix,proto3" json:"last_used_at_unix,omitempty"` // 0 = never used
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// "full" — the MCP server (reads, change requests, block list);
+	// "blocklist" — only the block list: BlockedClient List/Create/Remove on
+	// /api and the block list MCP tools, nothing else (for pulse)
+	Scope         string `protobuf:"bytes,6,opt,name=scope,proto3" json:"scope,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ApiKeyMain) Reset() {
@@ -99,6 +103,13 @@ func (x *ApiKeyMain) GetLastUsedAtUnix() int64 {
 	return 0
 }
 
+func (x *ApiKeyMain) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
 type ApiKeyListRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Results       []*ApiKeyMain          `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
@@ -144,8 +155,10 @@ func (x *ApiKeyListRep) GetResults() []*ApiKeyMain {
 }
 
 type ApiKeyCreateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// "full" (default) | "blocklist"
+	Scope         string `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -183,6 +196,13 @@ func (*ApiKeyCreateReq) Descriptor() ([]byte, []int) {
 func (x *ApiKeyCreateReq) GetName() string {
 	if x != nil {
 		return x.Name
+	}
+	return ""
+}
+
+func (x *ApiKeyCreateReq) GetScope() string {
+	if x != nil {
+		return x.Scope
 	}
 	return ""
 }
@@ -287,7 +307,7 @@ var File_ruto_v1_api_key_proto protoreflect.FileDescriptor
 
 const file_ruto_v1_api_key_proto_rawDesc = "" +
 	"\n" +
-	"\x15ruto_v1/api_key.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xa2\x01\n" +
+	"\x15ruto_v1/api_key.proto\x12\aruto_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xb8\x01\n" +
 	"\n" +
 	"ApiKeyMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -295,11 +315,13 @@ const file_ruto_v1_api_key_proto_rawDesc = "" +
 	"\n" +
 	"key_prefix\x18\x03 \x01(\tR\tkeyPrefix\x12&\n" +
 	"\x0fcreated_at_unix\x18\x04 \x01(\x03R\rcreatedAtUnix\x12)\n" +
-	"\x11last_used_at_unix\x18\x05 \x01(\x03R\x0elastUsedAtUnix\">\n" +
+	"\x11last_used_at_unix\x18\x05 \x01(\x03R\x0elastUsedAtUnix\x12\x14\n" +
+	"\x05scope\x18\x06 \x01(\tR\x05scope\">\n" +
 	"\rApiKeyListRep\x12-\n" +
-	"\aresults\x18\x01 \x03(\v2\x13.ruto_v1.ApiKeyMainR\aresults\"%\n" +
+	"\aresults\x18\x01 \x03(\v2\x13.ruto_v1.ApiKeyMainR\aresults\";\n" +
 	"\x0fApiKeyCreateReq\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"3\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05scope\x18\x02 \x01(\tR\x05scope\"3\n" +
 	"\x0fApiKeyCreateRep\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\"!\n" +

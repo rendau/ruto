@@ -68,6 +68,22 @@ func (h *Handler) RegisterPulse(kit *pulsekit.Kit) {
 		return lo.Ternary(has, 1.0, 0.0), "ok", err
 	})
 
+	// the block list is informational: blocks are a normal state, not a failure
+	kit.Gauge("blocked_clients", "Активных блокировок адресов клиентов", "count", func(ctx context.Context) (float64, string, error) {
+		stats, err := h.uc.BlockedClients(ctx, 24*time.Hour)
+		if err != nil {
+			return 0, "", err
+		}
+		return float64(stats.Active), "ok", nil
+	})
+	kit.Gauge("blocked_clients_by_agents_24h", "Блокировок адресов агентами (ключи API: MCP, pulse) за сутки", "count", func(ctx context.Context) (float64, string, error) {
+		stats, err := h.uc.BlockedClients(ctx, 24*time.Hour)
+		if err != nil {
+			return 0, "", err
+		}
+		return float64(stats.ByAgentsSince), "ok", nil
+	})
+
 	kit.Activity(ChangeRequestEntity, 0, func(ctx context.Context, stuckAfter map[string]time.Duration) (pulsekit.EntityCounts, error) {
 		stats, err := h.uc.PendingChangeRequests(ctx, stuckAfter[changeRequestModel.StatusPending])
 		if err != nil {

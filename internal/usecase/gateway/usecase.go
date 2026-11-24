@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/rendau/ruto/internal/errs"
@@ -16,6 +17,12 @@ type Usecase struct {
 	gateways    GatewaysI
 	seenPaths   SeenPathsI
 	seenOrigins SeenOriginsI
+
+	// blocklist triggers of the subscribed gateways. The gateways pool fires
+	// only "check_version", so these are kept here, next to the streams.
+	blocklistMu   sync.Mutex
+	blocklistSeq  int64
+	blocklistSubs map[int64]func()
 }
 
 // Status thresholds are tied to the gateway's heartbeat interval (30s): online
@@ -35,53 +42,95 @@ const (
 
 func New(sessionSvc SessionServiceI, cache CacheI, gateways GatewaysI, seenPaths SeenPathsI, seenOrigins SeenOriginsI) *Usecase {
 	return &Usecase{
-		sessionSvc:  sessionSvc,
-		cache:       cache,
-		gateways:    gateways,
-		seenPaths:   seenPaths,
-		seenOrigins: seenOrigins,
+		sessionSvc:    sessionSvc,
+		cache:         cache,
+		gateways:      gateways,
+		seenPaths:     seenPaths,
+		seenOrigins:   seenOrigins,
+		blocklistSubs: map[int64]func(){},
 	}
 }
 
-// Subscribe registers a connected gateway in the in-memory pool and blocks for
-// the lifetime of its stream. Whenever core wants the gateway to re-check the
-// snapshot version, the registered trigger fires and `send` pushes a
-// notification down the stream. The call returns when the stream context is
-// done (gateway disconnected) or `send` fails, removing the gateway from the
-// pool via the deferred Unregister.
-func (u *Usecase) Subscribe(ctx context.Context, gatewayID string, send func() error) error {
+// Subscribe registers a connected gateway and blocks for the lifetime of its
+// stream. Whenever core wants the gateway to re-check the snapshot version or
+// the block list, the matching trigger fires and `send` pushes a notification
+// of that type (Notification*) down the stream. The call returns when the
+// stream context is done (gateway disconnected) or `send` fails, removing the
+// gateway from the pool via the deferred Unregister.
+func (u *Usecase) Subscribe(ctx context.Context, gatewayID string, send func(kind string) error) error {
 	gatewayID = strings.TrimSpace(gatewayID)
 
 	// buffered+coalescing: redundant triggers collapse into a single pending
 	// notification, so a burst of deploys still results in one re-check.
-	notifyCh := make(chan struct{}, 1)
-	trigger := func() {
-		select {
-		case notifyCh <- struct{}{}:
-		default:
+	versionCh := make(chan struct{}, 1)
+	blocklistCh := make(chan struct{}, 1)
+	trigger := func(ch chan struct{}) func() {
+		return func() {
+			select {
+			case ch <- struct{}{}:
+			default:
+			}
 		}
 	}
 
-	id := u.gateways.Register(gatewayID, trigger)
+	id := u.gateways.Register(gatewayID, trigger(versionCh))
 	defer u.gateways.Unregister(id)
 
+	blocklistId := u.addBlocklistSub(trigger(blocklistCh))
+	defer u.removeBlocklistSub(blocklistId)
+
 	// Ask the gateway to sync right after (re)connect: while it was
-	// disconnected, the snapshot version may have changed.
-	trigger()
+	// disconnected, the snapshot and the block list may have changed.
+	trigger(versionCh)()
+	trigger(blocklistCh)()
 
 	for {
+		kind := ""
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-u.gateways.Done():
 			// core is shutting down — end the stream so GracefulStop unblocks.
 			return nil
-		case <-notifyCh:
-			if err := send(); err != nil {
-				return fmt.Errorf("send: %w", err)
-			}
+		case <-versionCh:
+			kind = NotificationCheckVersion
+		case <-blocklistCh:
+			kind = NotificationCheckBlocklist
+		}
+		if err := send(kind); err != nil {
+			return fmt.Errorf("send: %w", err)
 		}
 	}
+}
+
+// NotifyBlocklist makes every subscribed gateway re-check the block list.
+func (u *Usecase) NotifyBlocklist() {
+	u.blocklistMu.Lock()
+	notifiers := make([]func(), 0, len(u.blocklistSubs))
+	for _, notify := range u.blocklistSubs {
+		notifiers = append(notifiers, notify)
+	}
+	u.blocklistMu.Unlock()
+
+	for _, notify := range notifiers {
+		notify()
+	}
+}
+
+func (u *Usecase) addBlocklistSub(notify func()) int64 {
+	u.blocklistMu.Lock()
+	defer u.blocklistMu.Unlock()
+
+	u.blocklistSeq++
+	u.blocklistSubs[u.blocklistSeq] = notify
+	return u.blocklistSeq
+}
+
+func (u *Usecase) removeBlocklistSub(id int64) {
+	u.blocklistMu.Lock()
+	defer u.blocklistMu.Unlock()
+
+	delete(u.blocklistSubs, id)
 }
 
 func (u *Usecase) Heartbeat(ctx context.Context, req *Heartbeat) error {
@@ -97,6 +146,7 @@ func (u *Usecase) Heartbeat(ctx context.Context, req *Heartbeat) error {
 		GatewayID:        gatewayID,
 		HostName:         strings.TrimSpace(req.HostName),
 		SnapshotVersion:  strings.TrimSpace(req.SnapshotVersion),
+		BlocklistVersion: strings.TrimSpace(req.BlocklistVersion),
 		LastApplyAtUnix:  req.LastApplyAtUnix,
 		StartedAtUnix:    req.StartedAtUnix,
 		LastError:        strings.TrimSpace(req.LastError),

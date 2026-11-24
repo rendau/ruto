@@ -5,10 +5,19 @@ import (
 	seenPathModel "github.com/rendau/ruto/internal/domain/seenpath/model"
 )
 
+// Notification types pushed down Gateway.Subscribe.
+const (
+	// NotificationCheckVersion — re-check the snapshot version
+	NotificationCheckVersion = "check_version"
+	// NotificationCheckBlocklist — re-check BlockedClient.GetVersion
+	NotificationCheckBlocklist = "check_blocklist"
+)
+
 type Heartbeat struct {
 	GatewayID        string
 	HostName         string
 	SnapshotVersion  string
+	BlocklistVersion string
 	LastApplyAtUnix  int64
 	StartedAtUnix    int64
 	LastError        string
@@ -22,6 +31,7 @@ type Item struct {
 	GatewayID        string `json:"gateway_id"`
 	HostName         string `json:"host_name"`
 	SnapshotVersion  string `json:"snapshot_version"`
+	BlocklistVersion string `json:"blocklist_version"`
 	LastApplyAtUnix  int64  `json:"last_apply_at_unix"`
 	StartedAtUnix    int64  `json:"started_at_unix"`
 	LastError        string `json:"last_error"`

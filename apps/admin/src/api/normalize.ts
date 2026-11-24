@@ -1,5 +1,6 @@
 import type {
   AppMain,
+  BlockedClientMain,
   Auth,
   AuthMethod,
   AuthMethodApiKey,
@@ -19,6 +20,7 @@ import type {
   RateLimitRule,
   RootMain,
   RootTransform,
+  RootTrustedClient,
   Transform,
   EndpointCache,
   CacheScope,
@@ -301,6 +303,27 @@ export function normalizeRootJwt(value?: Partial<RootJwt> | null): RootJwt {
   };
 }
 
+export function emptyRootTrustedClient(): RootTrustedClient {
+  return { name: "", ip: "" };
+}
+
+// Text is kept as typed (trimmed on save) so the editor doesn't eat spaces.
+export function normalizeRootTrustedClients(value?: RootTrustedClient[] | null): RootTrustedClient[] {
+  return (Array.isArray(value) ? value : [])
+    .filter((item): item is RootTrustedClient => Boolean(item))
+    .map((item) => ({
+      name: typeof item.name === "string" ? item.name : "",
+      ip: typeof item.ip === "string" ? item.ip : ""
+    }));
+}
+
+// Rows left completely empty in the editor are dropped instead of failing the save.
+function serializeRootTrustedClients(value?: RootTrustedClient[] | null): RootTrustedClient[] {
+  return normalizeRootTrustedClients(value)
+    .map((item) => ({ name: item.name.trim(), ip: item.ip.trim() }))
+    .filter((item) => item.name || item.ip);
+}
+
 export function normalizeRoot(value: RootMain): RootMain {
   const raw = value as WithRawVariables<RootMain>;
   return {
@@ -320,7 +343,8 @@ export function normalizeRoot(value: RootMain): RootMain {
     variables: variablesToArray(raw.variables),
     transform: normalizeRootTransform(value?.transform),
     compression: normalizeCompression(value?.compression),
-    rate_limit: normalizeRateLimit(value?.rate_limit)
+    rate_limit: normalizeRateLimit(value?.rate_limit),
+    trusted_clients: normalizeRootTrustedClients(value?.trusted_clients)
   };
 }
 
@@ -391,7 +415,8 @@ export function serializeRoot(value: RootMain): unknown {
   return {
     ...normalizeRoot(value),
     variables: variablesToMap(value?.variables),
-    rate_limit: serializeRateLimit(value?.rate_limit)
+    rate_limit: serializeRateLimit(value?.rate_limit),
+    trusted_clients: serializeRootTrustedClients(value?.trusted_clients)
   };
 }
 
@@ -408,5 +433,24 @@ export function serializeEndpoint(value: EndpointMain): unknown {
     ...normalizeEndpoint(value),
     variables: variablesToMap(value?.variables),
     rate_limit: serializeRateLimit(value?.rate_limit)
+  };
+}
+
+// grpc-gateway sends int64 as strings and omits zero / false / empty fields.
+export function normalizeBlockedClient(value: Partial<BlockedClientMain>): BlockedClientMain {
+  return {
+    id: String(value?.id ?? ""),
+    ip: value?.ip || "",
+    reason: value?.reason || "",
+    created_by: value?.created_by || "",
+    source: value?.source === "agent" ? "agent" : "admin",
+    created_at_unix: nonNegativeInt(value?.created_at_unix),
+    updated_at_unix: nonNegativeInt(value?.updated_at_unix),
+    expires_at_unix: nonNegativeInt(value?.expires_at_unix),
+    removed_at_unix: nonNegativeInt(value?.removed_at_unix),
+    removed_by: value?.removed_by || "",
+    remove_reason: value?.remove_reason || "",
+    active: Boolean(value?.active),
+    api_key_id: value?.api_key_id || ""
   };
 }

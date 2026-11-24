@@ -22,6 +22,8 @@ import (
 	domainApiKeyServiceP "github.com/rendau/ruto/internal/domain/apikey/service"
 	domainAppRepoDbP "github.com/rendau/ruto/internal/domain/app/repo/db"
 	domainAppServiceP "github.com/rendau/ruto/internal/domain/app/service"
+	domainBlockedClientRepoDbP "github.com/rendau/ruto/internal/domain/blockedclient/repo/db"
+	domainBlockedClientServiceP "github.com/rendau/ruto/internal/domain/blockedclient/service"
 	domainChangeRequestRepoDbP "github.com/rendau/ruto/internal/domain/changerequest/repo/db"
 	domainChangeRequestServiceP "github.com/rendau/ruto/internal/domain/changerequest/service"
 	domainEndpointRepoDbP "github.com/rendau/ruto/internal/domain/endpoint/repo/db"
@@ -54,6 +56,7 @@ import (
 	serviceSwaggerP "github.com/rendau/ruto/internal/service/swagger"
 	usecaseApiKeyP "github.com/rendau/ruto/internal/usecase/apikey"
 	usecaseAppP "github.com/rendau/ruto/internal/usecase/app"
+	usecaseBlockedClientP "github.com/rendau/ruto/internal/usecase/blockedclient"
 	usecaseChangeRequestP "github.com/rendau/ruto/internal/usecase/changerequest"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 	usecaseGatewayP "github.com/rendau/ruto/internal/usecase/gateway"
@@ -83,6 +86,7 @@ type App struct {
 
 	changeRequestUsecase *usecaseChangeRequestP.Usecase
 	oauthUsecase         *usecaseOAuthP.Usecase
+	blockedClientUsecase *usecaseBlockedClientP.Usecase
 
 	exitCode int
 }
@@ -243,10 +247,23 @@ func (a *App) Init() error {
 	)
 	handlerGrpcMonitoring := handlerGrpcP.NewMonitoring(usecaseMonitoring)
 
+	// blocked client (the gateway-wide block list, applied without publishing)
+	domainBlockedClientRepoDb := domainBlockedClientRepoDbP.New(a.pgpool)
+	domainBlockedClientService := domainBlockedClientServiceP.New(domainBlockedClientRepoDb)
+	a.blockedClientUsecase = usecaseBlockedClientP.New(
+		domainBlockedClientService,
+		mobone.NewTransactionManager(a.pgpool),
+		sessionService,
+		domainRootService,
+		domainUsrService,
+		usecaseGateway,
+	)
+	handlerGrpcBlockedClient := handlerGrpcP.NewBlockedClient(a.blockedClientUsecase)
+
 	// api key
 	domainApiKeyRepoDb := domainApiKeyRepoDbP.New(a.pgpool)
 	domainApiKeyService := domainApiKeyServiceP.New(domainApiKeyRepoDb)
-	usecaseApiKey := usecaseApiKeyP.New(domainApiKeyService, domainUsrService, sessionService)
+	usecaseApiKey := usecaseApiKeyP.New(domainApiKeyService, domainUsrService, sessionService, a.blockedClientUsecase)
 	handlerGrpcApiKey := handlerGrpcP.NewApiKey(usecaseApiKey)
 
 	// change request
@@ -275,7 +292,7 @@ func (a *App) Init() error {
 	handlerGrpcChangeRequest := handlerGrpcP.NewChangeRequest(a.changeRequestUsecase)
 
 	// system (the system port: pulse manifest and routes for pulse)
-	usecaseSystem := usecaseSystemP.New(domainSnapshotService, usecaseSnapshot, usecaseGateway, gatewaysService, domainChangeRequestService)
+	usecaseSystem := usecaseSystemP.New(domainSnapshotService, usecaseSnapshot, usecaseGateway, gatewaysService, domainChangeRequestService, domainBlockedClientService)
 	handlerSystem := handlerSystemP.New(usecaseSystem)
 	handlerSystem.RegisterPulse(a.pulsekit)
 
@@ -314,6 +331,7 @@ func (a *App) Init() error {
 			usecaseSnapshot,
 			usecaseGateway,
 			usecaseMonitoring,
+			a.blockedClientUsecase,
 		)
 		a.mcpServer = &http.Server{
 			Addr:              ":" + strconv.Itoa(configCore.Conf.McpPort),
@@ -324,7 +342,7 @@ func (a *App) Init() error {
 	}
 
 	// grpc-server
-	a.grpcServer = NewGrpcServer("core", sessionService, func(server *grpc.Server) {
+	a.grpcServer = NewGrpcServer("core", sessionService, usecaseApiKey, func(server *grpc.Server) {
 		ruto_v1.RegisterRootServer(server, handlerGrpcRoot)
 		ruto_v1.RegisterAppServer(server, handlerGrpcApp)
 		ruto_v1.RegisterEndpointServer(server, handlerGrpcEndpoint)
@@ -338,6 +356,7 @@ func (a *App) Init() error {
 		ruto_v1.RegisterApiKeyServer(server, handlerGrpcApiKey)
 		ruto_v1.RegisterChangeRequestServer(server, handlerGrpcChangeRequest)
 		ruto_v1.RegisterOAuthServer(server, handlerGrpcOAuth)
+		ruto_v1.RegisterBlockedClientServer(server, handlerGrpcBlockedClient)
 	})
 
 	// grpc-gateway
@@ -363,6 +382,7 @@ func (a *App) Init() error {
 			ruto_v1.RegisterApiKeyHandler,
 			ruto_v1.RegisterChangeRequestHandler,
 			ruto_v1.RegisterOAuthHandler,
+			ruto_v1.RegisterBlockedClientHandler,
 		}
 		for _, registerHandler := range handlers {
 			if registerErr := registerHandler(context.Background(), mux, conn); registerErr != nil {
@@ -437,6 +457,7 @@ func (a *App) Start() error {
 
 	go a.changeRequestUsecase.RunCleanup(a.ctx, time.Hour)
 	go a.oauthUsecase.RunCleanup(a.ctx, time.Hour)
+	go a.blockedClientUsecase.RunPrune(a.ctx, time.Hour)
 
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	blockedClientModel "github.com/rendau/ruto/internal/domain/blockedclient/model"
 	changeRequestModel "github.com/rendau/ruto/internal/domain/changerequest/model"
 	usecaseSystem "github.com/rendau/ruto/internal/usecase/system"
 )
@@ -27,6 +28,10 @@ func (s *testUsecase) HasUnpublishedChanges(_ context.Context) (bool, error) {
 
 func (s *testUsecase) PendingChangeRequests(_ context.Context, _ time.Duration) (*changeRequestModel.PendingStats, error) {
 	return &changeRequestModel.PendingStats{}, nil
+}
+
+func (s *testUsecase) BlockedClients(_ context.Context, _ time.Duration) (*blockedClientModel.Stats, error) {
+	return &blockedClientModel.Stats{}, nil
 }
 
 func (s *testUsecase) RoutesVersion(_ context.Context) (string, error) {

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router"
 import { useAuthStore } from "@/stores/auth";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import AppWorkspaceView from "@/views/AppWorkspaceView.vue";
+import BlockedClientListView from "@/views/BlockedClientListView.vue";
 import ChangeRequestListView from "@/views/ChangeRequestListView.vue";
 import DashboardView from "@/views/DashboardView.vue";
 import GatewayListView from "@/views/GatewayListView.vue";
@@ -65,6 +66,12 @@ const routes: RouteRecordRaw[] = [
         name: "root-config",
         component: RootConfigView,
         meta: { title: "Root configuration" }
+      },
+      {
+        path: "blocked-clients",
+        name: "blocked-clients",
+        component: BlockedClientListView,
+        meta: { title: "Blocked clients" }
       },
       {
         path: "users",
