@@ -19,8 +19,11 @@ import (
 
 const (
 	// MetadataTTL is how long a discovery document is trusted before it is
-	// read again; providers change their endpoints about never.
-	MetadataTTL      = time.Hour
+	// read again. A provider's setting can move jwks_uri (an IdP realm that
+	// stops sharing the root JWKS), and the old address may keep answering
+	// with an empty set, so the document is not trusted for longer than the
+	// gateway polls the keys.
+	MetadataTTL      = 10 * time.Minute
 	discoveryPath    = "/.well-known/openid-configuration"
 	requestTimeout   = 10 * time.Second
 	maxResponseBytes = 1 << 20
@@ -46,7 +49,7 @@ type entry struct {
 
 func New() *Service {
 	return &Service{
-		// Read once an hour: an idle connection would be closed by then anyway.
+		// Read every few minutes: an idle connection would be closed by then anyway.
 		httpClient: httpx.New(httpx.Config{Timeout: requestTimeout, DisableKeepAlives: true}),
 		entries:    make(map[string]*entry),
 	}
@@ -58,11 +61,7 @@ func New() *Service {
 // and jwks_uri is moved onto it. A document is cached for MetadataTTL; when a
 // reload fails the previous document is kept.
 func (s *Service) Metadata(ctx context.Context, issuer, internalUrl string) (*Metadata, error) {
-	base := issuer
-	if internalUrl != "" {
-		base = internalUrl
-	}
-	discoveryUrl := base + discoveryPath
+	discoveryUrl := discoveryUrlOf(issuer, internalUrl)
 
 	e := s.entry(discoveryUrl)
 	e.mu.Lock()
@@ -86,6 +85,21 @@ func (s *Service) Metadata(ctx context.Context, issuer, internalUrl string) (*Me
 	e.meta = meta
 	e.loadedAt = time.Now()
 	return meta, nil
+}
+
+// Forget drops the cached document of the provider: the next Metadata call
+// reads it again, whatever its age.
+func (s *Service) Forget(issuer, internalUrl string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.entries, discoveryUrlOf(issuer, internalUrl))
+}
+
+func discoveryUrlOf(issuer, internalUrl string) string {
+	if internalUrl != "" {
+		return internalUrl + discoveryPath
+	}
+	return issuer + discoveryPath
 }
 
 func (s *Service) entry(discoveryUrl string) *entry {

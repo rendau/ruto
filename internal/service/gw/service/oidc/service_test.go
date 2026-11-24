@@ -43,6 +43,21 @@ func TestMetadata(t *testing.T) {
 	assert.Same(t, meta, again)
 }
 
+func TestForget(t *testing.T) {
+	var issuer string
+	server := fakeProvider(t, func() string { return issuer })
+	issuer = server.URL + "/realms/corp"
+
+	svc := New()
+	meta, err := svc.Metadata(context.Background(), issuer, "")
+	require.NoError(t, err)
+
+	svc.Forget(issuer, "")
+	again, err := svc.Metadata(context.Background(), issuer, "")
+	require.NoError(t, err)
+	assert.NotSame(t, meta, again, "a forgotten document is read again")
+}
+
 func TestMetadataInternalUrl(t *testing.T) {
 	// The document is read from the internal address but names the public
 	// issuer; jwks_uri moves to the internal one.

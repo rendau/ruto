@@ -13,6 +13,8 @@ import (
 
 	"encoding/json"
 
+	"github.com/samber/lo"
+
 	"github.com/rendau/ruto/internal/constant"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/errs"
@@ -73,8 +75,25 @@ func Ins() *Service {
 func (s *Service) SetProviders(providers []rootModel.RootJwt) {
 	providersCopy := make([]rootModel.RootJwt, len(providers))
 	copy(providersCopy, providers)
+
+	// A provider that (re)appears in the config starts from a fresh discovery
+	// document: removing and adding it back is how an operator resets it.
+	previous := s.getProviders()
+	for i := range providersCopy {
+		provider := &providersCopy[i]
+		if usesDiscovery(provider) && !lo.ContainsBy(previous, func(p rootModel.RootJwt) bool {
+			return usesDiscovery(&p) && p.Issuer == provider.Issuer && p.InternalUrl == provider.InternalUrl
+		}) {
+			oidc.Ins().Forget(provider.Issuer, provider.InternalUrl)
+		}
+	}
+
 	s.providerStore.Store(&providersCopy)
 	s.signal()
+}
+
+func usesDiscovery(provider *rootModel.RootJwt) bool {
+	return provider.JwkUrl == "" && provider.Issuer != ""
 }
 
 // signal будит worker, чтобы он немедленно перезагрузил ключи и пересчитал
@@ -195,7 +214,7 @@ func (s *Service) load() {
 		items, loaded := urlItems[key]
 		if !loaded {
 			var ok bool
-			items, ok = s.loadItems(ctx, key, uri)
+			items, ok = s.pollProvider(ctx, &provider, key, uri)
 			if ctx.Err() != nil {
 				return
 			}
@@ -221,6 +240,61 @@ func (s *Service) load() {
 	s.urlItems = urlItems
 	s.loadFailed.Store(failed)
 	s.setItems(result)
+}
+
+// pollProvider loads the keys of provider from uri. A set that drops every key
+// the provider had (empty, or none of the previous kids) is checked before it
+// replaces them: for a provider configured by issuer the discovery document is
+// read again, since jwks_uri may have moved while the old address answers with
+// an empty set. An empty set is refused all the same: the previous keys stay
+// and the poll counts as failed, so it is retried soon. A non-empty set with
+// new kids only is a full rotation and is taken.
+func (s *Service) pollProvider(ctx context.Context, provider *rootModel.RootJwt, key, uri string) ([]*Item, bool) {
+	items, ok := s.loadItems(ctx, key, uri)
+	previous := s.urlItems[key]
+	if !ok || !dropsAllKeys(previous, items) {
+		return items, ok
+	}
+
+	if usesDiscovery(provider) {
+		oidc.Ins().Forget(provider.Issuer, provider.InternalUrl)
+		freshUri, _ := s.resolveUri(ctx, provider)
+		if freshUri == "" {
+			return previous, false
+		}
+		if freshUri != uri {
+			slog.Warn(
+				"jwk-scrapper: jwks_uri moved",
+				"provider", provider.Name,
+				"from", uri,
+				"to", freshUri,
+			)
+			uri = freshUri
+			if items, ok = s.loadItems(ctx, key, uri); !ok {
+				return items, false
+			}
+		}
+	}
+
+	if len(items) == 0 {
+		slog.Warn(
+			"jwk-scrapper: empty key set, the previous keys are kept",
+			"provider", provider.Name,
+			"uri", uri,
+			"kept", len(previous),
+		)
+		return previous, false
+	}
+	return items, true
+}
+
+func dropsAllKeys(previous, items []*Item) bool {
+	if len(previous) == 0 {
+		return false
+	}
+	return !lo.ContainsBy(items, func(item *Item) bool {
+		return lo.ContainsBy(previous, func(p *Item) bool { return p.Kid == item.Kid })
+	})
 }
 
 // resolveUri returns the JWKS address of provider and the key its keys are
