@@ -28,7 +28,7 @@ var Conf = struct {
 
 	// Cloudflare's networks: a request from them gets its client address from
 	// Cf-Connecting-Ip; a zero refresh keeps the built-in list, see
-	// gw/service/cloudflare
+	// infra/cloudflare
 	CloudflareIPsURL     string        `env:"CLOUDFLARE_IPS_URL" envDefault:"https://api.cloudflare.com/client/v4/ips"`
 	CloudflareIPsRefresh time.Duration `env:"CLOUDFLARE_IPS_REFRESH" envDefault:"24h"`
 

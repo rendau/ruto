@@ -2,7 +2,6 @@ package model
 
 import (
 	"encoding/base64"
-	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -10,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+
+	"github.com/rendau/ruto/internal/infra/clientip"
 )
 
 type AuthRequest struct {
@@ -54,7 +55,7 @@ func (r *AuthRequest) SetHttpQueryParams(qPars url.Values) {
 
 func (r *AuthRequest) SetRemoteAddr(remoteAddr string) {
 	r.RemoteAddr = strings.TrimSpace(remoteAddr)
-	r.remoteIP, _ = parseRemoteAddrIP(r.RemoteAddr)
+	r.remoteIP = clientip.ParseAddr(r.RemoteAddr)
 }
 
 func (r *AuthRequest) ExtractToken() (finalResult string) {
@@ -137,67 +138,27 @@ func (r *AuthRequest) ExtractAPIKey(header string) (finalResult string) {
 // ExtractForwardedFor gives the X-Forwarded-For addresses in order, across all
 // the header lines; an entry that is not an address is kept as an invalid
 // Addr, so a reader walking from the right can tell the chain is broken.
-func (r *AuthRequest) ExtractForwardedFor() (finalResult []netip.Addr) {
-	if r.forwardedFor.isSet {
-		return r.forwardedFor.value
-	}
-
-	defer func() {
-		r.forwardedFor.value = finalResult
+func (r *AuthRequest) ExtractForwardedFor() []netip.Addr {
+	if !r.forwardedFor.isSet {
+		r.forwardedFor.value = clientip.ParseForwardedFor(r.getHeaderValues("X-Forwarded-For"))
 		r.forwardedFor.isSet = true
-	}()
-
-	var result []netip.Addr
-	for _, line := range r.getHeaderValues("X-Forwarded-For") {
-		for raw := range strings.SplitSeq(line, ",") {
-			if raw = strings.TrimSpace(raw); raw == "" {
-				continue
-			}
-			ip, _ := parseRemoteAddrIP(raw)
-			result = append(result, ip)
-		}
 	}
-
-	return result
+	return r.forwardedFor.value
 }
 
 // ExtractRealIP gives the X-Real-Ip address, invalid when there is none.
 func (r *AuthRequest) ExtractRealIP() netip.Addr {
-	ip, _ := parseRemoteAddrIP(r.getHeaderValue("X-Real-Ip"))
-	return ip
+	return clientip.ParseAddr(r.getHeaderValue("X-Real-Ip"))
 }
 
 // ExtractCfConnectingIP gives the Cf-Connecting-Ip address, invalid when there
 // is none.
 func (r *AuthRequest) ExtractCfConnectingIP() netip.Addr {
-	ip, _ := parseRemoteAddrIP(r.getHeaderValue("Cf-Connecting-Ip"))
-	return ip
+	return clientip.ParseAddr(r.getHeaderValue("Cf-Connecting-Ip"))
 }
 
 func (r *AuthRequest) ExtractRemoteAddrIP() netip.Addr {
 	return r.remoteIP
-}
-
-func parseRemoteAddrIP(raw string) (netip.Addr, bool) {
-	if raw == "" {
-		return netip.Addr{}, false
-	}
-
-	if ip, err := netip.ParseAddr(raw); err == nil {
-		return ip, true
-	}
-
-	host, _, err := net.SplitHostPort(raw)
-	if err != nil {
-		return netip.Addr{}, false
-	}
-
-	ip, err := netip.ParseAddr(strings.TrimSpace(host))
-	if err != nil {
-		return netip.Addr{}, false
-	}
-
-	return ip, true
 }
 
 func (r *AuthRequest) findValue(headerKey, queryParamKey string) string {

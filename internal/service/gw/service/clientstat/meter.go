@@ -7,8 +7,8 @@ import (
 	"time"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	authModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
-	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 )
 
 // Service is made once per gateway and shared by the handlers of every

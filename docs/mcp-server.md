@@ -99,8 +99,13 @@ MCP-сервера, клиент открывает в браузере стра
 
 Каждый запрос на MCP-порт пишется строкой `mcp: request`: метод, путь, JSON-RPC метод
 (`initialize`, `tools/call`…), статус, время, вид учётных данных (`none` / `api_key` /
-`oauth`, сами значения никогда), адрес клиента (`Cf-Connecting-Ip` → `X-Forwarded-For` →
-`X-Real-Ip`), `cf_ray` для поиска запроса в событиях Cloudflare и User-Agent. Отказы —
+`oauth`, сами значения никогда), адрес клиента, `cf_ray` для поиска запроса в событиях
+Cloudflare и User-Agent. Адрес клиента определяется так же, как в шлюзе (`infra/clientip`, см.
+`architecture.md`): заголовкам `X-Forwarded-For`/`X-Real-Ip` core верит только от адресов из
+своего `TRUSTED_PROXY_ADDRESSES` (сети кластера, как у шлюза), а `Cf-Connecting-Ip` — только
+от сетей Cloudflare (`CLOUDFLARE_IPS_URL`, `CLOUDFLARE_IPS_REFRESH`). Без `TRUSTED_PROXY_ADDRESSES`
+в логе будет адрес traefik. Подделать адрес в логе, зайдя в обход Cloudflare или дописав чужой
+адрес в `X-Forwarded-For`, нельзя; если адрес определить не удалось, `client_ip` пустой. Отказы —
 отдельно с причиной: `mcp: credential rejected` + `oauth: access token rejected` (неизвестный,
 истёкший, не access-токен, подключение удалено, пользователь больше не админ),
 `mcp oauth: request rejected` (код и описание ошибки OAuth). Шаги входа: `mcp oauth: client

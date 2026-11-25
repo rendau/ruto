@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	authReqModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
-	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 )
 
 func TestAuthorizeTrustedProxyFlow(t *testing.T) {

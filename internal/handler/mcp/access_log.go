@@ -2,16 +2,17 @@ package mcp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	apikeyService "github.com/rendau/ruto/internal/domain/apikey/service"
 	oauthService "github.com/rendau/ruto/internal/domain/oauth/service"
+	"github.com/rendau/ruto/internal/infra/clientip"
 )
 
 // rpcPeekMaxBytes bounds how much of a JSON-RPC body is read ahead to log its
@@ -50,12 +51,17 @@ func (s *statusRecorder) Unwrap() http.ResponseWriter {
 }
 
 // withAccessLog logs every request of the MCP port. Clients reach it through
-// Cloudflare and traefik, so the caller's address comes from their headers;
-// cf_ray matches the request in Cloudflare security events. Credentials are
-// never logged, only their kind.
-func withAccessLog(next http.Handler) http.Handler {
+// Cloudflare and traefik, so the caller's address comes from their headers,
+// believed only from TRUSTED_PROXY_ADDRESSES and Cloudflare (see
+// clientip.Resolver); cf_ray matches the request in Cloudflare security
+// events. Credentials are never logged, only their kind.
+func (h *Handler) withAccessLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		started := time.Now()
+
+		if ip := h.clientIP.ClientIP(clientip.HTTPRequest(r)); ip.IsValid() {
+			r = r.WithContext(context.WithValue(r.Context(), ctxKeyClientIP, ip.String()))
+		}
 		rpcMethod := peekRPCMethod(r)
 		rec := &statusRecorder{ResponseWriter: w}
 
@@ -133,20 +139,9 @@ func credentialKind(r *http.Request) string {
 	return "unknown"
 }
 
+// clientIP is the caller's address the access log found, for the logs further
+// down the request; empty when it is unknown.
 func clientIP(r *http.Request) string {
-	if v := r.Header.Get("Cf-Connecting-Ip"); v != "" {
-		return v
-	}
-	if v := r.Header.Get("X-Forwarded-For"); v != "" {
-		first, _, _ := strings.Cut(v, ",")
-		return strings.TrimSpace(first)
-	}
-	if v := r.Header.Get("X-Real-Ip"); v != "" {
-		return v
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
+	v, _ := r.Context().Value(ctxKeyClientIP).(string)
+	return v
 }

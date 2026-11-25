@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
-	"github.com/rendau/ruto/internal/service/gw/service/clientip"
+	"github.com/rendau/ruto/internal/infra/clientip"
 )
 
 func trustedSnapshot(t *testing.T, trusted ...rootModel.RootTrustedClient) *rootModel.Root {

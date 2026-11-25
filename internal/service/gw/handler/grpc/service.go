@@ -15,9 +15,9 @@ import (
 
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	domRootModel "github.com/rendau/ruto/internal/domain/root/model"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	serviceAuth "github.com/rendau/ruto/internal/service/gw/service/auth"
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
-	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"

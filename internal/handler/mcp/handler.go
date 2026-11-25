@@ -26,6 +26,7 @@ import (
 	oauthService "github.com/rendau/ruto/internal/domain/oauth/service"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	sessionService "github.com/rendau/ruto/internal/domain/session/service"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	usecaseApiKey "github.com/rendau/ruto/internal/usecase/apikey"
 	usecaseApp "github.com/rendau/ruto/internal/usecase/app"
 	usecaseBlockedClient "github.com/rendau/ruto/internal/usecase/blockedclient"
@@ -77,6 +78,8 @@ type Handler struct {
 	gatewayUc       *usecaseGateway.Usecase
 	monitoringUc    *usecaseMonitoring.Usecase
 	blockedClientUc *usecaseBlockedClient.Usecase
+
+	clientIP *clientip.Resolver
 }
 
 func New(
@@ -93,6 +96,7 @@ func New(
 	gatewayUc *usecaseGateway.Usecase,
 	monitoringUc *usecaseMonitoring.Usecase,
 	blockedClientUc *usecaseBlockedClient.Usecase,
+	clientIP *clientip.Resolver,
 ) *Handler {
 	return &Handler{
 		sessionSvc:      sessionSvc,
@@ -108,6 +112,7 @@ func New(
 		gatewayUc:       gatewayUc,
 		monitoringUc:    monitoringUc,
 		blockedClientUc: blockedClientUc,
+		clientIP:        clientIP,
 	}
 }
 
@@ -118,6 +123,8 @@ const (
 	ctxKeyPrincipal ctxKeyT = iota
 	// ctxKeyScope holds the scope of that key (apiKeyModel.Scope*).
 	ctxKeyScope
+	// ctxKeyClientIP holds the caller's address the access log found.
+	ctxKeyClientIP
 )
 
 // blocklistTools are all a key with scope "blocklist" may call.
@@ -150,14 +157,14 @@ func (h *Handler) HTTPHandler() http.Handler {
 
 	mcpHandler := h.authMiddleware(streamable, oauth)
 	if oauth == nil {
-		return withAccessLog(mcpHandler)
+		return h.withAccessLog(mcpHandler)
 	}
 
 	mux := http.NewServeMux()
 	oauth.register(mux)
 	mux.Handle("/", mcpHandler)
 
-	return withAccessLog(mux)
+	return h.withAccessLog(mux)
 }
 
 func (h *Handler) authMiddleware(next http.Handler, oauth *oauthEndpoints) http.Handler {

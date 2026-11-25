@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	"net/netip"
 	"strings"
-
-	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
 )
 
 type Resolver struct {
@@ -32,7 +30,7 @@ func New(trustedProxyAddresses []string, cloudflare CloudflareI) *Resolver {
 //
 // The result is invalid when the peer address is unknown, the chain holds an
 // entry that is not an address, or every address is a trusted proxy.
-func (r *Resolver) ClientIP(req *model.AuthRequest) netip.Addr {
+func (r *Resolver) ClientIP(req RequestI) netip.Addr {
 	hop := r.hop(req)
 	if hop.IsValid() && r.cloudflare != nil && r.cloudflare.Contains(hop) {
 		if ip := req.ExtractCfConnectingIP(); ip.IsValid() {
@@ -47,7 +45,7 @@ func (r *Resolver) ClientIP(req *model.AuthRequest) netip.Addr {
 // proxy appends the address it got the request from, so the addresses to the
 // left of it were written by the client itself. Only when X-Forwarded-For names
 // nobody but trusted proxies does X-Real-Ip count (traefik overwrites it).
-func (r *Resolver) hop(req *model.AuthRequest) netip.Addr {
+func (r *Resolver) hop(req RequestI) netip.Addr {
 	remoteIP := req.ExtractRemoteAddrIP()
 	if !remoteIP.IsValid() {
 		return netip.Addr{}

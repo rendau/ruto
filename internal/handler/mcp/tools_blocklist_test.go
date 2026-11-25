@@ -22,6 +22,7 @@ import (
 	sessionService "github.com/rendau/ruto/internal/domain/session/service"
 	usrModel "github.com/rendau/ruto/internal/domain/usr/model"
 	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	usecaseApiKey "github.com/rendau/ruto/internal/usecase/apikey"
 	usecaseBlockedClient "github.com/rendau/ruto/internal/usecase/blockedclient"
 	usecaseOAuth "github.com/rendau/ruto/internal/usecase/oauth"
@@ -175,6 +176,7 @@ func newTestSession(t *testing.T, key string) (*mcpsdk.ClientSession, *testBlock
 		apiKeyUc:        usecaseApiKey.New(&testKeySvc{}, &testUsrSvc{}, sessionSvc, nil),
 		oauthUc:         usecaseOAuth.New(usecaseOAuth.Config{}, nil, nil, nil, sessionSvc, nil),
 		blockedClientUc: usecaseBlockedClient.New(blocks, &testTxm{}, sessionSvc, &testRootSvc{}, &testUsrSvc{}, notifier),
+		clientIP:        clientip.New(nil, nil),
 	}
 	srv := httptest.NewServer(h.HTTPHandler())
 	t.Cleanup(srv.Close)

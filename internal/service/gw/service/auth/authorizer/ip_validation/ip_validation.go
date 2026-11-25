@@ -7,8 +7,8 @@ import (
 	"github.com/samber/lo"
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
-	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 )
 
 type Authorizer struct {

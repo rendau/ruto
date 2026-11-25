@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	rateLimitModel "github.com/rendau/ruto/internal/domain/ratelimit/model"
-	"github.com/rendau/ruto/internal/service/gw/service/clientip"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
 

@@ -5,8 +5,8 @@ import (
 
 	domAuthModel "github.com/rendau/ruto/internal/domain/auth/model"
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
-	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 )
 
 type Service struct {

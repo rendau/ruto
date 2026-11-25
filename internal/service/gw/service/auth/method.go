@@ -2,13 +2,13 @@ package auth
 
 import (
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/authorizer"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/authorizer/api_key"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/authorizer/basic"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/authorizer/ip_validation"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/authorizer/jwt"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
-	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 )
 

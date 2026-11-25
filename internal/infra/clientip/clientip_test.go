@@ -6,8 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
+	"github.com/stretchr/testify/require"
 )
 
 func TestResolver_ClientIP(t *testing.T) {
@@ -41,9 +40,7 @@ func TestResolver_ClientIP(t *testing.T) {
 			for k, vs := range tt.headers {
 				headers[k] = vs
 			}
-			req := model.NewAuthRequest()
-			req.SetHttpHeader(headers)
-			req.SetRemoteAddr(tt.remoteAddr)
+			req := HTTPRequest(&http.Request{Header: headers, RemoteAddr: tt.remoteAddr})
 
 			assert.Equal(t, tt.want, resolver.ClientIP(req).String())
 		})
@@ -57,14 +54,10 @@ func TestResolver_IgnoresClientHeaders(t *testing.T) {
 
 	for _, header := range []string{"Cf-Connecting-Ip", "True-Client-Ip", "X-Client-Ip", "X-Cluster-Client-Ip"} {
 		t.Run(header, func(t *testing.T) {
-			req := model.NewAuthRequest()
-			req.SetHttpHeader(http.Header{"X-Forwarded-For": {"203.0.113.10"}, header: {"1.1.1.1"}})
-			req.SetRemoteAddr("10.0.0.10:443")
+			req := HTTPRequest(&http.Request{Header: http.Header{"X-Forwarded-For": {"203.0.113.10"}, header: {"1.1.1.1"}}, RemoteAddr: "10.0.0.10:443"})
 			assert.Equal(t, "203.0.113.10", resolver.ClientIP(req).String())
 
-			req = model.NewAuthRequest()
-			req.SetHttpHeader(http.Header{header: {"1.1.1.1"}})
-			req.SetRemoteAddr("10.0.0.10:443")
+			req = HTTPRequest(&http.Request{Header: http.Header{header: {"1.1.1.1"}}, RemoteAddr: "10.0.0.10:443"})
 			assert.False(t, resolver.ClientIP(req).IsValid())
 		})
 	}
@@ -147,10 +140,22 @@ func TestResolver_Cloudflare(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := model.NewAuthRequest()
-			req.SetHttpHeader(tt.headers)
-			req.SetRemoteAddr(tt.remoteAddr)
+			req := HTTPRequest(&http.Request{Header: tt.headers, RemoteAddr: tt.remoteAddr})
 			assert.Equal(t, tt.want, resolver.ClientIP(req).String())
 		})
 	}
+}
+
+func TestParse(t *testing.T) {
+	assert.Equal(t, "198.51.100.1", ParseAddr(" 198.51.100.1:443 ").String())
+	assert.Equal(t, "2001:db8::1", ParseAddr("[2001:db8::1]:443").String())
+	assert.Equal(t, "2001:db8::1", ParseAddr("2001:db8::1").String())
+	assert.False(t, ParseAddr("garbage").IsValid())
+	assert.False(t, ParseAddr("").IsValid())
+
+	ips := ParseForwardedFor([]string{"198.51.100.1, garbage", " , 192.0.2.10"})
+	require.Len(t, ips, 3)
+	assert.Equal(t, "198.51.100.1", ips[0].String())
+	assert.False(t, ips[1].IsValid())
+	assert.Equal(t, "192.0.2.10", ips[2].String())
 }

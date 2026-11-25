@@ -46,6 +46,12 @@ var Conf = struct {
 	McpEnabled bool `env:"MCP_ENABLED" envDefault:"false"`
 	McpPort    int  `env:"MCP_PORT" envDefault:"5060"`
 
+	// whom the MCP port believes about the client address (logs only), the
+	// same as the gateway's; see infra/clientip and infra/cloudflare
+	TrustedProxyAddresses []string      `env:"TRUSTED_PROXY_ADDRESSES" envSeparator:","`
+	CloudflareIPsURL      string        `env:"CLOUDFLARE_IPS_URL" envDefault:"https://api.cloudflare.com/client/v4/ips"`
+	CloudflareIPsRefresh  time.Duration `env:"CLOUDFLARE_IPS_REFRESH" envDefault:"24h"`
+
 	// OAuth for MCP clients that connect by URL (Claude connectors); api keys
 	// keep working alongside. McpPublicURL is the MCP server URL as clients
 	// see it, McpOAuthAdminURL is where the admin UI (consent page) is opened.

@@ -47,6 +47,8 @@ import (
 	handlerGrpcP "github.com/rendau/ruto/internal/handler/grpc"
 	handlerMcpP "github.com/rendau/ruto/internal/handler/mcp"
 	handlerSystemP "github.com/rendau/ruto/internal/handler/system"
+	infraClientipP "github.com/rendau/ruto/internal/infra/clientip"
+	infraCloudflareP "github.com/rendau/ruto/internal/infra/cloudflare"
 	"github.com/rendau/ruto/internal/infra/pulsekit"
 	cacheRepoMemP "github.com/rendau/ruto/internal/service/cache/repo/mem"
 	cacheRepoRedisP "github.com/rendau/ruto/internal/service/cache/repo/redis"
@@ -83,6 +85,7 @@ type App struct {
 	grpcServer      *GrpcServer
 	httpServer      *http.Server
 	mcpServer       *http.Server
+	cloudflare      *infraCloudflareP.Service
 	systemServer    *http.Server
 	gatewaysService *gatewaysServiceP.Service
 	pulsekit        *pulsekit.Kit
@@ -337,6 +340,7 @@ func (a *App) Init() error {
 
 	// mcp
 	if configCore.Conf.McpEnabled {
+		a.cloudflare = infraCloudflareP.New(configCore.Conf.CloudflareIPsURL, configCore.Conf.CloudflareIPsRefresh)
 		mcpHandler := handlerMcpP.New(
 			sessionService,
 			usecaseApiKey,
@@ -351,6 +355,7 @@ func (a *App) Init() error {
 			usecaseGateway,
 			usecaseMonitoring,
 			a.blockedClientUsecase,
+			infraClientipP.New(configCore.Conf.TrustedProxyAddresses, a.cloudflare),
 		)
 		a.mcpServer = &http.Server{
 			Addr:              ":" + strconv.Itoa(configCore.Conf.McpPort),
@@ -467,6 +472,7 @@ func (a *App) Start() error {
 
 	// mcp-server
 	if a.mcpServer != nil {
+		go a.cloudflare.Run(a.ctx)
 		go func() {
 			err := a.mcpServer.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {

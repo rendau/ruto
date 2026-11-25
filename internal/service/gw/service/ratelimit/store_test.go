@@ -14,7 +14,7 @@ import (
 	domAppModel "github.com/rendau/ruto/internal/domain/app/model"
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	rateLimitModel "github.com/rendau/ruto/internal/domain/ratelimit/model"
-	"github.com/rendau/ruto/internal/service/gw/service/clientip"
+	"github.com/rendau/ruto/internal/infra/clientip"
 )
 
 type fakeClock struct {
