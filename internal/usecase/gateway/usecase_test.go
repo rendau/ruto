@@ -14,7 +14,7 @@ import (
 
 func TestSubscribeNotificationTypes(t *testing.T) {
 	pool := gatewaysServiceP.New()
-	uc := New(nil, nil, pool, nil, nil)
+	uc := New(nil, nil, pool, nil, nil, nil)
 
 	var mu sync.Mutex
 	var sent []string

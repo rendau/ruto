@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rendau/ruto/internal/service/gw/handler/http/rw_wrapper"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
 
@@ -24,6 +25,7 @@ func NewRateLimit(limiter *ratelimit.Endpoint) Middleware {
 				RemoteAddr:    r.RemoteAddr,
 				Header:        r.Header,
 				Authorization: strings.TrimSpace(r.Header.Get("Authorization")),
+				Client:        clientstat.FromContext(r.Context()),
 			})
 			if ok {
 				next.ServeHTTP(w, r)

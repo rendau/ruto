@@ -65,3 +65,33 @@ The gateway exports (same `<ns>_ruto_` prefix):
 
 A rejected HTTP request is a `429` (not an error in the charts); a rejected gRPC call is
 `ResourceExhausted`, which the error rate above counts as a failure.
+
+## Client stats
+
+The admin "Security" page shows **who** calls the gateway. Unlike the charts above it does
+not need Prometheus: core stores these counters itself, in PostgreSQL.
+
+- **Source.** Every gateway sends per-client counters in each heartbeat (every 30 s):
+  `GatewayHeartbeatRequest.client_stats` — `{ip, trusted, requests, blocked, limited,
+  last_rule}` since the previous heartbeat. `ip` is the client address (an IPv6 client as its
+  `/64`), the network of a trusted client (`trusted` is then its name), or `""` for the clients
+  that did not fit the bounded report. `blocked` — refused by the block list, `limited` —
+  rejected by a rate-limit rule, `last_rule` — the rule of the latest rejection.
+- **Storage.** Table `client_stat`, one row per 5-minute bucket and `ip` (`PRIMARY KEY
+  (bucket, ip)`). The bucket is the time core *received* the heartbeat, truncated to 5 minutes
+  (UTC). Reports of all gateways add up into the same row; `last_rule` keeps the newest
+  non-empty one. A failed write fails the heartbeat, so the gateway keeps its counters and
+  resends them, as with seen paths/origins.
+- **Retention.** 7 days: every core replica deletes older buckets once an hour (several
+  replicas doing it at once is harmless).
+- **Admin API** (proto service `ClientStat`, `/api/client_stat/*`, administrators only, api
+  keys are not accepted):
+  - `overview?range_seconds=` — timeline of all traffic (requests, blocked, limited, trusted),
+    totals with the number of distinct clients, and the traffic of each trusted client;
+  - `top?kind=requests|blocked|limited|trusted&limit=&range_seconds=` — clients of the range,
+    busiest first, with the active block covering each of them;
+  - `series?ip=&range_seconds=` — timeline of one client (`ip` as `top` returns it).
+
+  Range is clamped to 5m…7d (default 24h), `limit` to 1…200 (default 50). The step is the
+  smallest multiple of 5 minutes giving at most ~100 points (24h → 15m, 7d → 105m); steps
+  start on multiples of the step in unix time and empty steps are returned as zeros.

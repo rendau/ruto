@@ -17,6 +17,7 @@ type Usecase struct {
 	gateways    GatewaysI
 	seenPaths   SeenPathsI
 	seenOrigins SeenOriginsI
+	clientStats ClientStatsI
 
 	// blocklist triggers of the subscribed gateways. The gateways pool fires
 	// only "check_version", so these are kept here, next to the streams.
@@ -40,13 +41,21 @@ const (
 	StatusOffline = "offline"
 )
 
-func New(sessionSvc SessionServiceI, cache CacheI, gateways GatewaysI, seenPaths SeenPathsI, seenOrigins SeenOriginsI) *Usecase {
+func New(
+	sessionSvc SessionServiceI,
+	cache CacheI,
+	gateways GatewaysI,
+	seenPaths SeenPathsI,
+	seenOrigins SeenOriginsI,
+	clientStats ClientStatsI,
+) *Usecase {
 	return &Usecase{
 		sessionSvc:    sessionSvc,
 		cache:         cache,
 		gateways:      gateways,
 		seenPaths:     seenPaths,
 		seenOrigins:   seenOrigins,
+		clientStats:   clientStats,
 		blocklistSubs: map[int64]func(){},
 	}
 }
@@ -165,6 +174,9 @@ func (u *Usecase) Heartbeat(ctx context.Context, req *Heartbeat) error {
 	}
 	if err := u.seenOrigins.Report(ctx, req.SeenOrigins); err != nil {
 		return fmt.Errorf("seenOrigins.Report: %w", err)
+	}
+	if err := u.clientStats.Report(ctx, req.ClientStats); err != nil {
+		return fmt.Errorf("clientStats.Report: %w", err)
 	}
 
 	return nil

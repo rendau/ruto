@@ -55,7 +55,8 @@ const navLinks = computed(() => {
     { name: "dashboard", label: "Dashboard" },
     { name: "gateways", label: "Gateways" },
     { name: "root-config", label: "Root config" },
-    { name: "blocked-clients", label: "Blocked clients" }
+    { name: "blocked-clients", label: "Blocked clients" },
+    { name: "security", label: "Security" }
   ];
   if (authStore.isAdmin) {
     links.push({ name: "users", label: "Users" });
@@ -548,6 +549,24 @@ onBeforeUnmount(() => {
 }
 
 /* ---- Responsive ---------------------------------------------------------- */
+
+/* Until the burger takes over, make room for every top-menu item. */
+@media (min-width: 901px) and (max-width: 1360px) {
+  .snapshot-chip {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 6px 9px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  .user-trigger__name,
+  .topbar__deploy-label {
+    display: none;
+  }
+}
 
 @media (max-width: 900px) {
   .topbar__menu-btn {

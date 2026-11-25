@@ -44,6 +44,26 @@ message GatewayHeartbeatRequest {
   repeated GatewaySeenOrigin seen_origins = 13;
   // BlockedClient version the gateway applies
   string blocklist_version = 14;
+  // per-client request counters since the previous heartbeat (bounded: the
+  // busiest clients and those refused; the rest summed in a row with ip "")
+  repeated GatewayClientStat client_stats = 15;
+}
+
+// GatewayClientStat counts the requests of one client since the previous
+// heartbeat. ip is the client address (an IPv6 client as its /64, e.g.
+// "2001:db8:1:2::/64"); for a trusted client it is the trusted network
+// ("10.0.0.0/8") and trusted is its name. ip "" sums clients that did not fit
+// the report or whose address could not be told.
+message GatewayClientStat {
+  string ip = 1;
+  string trusted = 2;
+  int64 requests = 3;
+  // refused by the block list (403 / PermissionDenied)
+  int64 blocked = 4;
+  // rejected by a rate-limit rule (429 / ResourceExhausted)
+  int64 limited = 5;
+  // label of the rule of the latest rejection ("" when none)
+  string last_rule = 6;
 }
 
 message GatewaySeenOrigin {

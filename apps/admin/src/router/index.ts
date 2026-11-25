@@ -11,6 +11,7 @@ import NotFoundView from "@/views/NotFoundView.vue";
 import OAuthAuthorizeView from "@/views/OAuthAuthorizeView.vue";
 import ProfileView from "@/views/ProfileView.vue";
 import RootConfigView from "@/views/RootConfigView.vue";
+import SecurityView from "@/views/SecurityView.vue";
 import UsrListView from "@/views/UsrListView.vue";
 
 declare module "vue-router" {
@@ -72,6 +73,12 @@ const routes: RouteRecordRaw[] = [
         name: "blocked-clients",
         component: BlockedClientListView,
         meta: { title: "Blocked clients" }
+      },
+      {
+        path: "security",
+        name: "security",
+        component: SecurityView,
+        meta: { title: "Security" }
       },
       {
         path: "users",

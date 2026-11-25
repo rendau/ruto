@@ -13,6 +13,7 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
 
@@ -24,16 +25,18 @@ type Service struct {
 // outlives the handler: a transport per snapshot would leave the idle
 // connections of the previous one open after every config change. The same
 // holds for store, limits and blocks: cached responses, rate-limit counters and
-// the block list survive a config change. A nil limits turns rate limiting
-// off, a nil blocks the block list.
+// the block list survive a config change, and so do the client stats. A nil
+// limits turns rate limiting off, a nil blocks the block list, a nil stats the
+// client stats.
 func New(
 	snapshot *rootModel.Root,
 	transport http.RoundTripper,
 	store *cache.Service,
 	limits *ratelimit.Service,
 	blocks *blocklist.Service,
+	stats *clientstat.Service,
 ) (*Service, error) {
-	handler, err := buildHandler(snapshot, transport, store, limits, blocks)
+	handler, err := buildHandler(snapshot, transport, store, limits, blocks, stats)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -53,6 +56,7 @@ func buildHandler(
 	store *cache.Service,
 	limits *ratelimit.Service,
 	blocks *blocklist.Service,
+	stats *clientstat.Service,
 ) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -127,8 +131,9 @@ func buildHandler(
 	}
 
 	// Origins are counted outside CORS so that fronts it rejects show up too;
-	// blocked clients are refused before anything else.
+	// blocked clients are refused before anything else but their count.
 	return middleware.Chain(router,
+		middleware.NewClientStat(stats.Meter(snapshot)),
 		middleware.NewBlocklist(blocks.Guard(snapshot, blocklist.ProtocolHTTP)),
 		middleware.NewSeenOrigins(),
 		middleware.NewCors(snapshot.Cors),

@@ -26,6 +26,8 @@ import (
 	domainBlockedClientServiceP "github.com/rendau/ruto/internal/domain/blockedclient/service"
 	domainChangeRequestRepoDbP "github.com/rendau/ruto/internal/domain/changerequest/repo/db"
 	domainChangeRequestServiceP "github.com/rendau/ruto/internal/domain/changerequest/service"
+	domainClientStatRepoDbP "github.com/rendau/ruto/internal/domain/clientstat/repo/db"
+	domainClientStatServiceP "github.com/rendau/ruto/internal/domain/clientstat/service"
 	domainEndpointRepoDbP "github.com/rendau/ruto/internal/domain/endpoint/repo/db"
 	domainEndpointServiceP "github.com/rendau/ruto/internal/domain/endpoint/service"
 	domainOAuthRepoDbP "github.com/rendau/ruto/internal/domain/oauth/repo/db"
@@ -58,6 +60,7 @@ import (
 	usecaseAppP "github.com/rendau/ruto/internal/usecase/app"
 	usecaseBlockedClientP "github.com/rendau/ruto/internal/usecase/blockedclient"
 	usecaseChangeRequestP "github.com/rendau/ruto/internal/usecase/changerequest"
+	usecaseClientStatP "github.com/rendau/ruto/internal/usecase/clientstat"
 	usecaseEndpointP "github.com/rendau/ruto/internal/usecase/endpoint"
 	usecaseGatewayP "github.com/rendau/ruto/internal/usecase/gateway"
 	usecaseMonitoringP "github.com/rendau/ruto/internal/usecase/monitoring"
@@ -87,6 +90,7 @@ type App struct {
 	changeRequestUsecase *usecaseChangeRequestP.Usecase
 	oauthUsecase         *usecaseOAuthP.Usecase
 	blockedClientUsecase *usecaseBlockedClientP.Usecase
+	clientStatUsecase    *usecaseClientStatP.Usecase
 
 	exitCode int
 }
@@ -204,8 +208,25 @@ func (a *App) Init() error {
 	usecaseSeenOrigin := usecaseSeenOriginP.New(domainSeenOriginService, sessionService)
 	handlerGrpcSeenOrigin := handlerGrpcP.NewSeenOrigin(usecaseSeenOrigin)
 
+	// blocked client: the domain service, needed by client stat too
+	domainBlockedClientRepoDb := domainBlockedClientRepoDbP.New(a.pgpool)
+	domainBlockedClientService := domainBlockedClientServiceP.New(domainBlockedClientRepoDb)
+
+	// client stat (who calls the gateway, reported in heartbeats)
+	domainClientStatRepoDb := domainClientStatRepoDbP.New(a.pgpool)
+	domainClientStatService := domainClientStatServiceP.New(domainClientStatRepoDb)
+	a.clientStatUsecase = usecaseClientStatP.New(domainClientStatService, domainBlockedClientService, sessionService)
+	handlerGrpcClientStat := handlerGrpcP.NewClientStat(a.clientStatUsecase)
+
 	// gateway
-	usecaseGateway := usecaseGatewayP.New(sessionService, cacheService.NewChildInstance("gateway:"), gatewaysService, usecaseSeenPath, usecaseSeenOrigin)
+	usecaseGateway := usecaseGatewayP.New(
+		sessionService,
+		cacheService.NewChildInstance("gateway:"),
+		gatewaysService,
+		usecaseSeenPath,
+		usecaseSeenOrigin,
+		a.clientStatUsecase,
+	)
 	handlerGrpcGateway := handlerGrpcP.NewGateway(usecaseGateway)
 
 	// monitoring
@@ -248,8 +269,6 @@ func (a *App) Init() error {
 	handlerGrpcMonitoring := handlerGrpcP.NewMonitoring(usecaseMonitoring)
 
 	// blocked client (the gateway-wide block list, applied without publishing)
-	domainBlockedClientRepoDb := domainBlockedClientRepoDbP.New(a.pgpool)
-	domainBlockedClientService := domainBlockedClientServiceP.New(domainBlockedClientRepoDb)
 	a.blockedClientUsecase = usecaseBlockedClientP.New(
 		domainBlockedClientService,
 		mobone.NewTransactionManager(a.pgpool),
@@ -357,6 +376,7 @@ func (a *App) Init() error {
 		ruto_v1.RegisterChangeRequestServer(server, handlerGrpcChangeRequest)
 		ruto_v1.RegisterOAuthServer(server, handlerGrpcOAuth)
 		ruto_v1.RegisterBlockedClientServer(server, handlerGrpcBlockedClient)
+		ruto_v1.RegisterClientStatServer(server, handlerGrpcClientStat)
 	})
 
 	// grpc-gateway
@@ -383,6 +403,7 @@ func (a *App) Init() error {
 			ruto_v1.RegisterChangeRequestHandler,
 			ruto_v1.RegisterOAuthHandler,
 			ruto_v1.RegisterBlockedClientHandler,
+			ruto_v1.RegisterClientStatHandler,
 		}
 		for _, registerHandler := range handlers {
 			if registerErr := registerHandler(context.Background(), mux, conn); registerErr != nil {
@@ -458,6 +479,7 @@ func (a *App) Start() error {
 	go a.changeRequestUsecase.RunCleanup(a.ctx, time.Hour)
 	go a.oauthUsecase.RunCleanup(a.ctx, time.Hour)
 	go a.blockedClientUsecase.RunPrune(a.ctx, time.Hour)
+	go a.clientStatUsecase.RunPrune(a.ctx, time.Hour)
 
 	return nil
 }

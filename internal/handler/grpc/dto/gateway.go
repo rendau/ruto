@@ -24,6 +24,7 @@ func DecodeGatewayHeartbeatReq(v *ruto_v1.GatewayHeartbeatRequest) *usecase.Hear
 		GoroutinesCount:  v.GoroutinesCount,
 		SeenPaths:        lo.Map(v.SeenPaths, DecodeGatewaySeenPath),
 		SeenOrigins:      lo.Map(v.SeenOrigins, DecodeGatewaySeenOrigin),
+		ClientStats:      lo.Map(v.ClientStats, DecodeGatewayClientStat),
 	}
 }
 

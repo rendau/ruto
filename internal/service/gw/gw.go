@@ -17,6 +17,7 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
 	"github.com/rendau/ruto/internal/service/gw/service/clientip"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
@@ -32,6 +33,7 @@ type Service struct {
 	rateLimits    *ratelimit.Store
 	limits        *ratelimit.Service
 	blocks        *blocklist.Service
+	stats         *clientstat.Service
 	grpcServer    *localGrpc.Service
 	grpcConns     *handlerGrpc.Conns
 	coreClient    *core_client.Service
@@ -51,8 +53,8 @@ func New(
 	var err error
 
 	rateLimits := ratelimit.New(rateLimitMaxKeys)
-	// one resolver for rate limits and the block list: both must see the same
-	// client
+	// one resolver for rate limits, the block list and the client stats: all
+	// must see the same client
 	clientIP := clientip.New(trustedProxyAddresses)
 
 	service := &Service{
@@ -64,6 +66,7 @@ func New(
 		rateLimits:    rateLimits,
 		limits:        ratelimit.NewService(rateLimits, clientIP),
 		blocks:        blocklist.New(clientIP),
+		stats:         clientstat.New(clientstat.Ins(), clientIP),
 	}
 	if grpcPort > 0 {
 		service.grpcServer = localGrpc.New(grpcPort)
@@ -119,14 +122,14 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache, s.limits, s.blocks)
+	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache, s.limits, s.blocks, s.stats)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}
 	s.httpServer.SetHandler(httpHandler)
 
 	if s.grpcServer != nil {
-		grpcHandler, grpcErr := handlerGrpc.New(conf, s.grpcConns, s.limits, s.blocks)
+		grpcHandler, grpcErr := handlerGrpc.New(conf, s.grpcConns, s.limits, s.blocks, s.stats)
 		if grpcErr != nil {
 			return fmt.Errorf("handlerGrpc.New: %w", grpcErr)
 		}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 )
 
 // NewBlocklist refuses a blocked client with 403. It wraps the whole handler,
@@ -16,7 +17,7 @@ func NewBlocklist(guard *blocklist.Guard) Middleware {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if guard.Blocked(r.RemoteAddr, r.Header) {
+			if guard.BlockedClient(clientstat.FromContext(r.Context()), r.RemoteAddr, r.Header) {
 				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 				return
 			}

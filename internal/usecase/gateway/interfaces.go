@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	clientStatModel "github.com/rendau/ruto/internal/domain/clientstat/model"
 	seenOriginModel "github.com/rendau/ruto/internal/domain/seenorigin/model"
 	seenPathModel "github.com/rendau/ruto/internal/domain/seenpath/model"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
@@ -27,6 +28,10 @@ type SeenPathsI interface {
 
 type SeenOriginsI interface {
 	Report(ctx context.Context, items []*seenOriginModel.SeenOrigin) error
+}
+
+type ClientStatsI interface {
+	Report(ctx context.Context, items []*clientStatModel.ClientStat) error
 }
 
 type GatewaysI interface {

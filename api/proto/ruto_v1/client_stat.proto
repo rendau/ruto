@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package ruto_v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "/ruto_v1";
+
+// ClientStat shows who calls the gateway: request counters per client,
+// reported by gateways and kept by core in 5-minute buckets for 7 days.
+// It answers "who is blocked and still knocking", "who hits rate limits",
+// "how much do trusted clients send" and "who sends the most".
+service ClientStat {
+  // Overview is the timeline of all traffic seen by the gateways.
+  rpc Overview(ClientStatOverviewReq) returns (ClientStatOverviewRep) {
+    option (google.api.http) = { get: "/client_stat/overview" };
+  };
+  // Top lists clients of a range ordered by kind.
+  rpc Top(ClientStatTopReq) returns (ClientStatTopRep) {
+    option (google.api.http) = { get: "/client_stat/top" };
+  };
+  // Series is the timeline of one client (ip as returned by Top).
+  rpc Series(ClientStatSeriesReq) returns (ClientStatSeriesRep) {
+    option (google.api.http) = { get: "/client_stat/series" };
+  };
+}
+
+message ClientStatOverviewReq {
+  // 5m..7d; default 24h
+  int64 range_seconds = 1;
+}
+
+message ClientStatOverviewRep {
+  int64 step_seconds = 1;
+  repeated ClientStatPoint points = 2;
+  ClientStatTotals totals = 3;
+  // trusted clients by name over the range, busiest first
+  repeated ClientStatTrusted trusted = 4;
+}
+
+message ClientStatPoint {
+  int64 ts = 1;
+  int64 requests = 2;
+  int64 blocked = 3;
+  int64 limited = 4;
+  // requests of trusted clients
+  int64 trusted = 5;
+}
+
+message ClientStatTotals {
+  int64 requests = 1;
+  int64 blocked = 2;
+  int64 limited = 3;
+  int64 trusted = 4;
+  // distinct clients (rows with an ip) over the range
+  int64 clients = 5;
+}
+
+message ClientStatTrusted {
+  string name = 1;
+  int64 requests = 2;
+  repeated ClientStatPoint points = 3;
+}
+
+message ClientStatTopReq {
+  int64 range_seconds = 1;
+  // "requests" (default) | "blocked" | "limited" | "trusted"
+  string kind = 2;
+  // 1..200; default 50
+  int64 limit = 3;
+}
+
+message ClientStatTopRep {
+  repeated ClientStatItem results = 1;
+}
+
+message ClientStatItem {
+  string ip = 1;
+  // name of the trusted client, "" for others
+  string trusted = 2;
+  int64 requests = 3;
+  int64 blocked = 4;
+  int64 limited = 5;
+  // rule of the latest rejection in the range
+  string last_rule = 6;
+  int64 first_seen_at_unix = 7;
+  int64 last_seen_at_unix = 8;
+  // the active block covering ip, if any
+  ClientStatBlock block = 9;
+}
+
+message ClientStatBlock {
+  string id = 1;
+  string ip = 2;
+  string reason = 3;
+  // "admin" | "agent"
+  string source = 4;
+  string created_by = 5;
+  // 0 = without end
+  int64 expires_at_unix = 6;
+}
+
+message ClientStatSeriesReq {
+  string ip = 1;
+  int64 range_seconds = 2;
+}
+
+message ClientStatSeriesRep {
+  int64 step_seconds = 1;
+  repeated ClientStatPoint points = 2;
+}

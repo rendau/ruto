@@ -610,6 +610,80 @@ export interface BlockedClientCreateReq {
   duration_seconds: number;
 }
 
+// ---- Client stats (who calls the gateway, 5-minute buckets kept for 7 days) --
+
+// the order of a Top list: busiest, most refused by the block list, most
+// rate-limited, or trusted clients only
+export type ClientStatKind = "requests" | "blocked" | "limited" | "trusted";
+
+export interface ClientStatPoint {
+  // start of the bucket, unix seconds
+  ts: number;
+  requests: number;
+  blocked: number;
+  limited: number;
+  // requests of trusted clients
+  trusted: number;
+}
+
+export interface ClientStatTotals {
+  requests: number;
+  blocked: number;
+  limited: number;
+  trusted: number;
+  // distinct clients over the range
+  clients: number;
+}
+
+export interface ClientStatTrusted {
+  name: string;
+  requests: number;
+  points: ClientStatPoint[];
+}
+
+export interface ClientStatOverviewRep {
+  step_seconds: number;
+  points: ClientStatPoint[];
+  totals: ClientStatTotals;
+  // busiest first
+  trusted: ClientStatTrusted[];
+}
+
+export interface ClientStatBlock {
+  id: string;
+  ip: string;
+  reason: string;
+  source: BlockedClientSource;
+  created_by: string;
+  // 0 = without end
+  expires_at_unix: number;
+}
+
+export interface ClientStatItem {
+  // an address, an IPv6 /64, or the network of a trusted client
+  ip: string;
+  // name of the trusted client, "" for others
+  trusted: string;
+  requests: number;
+  blocked: number;
+  limited: number;
+  // rule of the latest rate-limit rejection in the range
+  last_rule: string;
+  first_seen_at_unix: number;
+  last_seen_at_unix: number;
+  // the active block covering ip, if any
+  block: ClientStatBlock | null;
+}
+
+export interface ClientStatTopRep {
+  results: ClientStatItem[];
+}
+
+export interface ClientStatSeriesRep {
+  step_seconds: number;
+  points: ClientStatPoint[];
+}
+
 // ---- API keys (built-in MCP server) ----------------------------------------
 
 // full = the MCP server (reads, change requests, block list);

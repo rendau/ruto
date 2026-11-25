@@ -21,6 +21,10 @@
       "description": "ChangeRequest: configuration changes proposed by an agent over MCP. An admin\nreviews each request and applies or rejects it."
     },
     {
+      "name": "ClientStat",
+      "description": "ClientStat shows who calls the gateway: request counters per client,\nreported by gateways and kept by core in 5-minute buckets for 7 days.\nIt answers \"who is blocked and still knocking\", \"who hits rate limits\",\n\"how much do trusted clients send\" and \"who sends the most\"."
+    },
+    {
       "name": "Endpoint"
     },
     {
@@ -824,6 +828,124 @@
         ],
         "tags": [
           "ChangeRequest"
+        ]
+      }
+    },
+    "/client_stat/overview": {
+      "get": {
+        "summary": "Overview is the timeline of all traffic seen by the gateways.",
+        "operationId": "ClientStat_Overview",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1ClientStatOverviewRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "range_seconds",
+            "description": "5m..7d; default 24h",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "ClientStat"
+        ]
+      }
+    },
+    "/client_stat/series": {
+      "get": {
+        "summary": "Series is the timeline of one client (ip as returned by Top).",
+        "operationId": "ClientStat_Series",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1ClientStatSeriesRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ip",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "range_seconds",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "ClientStat"
+        ]
+      }
+    },
+    "/client_stat/top": {
+      "get": {
+        "summary": "Top lists clients of a range ordered by kind.",
+        "operationId": "ClientStat_Top",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ruto_v1ClientStatTopRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "range_seconds",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "kind",
+            "description": "\"requests\" (default) | \"blocked\" | \"limited\" | \"trusted\"",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "description": "1..200; default 50",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "ClientStat"
         ]
       }
     },
@@ -2664,6 +2786,198 @@
         },
         "sample": {
           "type": "string"
+        }
+      }
+    },
+    "ruto_v1ClientStatBlock": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "title": "\"admin\" | \"agent\""
+        },
+        "created_by": {
+          "type": "string"
+        },
+        "expires_at_unix": {
+          "type": "string",
+          "format": "int64",
+          "title": "0 = without end"
+        }
+      }
+    },
+    "ruto_v1ClientStatItem": {
+      "type": "object",
+      "properties": {
+        "ip": {
+          "type": "string"
+        },
+        "trusted": {
+          "type": "string",
+          "title": "name of the trusted client, \"\" for others"
+        },
+        "requests": {
+          "type": "string",
+          "format": "int64"
+        },
+        "blocked": {
+          "type": "string",
+          "format": "int64"
+        },
+        "limited": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last_rule": {
+          "type": "string",
+          "title": "rule of the latest rejection in the range"
+        },
+        "first_seen_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last_seen_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "block": {
+          "$ref": "#/definitions/ruto_v1ClientStatBlock",
+          "title": "the active block covering ip, if any"
+        }
+      }
+    },
+    "ruto_v1ClientStatOverviewRep": {
+      "type": "object",
+      "properties": {
+        "step_seconds": {
+          "type": "string",
+          "format": "int64"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1ClientStatPoint"
+          }
+        },
+        "totals": {
+          "$ref": "#/definitions/ruto_v1ClientStatTotals"
+        },
+        "trusted": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1ClientStatTrusted"
+          },
+          "title": "trusted clients by name over the range, busiest first"
+        }
+      }
+    },
+    "ruto_v1ClientStatPoint": {
+      "type": "object",
+      "properties": {
+        "ts": {
+          "type": "string",
+          "format": "int64"
+        },
+        "requests": {
+          "type": "string",
+          "format": "int64"
+        },
+        "blocked": {
+          "type": "string",
+          "format": "int64"
+        },
+        "limited": {
+          "type": "string",
+          "format": "int64"
+        },
+        "trusted": {
+          "type": "string",
+          "format": "int64",
+          "title": "requests of trusted clients"
+        }
+      }
+    },
+    "ruto_v1ClientStatSeriesRep": {
+      "type": "object",
+      "properties": {
+        "step_seconds": {
+          "type": "string",
+          "format": "int64"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1ClientStatPoint"
+          }
+        }
+      }
+    },
+    "ruto_v1ClientStatTopRep": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1ClientStatItem"
+          }
+        }
+      }
+    },
+    "ruto_v1ClientStatTotals": {
+      "type": "object",
+      "properties": {
+        "requests": {
+          "type": "string",
+          "format": "int64"
+        },
+        "blocked": {
+          "type": "string",
+          "format": "int64"
+        },
+        "limited": {
+          "type": "string",
+          "format": "int64"
+        },
+        "trusted": {
+          "type": "string",
+          "format": "int64"
+        },
+        "clients": {
+          "type": "string",
+          "format": "int64",
+          "title": "distinct clients (rows with an ip) over the range"
+        }
+      }
+    },
+    "ruto_v1ClientStatTrusted": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "requests": {
+          "type": "string",
+          "format": "int64"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1ClientStatPoint"
+          }
         }
       }
     },

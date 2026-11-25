@@ -16,6 +16,7 @@ import (
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	serviceAuth "github.com/rendau/ruto/internal/service/gw/service/auth"
 	serviceAuthModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
 	"github.com/rendau/ruto/internal/service/gw/service/logmask"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"
@@ -114,6 +115,7 @@ func newRateLimitMiddleware(limiter *ratelimit.Endpoint) middleware {
 				RemoteAddr:    remoteAddrFromContext(stream.Context()),
 				Header:        headersFromMetadata(md),
 				Authorization: strings.TrimSpace(metadataFirstValue(md, metadataHeaderAuthorization)),
+				Client:        clientstat.FromContext(stream.Context()),
 			})
 			if ok {
 				return next(srv, stream)

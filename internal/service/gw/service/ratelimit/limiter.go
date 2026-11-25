@@ -19,6 +19,7 @@ import (
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	authModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/service/clientip"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	"github.com/rendau/ruto/internal/service/gw/service/metrics"
 )
 
@@ -51,6 +52,10 @@ type Request struct {
 	// Authorization is the raw Authorization value for the "token" key; it is
 	// parsed the way auth parses it, see credential.
 	Authorization string
+	// Client, when set, is the client already resolved for the request: its
+	// address is used instead of resolving it again, and a rejection is
+	// counted in its stats.
+	Client *clientstat.Client
 }
 
 // Endpoint is the limiter of one endpoint of a snapshot.
@@ -117,7 +122,7 @@ type taken struct {
 // and retryAfter is the longest wait of the rules that rejected it. A trusted
 // client of the snapshot is not counted at all.
 func (e *Endpoint) Check(req Request) (bool, time.Duration) {
-	var client clientAddr
+	client := newClientAddr(req.Client)
 	if e.trusted != nil {
 		if _, ok := e.trusted.TrustedPrefix(client.strictAddr(e.service.clientIP, req)); ok {
 			return true, 0
@@ -151,6 +156,7 @@ func (e *Endpoint) Check(req Request) (bool, time.Duration) {
 		e.service.store.undo(t.key, t.window)
 	}
 	e.reject(rejectedBy, retryAfter, req, &client)
+	req.Client.Limited(rejectedBy.label)
 
 	return false, retryAfter
 }
@@ -228,6 +234,17 @@ type clientAddr struct {
 	// trust is given only to an address the client really has.
 	strict   netip.Addr
 	resolved bool
+}
+
+func newClientAddr(client *clientstat.Client) clientAddr {
+	if client == nil {
+		return clientAddr{}
+	}
+	result := clientAddr{strict: client.Addr(), addr: client.Addr(), resolved: true}
+	if !result.addr.IsValid() {
+		result.addr = client.Peer()
+	}
+	return result
 }
 
 func (c *clientAddr) get(resolver *clientip.Resolver, req Request) netip.Addr {

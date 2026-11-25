@@ -68,6 +68,9 @@ func TestSessionApiKeyAllowlist(t *testing.T) {
 		ruto_v1.Snapshot_Deploy_FullMethodName,
 		ruto_v1.BlockedClient_GetActive_FullMethodName,
 		ruto_v1.BlockedClient_RemoveAgentBlocks_FullMethodName,
+		ruto_v1.ClientStat_Overview_FullMethodName,
+		ruto_v1.ClientStat_Top_FullMethodName,
+		ruto_v1.ClientStat_Series_FullMethodName,
 	} {
 		assert.False(t, call(method, "Bearer "+testApiKey).IsAuthorized(), method)
 	}

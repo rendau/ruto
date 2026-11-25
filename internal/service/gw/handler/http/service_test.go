@@ -172,7 +172,7 @@ func TestService_HTTPWildcardPath(t *testing.T) {
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil)
+	service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -253,7 +253,7 @@ func TestService_HTTPAllowTrailingSlash(t *testing.T) {
 		snapshot.InheritDown()
 		snapshot.Interpolate()
 
-		service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil)
+		service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil, nil)
 		require.NoError(t, err)
 		return service
 	}
@@ -371,7 +371,7 @@ func TestService_HTTPRoutePriority(t *testing.T) {
 				snapshot.InheritDown()
 				snapshot.Interpolate()
 
-				service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil)
+				service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil, nil)
 				require.NoError(t, err)
 
 				for _, req := range tt.requests {
@@ -474,7 +474,7 @@ func TestService_HTTPWildcardSeenPaths(t *testing.T) {
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil)
+	service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	seen.Ins().Drain()
@@ -567,7 +567,7 @@ func TestService_HTTPBackendRequestParams(t *testing.T) {
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil)
+	service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	rec := performRequest(service, http.MethodGet, "/account/profile?inbound=ok&shared=inbound", http.Header{
@@ -1054,7 +1054,7 @@ func TestService_RedirectLocationRewrite(t *testing.T) {
 			snapshot.InheritDown()
 			snapshot.Interpolate()
 
-			service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil)
+			service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil, nil)
 			require.NoError(t, err)
 
 			rec := performRequest(service, http.MethodGet, tt.requestPath, nil)
@@ -1148,7 +1148,7 @@ func newTestService(
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil)
+	service, err := New(snapshot, proxy.NewTransport(0), nil, nil, nil, nil)
 	require.NoError(t, err)
 	return service
 }

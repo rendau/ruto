@@ -23,6 +23,7 @@ import (
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	authModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/service/clientip"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	"github.com/rendau/ruto/internal/service/gw/service/metrics"
 )
 
@@ -140,7 +141,31 @@ func (g *Guard) Blocked(remoteAddr string, header http.Header) bool {
 	var req authModel.AuthRequest
 	req.SetHttpHeader(header)
 	req.SetRemoteAddr(remoteAddr)
-	ip := g.service.clientIP.ClientIP(&req)
+	return g.check(t, g.service.clientIP.ClientIP(&req))
+}
+
+// BlockedClient is Blocked for a request whose client clientstat already
+// resolved; a refusal is counted in the client's stats. Without a client it
+// resolves the address itself.
+func (g *Guard) BlockedClient(client *clientstat.Client, remoteAddr string, header http.Header) bool {
+	if client == nil {
+		return g.Blocked(remoteAddr, header)
+	}
+	if g == nil {
+		return false
+	}
+	t := g.service.current.Load()
+	if t == nil || t.size == 0 {
+		return false
+	}
+	if !g.check(t, client.Addr()) {
+		return false
+	}
+	client.Blocked()
+	return true
+}
+
+func (g *Guard) check(t *table, ip netip.Addr) bool {
 	if !ip.IsValid() {
 		return false
 	}

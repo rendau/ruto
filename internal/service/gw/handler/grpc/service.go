@@ -17,6 +17,7 @@ import (
 	domRootModel "github.com/rendau/ruto/internal/domain/root/model"
 	serviceAuth "github.com/rendau/ruto/internal/service/gw/service/auth"
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
@@ -26,19 +27,27 @@ type Service struct {
 	conns             *Conns
 	limits            *ratelimit.Service
 	blocks            *blocklist.Guard
+	stats             *clientstat.Meter
 	routes            map[string]*route
 	reflectionRoutes  map[string]*reflectionRoute
 	transparentHandle gogrpc.StreamHandler
 }
 
-// New builds the handler for a snapshot. conns, limits and blocks are owned by
-// the caller and outlive the handler, see Conns. A nil limits turns rate
-// limiting off, a nil blocks the block list.
-func New(snapshot *domRootModel.Root, conns *Conns, limits *ratelimit.Service, blocks *blocklist.Service) (*Service, error) {
+// New builds the handler for a snapshot. conns, limits, blocks and stats are
+// owned by the caller and outlive the handler, see Conns. A nil limits turns
+// rate limiting off, a nil blocks the block list, a nil stats the client stats.
+func New(
+	snapshot *domRootModel.Root,
+	conns *Conns,
+	limits *ratelimit.Service,
+	blocks *blocklist.Service,
+	stats *clientstat.Service,
+) (*Service, error) {
 	service := &Service{
 		conns:  conns,
 		limits: limits,
 		blocks: blocks.Guard(snapshot, blocklist.ProtocolGRPC),
+		stats:  stats.Meter(snapshot),
 	}
 	service.transparentHandle = proxy.TransparentHandler(service.director)
 
@@ -111,7 +120,8 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 	}
 
 	md := metadataFromContext(stream.Context())
-	if s.blocked(stream.Context(), md) {
+	client, blocked := s.admit(stream.Context(), md)
+	if blocked {
 		return errBlocked
 	}
 
@@ -122,7 +132,7 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 
 	streamWithRoute := &serverStreamWithContext{
 		ServerStream: stream,
-		ctx:          contextWithRoute(stream.Context(), rt),
+		ctx:          contextWithRoute(clientstat.WithClient(stream.Context(), client), rt),
 	}
 
 	err := rt.handler(nil, streamWithRoute)
@@ -136,12 +146,16 @@ func (s *Service) Handle(_ any, stream gogrpc.ServerStream) error {
 	return status.Errorf(codes.Internal, "gateway forward failed: %v", err)
 }
 
-// blocked goes before routing, rate limits and auth, for unknown methods too.
-func (s *Service) blocked(ctx context.Context, md metadata.MD) bool {
+// admit counts the request for its client and checks the block list. It goes
+// before routing, rate limits and auth, for unknown methods too.
+func (s *Service) admit(ctx context.Context, md metadata.MD) (*clientstat.Client, bool) {
+	remoteAddr := remoteAddrFromContext(ctx)
+	header := headersFromMetadata(md)
+	client := s.stats.Start(remoteAddr, header)
 	if !s.blocks.Active() {
-		return false
+		return client, false
 	}
-	return s.blocks.Blocked(remoteAddrFromContext(ctx), headersFromMetadata(md))
+	return client, s.blocks.BlockedClient(client, remoteAddr, header)
 }
 
 func (s *Service) director(ctx context.Context, _ string) (context.Context, gogrpc.ClientConnInterface, error) {

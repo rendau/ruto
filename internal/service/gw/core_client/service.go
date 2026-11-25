@@ -22,6 +22,7 @@ import (
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	"github.com/rendau/ruto/internal/service/gw/service/seen"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
@@ -389,6 +390,7 @@ func (s *Service) sendHeartbeat() error {
 
 	seenItems := seen.Ins().Drain()
 	seenOrigins := seen.OriginsIns().Drain()
+	clientStats := clientstat.Ins().Drain()
 
 	ctx, cancel := context.WithTimeout(s.globalCtx, heartbeatTimeout)
 	defer cancel()
@@ -410,11 +412,13 @@ func (s *Service) sendHeartbeat() error {
 		SeenPaths:        lo.Map(seenItems, encodeSeenPath),
 		SeenOrigins:      lo.Map(seenOrigins, encodeSeenOrigin),
 		BlocklistVersion: blocklistVersion,
+		ClientStats:      lo.Map(clientStats, encodeClientStat),
 	})
 	if err != nil {
 		// Not delivered: keep the counters for the next heartbeat.
 		seen.Ins().Restore(seenItems)
 		seen.OriginsIns().Restore(seenOrigins)
+		clientstat.Ins().Restore(clientStats)
 		if s.globalCtx.Err() == nil {
 			return fmt.Errorf("gatewayClient.Heartbeat: %w", err)
 		}
@@ -441,6 +445,17 @@ func encodeSeenOrigin(v *seen.OriginItem, _ int) *ruto_v1.GatewaySeenOrigin {
 		Origin:         v.Origin,
 		Hits:           v.Hits,
 		LastSeenAtUnix: v.LastSeenAt.Unix(),
+	}
+}
+
+func encodeClientStat(v *clientstat.Item, _ int) *ruto_v1.GatewayClientStat {
+	return &ruto_v1.GatewayClientStat{
+		Ip:       v.Ip,
+		Trusted:  v.Trusted,
+		Requests: v.Requests,
+		Blocked:  v.Blocked,
+		Limited:  v.Limited,
+		LastRule: v.LastRule,
 	}
 }
 

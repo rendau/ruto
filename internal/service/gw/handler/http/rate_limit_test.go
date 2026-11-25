@@ -19,6 +19,7 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	"github.com/rendau/ruto/internal/service/gw/service/clientip"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
 
@@ -100,6 +101,8 @@ type rateLimitEnv struct {
 	store   *ratelimit.Store
 	limits  *ratelimit.Service
 	blocks  *blocklist.Service
+	clients *clientstat.Collector
+	stats   *clientstat.Service
 }
 
 func newRateLimitEnv(t *testing.T, maxKeys int, trustedProxies ...string) *rateLimitEnv {
@@ -112,19 +115,22 @@ func newRateLimitEnv(t *testing.T, maxKeys int, trustedProxies ...string) *rateL
 
 	store := ratelimit.New(maxKeys)
 	clientIP := clientip.New(trustedProxies)
+	clients := clientstat.NewCollector(clientstat.MaxClients)
 	return &rateLimitEnv{
 		t:       t,
 		backend: backend,
 		store:   store,
 		limits:  ratelimit.NewService(store, clientIP),
 		blocks:  blocklist.New(clientIP),
+		clients: clients,
+		stats:   clientstat.New(clients, clientIP),
 	}
 }
 
 func (e *rateLimitEnv) handler(conf *rateLimitSnapshot) *Service {
 	e.t.Helper()
 
-	service, err := New(conf.build(e.t, e.backend.URL), proxy.NewTransport(0), nil, e.limits, e.blocks)
+	service, err := New(conf.build(e.t, e.backend.URL), proxy.NewTransport(0), nil, e.limits, e.blocks, e.stats)
 	require.NoError(e.t, err)
 	return service
 }

@@ -70,3 +70,20 @@ export function generateSecret(length = 32): string {
   }
   return result;
 }
+
+const countFormatter = new Intl.NumberFormat("en-US");
+const compactFormatter = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 1
+});
+
+// 1234567 → "1,234,567"
+export function formatCount(value: number): string {
+  return countFormatter.format(Math.trunc(Number(value) || 0));
+}
+
+// 1234567 → "1.2M"; numbers below 10 000 stay exact ("9,876")
+export function formatCompact(value: number): string {
+  const n = Math.trunc(Number(value) || 0);
+  return Math.abs(n) < 10_000 ? countFormatter.format(n) : compactFormatter.format(n);
+}

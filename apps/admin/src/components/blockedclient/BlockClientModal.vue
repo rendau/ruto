@@ -18,11 +18,16 @@ import { formatUnixDateTime } from "@/lib/datetime";
 import { ipOrCidrError } from "@/lib/ip";
 import type { BlockedClientMain } from "@/api/types";
 
-const props = defineProps<{
-  show: boolean;
-  // the active blocks, to warn that blocking one of them again prolongs it
-  active: BlockedClientMain[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    show: boolean;
+    // the active blocks, to warn that blocking one of them again prolongs it
+    active?: BlockedClientMain[];
+    // prefills the address, e.g. when blocking a client from the Security page
+    ip?: string;
+  }>(),
+  { active: () => [], ip: "" }
+);
 const emit = defineEmits<{ "update:show": [value: boolean]; saved: [row: BlockedClientMain] }>();
 
 const message = useMessage();
@@ -45,7 +50,7 @@ watch(
   () => props.show,
   (show) => {
     if (!show) return;
-    form.ip = "";
+    form.ip = props.ip;
     form.reason = "";
     form.preset = 86400;
     form.customAmount = 12;

@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	clientStatModel "github.com/rendau/ruto/internal/domain/clientstat/model"
 	seenOriginModel "github.com/rendau/ruto/internal/domain/seenorigin/model"
 	seenPathModel "github.com/rendau/ruto/internal/domain/seenpath/model"
 )
@@ -25,6 +26,7 @@ type Heartbeat struct {
 	GoroutinesCount  uint32
 	SeenPaths        []*seenPathModel.SeenPath
 	SeenOrigins      []*seenOriginModel.SeenOrigin
+	ClientStats      []*clientStatModel.ClientStat
 }
 
 type Item struct {

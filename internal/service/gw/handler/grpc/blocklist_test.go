@@ -19,6 +19,7 @@ import (
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	"github.com/rendau/ruto/internal/service/gw/service/clientip"
+	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
 
@@ -30,10 +31,16 @@ type blocklistEnv struct {
 // newBlocklistEnv runs the gateway for snapshot; the test client connects
 // from 127.0.0.1, which is a trusted proxy here, so x-forwarded-for picks the
 // client address.
-func newBlocklistEnv(t *testing.T, snapshot *rootModel.Root, blocks *blocklist.Service, limits *ratelimit.Service) *blocklistEnv {
+func newBlocklistEnv(
+	t *testing.T,
+	snapshot *rootModel.Root,
+	blocks *blocklist.Service,
+	limits *ratelimit.Service,
+	stats *clientstat.Service,
+) *blocklistEnv {
 	t.Helper()
 
-	svc, err := New(snapshot, NewConns(), limits, blocks)
+	svc, err := New(snapshot, NewConns(), limits, blocks, stats)
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -87,7 +94,7 @@ func TestBlocklist_PermissionDenied(t *testing.T) {
 
 	blocks := blocklist.New(clientip.New([]string{"127.0.0.0/8"}))
 	blocks.Set("v1", []blocklist.Rule{{Ip: "203.0.113.0/24"}})
-	env := newBlocklistEnv(t, buildSnapshotForBackend(t, backendAddr), blocks, nil)
+	env := newBlocklistEnv(t, buildSnapshotForBackend(t, backendAddr), blocks, nil, nil)
 
 	const blocked, other = "203.0.113.7", "198.51.100.1"
 
@@ -121,7 +128,7 @@ func TestBlocklist_TrustedClientNotBlockedNorLimited(t *testing.T) {
 	clientIP := clientip.New([]string{"127.0.0.0/8"})
 	blocks := blocklist.New(clientIP)
 	blocks.Set("v1", []blocklist.Rule{{Ip: "203.0.113.0/24"}})
-	env := newBlocklistEnv(t, snapshot, blocks, ratelimit.NewService(ratelimit.New(1000), clientIP))
+	env := newBlocklistEnv(t, snapshot, blocks, ratelimit.NewService(ratelimit.New(1000), clientIP), nil)
 
 	for range 3 {
 		require.Equal(t, codes.OK, env.unary(t, "backend-test", "203.0.113.7"))
