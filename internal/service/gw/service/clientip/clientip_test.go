@@ -2,6 +2,7 @@ package clientip
 
 import (
 	"net/http"
+	"net/netip"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestResolver_ClientIP(t *testing.T) {
-	resolver := New([]string{"10.0.0.0/8", "192.0.2.1", "bad"})
+	resolver := New([]string{"10.0.0.0/8", "192.0.2.1", "bad"}, nil)
 
 	tests := []struct {
 		name       string
@@ -52,7 +53,7 @@ func TestResolver_ClientIP(t *testing.T) {
 }
 
 func TestResolver_IgnoresClientHeaders(t *testing.T) {
-	resolver := New([]string{"10.0.0.0/8"})
+	resolver := New([]string{"10.0.0.0/8"}, nil)
 
 	for _, header := range []string{"Cf-Connecting-Ip", "True-Client-Ip", "X-Client-Ip", "X-Cluster-Client-Ip"} {
 		t.Run(header, func(t *testing.T) {
@@ -65,6 +66,91 @@ func TestResolver_IgnoresClientHeaders(t *testing.T) {
 			req.SetHttpHeader(http.Header{header: {"1.1.1.1"}})
 			req.SetRemoteAddr("10.0.0.10:443")
 			assert.False(t, resolver.ClientIP(req).IsValid())
+		})
+	}
+}
+
+type cloudflareStub []netip.Prefix
+
+func (c cloudflareStub) Contains(ip netip.Addr) bool {
+	for _, network := range c {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestResolver_Cloudflare(t *testing.T) {
+	resolver := New([]string{"10.0.0.0/8"}, cloudflareStub{netip.MustParsePrefix("172.64.0.0/13")})
+
+	tests := []struct {
+		name       string
+		remoteAddr string
+		headers    http.Header
+		want       string
+	}{
+		{
+			name:       "traefik dropped the chain from cloudflare",
+			remoteAddr: "10.0.0.10:443",
+			headers:    http.Header{"X-Forwarded-For": {"172.68.10.5"}, "Cf-Connecting-Ip": {"95.56.1.2"}},
+			want:       "95.56.1.2",
+		},
+		{
+			name:       "traefik kept the chain from cloudflare",
+			remoteAddr: "10.0.0.10:443",
+			headers:    http.Header{"X-Forwarded-For": {"1.1.1.1, 95.56.1.2, 172.68.10.5"}, "Cf-Connecting-Ip": {"95.56.1.2"}},
+			want:       "95.56.1.2",
+		},
+		{
+			name:       "cloudflare is the peer",
+			remoteAddr: "172.68.10.5:443",
+			headers:    http.Header{"Cf-Connecting-Ip": {"2001:db8::7"}},
+			want:       "2001:db8::7",
+		},
+		{
+			name:       "cloudflare in x-real-ip",
+			remoteAddr: "10.0.0.10:443",
+			headers:    http.Header{"X-Real-Ip": {"172.68.10.5"}, "Cf-Connecting-Ip": {"95.56.1.2"}},
+			want:       "95.56.1.2",
+		},
+		{
+			name:       "cloudflare without the header",
+			remoteAddr: "10.0.0.10:443",
+			headers:    http.Header{"X-Forwarded-For": {"172.68.10.5"}},
+			want:       "172.68.10.5",
+		},
+		{
+			name:       "cloudflare with garbage in the header",
+			remoteAddr: "10.0.0.10:443",
+			headers:    http.Header{"X-Forwarded-For": {"172.68.10.5"}, "Cf-Connecting-Ip": {"garbage"}},
+			want:       "172.68.10.5",
+		},
+		{
+			name:       "direct client forges the header",
+			remoteAddr: "10.0.0.10:443",
+			headers:    http.Header{"X-Forwarded-For": {"203.0.113.10"}, "Cf-Connecting-Ip": {"95.56.1.2"}},
+			want:       "203.0.113.10",
+		},
+		{
+			name:       "client forges cloudflare in the chain",
+			remoteAddr: "10.0.0.10:443",
+			headers:    http.Header{"X-Forwarded-For": {"172.68.10.5, 203.0.113.10"}, "Cf-Connecting-Ip": {"95.56.1.2"}},
+			want:       "203.0.113.10",
+		},
+		{
+			name:       "untrusted peer forges the header",
+			remoteAddr: "203.0.113.10:443",
+			headers:    http.Header{"Cf-Connecting-Ip": {"95.56.1.2"}},
+			want:       "203.0.113.10",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := model.NewAuthRequest()
+			req.SetHttpHeader(tt.headers)
+			req.SetRemoteAddr(tt.remoteAddr)
+			assert.Equal(t, tt.want, resolver.ClientIP(req).String())
 		})
 	}
 }

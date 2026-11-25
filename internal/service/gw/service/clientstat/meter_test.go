@@ -22,7 +22,7 @@ func trustedSnapshot(t *testing.T, trusted ...rootModel.RootTrustedClient) *root
 
 func TestMeter_Start(t *testing.T) {
 	c := NewCollector(100)
-	m := New(c, clientip.New([]string{"127.0.0.0/8"})).Meter(trustedSnapshot(t,
+	m := New(c, clientip.New([]string{"127.0.0.0/8"}, nil)).Meter(trustedSnapshot(t,
 		rootModel.RootTrustedClient{Name: "lan", Ip: "10.0.0.0/8"},
 		rootModel.RootTrustedClient{Ip: "192.0.2.1"},
 	))
@@ -59,7 +59,7 @@ func TestMeter_Start(t *testing.T) {
 
 func TestMeter_NoTrustedClients(t *testing.T) {
 	c := NewCollector(100)
-	m := New(c, clientip.New(nil)).Meter(rootModel.NewEmpty())
+	m := New(c, clientip.New(nil, nil)).Meter(rootModel.NewEmpty())
 	m.Start("10.1.2.3:1000", nil)
 	assert.Equal(t, []*Item{{Ip: "10.1.2.3", Requests: 1}}, c.Drain())
 }
@@ -80,7 +80,7 @@ func TestMeter_Nil(t *testing.T) {
 }
 
 func TestContext(t *testing.T) {
-	m := New(NewCollector(10), clientip.New(nil)).Meter(nil)
+	m := New(NewCollector(10), clientip.New(nil, nil)).Meter(nil)
 	client := m.Start("203.0.113.7:1000", nil)
 	assert.Same(t, client, FromContext(WithClient(context.Background(), client)))
 	assert.Nil(t, FromContext(context.Background()))
@@ -90,7 +90,7 @@ func BenchmarkMeterStart(b *testing.B) {
 	snapshot := rootModel.NewEmpty()
 	snapshot.TrustedClients = []rootModel.RootTrustedClient{{Name: "lan", Ip: "10.0.0.0/8"}}
 	require.NoError(b, snapshot.Normalize())
-	m := New(NewCollector(MaxClients), clientip.New([]string{"127.0.0.0/8"})).Meter(snapshot)
+	m := New(NewCollector(MaxClients), clientip.New([]string{"127.0.0.0/8"}, nil)).Meter(snapshot)
 	header := http.Header{"X-Forwarded-For": {"198.51.100.1"}}
 
 	b.ReportAllocs()

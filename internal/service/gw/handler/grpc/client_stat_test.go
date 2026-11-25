@@ -28,7 +28,7 @@ func TestClientStat_CountsEveryCall(t *testing.T) {
 	require.NoError(t, snapshot.Normalize())
 	snapshot.InheritDown()
 
-	clientIP := clientip.New([]string{"127.0.0.0/8"})
+	clientIP := clientip.New([]string{"127.0.0.0/8"}, nil)
 	blocks := blocklist.New(clientIP)
 	blocks.Set("v1", []blocklist.Rule{{Ip: "203.0.113.0/24"}})
 	clients := clientstat.NewCollector(clientstat.MaxClients)

@@ -9,6 +9,7 @@ import (
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
+	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 )
 
 func TestAuthStatusCodes(t *testing.T) {
@@ -28,7 +29,7 @@ func TestAuthStatusCodes(t *testing.T) {
 		},
 	}
 
-	handler := NewAuth(ep)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	handler := NewAuth(ep, clientip.New(nil, nil))(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 

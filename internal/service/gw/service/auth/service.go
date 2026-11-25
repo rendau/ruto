@@ -6,6 +6,7 @@ import (
 	domAuthModel "github.com/rendau/ruto/internal/domain/auth/model"
 	domEndpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
+	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 )
 
 type Service struct {
@@ -14,13 +15,14 @@ type Service struct {
 
 func New(
 	ep *domEndpointModel.Endpoint,
+	clientIP *clientip.Resolver,
 ) *Service {
 	if !ep.Auth.Enabled {
 		return nil
 	}
 
 	methods := lo.FilterMap(ep.Auth.Methods, func(v *domAuthModel.AuthMethod, _ int) (*method, bool) {
-		return newMethod(v)
+		return newMethod(v, clientIP)
 	})
 	if len(methods) == 0 {
 		return nil

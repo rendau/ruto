@@ -205,7 +205,7 @@ func TestLimitAddr(t *testing.T) {
 
 func TestEndpoint_RejectedRequestIsNotCountedByOtherRules(t *testing.T) {
 	s, _ := newTestStore(100)
-	service := NewService(s, clientip.New(nil))
+	service := NewService(s, clientip.New(nil, nil))
 
 	gw := &rateLimitModel.Rule{Key: "ip", Requests: 3, Period: "1m", ParsedPeriod: time.Minute, Scope: rateLimitModel.ScopeRoot}
 	login := &rateLimitModel.Rule{Key: "ip", Requests: 1, Period: "1m", ParsedPeriod: time.Minute, Scope: rateLimitModel.ScopeEndpoint("login")}
@@ -230,7 +230,7 @@ func TestEndpoint_RejectedRequestIsNotCountedByOtherRules(t *testing.T) {
 
 func TestEndpoint_NoRules(t *testing.T) {
 	s, _ := newTestStore(100)
-	service := NewService(s, clientip.New(nil))
+	service := NewService(s, clientip.New(nil, nil))
 
 	assert.Nil(t, service.Endpoint(nil, &domAppModel.App{}, &domEndpointModel.Endpoint{}, ""))
 
@@ -246,7 +246,7 @@ func mustAddr(t *testing.T, s string) netip.Addr {
 }
 
 func BenchmarkEndpoint_Check(b *testing.B) {
-	service := NewService(New(1_000_000), clientip.New(nil))
+	service := NewService(New(1_000_000), clientip.New(nil, nil))
 	ep := service.Endpoint(nil, &domAppModel.App{Id: "a"}, &domEndpointModel.Endpoint{Id: "e", RateLimit: rateLimitModel.RateLimit{Rules: []*rateLimitModel.Rule{
 		{Key: "ip", Requests: 1_000_000_000, ParsedPeriod: time.Minute, Scope: "root"},
 		{Key: "token", Requests: 1_000_000_000, ParsedPeriod: time.Minute, Scope: "endpoint:e"},

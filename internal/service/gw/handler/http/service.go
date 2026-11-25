@@ -13,6 +13,7 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/proxy"
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
+	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
@@ -35,8 +36,9 @@ func New(
 	limits *ratelimit.Service,
 	blocks *blocklist.Service,
 	stats *clientstat.Service,
+	clientIP *clientip.Resolver,
 ) (*Service, error) {
-	handler, err := buildHandler(snapshot, transport, store, limits, blocks, stats)
+	handler, err := buildHandler(snapshot, transport, store, limits, blocks, stats, clientIP)
 	if err != nil {
 		return nil, fmt.Errorf("buildHandler: %w", err)
 	}
@@ -57,6 +59,7 @@ func buildHandler(
 	limits *ratelimit.Service,
 	blocks *blocklist.Service,
 	stats *clientstat.Service,
+	clientIP *clientip.Resolver,
 ) (_ http.Handler, finalErr error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -105,7 +108,7 @@ func buildHandler(
 				middleware.NewSeenPaths(app, ep),
 				middleware.NewRequestLog(app, ep, routePath, snapshot.LogOwnResponseErrors),
 				middleware.NewRateLimit(limits.Endpoint(snapshot, app, ep, ep.Http.Method+" "+routePath)),
-				middleware.NewAuth(ep),
+				middleware.NewAuth(ep, clientIP),
 				middleware.NewBrowserCache(ep),
 				middleware.NewServerCache(app, ep, store),
 				middleware.NewBackendRequestParams(ep),

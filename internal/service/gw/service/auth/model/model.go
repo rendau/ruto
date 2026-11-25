@@ -167,6 +167,13 @@ func (r *AuthRequest) ExtractRealIP() netip.Addr {
 	return ip
 }
 
+// ExtractCfConnectingIP gives the Cf-Connecting-Ip address, invalid when there
+// is none.
+func (r *AuthRequest) ExtractCfConnectingIP() netip.Addr {
+	ip, _ := parseRemoteAddrIP(r.getHeaderValue("Cf-Connecting-Ip"))
+	return ip
+}
+
 func (r *AuthRequest) ExtractRemoteAddrIP() netip.Addr {
 	return r.remoteIP
 }

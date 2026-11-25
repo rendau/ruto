@@ -8,6 +8,7 @@ import (
 
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	authReqModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
+	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 )
 
 func TestAuthorizeTrustedProxyFlow(t *testing.T) {
@@ -61,7 +62,7 @@ func TestAuthorizeTrustedProxyFlow(t *testing.T) {
 
 			got := New(&authModel.AuthMethodIPValidation{
 				AllowedIps: allowedIps,
-			}, tt.trustedProxyAddresses).Authorize(req)
+			}, clientip.New(tt.trustedProxyAddresses, nil)).Authorize(req)
 
 			require.Equal(t, tt.want, got)
 		})
@@ -71,7 +72,7 @@ func TestAuthorizeTrustedProxyFlow(t *testing.T) {
 func TestAuthorizeIgnoresSpoofableClientHeaders(t *testing.T) {
 	authorizer := New(&authModel.AuthMethodIPValidation{
 		AllowedIps: []authModel.AuthMethodIPValidationItem{{Ip: "1.1.1.1"}},
-	}, []string{"10.0.0.0/8"})
+	}, clientip.New([]string{"10.0.0.0/8"}, nil))
 
 	for _, header := range []string{"Cf-Connecting-Ip", "True-Client-Ip", "X-Client-Ip", "X-Cluster-Client-Ip"} {
 		t.Run(header, func(t *testing.T) {
@@ -94,7 +95,7 @@ func TestAuthorizeIgnoresSpoofableClientHeaders(t *testing.T) {
 func TestAuthorizeRealIPOnlyWithoutForwardedFor(t *testing.T) {
 	authorizer := New(&authModel.AuthMethodIPValidation{
 		AllowedIps: []authModel.AuthMethodIPValidationItem{{Ip: "1.1.1.1"}},
-	}, []string{"10.0.0.0/8"})
+	}, clientip.New([]string{"10.0.0.0/8"}, nil))
 
 	req := &authReqModel.AuthRequest{Headers: http.Header{"X-Real-Ip": {"1.1.1.1"}}}
 	req.SetRemoteAddr("10.0.0.10:443")

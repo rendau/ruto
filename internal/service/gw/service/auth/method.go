@@ -1,7 +1,6 @@
 package auth
 
 import (
-	configGateway "github.com/rendau/ruto/internal/config/gateway"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/authorizer"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/authorizer/api_key"
@@ -9,6 +8,7 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/service/auth/authorizer/ip_validation"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/authorizer/jwt"
 	"github.com/rendau/ruto/internal/service/gw/service/auth/model"
+	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 )
 
@@ -16,7 +16,7 @@ type method struct {
 	authorizers []authorizer.Authorizer
 }
 
-func newMethod(src *authModel.AuthMethod) (*method, bool) {
+func newMethod(src *authModel.AuthMethod, clientIP *clientip.Resolver) (*method, bool) {
 	authorizers := make([]authorizer.Authorizer, 0, 4)
 
 	if src.Basic != nil {
@@ -29,7 +29,7 @@ func newMethod(src *authModel.AuthMethod) (*method, bool) {
 		authorizers = append(authorizers, jwt.New(src.JWT, jwk.Ins()))
 	}
 	if src.IPValidation != nil {
-		authorizers = append(authorizers, ip_validation.New(src.IPValidation, configGateway.Conf.TrustedProxyAddresses))
+		authorizers = append(authorizers, ip_validation.New(src.IPValidation, clientIP))
 	}
 
 	if len(authorizers) == 0 {

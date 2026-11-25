@@ -17,6 +17,7 @@ import (
 	domRootModel "github.com/rendau/ruto/internal/domain/root/model"
 	serviceAuth "github.com/rendau/ruto/internal/service/gw/service/auth"
 	"github.com/rendau/ruto/internal/service/gw/service/blocklist"
+	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 	serviceLog "github.com/rendau/ruto/internal/service/gw/service/log"
 	serviceMetrics "github.com/rendau/ruto/internal/service/gw/service/metrics"
@@ -28,6 +29,7 @@ type Service struct {
 	limits            *ratelimit.Service
 	blocks            *blocklist.Guard
 	stats             *clientstat.Meter
+	clientIP          *clientip.Resolver
 	routes            map[string]*route
 	reflectionRoutes  map[string]*reflectionRoute
 	transparentHandle gogrpc.StreamHandler
@@ -42,12 +44,14 @@ func New(
 	limits *ratelimit.Service,
 	blocks *blocklist.Service,
 	stats *clientstat.Service,
+	clientIP *clientip.Resolver,
 ) (*Service, error) {
 	service := &Service{
-		conns:  conns,
-		limits: limits,
-		blocks: blocks.Guard(snapshot, blocklist.ProtocolGRPC),
-		stats:  stats.Meter(snapshot),
+		conns:    conns,
+		limits:   limits,
+		blocks:   blocks.Guard(snapshot, blocklist.ProtocolGRPC),
+		stats:    stats.Meter(snapshot),
+		clientIP: clientIP,
 	}
 	service.transparentHandle = proxy.TransparentHandler(service.director)
 
@@ -95,7 +99,7 @@ func (s *Service) buildRoutes(snapshot *domRootModel.Root) (map[string]*route, e
 				backendHeaders:    ep.Backend.Headers,
 			}
 
-			authService := serviceAuth.New(ep)
+			authService := serviceAuth.New(ep, s.clientIP)
 			logService := serviceLog.New(app, ep, "GRPC "+routeName, ep.Logging, snapshot.LogOwnResponseErrors)
 			metricsService := serviceMetrics.New(app, ep, "GRPC "+routeName)
 

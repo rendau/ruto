@@ -62,7 +62,7 @@ func newCompressionTestService(t *testing.T, conf compressionModel.Compression, 
 	snapshot.InheritDown()
 	snapshot.Interpolate()
 
-	service, err := New(snapshot, proxy.NewTransport(0), cache.New(1<<20), nil, nil, nil)
+	service, err := New(snapshot, proxy.NewTransport(0), cache.New(1<<20), nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	return service, &seenAcceptEncoding

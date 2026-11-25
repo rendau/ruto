@@ -7,12 +7,14 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/handler/http/rw_wrapper"
 	"github.com/rendau/ruto/internal/service/gw/service/auth"
 	authModel "github.com/rendau/ruto/internal/service/gw/service/auth/model"
+	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 )
 
 func NewAuth(
 	ep *domEndpointModel.Endpoint,
+	clientIP *clientip.Resolver,
 ) Middleware {
-	service := auth.New(ep)
+	service := auth.New(ep, clientIP)
 	if service == nil {
 		return func(next http.Handler) http.Handler { return next }
 	}

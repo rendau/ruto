@@ -129,7 +129,7 @@ func startClient(t *testing.T, core *fakeCore, poll time.Duration) *blocklist.Se
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
-	blocks := blocklist.New(clientip.New(nil))
+	blocks := blocklist.New(clientip.New(nil, nil))
 	client, err := New(ctx, runFakeCore(t, core), func(*rootModel.Root) error { return nil }, blocks)
 	require.NoError(t, err)
 	client.blocklistPoll = poll

@@ -55,6 +55,8 @@ func (a *App) Init() error {
 		configGateway.Conf.CacheSweepInterval,
 		configGateway.Conf.RateLimitMaxKeys,
 		configGateway.Conf.TrustedProxyAddresses,
+		configGateway.Conf.CloudflareIPsURL,
+		configGateway.Conf.CloudflareIPsRefresh,
 	)
 	if err != nil {
 		return fmt.Errorf("gw-server New: %w", err)

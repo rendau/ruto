@@ -16,7 +16,7 @@ import (
 
 func newTestService(now time.Time, trustedProxies ...string) (*Service, *time.Time) {
 	clock := new(now)
-	s := New(clientip.New(trustedProxies))
+	s := New(clientip.New(trustedProxies, nil))
 	s.now = func() time.Time { return *clock }
 	return s, clock
 }

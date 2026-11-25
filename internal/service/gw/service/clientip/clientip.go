@@ -1,6 +1,7 @@
 // Package clientip finds the address of the client behind the proxies in front
 // of the gateway. Forwarding headers are trusted only when the request came
-// from TRUSTED_PROXY_ADDRESSES: anyone else could put any address there.
+// from TRUSTED_PROXY_ADDRESSES, and Cf-Connecting-Ip only when it came from
+// Cloudflare: anyone else could put any address there.
 package clientip
 
 import (
@@ -12,25 +13,41 @@ import (
 )
 
 type Resolver struct {
-	trusted []netip.Prefix
+	trusted    []netip.Prefix
+	cloudflare CloudflareI
 }
 
-func New(trustedProxyAddresses []string) *Resolver {
-	return &Resolver{trusted: parseTrusted(trustedProxyAddresses)}
+// New takes the proxies in front of the gateway and Cloudflare's networks; a
+// nil cloudflare never reads Cf-Connecting-Ip.
+func New(trustedProxyAddresses []string, cloudflare CloudflareI) *Resolver {
+	return &Resolver{trusted: parseTrusted(trustedProxyAddresses), cloudflare: cloudflare}
 }
 
-// ClientIP is the peer address when the peer is not a trusted proxy. Behind
-// one it is the rightmost X-Forwarded-For address that is not a trusted proxy:
-// every proxy appends the address it got the request from, so the addresses
-// to the left of it were written by the client itself. Only when
-// X-Forwarded-For names nobody but trusted proxies does X-Real-Ip count
-// (traefik overwrites it). Other client-address headers (Cf-Connecting-Ip,
-// True-Client-Ip and the like) are never read: a proxy that does not know them
+// ClientIP is the address the request reached the trusted proxies from (see
+// hop), except when that address is Cloudflare's: then it is Cf-Connecting-Ip,
+// which Cloudflare always writes itself. Coming from anywhere else, the header
+// is the client's word and is not read. Other client-address headers
+// (True-Client-Ip and the like) are never read: a proxy that does not know them
 // passes them on as the client sent them.
 //
 // The result is invalid when the peer address is unknown, the chain holds an
 // entry that is not an address, or every address is a trusted proxy.
 func (r *Resolver) ClientIP(req *model.AuthRequest) netip.Addr {
+	hop := r.hop(req)
+	if hop.IsValid() && r.cloudflare != nil && r.cloudflare.Contains(hop) {
+		if ip := req.ExtractCfConnectingIP(); ip.IsValid() {
+			return ip
+		}
+	}
+	return hop
+}
+
+// hop is the peer address when the peer is not a trusted proxy. Behind one it
+// is the rightmost X-Forwarded-For address that is not a trusted proxy: every
+// proxy appends the address it got the request from, so the addresses to the
+// left of it were written by the client itself. Only when X-Forwarded-For names
+// nobody but trusted proxies does X-Real-Ip count (traefik overwrites it).
+func (r *Resolver) hop(req *model.AuthRequest) netip.Addr {
 	remoteIP := req.ExtractRemoteAddrIP()
 	if !remoteIP.IsValid() {
 		return netip.Addr{}

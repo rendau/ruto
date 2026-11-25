@@ -1,7 +1,8 @@
 // Package httpx builds the http clients the services call other systems with.
 // Every client gets the same guard rails: a dial and a TLS handshake timeout,
 // a cap on connections per host and tolerance for the self-signed certificates
-// of internal services. Zero config fields take the defaults below.
+// of internal services (unless VerifyTLS). Zero config fields take the
+// defaults below.
 package httpx
 
 import (
@@ -27,6 +28,9 @@ type Config struct {
 	// DisableKeepAlives is for rare calls: the server would close an idle
 	// connection before it is needed again.
 	DisableKeepAlives bool
+	// VerifyTLS is for sources outside whose answer decides whom to trust: a
+	// forged answer would be a way around the gateway's checks.
+	VerifyTLS bool
 }
 
 func New(conf Config) *http.Client {
@@ -53,7 +57,7 @@ func NewTransport(conf Config) *http.Transport {
 	return &http.Transport{
 		DialContext:         (&net.Dialer{Timeout: dialTimeout}).DialContext,
 		TLSHandshakeTimeout: tlsTimeout,
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true}, // internal services use self-signed certificates
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: !conf.VerifyTLS}, // internal services use self-signed certificates
 		MaxConnsPerHost:     maxConns,
 		MaxIdleConnsPerHost: maxConns,
 		DisableKeepAlives:   conf.DisableKeepAlives,

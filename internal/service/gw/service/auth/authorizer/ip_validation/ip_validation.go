@@ -16,7 +16,7 @@ type Authorizer struct {
 	clientIP     *clientip.Resolver
 }
 
-func New(conf *authModel.AuthMethodIPValidation, trustedProxyAddresses []string) *Authorizer {
+func New(conf *authModel.AuthMethodIPValidation, clientIP *clientip.Resolver) *Authorizer {
 	allowedIPMap := lo.FilterSliceToMap(conf.AllowedIps, func(item authModel.AuthMethodIPValidationItem) (netip.Addr, struct{}, bool) {
 		addr, err := netip.ParseAddr(item.Ip)
 		if err != nil {
@@ -28,7 +28,7 @@ func New(conf *authModel.AuthMethodIPValidation, trustedProxyAddresses []string)
 
 	return &Authorizer{
 		allowedIPMap: allowedIPMap,
-		clientIP:     clientip.New(trustedProxyAddresses),
+		clientIP:     clientIP,
 	}
 }
 
@@ -42,6 +42,7 @@ func (a *Authorizer) Authorize(req *model.AuthRequest) model.Result {
 		"ip_validation: access denied",
 		"forwarded_for", lo.Map(req.ExtractForwardedFor(), func(ip netip.Addr, _ int) string { return ip.String() }),
 		"real_ip", req.ExtractRealIP().String(),
+		"cf_connecting_ip", req.ExtractCfConnectingIP().String(),
 		"client_ip", clientIP.String(),
 		"allowed_ips", lo.Map(lo.Keys(a.allowedIPMap), func(ip netip.Addr, _ int) string { return ip.String() }),
 		"trusted_proxy_addresses", lo.Map(a.clientIP.Trusted(), func(ip netip.Prefix, _ int) string { return ip.String() }),

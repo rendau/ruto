@@ -18,6 +18,7 @@ import (
 	"github.com/rendau/ruto/internal/service/gw/service/cache"
 	"github.com/rendau/ruto/internal/service/gw/service/clientip"
 	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
+	"github.com/rendau/ruto/internal/service/gw/service/cloudflare"
 	"github.com/rendau/ruto/internal/service/gw/service/jwk"
 	"github.com/rendau/ruto/internal/service/gw/service/ratelimit"
 )
@@ -26,6 +27,7 @@ const rateLimitSweepInterval = 30 * time.Second
 
 type Service struct {
 	globalCtx     context.Context
+	clientIP      *clientip.Resolver
 	httpServer    *localHttp.Service
 	httpTransport *http.Transport
 	cache         *cache.Service
@@ -34,6 +36,7 @@ type Service struct {
 	limits        *ratelimit.Service
 	blocks        *blocklist.Service
 	stats         *clientstat.Service
+	cloudflare    *cloudflare.Service
 	grpcServer    *localGrpc.Service
 	grpcConns     *handlerGrpc.Conns
 	coreClient    *core_client.Service
@@ -49,16 +52,20 @@ func New(
 	cacheSweepInterval time.Duration,
 	rateLimitMaxKeys int,
 	trustedProxyAddresses []string,
+	cloudflareIPsURL string,
+	cloudflareIPsRefresh time.Duration,
 ) (*Service, error) {
 	var err error
 
 	rateLimits := ratelimit.New(rateLimitMaxKeys)
 	// one resolver for rate limits, the block list and the client stats: all
 	// must see the same client
-	clientIP := clientip.New(trustedProxyAddresses)
+	cloudflareNetworks := cloudflare.New(cloudflareIPsURL, cloudflareIPsRefresh)
+	clientIP := clientip.New(trustedProxyAddresses, cloudflareNetworks)
 
 	service := &Service{
 		globalCtx:     globalCtx,
+		clientIP:      clientIP,
 		httpServer:    localHttp.New(httpPort),
 		httpTransport: proxy.NewTransport(backendIdleConnTimeout),
 		cache:         cache.New(cacheMaxSize),
@@ -67,6 +74,7 @@ func New(
 		limits:        ratelimit.NewService(rateLimits, clientIP),
 		blocks:        blocklist.New(clientIP),
 		stats:         clientstat.New(clientstat.Ins(), clientIP),
+		cloudflare:    cloudflareNetworks,
 	}
 	if grpcPort > 0 {
 		service.grpcServer = localGrpc.New(grpcPort)
@@ -86,6 +94,7 @@ func (s *Service) Start() {
 	s.coreClient.Start()
 	go s.cache.Run(s.globalCtx, s.cacheSweep)
 	go s.rateLimits.Run(s.globalCtx, rateLimitSweepInterval)
+	go s.cloudflare.Run(s.globalCtx)
 	s.httpServer.Start()
 	if s.grpcServer != nil {
 		s.grpcServer.Start()
@@ -122,14 +131,14 @@ func (s *Service) SetConfig(conf *rootModel.Root) error {
 	}
 
 	// set http handler
-	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache, s.limits, s.blocks, s.stats)
+	httpHandler, err := handlerHttp.New(conf, s.httpTransport, s.cache, s.limits, s.blocks, s.stats, s.clientIP)
 	if err != nil {
 		return fmt.Errorf("handlerHttp.New: %w", err)
 	}
 	s.httpServer.SetHandler(httpHandler)
 
 	if s.grpcServer != nil {
-		grpcHandler, grpcErr := handlerGrpc.New(conf, s.grpcConns, s.limits, s.blocks, s.stats)
+		grpcHandler, grpcErr := handlerGrpc.New(conf, s.grpcConns, s.limits, s.blocks, s.stats, s.clientIP)
 		if grpcErr != nil {
 			return fmt.Errorf("handlerGrpc.New: %w", grpcErr)
 		}

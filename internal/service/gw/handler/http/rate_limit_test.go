@@ -114,7 +114,7 @@ func newRateLimitEnv(t *testing.T, maxKeys int, trustedProxies ...string) *rateL
 	t.Cleanup(backend.Close)
 
 	store := ratelimit.New(maxKeys)
-	clientIP := clientip.New(trustedProxies)
+	clientIP := clientip.New(trustedProxies, nil)
 	clients := clientstat.NewCollector(clientstat.MaxClients)
 	return &rateLimitEnv{
 		t:       t,
@@ -130,7 +130,7 @@ func newRateLimitEnv(t *testing.T, maxKeys int, trustedProxies ...string) *rateL
 func (e *rateLimitEnv) handler(conf *rateLimitSnapshot) *Service {
 	e.t.Helper()
 
-	service, err := New(conf.build(e.t, e.backend.URL), proxy.NewTransport(0), nil, e.limits, e.blocks, e.stats)
+	service, err := New(conf.build(e.t, e.backend.URL), proxy.NewTransport(0), nil, e.limits, e.blocks, e.stats, nil)
 	require.NoError(e.t, err)
 	return service
 }

@@ -40,7 +40,7 @@ func newBlocklistEnv(
 ) *blocklistEnv {
 	t.Helper()
 
-	svc, err := New(snapshot, NewConns(), limits, blocks, stats)
+	svc, err := New(snapshot, NewConns(), limits, blocks, stats, nil)
 	require.NoError(t, err)
 
 	gatewayAddr, gatewayStop := runGatewayProxyServer(t, svc)
@@ -92,7 +92,7 @@ func TestBlocklist_PermissionDenied(t *testing.T) {
 	backendAddr, backendStop := runBackendTestService(t)
 	defer backendStop()
 
-	blocks := blocklist.New(clientip.New([]string{"127.0.0.0/8"}))
+	blocks := blocklist.New(clientip.New([]string{"127.0.0.0/8"}, nil))
 	blocks.Set("v1", []blocklist.Rule{{Ip: "203.0.113.0/24"}})
 	env := newBlocklistEnv(t, buildSnapshotForBackend(t, backendAddr), blocks, nil, nil)
 
@@ -125,7 +125,7 @@ func TestBlocklist_TrustedClientNotBlockedNorLimited(t *testing.T) {
 	require.NoError(t, snapshot.Normalize())
 	snapshot.InheritDown()
 
-	clientIP := clientip.New([]string{"127.0.0.0/8"})
+	clientIP := clientip.New([]string{"127.0.0.0/8"}, nil)
 	blocks := blocklist.New(clientIP)
 	blocks.Set("v1", []blocklist.Rule{{Ip: "203.0.113.0/24"}})
 	env := newBlocklistEnv(t, snapshot, blocks, ratelimit.NewService(ratelimit.New(1000), clientIP), nil)
