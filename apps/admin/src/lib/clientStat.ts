@@ -7,7 +7,7 @@ export const CLIENT_STAT_RANGE_OPTIONS: { label: string; value: number }[] = [
   { label: "7d", value: 604800 }
 ];
 
-export const CLIENT_STAT_DEFAULT_RANGE = 86400;
+export const CLIENT_STAT_DEFAULT_RANGE = 3600;
 
 // Buckets without traffic may be left out of a reply: put zeros in their place
 // so a client that called twice in a day draws as two spikes, not as a line
