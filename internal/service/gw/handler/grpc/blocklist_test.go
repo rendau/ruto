@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -79,9 +81,14 @@ func (e *blocklistEnv) listServices(t *testing.T, clientIP string) codes.Code {
 
 	stream, err := e.reflection.ServerReflectionInfo(ctx)
 	require.NoError(t, err)
-	require.NoError(t, stream.Send(&reflectionv1.ServerReflectionRequest{
+	// A refused stream may end before the request is sent: Send then returns
+	// io.EOF, and the status comes from Recv.
+	err = stream.Send(&reflectionv1.ServerReflectionRequest{
 		MessageRequest: &reflectionv1.ServerReflectionRequest_ListServices{},
-	}))
+	})
+	if !errors.Is(err, io.EOF) {
+		require.NoError(t, err)
+	}
 	require.NoError(t, stream.CloseSend())
 
 	_, err = stream.Recv()

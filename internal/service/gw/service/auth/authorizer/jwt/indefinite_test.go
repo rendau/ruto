@@ -9,6 +9,9 @@ import (
 
 func TestMarkIndefinite(t *testing.T) {
 	const kid = "kid-indefinite-test"
+	// the seen tokens live for the process: a repeated run (-count) must start clean
+	indefiniteSeen.Clear()
+	t.Cleanup(indefiniteSeen.Clear)
 
 	// токен без exp: первое появление фиксируется, повтор — нет
 	userId, firstSeen := markIndefinite(kid, jwtv5.MapClaims{"sub": "u-no-exp"})
