@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "./config";
 import { apiFetch, ApiError } from "./http";
 import { withQuery } from "./query";
-import { clearSession, setCredentials, setToken } from "./auth-session";
+import { clearSession, setToken } from "./auth-session";
 import type {
   ErrorRep,
   UsrBootstrapStatusRep,
@@ -28,7 +28,6 @@ export async function login(username: string, password: string): Promise<void> {
     );
   }
   setToken(payload.jwt);
-  setCredentials(username, password);
 }
 
 export function logout(): void {

@@ -159,7 +159,7 @@ onMounted(async () => {
         </NFormItem>
         <NButton type="primary" block :loading="submitting" @click="submitLogin">Sign in</NButton>
         <p class="login__hint muted">
-          On token expiry the session is renewed once from saved credentials.
+          The session lasts 12 hours; the password is not saved in the browser.
         </p>
       </NForm>
 

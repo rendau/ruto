@@ -11,7 +11,11 @@ const authStore = useAuthStore();
 
 function onAuthRequired(): void {
   authStore.logout();
-  void router.push({ name: "login" });
+  const current = router.currentRoute.value;
+  if (current.name === "login") {
+    return;
+  }
+  void router.push({ name: "login", query: { redirect: current.fullPath } });
 }
 
 onMounted(() => {

@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "./config";
-import { clearSession, getToken, renewTokenOnce } from "./auth-session";
+import { clearSession, getToken } from "./auth-session";
 import type { ErrorRep } from "./types";
 
 export class ApiError extends Error {
@@ -35,15 +35,7 @@ async function parseApiError(response: Response): Promise<ApiError> {
   return new ApiError(message, code, response.status, payload.fields);
 }
 
-interface FetchOptions {
-  retryOnAuth?: boolean;
-}
-
-export async function apiFetch<T>(
-  path: string,
-  init?: RequestInit,
-  options: FetchOptions = {}
-): Promise<T> {
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers || {});
   headers.set("Content-Type", "application/json");
 
@@ -63,17 +55,11 @@ export async function apiFetch<T>(
   }
 
   const parsedError = await parseApiError(response);
-  const canRetry = options.retryOnAuth !== false && isAuthError(parsedError);
-  if (!canRetry) {
-    throw parsedError;
-  }
-
-  const renewed = await renewTokenOnce();
-  if (!renewed) {
+  // The session has expired: the password is not kept to log in again
+  // silently, so the user signs in anew.
+  if (isAuthError(parsedError)) {
     clearSession();
     notifyAuthRequired();
-    throw parsedError;
   }
-
-  return apiFetch<T>(path, init, { retryOnAuth: false });
+  throw parsedError;
 }
