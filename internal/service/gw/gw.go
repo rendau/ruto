@@ -47,6 +47,7 @@ func New(
 	globalCtx context.Context,
 	httpPort, grpcPort int,
 	configAddress string,
+	coreToken string,
 	backendIdleConnTimeout time.Duration,
 	cacheMaxSize int64,
 	cacheSweepInterval time.Duration,
@@ -82,7 +83,7 @@ func New(
 	}
 	service.ready.Store(false)
 
-	service.coreClient, err = core_client.New(globalCtx, configAddress, service.SetConfig, service.blocks)
+	service.coreClient, err = core_client.New(globalCtx, configAddress, coreToken, service.SetConfig, service.blocks)
 	if err != nil {
 		return nil, fmt.Errorf("config_client.New: %w", err)
 	}

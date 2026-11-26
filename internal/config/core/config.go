@@ -21,6 +21,10 @@ var Conf = struct {
 
 	AdminJWTSecret string `env:"ADMIN_JWT_SECRET"`
 
+	// shared with the gateways (their CORE_TOKEN): without it the gateway-only
+	// grpc methods, Snapshot.Get with every secret among them, answer anyone
+	GatewayToken string `env:"GATEWAY_TOKEN"`
+
 	PgDsn string `env:"PG_DSN"`
 
 	RedisAddr     string `env:"REDIS_ADDR"`

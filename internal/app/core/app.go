@@ -366,7 +366,7 @@ func (a *App) Init() error {
 	}
 
 	// grpc-server
-	a.grpcServer = NewGrpcServer("core", sessionService, usecaseApiKey, func(server *grpc.Server) {
+	a.grpcServer = NewGrpcServer("core", sessionService, usecaseApiKey, configCore.Conf.GatewayToken, configCore.Conf.Debug, func(server *grpc.Server) {
 		ruto_v1.RegisterRootServer(server, handlerGrpcRoot)
 		ruto_v1.RegisterAppServer(server, handlerGrpcApp)
 		ruto_v1.RegisterEndpointServer(server, handlerGrpcEndpoint)

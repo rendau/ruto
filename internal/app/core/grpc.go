@@ -33,9 +33,22 @@ type GrpcServer struct {
 	server *grpc.Server
 }
 
-func NewGrpcServer(name string, sessionSvc *sessionService.Service, apiKeyAuth ApiKeyAuthI, register func(*grpc.Server)) *GrpcServer {
-	interceptors := make([]grpc.UnaryServerInterceptor, 0, 5)
+func NewGrpcServer(
+	name string,
+	sessionSvc *sessionService.Service,
+	apiKeyAuth ApiKeyAuthI,
+	gatewayToken string,
+	reflectionOn bool,
+	register func(*grpc.Server),
+) *GrpcServer {
+	if gatewayToken == "" {
+		slog.Warn(name + "-grpc-server: GATEWAY_TOKEN is empty, anyone reaching the grpc port reads the config with its secrets")
+	}
+	tokenCheck := newGatewayTokenCheck(gatewayToken)
 
+	interceptors := make([]grpc.UnaryServerInterceptor, 0, 6)
+
+	interceptors = append(interceptors, tokenCheck.unary())
 	interceptors = append(interceptors, GrpcInterceptorCtxWithoutCancel())
 	interceptors = append(interceptors, GrpcInterceptorSession(sessionSvc, apiKeyAuth))
 	interceptors = append(interceptors, GrpcInterceptorRecovery())
@@ -49,13 +62,17 @@ func NewGrpcServer(name string, sessionSvc *sessionService.Service, apiKeyAuth A
 			PermitWithoutStream: true,
 		}),
 		grpc.ChainUnaryInterceptor(interceptors...),
+		grpc.ChainStreamInterceptor(tokenCheck.stream()),
 	)
 
 	if register != nil {
 		register(server)
 	}
 
-	reflection.Register(server)
+	// reflection lists every method to whoever reaches the port: debugging only
+	if reflectionOn {
+		reflection.Register(server)
+	}
 
 	return &GrpcServer{
 		name:   name,

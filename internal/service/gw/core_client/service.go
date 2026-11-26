@@ -111,6 +111,7 @@ type Service struct {
 func New(
 	globalCtx context.Context,
 	address string,
+	token string,
 	onConfig configCallback,
 	blocks blocklistI,
 ) (*Service, error) {
@@ -129,8 +130,7 @@ func New(
 	}
 
 	if address != "" {
-		service.conn, err = grpc.NewClient(
-			"dns:///"+address,
+		opts := []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithKeepaliveParams(
 				keepalive.ClientParameters{
@@ -139,7 +139,11 @@ func New(
 					PermitWithoutStream: true,
 				},
 			),
-		)
+		}
+		if token != "" {
+			opts = append(opts, grpc.WithPerRPCCredentials(&coreToken{value: token}))
+		}
+		service.conn, err = grpc.NewClient("dns:///"+address, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("grpc.NewClient: %w", err)
 		}

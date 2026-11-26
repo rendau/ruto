@@ -19,6 +19,8 @@ var Conf = struct {
 	GrpcPort int `env:"GRPC_PORT"`
 
 	CoreGrpcAddress string `env:"CORE_GRPC_ADDRESS"`
+	// the GATEWAY_TOKEN of core
+	CoreToken string `env:"CORE_TOKEN"`
 
 	// below the keep-alive timeout of every backend (Go net/http: 60s and more,
 	// uvicorn and Node.js: 5s), see proxy.NewTransport

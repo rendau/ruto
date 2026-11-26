@@ -50,6 +50,7 @@ func (a *App) Init() error {
 		configGateway.Conf.HttpPort,
 		configGateway.Conf.GrpcPort,
 		configGateway.Conf.CoreGrpcAddress,
+		configGateway.Conf.CoreToken,
 		configGateway.Conf.BackendIdleConnTimeout,
 		int64(configGateway.Conf.CacheMaxSizeMb)<<20,
 		configGateway.Conf.CacheSweepInterval,

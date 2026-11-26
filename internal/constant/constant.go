@@ -185,3 +185,7 @@ func JWTKeyAlgorithm(kty, crv, alg string) string {
 	}
 	return ""
 }
+
+// GatewayTokenMetadataKey carries the shared token of the gateways in the gRPC
+// metadata of their calls to core (core GATEWAY_TOKEN, gateway CORE_TOKEN).
+const GatewayTokenMetadataKey = "x-ruto-gateway-token"
