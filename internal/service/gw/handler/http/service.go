@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -68,6 +69,7 @@ func buildHandler(
 	}()
 
 	router := chi.NewRouter()
+	router.Use(canonicalRoutePath)
 
 	for _, app := range snapshot.ActiveApps() {
 		endpoints := app.ActiveEndpoints()
@@ -124,10 +126,11 @@ func buildHandler(
 				routePaths = append(routePaths, routePath+"/")
 			}
 			for _, p := range routePaths {
+				pattern := lowerRoutePattern(p)
 				if ep.Http.Method == "*" {
-					router.Handle(p, handler)
+					router.Handle(pattern, handler)
 				} else {
-					router.Method(ep.Http.Method, p, handler)
+					router.Method(ep.Http.Method, pattern, handler)
 				}
 			}
 		}
@@ -149,4 +152,86 @@ func anyMethodOrder(ep *endpointModel.Endpoint) int {
 		return 0
 	}
 	return 1
+}
+
+// canonicalRoutePath makes chi match against the decoded, lowercased path while
+// leaving r.URL intact for the backend, logs and seen paths. Without this,
+// chi routes on RawPath (case-sensitive), so /shop/%61dmin, /shop/users/m%65,
+// /shop/admin%2fsecret or /shop/ADMIN would miss a protected endpoint and fall
+// through to a public "*" or "{id}" route.
+func canonicalRoutePath(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if rctx := chi.RouteContext(r.Context()); rctx != nil {
+			p := r.URL.Path
+			if p == "" {
+				p = "/"
+			}
+			rctx.RoutePath = strings.ToLower(p)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// lowerRoutePattern lowercases the static parts of a chi route pattern and
+// marks any inline parameter regexp case-insensitive so it matches the
+// lowercased rctx.RoutePath without altering escape classes like \D or \W.
+func lowerRoutePattern(pattern string) string {
+	if !strings.ContainsRune(pattern, '{') {
+		return strings.ToLower(pattern)
+	}
+
+	var b strings.Builder
+	b.Grow(len(pattern))
+
+	i := 0
+	for i < len(pattern) {
+		open := strings.IndexByte(pattern[i:], '{')
+		if open < 0 {
+			b.WriteString(strings.ToLower(pattern[i:]))
+			break
+		}
+		b.WriteString(strings.ToLower(pattern[i : i+open]))
+
+		start := i + open
+		depth := 0
+		end := -1
+		for j := start; j < len(pattern); j++ {
+			switch pattern[j] {
+			case '{':
+				depth++
+			case '}':
+				depth--
+				if depth == 0 {
+					end = j
+				}
+			}
+			if end >= 0 {
+				break
+			}
+		}
+		if end < 0 {
+			b.WriteString(pattern[start:])
+			break
+		}
+
+		inner := pattern[start+1 : end]
+		if name, regex, hasRegex := strings.Cut(inner, ":"); hasRegex && regex != "" {
+			b.WriteByte('{')
+			b.WriteString(name)
+			b.WriteByte(':')
+			if strings.HasPrefix(regex, "^") {
+				b.WriteString("^(?i)")
+				b.WriteString(regex[1:])
+			} else {
+				b.WriteString("(?i)")
+				b.WriteString(regex)
+			}
+			b.WriteByte('}')
+		} else {
+			b.WriteString(pattern[start : end+1])
+		}
+		i = end + 1
+	}
+
+	return b.String()
 }
