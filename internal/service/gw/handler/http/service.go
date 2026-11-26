@@ -140,6 +140,7 @@ func buildHandler(
 		middleware.NewBlocklist(blocks.Guard(snapshot, blocklist.ProtocolHTTP)),
 		middleware.NewSeenOrigins(),
 		middleware.NewCors(snapshot.Cors),
+		middleware.NewSafePath(),
 	), nil
 }
 
