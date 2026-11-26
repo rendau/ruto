@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import { getToken } from "@/api/auth-session";
+import { ApiError } from "@/api/http";
 import {
   getProfile,
   login as apiLogin,
@@ -14,12 +14,11 @@ import { useSnapshotStore } from "./snapshot";
 import type { UsrMain } from "@/api/types";
 
 export const useAuthStore = defineStore("auth", () => {
-  const token = ref(getToken());
   const profile = ref<UsrMain | null>(null);
   const initialized = ref(false);
   const loading = ref(false);
 
-  const isAuthenticated = computed(() => Boolean(token.value) && Boolean(profile.value));
+  const isAuthenticated = computed(() => Boolean(profile.value));
   const isAdmin = computed(() => Boolean(profile.value?.is_admin));
   // Full app access: admins and users flagged with all_apps may manage every app.
   const hasFullAppAccess = computed(() => Boolean(profile.value?.is_admin || profile.value?.all_apps));
@@ -32,21 +31,18 @@ export const useAuthStore = defineStore("auth", () => {
     return hasFullAppAccess.value || ownAppIds.value.includes(appId);
   }
 
-  function syncToken(): void {
-    token.value = getToken();
-  }
-
+  // initialize finds out whether the session cookie (unseen by the page) is
+  // still valid.
   async function initialize(): Promise<void> {
     if (initialized.value) return;
-    syncToken();
-    if (!token.value) {
-      initialized.value = true;
-      return;
-    }
     try {
-      profile.value = await getProfile();
+      profile.value = await getProfile({ notifyAuth: false });
+    } catch (error) {
+      if (!(error instanceof ApiError && error.status === 401)) {
+        throw error;
+      }
+      profile.value = null;
     } finally {
-      syncToken();
       initialized.value = true;
     }
   }
@@ -55,7 +51,6 @@ export const useAuthStore = defineStore("auth", () => {
     loading.value = true;
     try {
       await apiLogin(username, password);
-      syncToken();
       profile.value = await getProfile();
       initialized.value = true;
     } finally {
@@ -65,7 +60,6 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function refreshProfile(): Promise<void> {
     profile.value = await getProfile();
-    syncToken();
   }
 
   async function updateProfile(payload: { name?: string; password?: string }): Promise<void> {
@@ -74,8 +68,8 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   function logout(): void {
-    apiLogout();
-    token.value = "";
+    // the cookie is HttpOnly: only core can remove it
+    void apiLogout().catch(() => undefined);
     profile.value = null;
     initialized.value = true;
     // Clear cached data so the next user starts from a clean slate.
@@ -86,7 +80,6 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   return {
-    token,
     profile,
     initialized,
     loading,

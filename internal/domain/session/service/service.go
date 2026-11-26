@@ -13,7 +13,8 @@ import (
 	"github.com/rendau/ruto/internal/errs"
 )
 
-const tokenTTL = 12 * time.Hour
+// TokenTTL is the lifetime of an admin token and of the admin session cookie.
+const TokenTTL = 12 * time.Hour
 
 type contextKey string
 
@@ -144,7 +145,7 @@ func (s *Service) CreateToken(usrId int64, isAdmin bool, allApps bool, appIds []
 		"all_apps": allApps,
 		"app_ids":  appIds,
 		"iat":      now.Unix(),
-		"exp":      now.Add(tokenTTL).Unix(),
+		"exp":      now.Add(TokenTTL).Unix(),
 	}
 
 	token := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, claims)

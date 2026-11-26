@@ -1,41 +1,30 @@
-import { API_BASE_URL } from "./config";
-import { apiFetch, ApiError } from "./http";
+import { apiFetch, type FetchOptions } from "./http";
 import { withQuery } from "./query";
-import { clearSession, setToken } from "./auth-session";
 import type {
-  ErrorRep,
   UsrBootstrapStatusRep,
   UsrCreateRep,
   UsrCreateReq,
   UsrEditReq,
   UsrListRep,
-  UsrLoginRep,
   UsrMain
 } from "./types";
 
+// login signs in: core answers with the HttpOnly session cookie, the token
+// never reaches the page.
 export async function login(username: string, password: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/usr/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
-  });
-  const payload = (await response.json().catch(() => ({}))) as Partial<UsrLoginRep & ErrorRep>;
-  if (!response.ok || !payload.jwt) {
-    throw new ApiError(
-      payload.message || "Login failed",
-      payload.code || "not_authorized",
-      response.status
-    );
-  }
-  setToken(payload.jwt);
+  await apiFetch<void>(
+    "/session",
+    { method: "POST", body: JSON.stringify({ username, password }) },
+    { notifyAuth: false }
+  );
 }
 
-export function logout(): void {
-  clearSession();
+export async function logout(): Promise<void> {
+  await apiFetch<void>("/session", { method: "DELETE" }, { notifyAuth: false });
 }
 
-export function getProfile(): Promise<UsrMain> {
-  return apiFetch<UsrMain>("/usr/profile");
+export function getProfile(options?: FetchOptions): Promise<UsrMain> {
+  return apiFetch<UsrMain>("/usr/profile", undefined, options);
 }
 
 export function getBootstrapStatus(): Promise<UsrBootstrapStatusRep> {

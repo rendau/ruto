@@ -23,6 +23,7 @@ import (
 
 func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handler, error) {
 	mux := runtime.NewServeMux(
+		runtime.WithMetadata(grpcGatewaySessionMetadata),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
 			MarshalOptions: protojson.MarshalOptions{
 				UseProtoNames:   true,
@@ -125,7 +126,10 @@ func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handl
 				"X-Requested-With",
 				"Authorization",
 			},
-			AllowCredentials: true,
+			// Any origin may call with a token in Authorization, never with the
+			// admin session cookie: with credentials allowed any site opened
+			// by an admin could read the API on the admin's behalf.
+			AllowCredentials: false,
 			MaxAge:           604800,
 		}).Handler(handler)
 	}

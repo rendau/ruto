@@ -44,6 +44,8 @@ pnpm preview      # preview the production build
 
 ## Configuration
 
-Copy `.env.example` → `.env.local` and set `VITE_API_BASE_URL` if the API is on a
-different origin during development. In production the SPA is same-origin with core,
-so the default `/api` is used.
+The admin signs in with core's HttpOnly session cookie (`POST /api/session`), so the
+API must be same-origin with the page. In production core serves both. In development
+the vite dev server proxies `/api` to core: set `VITE_API_PROXY_TARGET` (default
+`http://localhost:80`) and leave `VITE_API_BASE_URL` unset — pointing it at another
+origin breaks sign-in, the browser does not send the cookie there.

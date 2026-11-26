@@ -1,5 +1,4 @@
 import { API_BASE_URL } from "./config";
-import { clearSession, getToken } from "./auth-session";
 import type { ErrorRep } from "./types";
 
 export class ApiError extends Error {
@@ -35,16 +34,19 @@ async function parseApiError(response: Response): Promise<ApiError> {
   return new ApiError(message, code, response.status, payload.fields);
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export interface FetchOptions {
+  // false: a 401 is only thrown, not reported as an ended session (the
+  // startup check of whether the user is signed in)
+  notifyAuth?: boolean;
+}
+
+// The admin token travels in the HttpOnly session cookie of /api that core
+// sets on sign-in: the page never sees it.
+export async function apiFetch<T>(path: string, init?: RequestInit, options: FetchOptions = {}): Promise<T> {
   const headers = new Headers(init?.headers || {});
   headers.set("Content-Type", "application/json");
 
-  const token = getToken();
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers, credentials: "same-origin" });
 
   if (response.ok) {
     if (response.status === 204) {
@@ -55,10 +57,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   }
 
   const parsedError = await parseApiError(response);
-  // The session has expired: the password is not kept to log in again
-  // silently, so the user signs in anew.
-  if (isAuthError(parsedError)) {
-    clearSession();
+  // The session has expired: the user signs in anew.
+  if (isAuthError(parsedError) && options.notifyAuth !== false) {
     notifyAuthRequired();
   }
   throw parsedError;

@@ -16,7 +16,16 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host,
-      port: Number.isFinite(port) && port > 0 ? port : 5173
+      port: Number.isFinite(port) && port > 0 ? port : 5173,
+      // The API is reached through the dev server, so it is same-origin as in
+      // production and the session cookie works. The Host header is kept: core
+      // compares it with Origin on state-changing requests.
+      proxy: {
+        "/api": {
+          target: env.VITE_API_PROXY_TARGET || "http://localhost:80",
+          changeOrigin: false
+        }
+      }
     },
     preview: {
       host,

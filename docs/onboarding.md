@@ -21,7 +21,7 @@
 
 4. **Админ-SPA** (опционально, для разработки фронта):
    ```bash
-   make run-admin     # vite dev-сервер, по умолчанию проксирует на http://localhost:80
+   make run-admin     # vite dev-сервер, проксирует /api на http://localhost:80 (VITE_API_PROXY_TARGET)
    ```
 
 ### Порты по умолчанию

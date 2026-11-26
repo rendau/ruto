@@ -274,6 +274,8 @@ a.Exit()   // освобождение ресурсов, код выхода
 - Внутри слоёв ошибки **оборачиваются** с именем вызванной функции: `fmt.Errorf("svc.Get: %w", err)`.
 - На границе gRPC `GrpcInterceptorError` (`internal/app/core/grpc.go`) превращает ошибку в `status` + `ruto_v1.ErrorRep{Code, Message, Fields}`. Цепочка interceptor'ов core: `CtxWithoutCancel → Session → Recovery → Error`.
 - `GrpcInterceptorSession` достаёт Bearer-токен из metadata, парсит session и кладёт в `context`; дальше usecase-слой решает вопросы доступа.
+- **Сессия админки — HttpOnly-кука** (`internal/app/core/admin_session.go`). `POST /api/session` проверяет логин и пароль и ставит куку `ruto_session` (токен, `Path=/api`, `HttpOnly`, `Secure`, `SameSite=Strict`, 12 ч) — тело ответа пустое, токен до страницы не доходит; `DELETE /api/session` куку удаляет. Для REST grpc-gateway превращает куку в metadata `authorization: Bearer …` (`runtime.WithMetadata`), если заголовка `Authorization` в запросе нет: заголовок (ключи API, скрипты с JWT из `/api/usr/login`) главнее куки.
+- **Защита от подделки запросов.** `SameSite=Strict` не пускает куку с чужих сайтов, но поддомены одного домена (любой сервис на `*.mdev.kz`) для браузера — тот же сайт. Поэтому изменяющий запрос (не GET/HEAD/OPTIONS) с одной лишь кукой проходит, только если `Origin` совпадает с `Host` (`NewSessionCSRFGuard`; браузеры шлют `Origin` с каждым POST/PUT/DELETE); вход `POST /api/session` проверяется так же. CORS (`HTTP_CORS=true`) разрешает любой origin, но без учётных данных: куку чужой сайт не отправит.
 
 ## БД
 

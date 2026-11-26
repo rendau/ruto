@@ -424,7 +424,8 @@ func (a *App) Init() error {
 
 	handler := http.NewServeMux()
 	handler.Handle("/api", http.RedirectHandler("/api/", http.StatusMovedPermanently))
-	handler.Handle("/api/", http.StripPrefix("/api", grpcGwHandler))
+	handler.Handle("/api/session", NewAdminSessionHandler(usecaseUsr))
+	handler.Handle("/api/", NewSessionCSRFGuard(http.StripPrefix("/api", grpcGwHandler)))
 	handler.Handle("/", NewAdminSPAHandler())
 
 	a.httpServer = &http.Server{
