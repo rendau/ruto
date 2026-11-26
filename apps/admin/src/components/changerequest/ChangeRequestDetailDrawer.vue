@@ -531,8 +531,6 @@ async function submitReject(): Promise<void> {
 }
 
 .diff__value {
-  max-height: 180px;
-  overflow: auto;
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;

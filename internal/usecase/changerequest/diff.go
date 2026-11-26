@@ -20,10 +20,9 @@ import (
 // secret value: a stored secret becomes the ref of its own location, and a
 // source in the request becomes a marker of that source.
 const (
-	markerRef    = "\x00ref:"
-	markerGen    = "\x00gen:"
-	markerReuse  = "\x00reuse:"
-	maxValueShow = 2000
+	markerRef   = "\x00ref:"
+	markerGen   = "\x00gen:"
+	markerReuse = "\x00reuse:"
 )
 
 func (u *Usecase) detail(ctx context.Context, item *model.ChangeRequest) (*Detail, error) {
@@ -346,9 +345,6 @@ func (u *Usecase) renderLeaf(ctx context.Context, cache *objectCache, leaf strin
 		return fmt.Sprintf("same value as generated %q", strings.TrimPrefix(leaf, markerReuse))
 	}
 
-	if len(leaf) > maxValueShow {
-		return leaf[:maxValueShow] + "…"
-	}
 	return leaf
 }
 

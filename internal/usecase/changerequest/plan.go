@@ -351,6 +351,12 @@ func (u *Usecase) applyOp(
 		if err != nil {
 			return err
 		}
+		// Transform scripts run arbitrary JS with access to all inherited
+		// variables and backend headers/params, so agents may not introduce them.
+		obj.Transform.Normalize()
+		if obj.Transform.Request != "" || obj.Transform.Response != "" {
+			return invalid("transform scripts cannot be set through change requests; edit transform in the admin UI")
+		}
 		obj.Id, obj.AppId = "", resolveApp(op.App)
 		newId, err := u.endpointUc.Create(ctx, obj)
 		if err != nil {
@@ -363,12 +369,18 @@ func (u *Usecase) applyOp(
 		if err != nil {
 			return err
 		}
+		current, _, err := u.endpointSvc.Get(ctx, op.Id, true)
+		if err != nil {
+			return err
+		}
+		obj.Transform.Normalize()
+		currentTransform := current.Transform
+		currentTransform.Normalize()
+		if obj.Transform.Request != currentTransform.Request || obj.Transform.Response != currentTransform.Response {
+			return invalid("transform scripts cannot be changed through change requests; edit transform in the admin UI")
+		}
 		obj.Id = op.Id
 		if obj.AppId == "" {
-			current, _, err := u.endpointSvc.Get(ctx, op.Id, true)
-			if err != nil {
-				return err
-			}
 			obj.AppId = current.AppId
 		}
 		obj.AppId = resolveApp(obj.AppId)
