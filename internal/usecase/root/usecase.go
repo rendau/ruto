@@ -42,6 +42,9 @@ func (u *Usecase) Get(ctx context.Context) (*model.Root, error) {
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
+	if result != nil && !u.sessionSvc.CtxIsAdmin(ctx) {
+		result = result.Redacted()
+	}
 	return result, nil
 }
 
@@ -64,6 +67,9 @@ func (u *Usecase) Interpolate(ctx context.Context, variables varsModel.Vars) (*m
 	item, err := u.svc.Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
+	}
+	if !u.sessionSvc.CtxIsAdmin(ctx) {
+		item = item.Redacted()
 	}
 
 	item.Variables = variables.Clone()

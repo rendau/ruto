@@ -198,7 +198,7 @@ func TestUsecase_EndpointInherited(t *testing.T) {
 				}, true, nil
 			},
 		},
-		&testSessionService{session: &sessionModel.Session{Id: 1, AppIds: []string{"app-1"}}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, Admin: true}},
 		&testRootService{
 			get: func(_ context.Context) (*rootModel.Root, error) {
 				return &rootModel.Root{
@@ -266,7 +266,7 @@ func TestUsecase_EndpointInterpolate(t *testing.T) {
 				}, true, nil
 			},
 		},
-		&testSessionService{session: &sessionModel.Session{Id: 1, AppIds: []string{"app-1"}}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, Admin: true}},
 		&testRootService{
 			get: func(_ context.Context) (*rootModel.Root, error) {
 				return &rootModel.Root{
@@ -309,6 +309,48 @@ func TestUsecase_EndpointInterpolate(t *testing.T) {
 		"X-Ep":       "{{ep}}",
 		"X-From-App": "app-v",
 	}, item.Backend.Headers)
+}
+
+func TestUsecase_EndpointInterpolate_RedactsRootSecretsForNonAdminOwner(t *testing.T) {
+	uc := New(
+		&testEndpointService{
+			get: func(_ context.Context, _ string, _ bool) (*endpointModel.Endpoint, bool, error) {
+				return &endpointModel.Endpoint{
+					Id:    "ep-1",
+					AppId: "app-1",
+					Backend: endpointModel.Backend{
+						Headers: varsModel.Vars{
+							"X-Root": "{{root}}",
+							"X-App":  "{{app}}",
+						},
+					},
+				}, true, nil
+			},
+		},
+		&testSessionService{session: &sessionModel.Session{Id: 2, AppIds: []string{"app-1"}}},
+		&testRootService{
+			get: func(_ context.Context) (*rootModel.Root, error) {
+				return &rootModel.Root{
+					Variables: varsModel.Vars{"root": "real-root-secret"},
+				}, nil
+			},
+		},
+		&testAppService{
+			get: func(_ context.Context, _ string, _ bool) (*appModel.App, bool, error) {
+				return &appModel.App{
+					Id:        "app-1",
+					Variables: varsModel.Vars{"app": "own-app-secret"},
+				}, true, nil
+			},
+		},
+	)
+
+	item, err := uc.Interpolate(context.Background(), "ep-1", nil)
+	require.NoError(t, err)
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Variables["root"])
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Backend.Headers["X-Root"])
+	require.Equal(t, "own-app-secret", item.Variables["app"])
+	require.Equal(t, "own-app-secret", item.Backend.Headers["X-App"])
 }
 
 func TestUsecase_EndpointWildcardPath_NeedsAppAllowWildcard(t *testing.T) {

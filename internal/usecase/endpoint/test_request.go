@@ -50,7 +50,7 @@ func (u *Usecase) TestRequest(
 		return nil, errs.NotAuthorized
 	}
 
-	epObj, appObj, err := u.resolveInherited(ctx, id, nil, true)
+	epObj, appObj, err := u.resolveInherited(ctx, id, nil, true, false)
 	if err != nil {
 		return nil, err
 	}

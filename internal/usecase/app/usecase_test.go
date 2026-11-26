@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/rendau/ruto/internal/constant"
 	appModel "github.com/rendau/ruto/internal/domain/app/model"
 	authModel "github.com/rendau/ruto/internal/domain/auth/model"
 	endpointModel "github.com/rendau/ruto/internal/domain/endpoint/model"
@@ -156,7 +157,7 @@ func TestUsecase_Interpolate(t *testing.T) {
 		},
 		nil,
 		nil,
-		&testSessionService{session: &sessionModel.Session{Id: 1, AllApps: true}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, Admin: true}},
 		&testRootService{
 			get: func(_ context.Context) (*rootModel.Root, error) {
 				return &rootModel.Root{
@@ -209,7 +210,7 @@ func TestUsecase_Inherited(t *testing.T) {
 		},
 		nil,
 		nil,
-		&testSessionService{session: &sessionModel.Session{Id: 1, AllApps: true}},
+		&testSessionService{session: &sessionModel.Session{Id: 1, Admin: true}},
 		&testRootService{
 			get: func(_ context.Context) (*rootModel.Root, error) {
 				return &rootModel.Root{
@@ -236,6 +237,49 @@ func TestUsecase_Inherited(t *testing.T) {
 		"X-Req":  "{{req_var}}",
 		"X-App":  "{{app_var}}",
 	}, item.Backend.Headers)
+}
+
+func TestUsecase_Inherited_RedactsRootSecretsForNonAdminOwner(t *testing.T) {
+	uc := New(
+		&testAppService{
+			get: func(_ context.Context, _ string, _ bool) (*appModel.App, bool, error) {
+				return &appModel.App{
+					Id:   "app-1",
+					Auth: authModel.Auth{Enabled: true, Mode: constant.AuthModeExtend},
+					Backend: appModel.Backend{
+						Headers: varsModel.Vars{
+							"X-Root": "{{root_secret}}",
+							"X-Own":  "{{own_secret}}",
+						},
+					},
+				}, true, nil
+			},
+		},
+		nil, nil,
+		&testSessionService{session: &sessionModel.Session{Id: 2, AppIds: []string{"app-1"}}},
+		&testRootService{
+			get: func(_ context.Context) (*rootModel.Root, error) {
+				return &rootModel.Root{
+					Variables: varsModel.Vars{"root_secret": "real-root-secret"},
+					Auth: authModel.Auth{
+						Enabled: true,
+						Methods: []*authModel.AuthMethod{{
+							APIKey: &authModel.AuthMethodAPIKey{
+								Keys: []authModel.AuthMethodAPIKeyItem{{Key: "real-root-key"}},
+							},
+						}},
+					},
+				}, nil
+			},
+		},
+	)
+
+	item, err := uc.Interpolate(context.Background(), "app-1", varsModel.Vars{"own_secret": "own-val"})
+	require.NoError(t, err)
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Variables["root_secret"])
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Backend.Headers["X-Root"])
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Auth.Methods[0].APIKey.Keys[0].Key)
+	require.Equal(t, "own-val", item.Backend.Headers["X-Own"])
 }
 
 func TestUsecase_GetSwaggerEndpointsDiff_NotAuthorized(t *testing.T) {
@@ -492,6 +536,9 @@ func TestUsecase_Update_SameAppNameForSelfAllowed(t *testing.T) {
 	updateCalled := false
 	uc := New(
 		&testEditAppService{
+			get: func(_ context.Context, id string, _ bool) (*appModel.App, bool, error) {
+				return &appModel.App{Id: id, Active: true, PathPrefix: "/gateway"}, true, nil
+			},
 			list: func(_ context.Context, pars *appModel.ListReq) ([]*appModel.App, int64, error) {
 				require.EqualValues(t, 1, pars.PageSize)
 				require.NotNil(t, pars.NameEqCI)
@@ -535,7 +582,7 @@ func newAllowWildcardUsecase(
 	return New(
 		&testEditAppService{
 			get: func(_ context.Context, id string, _ bool) (*appModel.App, bool, error) {
-				return &appModel.App{Id: id, AllowWildcard: currentAllow}, true, nil
+				return &appModel.App{Id: id, Active: true, PathPrefix: "/account", AllowWildcard: currentAllow}, true, nil
 			},
 			list: func(_ context.Context, _ *appModel.ListReq) ([]*appModel.App, int64, error) {
 				return nil, 0, nil
@@ -632,4 +679,114 @@ func TestUsecase_AllowWildcard_CantDisableWithWildcardEndpoints(t *testing.T) {
 	err := uc.Update(context.Background(), "app-1", allowWildcardApp(false))
 	require.EqualError(t, err, "allow_wildcard: app has wildcard endpoints: GET /docs/*")
 	require.False(t, updateCalled)
+}
+
+func TestUsecase_PathPrefix_AdminOnlyAndNoOverlap(t *testing.T) {
+	existing := []*appModel.App{
+		{Id: "app-shop", Active: true, Name: "shop", PathPrefix: "/shop"},
+		{Id: "app-v1", Active: true, Name: "orders", PathPrefix: "/api/v1"},
+		{Id: "app-x", Active: true, Name: "x", PathPrefix: "/x"},
+	}
+
+	newUC := func(session *sessionModel.Session, saved *bool) *Usecase {
+		return New(
+			&testEditAppService{
+				get: func(_ context.Context, id string, _ bool) (*appModel.App, bool, error) {
+					for _, a := range existing {
+						if a.Id == id {
+							return new(*a), true, nil
+						}
+					}
+					return nil, false, errs.ObjectNotFound
+				},
+				list: func(_ context.Context, pars *appModel.ListReq) ([]*appModel.App, int64, error) {
+					if pars.NameEqCI != nil {
+						return nil, 0, nil
+					}
+					return existing, int64(len(existing)), nil
+				},
+				create: func(_ context.Context, _ *appModel.App) (string, error) {
+					*saved = true
+					return "new-id", nil
+				},
+				update: func(_ context.Context, _ string, _ *appModel.App) error {
+					*saved = true
+					return nil
+				},
+			},
+			nil, nil,
+			&testSessionService{session: session},
+		)
+	}
+
+	admin := &sessionModel.Session{Id: 1, Admin: true}
+	owner := &sessionModel.Session{Id: 2, AppIds: []string{"app-x"}}
+
+	t.Run("non-admin owner cannot change path_prefix", func(t *testing.T) {
+		saved := false
+		err := newUC(owner, &saved).Update(context.Background(), "app-x", &appModel.App{
+			Active:     true,
+			Name:       "x",
+			PathPrefix: "/new-x",
+			Backend:    appModel.Backend{Url: "https://x.local"},
+		})
+		require.ErrorIs(t, err, errs.NoPermission)
+		require.False(t, saved)
+	})
+
+	t.Run("non-admin owner can save app with unchanged path_prefix", func(t *testing.T) {
+		saved := false
+		err := newUC(owner, &saved).Update(context.Background(), "app-x", &appModel.App{
+			Active:     true,
+			Name:       "x",
+			PathPrefix: "/x",
+			Backend:    appModel.Backend{Url: "https://x.local"},
+		})
+		require.NoError(t, err)
+		require.True(t, saved)
+	})
+
+	t.Run("create rejects identical and nested prefixes", func(t *testing.T) {
+		for _, prefix := range []string{"/shop", "/SHOP", "/shop/admin", "/api", "/api/v1/sub"} {
+			saved := false
+			_, err := newUC(admin, &saved).Create(context.Background(), &appModel.App{
+				Active:     true,
+				Name:       "other",
+				PathPrefix: prefix,
+				Backend:    appModel.Backend{Url: "https://other.local"},
+			})
+			require.Error(t, err, prefix)
+			require.Contains(t, err.Error(), "overlaps", prefix)
+			require.False(t, saved, prefix)
+		}
+	})
+
+	t.Run("update rejects changing prefix to identical or nested", func(t *testing.T) {
+		for _, prefix := range []string{"/shop", "/SHOP", "/shop/sub", "/api", "/api/v1/sub"} {
+			saved := false
+			err := newUC(admin, &saved).Update(context.Background(), "app-x", &appModel.App{
+				Active:     true,
+				Name:       "x",
+				PathPrefix: prefix,
+				Backend:    appModel.Backend{Url: "https://x.local"},
+			})
+			require.Error(t, err, prefix)
+			require.Contains(t, err.Error(), "overlaps", prefix)
+			require.False(t, saved, prefix)
+		}
+	})
+
+	t.Run("admin can create and update with non-overlapping sibling prefixes", func(t *testing.T) {
+		for _, prefix := range []string{"/shop-v2", "/api/v2", "/api/v10"} {
+			saved := false
+			_, err := newUC(admin, &saved).Create(context.Background(), &appModel.App{
+				Active:     true,
+				Name:       "sibling",
+				PathPrefix: prefix,
+				Backend:    appModel.Backend{Url: "https://sibling.local"},
+			})
+			require.NoError(t, err, prefix)
+			require.True(t, saved, prefix)
+		}
+	})
 }

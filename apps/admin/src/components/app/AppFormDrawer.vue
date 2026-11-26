@@ -167,7 +167,12 @@ async function detectSwagger(): Promise<void> {
 
         <div class="form-grid">
           <NFormItem label="Path prefix" path="path_prefix">
-            <NInput v-model:value="model.path_prefix" placeholder="/users">
+            <NInput
+              v-model:value="model.path_prefix"
+              placeholder="/users"
+              :disabled="isEdit && !authStore.isAdmin"
+              :title="isEdit && !authStore.isAdmin ? 'Only an administrator can change the path prefix' : undefined"
+            >
               <template #prefix><span class="muted mono">prefix</span></template>
             </NInput>
           </NFormItem>

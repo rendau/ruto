@@ -76,6 +76,9 @@ func (u *Usecase) Create(ctx context.Context, obj *model.App) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err = u.ensureUniquePathPrefix(ctx, obj.PathPrefix, ""); err != nil {
+		return "", err
+	}
 	if obj.AllowWildcard && !u.sessionSvc.CtxIsAdmin(ctx) {
 		return "", errs.NoPermission
 	}
@@ -145,6 +148,9 @@ func (u *Usecase) getInherited(
 	if rootObj == nil {
 		rootObj = rootModel.NewEmpty()
 	}
+	if !u.sessionSvc.CtxIsAdmin(ctx) {
+		rootObj = rootObj.Redacted()
+	}
 
 	appObj.Variables = variables.Clone()
 	rootObj.Apps = append(rootObj.Apps, appObj)
@@ -176,7 +182,19 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.App) error {
 	if err != nil {
 		return err
 	}
-	if err = u.validateAllowWildcardChange(ctx, id, obj); err != nil {
+	current, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return fmt.Errorf("svc.Get: %w", err)
+	}
+	if obj.PathPrefix != current.PathPrefix && !u.sessionSvc.CtxIsAdmin(ctx) {
+		return errs.NoPermission
+	}
+	if obj.PathPrefix != current.PathPrefix || (!current.Active && obj.Active) {
+		if err = u.ensureUniquePathPrefix(ctx, obj.PathPrefix, id); err != nil {
+			return err
+		}
+	}
+	if err = u.validateAllowWildcardChange(ctx, id, current, obj); err != nil {
 		return err
 	}
 
@@ -307,11 +325,7 @@ func (u *Usecase) canManage(ctx context.Context, id string) bool {
 // validateAllowWildcardChange lets only admins toggle allow_wildcard, and refuses
 // to turn it off while wildcard endpoints exist: such an app would fail
 // normalization and block the snapshot for every app.
-func (u *Usecase) validateAllowWildcardChange(ctx context.Context, id string, obj *model.App) error {
-	current, _, err := u.svc.Get(ctx, id, true)
-	if err != nil {
-		return fmt.Errorf("svc.Get: %w", err)
-	}
+func (u *Usecase) validateAllowWildcardChange(ctx context.Context, id string, current, obj *model.App) error {
 	if obj.AllowWildcard == current.AllowWildcard {
 		return nil
 	}
@@ -387,4 +401,31 @@ func (u *Usecase) ensureUniqueAppName(ctx context.Context, appName, selfID strin
 			"name": "already exists",
 		},
 	}
+}
+
+func (u *Usecase) ensureUniquePathPrefix(ctx context.Context, pathPrefix, selfID string) error {
+	listReq := &model.ListReq{}
+	if selfID != "" {
+		listReq.ExcludeID = &selfID
+	}
+
+	items, _, err := u.svc.List(ctx, listReq)
+	if err != nil {
+		return fmt.Errorf("svc.List: %w", err)
+	}
+	for _, other := range items {
+		if other == nil || other.Id == selfID {
+			continue
+		}
+		if model.PathPrefixesOverlap(pathPrefix, other.PathPrefix) {
+			return errs.ErrFull{
+				Err:  errs.InvalidRequest,
+				Desc: fmt.Sprintf("path_prefix %q overlaps with app %q (%s)", pathPrefix, other.Name, other.PathPrefix),
+				Fields: map[string]string{
+					"path_prefix": fmt.Sprintf("conflicts with %s (%s)", other.Name, other.PathPrefix),
+				},
+			}
+		}
+	}
+	return nil
 }

@@ -105,6 +105,14 @@ func (s *testSessionService) CtxIsAuthorized(_ context.Context) bool {
 	return s.session.IsAuthorized()
 }
 
+func (s *testSessionService) CtxHasFullAppAccess(_ context.Context) bool {
+	return s.session.IsAdmin() || (s.session.IsAuthorized() && s.session.AllApps)
+}
+
+func (s *testSessionService) CtxGetAppIds(_ context.Context) []string {
+	return s.session.AppIds
+}
+
 func TestUsecase_Deploy(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -112,7 +120,9 @@ func TestUsecase_Deploy(t *testing.T) {
 		wantErr error
 	}{
 		{name: "anonymous", session: sessionModel.New(0), wantErr: errs.NotAuthorized},
-		{name: "user", session: &sessionModel.Session{Id: 2}},
+		{name: "read-only user", session: &sessionModel.Session{Id: 2}, wantErr: errs.NoPermission},
+		{name: "app owner", session: &sessionModel.Session{Id: 3, AppIds: []string{"app-1"}}},
+		{name: "all_apps user", session: &sessionModel.Session{Id: 4, AllApps: true}},
 		{name: "admin", session: &sessionModel.Session{Id: 1, Admin: true}},
 	}
 

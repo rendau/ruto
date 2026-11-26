@@ -67,12 +67,15 @@ func (u *Usecase) Get(ctx context.Context) ([]byte, error) {
 	return result.Data, nil
 }
 
-// Deploy publishes the saved config to gateways. Any logged-in user may run
-// it: the button is shown to every user, and it only publishes what editors
-// already saved within their own permissions.
+// Deploy publishes the saved config to gateways. Allowed for users who can
+// edit at least one app (admins, all_apps, or assigned app_ids); read-only
+// viewers cannot publish.
 func (u *Usecase) Deploy(ctx context.Context) error {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return errs.NotAuthorized
+	}
+	if !u.sessionSvc.CtxHasFullAppAccess(ctx) && len(u.sessionSvc.CtxGetAppIds(ctx)) == 0 {
+		return errs.NoPermission
 	}
 
 	if err := u.Refresh(ctx); err != nil {

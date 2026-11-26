@@ -228,6 +228,7 @@ onBeforeUnmount(() => {
           <span class="snapshot-chip__value mono">{{ shortVersion }}</span>
         </div>
         <NButton
+          v-if="authStore.canDeploy"
           size="small"
           tertiary
           :loading="deploying"

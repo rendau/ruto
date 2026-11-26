@@ -22,7 +22,7 @@ func (s *testBackfillAppService) List(ctx context.Context, pars *appModel.ListRe
 }
 
 func (s *testBackfillAppService) Get(_ context.Context, id string, _ bool) (*appModel.App, bool, error) {
-	return &appModel.App{Id: id}, true, nil
+	return &appModel.App{Id: id, PathPrefix: "/svc1"}, true, nil
 }
 
 func (s *testBackfillAppService) Create(_ context.Context, _ *appModel.App) (string, error) {

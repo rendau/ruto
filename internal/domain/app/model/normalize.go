@@ -12,6 +12,19 @@ var (
 	pathPrefixPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*$`)
 )
 
+// PathPrefixesOverlap reports whether two normalized path prefixes are equal or
+// one is nested inside the other (case-insensitively, matching gateway routing).
+// Sibling prefixes that only share a character prefix ("/shop" and "/shop-v2")
+// do not overlap.
+func PathPrefixesOverlap(a, b string) bool {
+	a = strings.ToLower(a)
+	b = strings.ToLower(b)
+	if a == "" || b == "" {
+		return false
+	}
+	return a == b || strings.HasPrefix(a, b+"/") || strings.HasPrefix(b, a+"/")
+}
+
 func (m *App) Normalize() error {
 	m.Group = strings.TrimSpace(m.Group)
 	m.PathPrefix = strings.Trim(strings.TrimSpace(m.PathPrefix), "/")

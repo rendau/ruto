@@ -11,6 +11,8 @@ import (
 
 type SessionServiceI interface {
 	CtxIsAuthorized(ctx context.Context) bool
+	CtxHasFullAppAccess(ctx context.Context) bool
+	CtxGetAppIds(ctx context.Context) []string
 }
 
 type ServiceI interface {

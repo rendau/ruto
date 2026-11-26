@@ -44,6 +44,51 @@ func (s *testSessionService) CtxIsAdmin(_ context.Context) bool {
 	return s.session.IsAdmin()
 }
 
+func TestUsecase_Get_RedactsForNonAdmin(t *testing.T) {
+	rootObj := &rootModel.Root{
+		BaseUrl: "https://api.example.com",
+		Variables: varsModel.Vars{
+			"BACKEND_TOKEN": "real-token",
+		},
+		Auth: authModel.Auth{
+			Enabled: true,
+			Methods: []*authModel.AuthMethod{
+				{
+					Basic: &authModel.AuthMethodBasic{
+						Users: []authModel.AuthMethodBasicUser{{Username: "u", Password: "real-password"}},
+					},
+				},
+				{
+					APIKey: &authModel.AuthMethodAPIKey{
+						Header: "X-Key",
+						Keys:   []authModel.AuthMethodAPIKeyItem{{Name: "svc", Key: "real-key"}},
+					},
+				},
+			},
+		},
+	}
+
+	nonAdminUc := New(&testRootService{item: rootObj}, &testSessionService{
+		session: &sessionModel.Session{Id: 2, AppIds: []string{"app-1"}},
+	})
+	got, err := nonAdminUc.Get(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "https://api.example.com", got.BaseUrl)
+	require.Equal(t, varsModel.RedactedPlaceholder, got.Variables["BACKEND_TOKEN"])
+	require.Equal(t, varsModel.RedactedPlaceholder, got.Auth.Methods[0].Basic.Users[0].Password)
+	require.Equal(t, varsModel.RedactedPlaceholder, got.Auth.Methods[1].APIKey.Keys[0].Key)
+	require.Equal(t, "svc", got.Auth.Methods[1].APIKey.Keys[0].Name)
+
+	adminUc := New(&testRootService{item: rootObj}, &testSessionService{
+		session: &sessionModel.Session{Id: 1, Admin: true},
+	})
+	gotAdmin, err := adminUc.Get(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "real-token", gotAdmin.Variables["BACKEND_TOKEN"])
+	require.Equal(t, "real-password", gotAdmin.Auth.Methods[0].Basic.Users[0].Password)
+	require.Equal(t, "real-key", gotAdmin.Auth.Methods[1].APIKey.Keys[0].Key)
+}
+
 func TestUsecase_Interpolate(t *testing.T) {
 	uc := New(&testRootService{
 		item: &rootModel.Root{
@@ -62,7 +107,7 @@ func TestUsecase_Interpolate(t *testing.T) {
 			},
 		},
 	}, &testSessionService{
-		session: &sessionModel.Session{Id: 1},
+		session: &sessionModel.Session{Id: 1, Admin: true},
 	})
 
 	item, err := uc.Interpolate(context.Background(), varsModel.Vars{
@@ -77,6 +122,28 @@ func TestUsecase_Interpolate(t *testing.T) {
 		"db_user": "request-user",
 	}, item.Variables)
 	require.Equal(t, []authModel.AuthMethodAPIKeyItem{{Key: "request-user"}, {Key: "{{db_pass}}"}, {Key: "abc123"}}, item.Auth.Methods[0].APIKey.Keys)
+}
+
+func TestUsecase_Interpolate_RedactsForNonAdmin(t *testing.T) {
+	uc := New(&testRootService{
+		item: &rootModel.Root{
+			Auth: authModel.Auth{
+				Methods: []*authModel.AuthMethod{
+					{
+						APIKey: &authModel.AuthMethodAPIKey{
+							Keys: []authModel.AuthMethodAPIKeyItem{{Key: "real-key"}},
+						},
+					},
+				},
+			},
+		},
+	}, &testSessionService{
+		session: &sessionModel.Session{Id: 2, AppIds: []string{"app-1"}},
+	})
+
+	item, err := uc.Interpolate(context.Background(), nil)
+	require.NoError(t, err)
+	require.Equal(t, varsModel.RedactedPlaceholder, item.Auth.Methods[0].APIKey.Keys[0].Key)
 }
 
 func TestUsecase_Interpolate_NotAuthorized(t *testing.T) {

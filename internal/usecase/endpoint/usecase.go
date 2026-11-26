@@ -232,7 +232,7 @@ func (u *Usecase) getInherited(
 		return nil, errs.NotAuthorized
 	}
 
-	epObj, _, err := u.resolveInherited(ctx, id, variables, withInterpolate)
+	epObj, _, err := u.resolveInherited(ctx, id, variables, withInterpolate, !u.sessionSvc.CtxIsAdmin(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -270,6 +270,7 @@ func (u *Usecase) resolveInherited(
 	id string,
 	variables varsModel.Vars,
 	withInterpolate bool,
+	redactRoot bool,
 ) (*model.Endpoint, *appModel.App, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
@@ -298,6 +299,9 @@ func (u *Usecase) resolveInherited(
 	}
 	if rootObj == nil {
 		rootObj = rootModel.NewEmpty()
+	}
+	if redactRoot {
+		rootObj = rootObj.Redacted()
 	}
 
 	epObj.Variables = variables.Clone()

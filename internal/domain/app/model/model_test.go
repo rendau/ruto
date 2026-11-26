@@ -178,3 +178,25 @@ func TestAppNormalize_WildcardEndpointNeedsAllowWildcard(t *testing.T) {
 	require.EqualError(t, newApp(false).Normalize(), "endpoints[1]: http: path: wildcard '*' is not allowed for this app")
 	require.NoError(t, newApp(true).Normalize())
 }
+
+func TestPathPrefixesOverlap(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want bool
+	}{
+		{"/shop", "/shop", true},
+		{"/shop", "/SHOP", true},
+		{"/shop", "/shop/admin", true},
+		{"/shop/admin", "/shop", true},
+		{"/api/v1", "/API/v1/orders", true},
+		{"/shop", "/shop-admin", false},
+		{"/api/v1", "/api/v10", false},
+		{"/api/v1", "/api/v2", false},
+		{"/shop", "/orders", false},
+		{"", "/shop", false},
+	}
+
+	for _, tt := range tests {
+		require.Equal(t, tt.want, PathPrefixesOverlap(tt.a, tt.b), "%q vs %q", tt.a, tt.b)
+	}
+}

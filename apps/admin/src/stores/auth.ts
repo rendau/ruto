@@ -23,6 +23,7 @@ export const useAuthStore = defineStore("auth", () => {
   // Full app access: admins and users flagged with all_apps may manage every app.
   const hasFullAppAccess = computed(() => Boolean(profile.value?.is_admin || profile.value?.all_apps));
   const ownAppIds = computed(() => profile.value?.app_ids ?? []);
+  const canDeploy = computed(() => hasFullAppAccess.value || ownAppIds.value.length > 0);
 
   // canManageApp reports whether the current user may edit/test the given app.
   // Other apps remain visible but read-only.
@@ -87,6 +88,7 @@ export const useAuthStore = defineStore("auth", () => {
     isAdmin,
     hasFullAppAccess,
     ownAppIds,
+    canDeploy,
     canManageApp,
     initialize,
     login,
