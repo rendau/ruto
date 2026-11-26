@@ -74,6 +74,7 @@ Env: copy `config/core.env.example` → `.env.core` and `config/gateway.env.exam
   - OAuth для MCP: ещё `MCP_OAUTH_ENABLED=true MCP_PUBLIC_URL=http://localhost:5060 MCP_OAUTH_ADMIN_URL=http://localhost:5173`. Клиента регистрировать с адресом возврата `http://localhost:18099/callback` (loopback разрешён по умолчанию; там никто не слушает — код берётся из адресной строки после «Allow»), страница согласия — `http://localhost:5173/oauth/authorize?...`.
 - **gateway (нужен только для проверок трафика):** `go build -o <scratchpad>/stand/gateway cmd/gateway/main.go`, запуск оттуда же после core:
   `HTTP_PORT=8088 SYSTEM_PORT=3004 CORE_GRPC_ADDRESS=localhost:5050 ./gateway` → трафик на `http://localhost:8088/<path_prefix>/...`.
+  - Проверка токена шлюзов: core с `GATEWAY_TOKEN=stand-gw-token`, шлюз с `CORE_TOKEN=stand-gw-token` (без токена у core проверка выключена; шлюз без токена при заданном у core получает `Unauthenticated`).
   - Бэкенд-заглушка для приложений стенда: любой локальный http-сервер на `http://127.0.0.1:18081`.
   - Отчёт о замеченных адресах шлюз шлёт в core раз в 30 с — после запросов ждать до полуминуты.
 - **admin (vite):** `VITE_API_BASE_URL=http://localhost:9090/api VITE_HOST=localhost VITE_PORT=5173 pnpm --dir apps/admin dev` → `http://localhost:5173`

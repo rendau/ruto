@@ -32,6 +32,8 @@
 | `GRPC_PORT` | 5050 | задаётся вручную |
 | `HTTP_PORT` | 80 | задаётся вручную |
 
+`GATEWAY_TOKEN` (core) и `CORE_TOKEN` (gateway) — один и тот же общий токен шлюзов: без него любой, кто дотянулся до gRPC-порта core, читает конфигурацию со всеми секретами (`Snapshot.Get`). Пустой — проверка выключена (удобно локально), в кластере задаётся обоим, например сгенерированным в kusec значением. См. [architecture.md](architecture.md#snapshot-как-конфиг-попадает-из-core-в-gateway).
+
 Кэш: если задан `REDIS_ADDR` — Redis, иначе in-memory.
 
 `BACKEND_IDLE_CONN_TIMEOUT` (gateway, по умолчанию `4s`) — сколько шлюз держит
