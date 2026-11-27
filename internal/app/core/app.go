@@ -94,6 +94,7 @@ type App struct {
 	oauthUsecase         *usecaseOAuthP.Usecase
 	blockedClientUsecase *usecaseBlockedClientP.Usecase
 	clientStatUsecase    *usecaseClientStatP.Usecase
+	seenOriginUsecase    *usecaseSeenOriginP.Usecase
 
 	exitCode int
 }
@@ -208,8 +209,8 @@ func (a *App) Init() error {
 	// seen origin
 	domainSeenOriginRepoDb := domainSeenOriginRepoDbP.New(a.pgpool)
 	domainSeenOriginService := domainSeenOriginServiceP.New(domainSeenOriginRepoDb)
-	usecaseSeenOrigin := usecaseSeenOriginP.New(domainSeenOriginService, sessionService)
-	handlerGrpcSeenOrigin := handlerGrpcP.NewSeenOrigin(usecaseSeenOrigin)
+	a.seenOriginUsecase = usecaseSeenOriginP.New(domainSeenOriginService, sessionService)
+	handlerGrpcSeenOrigin := handlerGrpcP.NewSeenOrigin(a.seenOriginUsecase)
 
 	// blocked client: the domain service, needed by client stat too
 	domainBlockedClientRepoDb := domainBlockedClientRepoDbP.New(a.pgpool)
@@ -227,7 +228,7 @@ func (a *App) Init() error {
 		cacheService.NewChildInstance("gateway:"),
 		gatewaysService,
 		usecaseSeenPath,
-		usecaseSeenOrigin,
+		a.seenOriginUsecase,
 		a.clientStatUsecase,
 	)
 	handlerGrpcGateway := handlerGrpcP.NewGateway(usecaseGateway)
@@ -350,7 +351,7 @@ func (a *App) Init() error {
 			usecaseApp,
 			usecaseEndpoint,
 			usecaseSeenPath,
-			usecaseSeenOrigin,
+			a.seenOriginUsecase,
 			usecaseSnapshot,
 			usecaseGateway,
 			usecaseMonitoring,
@@ -494,6 +495,7 @@ func (a *App) Start() error {
 	go a.oauthUsecase.RunCleanup(a.ctx, time.Hour)
 	go a.blockedClientUsecase.RunPrune(a.ctx, time.Hour)
 	go a.clientStatUsecase.RunPrune(a.ctx, time.Hour)
+	go a.seenOriginUsecase.RunPrune(a.ctx, time.Hour)
 
 	return nil
 }

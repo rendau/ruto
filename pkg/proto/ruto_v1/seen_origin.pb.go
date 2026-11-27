@@ -184,11 +184,12 @@ func (x *SeenOriginDeleteReq) GetOrigins() []string {
 }
 
 type SeenOriginMain struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Origin          string                 `protobuf:"bytes,1,opt,name=origin,proto3" json:"origin,omitempty"`
-	Hits            int64                  `protobuf:"varint,2,opt,name=hits,proto3" json:"hits,omitempty"`
-	FirstSeenAtUnix int64                  `protobuf:"varint,3,opt,name=first_seen_at_unix,json=firstSeenAtUnix,proto3" json:"first_seen_at_unix,omitempty"`
-	LastSeenAtUnix  int64                  `protobuf:"varint,4,opt,name=last_seen_at_unix,json=lastSeenAtUnix,proto3" json:"last_seen_at_unix,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Origin string                 `protobuf:"bytes,1,opt,name=origin,proto3" json:"origin,omitempty"`
+	// requests over the last 7 days, today included
+	Hits            int64 `protobuf:"varint,2,opt,name=hits,proto3" json:"hits,omitempty"`
+	FirstSeenAtUnix int64 `protobuf:"varint,3,opt,name=first_seen_at_unix,json=firstSeenAtUnix,proto3" json:"first_seen_at_unix,omitempty"`
+	LastSeenAtUnix  int64 `protobuf:"varint,4,opt,name=last_seen_at_unix,json=lastSeenAtUnix,proto3" json:"last_seen_at_unix,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }

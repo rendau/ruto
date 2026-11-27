@@ -3502,7 +3502,8 @@
         },
         "hits": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "title": "requests over the last 7 days, today included"
         },
         "first_seen_at_unix": {
           "type": "string",

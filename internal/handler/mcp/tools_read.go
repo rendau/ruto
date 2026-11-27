@@ -64,7 +64,7 @@ func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_seen_origins",
-		Description: "Browser origins (Origin header, scheme://host[:port]) that called the gateway, with hit counts, most requested first, and whether each is admitted by the current CORS allow_origins. Use it to fill root cors.allow_origins from real traffic (update_root in propose_changes).",
+		Description: "Browser origins (Origin header, scheme://host[:port]) that called the gateway, with hit counts over the last 7 days, most requested first, and whether each is admitted by the current CORS allow_origins. Use it to fill root cors.allow_origins from real traffic (update_root in propose_changes).",
 	}, s.listSeenOrigins)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
@@ -414,7 +414,7 @@ func (s *sessionServer) listSeenPaths(ctx context.Context, req *mcpsdk.CallToolR
 
 type SeenOriginOut struct {
 	Origin      string `json:"origin"`
-	Hits        int64  `json:"hits"`
+	Hits        int64  `json:"hits"` // requests over the last 7 days
 	FirstSeenAt string `json:"first_seen_at"`
 	LastSeenAt  string `json:"last_seen_at"`
 	// Allowed: the origin is admitted by the current root cors.allow_origins

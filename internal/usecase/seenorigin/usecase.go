@@ -3,7 +3,9 @@ package seenorigin
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
 
@@ -14,12 +16,14 @@ import (
 type Usecase struct {
 	svc        ServiceI
 	sessionSvc SessionServiceI
+	now        func() time.Time
 }
 
 func New(svc ServiceI, sessionSvc SessionServiceI) *Usecase {
 	return &Usecase{
 		svc:        svc,
 		sessionSvc: sessionSvc,
+		now:        time.Now,
 	}
 }
 
@@ -33,7 +37,7 @@ func (u *Usecase) Report(ctx context.Context, items []*model.SeenOrigin) error {
 		return nil
 	}
 
-	if err := u.svc.Add(ctx, items); err != nil {
+	if err := u.svc.Add(ctx, u.now(), items); err != nil {
 		return fmt.Errorf("svc.Add: %w", err)
 	}
 
@@ -41,12 +45,13 @@ func (u *Usecase) Report(ctx context.Context, items []*model.SeenOrigin) error {
 }
 
 // List is open to any logged-in user: it shows host names only, no secrets.
+// Hits cover the last model.WindowDays days.
 func (u *Usecase) List(ctx context.Context) ([]*model.SeenOrigin, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
 
-	items, err := u.svc.List(ctx)
+	items, err := u.svc.List(ctx, u.now())
 	if err != nil {
 		return nil, fmt.Errorf("svc.List: %w", err)
 	}
@@ -85,6 +90,35 @@ func (u *Usecase) Clear(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// Prune deletes the days that left the window.
+func (u *Usecase) Prune(ctx context.Context) {
+	n, err := u.svc.Prune(ctx, u.now())
+	if err != nil {
+		slog.Error("seen origins: prune", "error", err)
+		return
+	}
+	if n > 0 {
+		slog.Info("seen origins: old days pruned", "rows", n)
+	}
+}
+
+// RunPrune prunes every interval until ctx is done. Several core replicas
+// pruning at once is harmless.
+func (u *Usecase) RunPrune(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		u.Prune(ctx)
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }
 
 func (u *Usecase) checkWrite(ctx context.Context) error {

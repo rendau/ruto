@@ -3,6 +3,7 @@ package seenorigin
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -19,18 +20,28 @@ func (s *testSession) CtxIsAuthorized(_ context.Context) bool { return s.authori
 func (s *testSession) CtxIsAdmin(_ context.Context) bool      { return s.admin }
 
 type testService struct {
-	added   []*model.SeenOrigin
-	deleted []string
-	cleared int
+	added    []*model.SeenOrigin
+	addedAt  time.Time
+	listedAt time.Time
+	prunedAt time.Time
+	deleted  []string
+	cleared  int
 }
 
-func (s *testService) Add(_ context.Context, items []*model.SeenOrigin) error {
+func (s *testService) Add(_ context.Context, now time.Time, items []*model.SeenOrigin) error {
+	s.addedAt = now
 	s.added = append(s.added, items...)
 	return nil
 }
 
-func (s *testService) List(_ context.Context) ([]*model.SeenOrigin, error) {
+func (s *testService) List(_ context.Context, now time.Time) ([]*model.SeenOrigin, error) {
+	s.listedAt = now
 	return []*model.SeenOrigin{{Origin: "https://app.example.com", Hits: 5}}, nil
+}
+
+func (s *testService) Prune(_ context.Context, now time.Time) (int64, error) {
+	s.prunedAt = now
+	return 0, nil
 }
 
 func (s *testService) DeleteItems(_ context.Context, origins []string) error {
@@ -88,4 +99,20 @@ func TestUsecase_DeleteAndClear_AdminOnly(t *testing.T) {
 
 	require.NoError(t, uc.Clear(context.Background()))
 	require.Equal(t, 1, svc.cleared)
+}
+
+func TestUsecase_UsesItsClock(t *testing.T) {
+	now := time.Date(2026, 11, 27, 10, 0, 0, 0, time.UTC)
+	svc := &testService{}
+	uc := New(svc, &testSession{authorized: true})
+	uc.now = func() time.Time { return now }
+
+	require.NoError(t, uc.Report(context.Background(), []*model.SeenOrigin{{Origin: "https://a.example", Hits: 1}}))
+	_, err := uc.List(context.Background())
+	require.NoError(t, err)
+	uc.Prune(context.Background())
+
+	require.Equal(t, now, svc.addedAt)
+	require.Equal(t, now, svc.listedAt)
+	require.Equal(t, now, svc.prunedAt)
 }

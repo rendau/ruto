@@ -36,6 +36,7 @@ message SeenOriginDeleteReq {
 
 message SeenOriginMain {
   string origin = 1;
+  // requests over the last 7 days, today included
   int64 hits = 2;
   int64 first_seen_at_unix = 3;
   int64 last_seen_at_unix = 4;

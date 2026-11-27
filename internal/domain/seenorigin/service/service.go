@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/rendau/ruto/internal/domain/seenorigin/model"
 )
@@ -13,15 +14,17 @@ type Service struct {
 
 func New(repoDb RepoDbI) *Service { return &Service{repoDb: repoDb} }
 
-func (s *Service) Add(ctx context.Context, items []*model.SeenOrigin) error {
-	if err := s.repoDb.Add(ctx, items); err != nil {
+// Add counts the hits of a gateway report into the day of now.
+func (s *Service) Add(ctx context.Context, now time.Time, items []*model.SeenOrigin) error {
+	if err := s.repoDb.Add(ctx, now, items); err != nil {
 		return fmt.Errorf("repoDb.Add: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) List(ctx context.Context) ([]*model.SeenOrigin, error) {
-	items, err := s.repoDb.List(ctx)
+// List gives the origins with their hits over the window ending today.
+func (s *Service) List(ctx context.Context, now time.Time) ([]*model.SeenOrigin, error) {
+	items, err := s.repoDb.List(ctx, model.WindowStart(now))
 	if err != nil {
 		return nil, fmt.Errorf("repoDb.List: %w", err)
 	}
@@ -40,4 +43,13 @@ func (s *Service) DeleteAll(ctx context.Context) error {
 		return fmt.Errorf("repoDb.DeleteAll: %w", err)
 	}
 	return nil
+}
+
+// Prune deletes the days that left the window ending today.
+func (s *Service) Prune(ctx context.Context, now time.Time) (int64, error) {
+	n, err := s.repoDb.DeleteDaysBefore(ctx, model.WindowStart(now))
+	if err != nil {
+		return 0, fmt.Errorf("repoDb.DeleteDaysBefore: %w", err)
+	}
+	return n, nil
 }

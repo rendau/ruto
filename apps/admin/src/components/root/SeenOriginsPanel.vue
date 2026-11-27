@@ -97,8 +97,8 @@ onMounted(load);
         <span class="origins__title">Seen origins</span>
         <p class="muted origins__sub">
           Where browsers call the gateway from (the <code>Origin</code> header), whether CORS admits them
-          or not. Add one to <b>Allow origins</b> with a click, then save. Gateways report about every
-          30 seconds.
+          or not, with the requests of the last 7 days. Add one to <b>Allow origins</b> with a click, then
+          save. Gateways report about every 30 seconds.
         </p>
       </div>
       <div class="origins__actions">
@@ -144,7 +144,7 @@ onMounted(load);
           <code class="origins__origin">{{ row.item.origin }}</code>
           <NTag v-if="row.allowed" size="small" type="success" :bordered="false">allowed</NTag>
           <NTag v-else-if="corsEnabled" size="small" type="warning" :bordered="false">not allowed</NTag>
-          <span class="origins__hits mono" title="Requests with this origin">
+          <span class="origins__hits mono" title="Requests with this origin in the last 7 days">
             {{ row.item.hits.toLocaleString() }}
           </span>
           <span class="origins__age muted">{{ formatUnixAge(row.item.last_seen_at_unix) }}</span>
