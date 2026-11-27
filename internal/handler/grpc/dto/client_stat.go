@@ -13,12 +13,13 @@ import (
 
 func DecodeGatewayClientStat(v *ruto_v1.GatewayClientStat, _ int) *model.ClientStat {
 	return &model.ClientStat{
-		Ip:       v.Ip,
-		Trusted:  v.Trusted,
-		Requests: v.Requests,
-		Blocked:  v.Blocked,
-		Limited:  v.Limited,
-		LastRule: v.LastRule,
+		Ip:         v.Ip,
+		Trusted:    v.Trusted,
+		Requests:   v.Requests,
+		Preflights: v.Preflights,
+		Blocked:    v.Blocked,
+		Limited:    v.Limited,
+		LastRule:   v.LastRule,
 	}
 }
 
@@ -95,6 +96,7 @@ func EncodeClientStatItem(v *usecase.TopItem, _ int) *ruto_v1.ClientStatItem {
 		LastRule:        v.LastRule,
 		FirstSeenAtUnix: v.FirstSeenAt.Unix(),
 		LastSeenAtUnix:  v.LastSeenAt.Unix(),
+		Preflights:      v.Preflights,
 		Block:           encodeClientStatBlock(v.Block),
 		PeakRpm:         model.PerMinute(v.PeakRequests),
 		RecentRpm:       model.PerMinute(v.RecentRequests),

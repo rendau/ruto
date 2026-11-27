@@ -2878,12 +2878,17 @@
         "peak_rpm": {
           "type": "number",
           "format": "double",
-          "title": "requests per minute in the busiest 5-minute step of the range"
+          "title": "requests per minute in the busiest 5-minute step of the range, CORS\npreflights left out (rate limits never count them)"
         },
         "recent_rpm": {
           "type": "number",
           "format": "double",
-          "title": "requests per minute in the last full 5-minute step (it starts at\nClientStatTopRep.recent_from_unix; 0 when the client sent nothing then)"
+          "title": "requests per minute in the last full 5-minute step (it starts at\nClientStatTopRep.recent_from_unix; 0 when the client sent nothing then),\nCORS preflights left out"
+        },
+        "preflights": {
+          "type": "string",
+          "format": "int64",
+          "title": "CORS preflights among requests that the gateway answered itself"
         }
       }
     },

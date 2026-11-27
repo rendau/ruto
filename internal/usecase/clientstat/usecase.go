@@ -57,8 +57,8 @@ func New(svc ServiceI, blockedSvc BlockedClientServiceI, rootSvc RootServiceI, s
 func (u *Usecase) Report(ctx context.Context, items []*model.ClientStat) error {
 	items = lo.Filter(items, func(v *model.ClientStat, _ int) bool {
 		return v != nil &&
-			v.Requests >= 0 && v.Blocked >= 0 && v.Limited >= 0 &&
-			v.Requests+v.Blocked+v.Limited > 0 &&
+			v.Requests >= 0 && v.Preflights >= 0 && v.Blocked >= 0 && v.Limited >= 0 &&
+			v.Requests+v.Preflights+v.Blocked+v.Limited > 0 &&
 			len(v.Ip) <= maxFieldLen && len(v.Trusted) <= maxFieldLen && len(v.LastRule) <= maxFieldLen
 	})
 	if len(items) == 0 {

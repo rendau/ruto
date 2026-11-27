@@ -102,11 +102,15 @@ message ClientStatItem {
   int64 last_seen_at_unix = 8;
   // the active block covering ip, if any
   ClientStatBlock block = 9;
-  // requests per minute in the busiest 5-minute step of the range
+  // requests per minute in the busiest 5-minute step of the range, CORS
+  // preflights left out (rate limits never count them)
   double peak_rpm = 10;
   // requests per minute in the last full 5-minute step (it starts at
-  // ClientStatTopRep.recent_from_unix; 0 when the client sent nothing then)
+  // ClientStatTopRep.recent_from_unix; 0 when the client sent nothing then),
+  // CORS preflights left out
   double recent_rpm = 11;
+  // CORS preflights among requests that the gateway answered itself
+  int64 preflights = 12;
 }
 
 message ClientStatBlock {

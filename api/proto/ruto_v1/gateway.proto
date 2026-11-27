@@ -64,6 +64,9 @@ message GatewayClientStat {
   int64 limited = 5;
   // label of the rule of the latest rejection ("" when none)
   string last_rule = 6;
+  // CORS preflights among requests that the gateway answered itself: they
+  // reach no endpoint, so no rate limit counts them
+  int64 preflights = 7;
 }
 
 message GatewaySeenOrigin {

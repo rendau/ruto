@@ -110,7 +110,7 @@ func TestCollector_DrainBounded(t *testing.T) {
 
 func TestCollector_Restore(t *testing.T) {
 	c := NewCollector(100)
-	recordIP(c, "203.0.113.7", counter{requests: 3, limited: 1, lastRule: "old", ruleAt: 1})
+	recordIP(c, "203.0.113.7", counter{requests: 3, preflights: 2, limited: 1, lastRule: "old", ruleAt: 1})
 	recordIP(c, "2001:db8::1", counter{requests: 1})
 	c.record(key{}, counter{requests: 2, lastRule: "x", ruleAt: 1})
 	c.record(key{prefix: netip.MustParsePrefix("10.1.2.3/32"), trusted: "ci"}, counter{requests: 4})
@@ -120,7 +120,7 @@ func TestCollector_Restore(t *testing.T) {
 	c.Restore(failed)
 
 	got := byIP(c.Drain())
-	assert.Equal(t, &Item{Ip: "203.0.113.7", Requests: 4, Limited: 2, LastRule: "new"}, got["|203.0.113.7"])
+	assert.Equal(t, &Item{Ip: "203.0.113.7", Requests: 4, Preflights: 2, Limited: 2, LastRule: "new"}, got["|203.0.113.7"])
 	assert.Equal(t, int64(1), got["|2001:db8::/64"].Requests)
 	assert.Equal(t, &Item{Requests: 2, LastRule: "x"}, got["|"])
 	assert.Equal(t, &Item{Ip: "10.1.2.3/32", Trusted: "ci", Requests: 4}, got["ci|10.1.2.3/32"])

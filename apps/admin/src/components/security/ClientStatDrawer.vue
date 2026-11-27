@@ -211,6 +211,10 @@ function relative(unix: number): string {
         <p class="cs__note muted">
           Requests per minute: peak — the busiest 5 minutes of the {{ period }}, now —
           {{ recentSpan }}.
+          <template v-if="item.preflights">
+            CORS preflights ({{ item.preflights.toLocaleString() }} in the {{ period }}) are left
+            out: the gateway answers them itself and no rate limit counts them.
+          </template>
           <template v-if="isTrusted">A trusted client skips rate limits.</template>
           <template v-else-if="ipLimit">
             Limit: {{ ipLimitLabel(ipLimit) }}. Every gateway pod counts on its own, so with

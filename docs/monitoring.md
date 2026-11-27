@@ -92,6 +92,9 @@ not need Prometheus: core stores these counters itself, in PostgreSQL.
     busiest first, with the active block covering each of them. Each client also has
     `peak_rpm` — requests per minute in its busiest 5-minute bucket of the range — and
     `recent_rpm` — in the last full bucket (it starts at `recent_from_unix` of the reply).
+    Both leave out `preflights` — CORS preflights (`OPTIONS`) the gateway answered itself with
+    Root CORS on: they reach no endpoint, so no rate limit counts them. They stay in `requests`.
+    With Root CORS off a preflight goes to the backend like any request and is limited as one.
     `ip_limits` are the Root rate-limit rules with `key: ip`, strictest first: only they count
     every request of a client through the whole gateway, as these counters do, so the admin
     shows a client's rate as a share of the strictest one ("92% of limit"; trusted clients skip

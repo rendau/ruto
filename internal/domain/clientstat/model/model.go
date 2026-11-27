@@ -18,9 +18,12 @@ type ClientStat struct {
 	Ip       string
 	Trusted  string
 	Requests int64
-	Blocked  int64
-	Limited  int64
-	LastRule string
+	// CORS preflights among Requests that the gateway answered itself: no
+	// rate limit counts them
+	Preflights int64
+	Blocked    int64
+	Limited    int64
+	LastRule   string
 }
 
 // Point is the sum of one step of a timeline; Ts is the start of the step.
@@ -66,15 +69,18 @@ type Item struct {
 	Ip       string
 	Trusted  string
 	Requests int64
-	Blocked  int64
-	Limited  int64
+	// CORS preflights among Requests
+	Preflights int64
+	Blocked    int64
+	Limited    int64
 	// rule of the latest rejection in the range
 	LastRule    string
 	FirstSeenAt time.Time
 	LastSeenAt  time.Time
-	// requests of the busiest bucket of the range
+	// requests of the busiest bucket of the range, preflights left out: they
+	// are what rate limits count
 	PeakRequests int64
-	// requests of the bucket TopReq.Recent
+	// requests of the bucket TopReq.Recent, preflights left out
 	RecentRequests int64
 }
 

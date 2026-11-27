@@ -37,6 +37,7 @@ func TestMeter_Start(t *testing.T) {
 	assert.Equal(t, "127.0.0.1", proxied.Peer().String())
 	proxied.Limited("ip 10/1m")
 	proxied.Blocked()
+	direct.Preflight()
 
 	m.Start("127.0.0.1:1000", xff("10.1.2.3"))
 	m.Start("127.0.0.1:1000", xff("10.200.0.1"))
@@ -48,7 +49,7 @@ func TestMeter_Start(t *testing.T) {
 	m.Start("127.0.0.1:1000", nil)
 
 	got := byIP(c.Drain())
-	assert.Equal(t, &Item{Ip: "203.0.113.7", Requests: 1}, got["|203.0.113.7"])
+	assert.Equal(t, &Item{Ip: "203.0.113.7", Requests: 1, Preflights: 1}, got["|203.0.113.7"])
 	assert.Equal(t, &Item{Ip: "198.51.100.1", Requests: 1, Blocked: 1, Limited: 1, LastRule: "ip 10/1m"}, got["|198.51.100.1"])
 	assert.Equal(t, &Item{Ip: "10.0.0.0/8", Trusted: "lan", Requests: 2}, got["lan|10.0.0.0/8"])
 	assert.Equal(t, &Item{Ip: "192.0.2.1/32", Trusted: "192.0.2.1/32", Requests: 1}, got["192.0.2.1/32|192.0.2.1/32"],

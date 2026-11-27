@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -43,10 +44,12 @@ func newTestRepo(t *testing.T) *Repo {
 	require.NoError(t, err)
 	t.Cleanup(con.Close)
 
-	up, err := os.ReadFile("../../../../../migrations/20261125120000_client_stat.up.sql")
-	require.NoError(t, err)
-	_, err = con.Exec(ctx, string(up))
-	require.NoError(t, err)
+	for _, name := range []string{"20261125120000_client_stat", "20261127120000_client_stat_preflights"} {
+		up, err := os.ReadFile("../../../../../migrations/" + name + ".up.sql")
+		require.NoError(t, err)
+		_, err = con.Exec(ctx, string(up))
+		require.NoError(t, err, name)
+	}
 
 	return New(con)
 }
@@ -162,6 +165,38 @@ func TestRepo_Postgres(t *testing.T) {
 	sums, err = r.BucketSums(ctx, old)
 	require.NoError(t, err)
 	assert.Len(t, sums, 2)
+}
+
+// Preflights stay in requests but are left out of the rates compared to rate
+// limits, which never count them.
+func TestRepo_Postgres_Preflights(t *testing.T) {
+	r := newTestRepo(t)
+	ctx := context.Background()
+	b1 := time.Date(2026, 11, 25, 12, 0, 0, 0, time.UTC)
+	b2 := b1.Add(model.BucketSize)
+
+	require.NoError(t, r.Add(ctx, b1, []*model.ClientStat{{Ip: "203.0.113.7", Requests: 10, Preflights: 6}}))
+	require.NoError(t, r.Add(ctx, b1, []*model.ClientStat{{Ip: "203.0.113.7", Requests: 2, Preflights: 1}}))
+	require.NoError(t, r.Add(ctx, b2, []*model.ClientStat{
+		{Ip: "203.0.113.7", Requests: 8},
+		// a preflight drained into a later report than its request
+		{Ip: "198.51.100.1", Requests: 0, Preflights: 1, Blocked: 1},
+	}))
+
+	items, err := r.Top(ctx, &model.TopReq{Since: b1, Kind: model.KindRequests, Limit: 10, Recent: b1})
+	require.NoError(t, err)
+	got := lo.KeyBy(items, func(v *model.Item) string { return v.Ip })
+	require.Len(t, got, 2)
+
+	assert.Equal(t, int64(20), got["203.0.113.7"].Requests, "preflights stay in requests")
+	assert.Equal(t, int64(7), got["203.0.113.7"].Preflights)
+	assert.Equal(t, int64(8), got["203.0.113.7"].PeakRequests, "b2: 8 against b1: 12 - 7")
+	assert.Equal(t, int64(5), got["203.0.113.7"].RecentRequests)
+	assert.Equal(t, int64(0), got["198.51.100.1"].PeakRequests, "never below zero")
+
+	totals, err := r.Totals(ctx, b1)
+	require.NoError(t, err)
+	assert.Equal(t, int64(20), totals.Requests)
 }
 
 // Several gateways report the same clients at once: the rows are written in

@@ -41,8 +41,9 @@ func TestClientStat_CountsEveryRequest(t *testing.T) {
 	doFrom(h, http.MethodGet, "/a/two", "[2001:db8:1:2::99]:1000", nil)
 
 	got := lo.KeyBy(env.clients.Drain(), func(v *clientstat.Item) string { return v.Ip })
+	// the block list refuses a preflight before CORS answers it
 	assert.Equal(t, &clientstat.Item{Ip: "203.0.113.7", Requests: 4, Blocked: 4}, got["203.0.113.7"])
-	assert.Equal(t, &clientstat.Item{Ip: "192.0.2.1", Requests: 5, Limited: 2, LastRule: "per ip"}, got["192.0.2.1"])
+	assert.Equal(t, &clientstat.Item{Ip: "192.0.2.1", Requests: 5, Preflights: 1, Limited: 2, LastRule: "per ip"}, got["192.0.2.1"])
 	assert.Equal(t, &clientstat.Item{Ip: "198.51.100.0/24", Trusted: "office", Requests: 3}, got["198.51.100.0/24"])
 	assert.Equal(t, &clientstat.Item{Requests: 1}, got[""])
 	assert.Equal(t, &clientstat.Item{Ip: "2001:db8:1:2::/64", Requests: 1}, got["2001:db8:1:2::/64"])

@@ -265,7 +265,10 @@ type GatewayClientStat struct {
 	// rejected by a rate-limit rule (429 / ResourceExhausted)
 	Limited int64 `protobuf:"varint,5,opt,name=limited,proto3" json:"limited,omitempty"`
 	// label of the rule of the latest rejection ("" when none)
-	LastRule      string `protobuf:"bytes,6,opt,name=last_rule,json=lastRule,proto3" json:"last_rule,omitempty"`
+	LastRule string `protobuf:"bytes,6,opt,name=last_rule,json=lastRule,proto3" json:"last_rule,omitempty"`
+	// CORS preflights among requests that the gateway answered itself: they
+	// reach no endpoint, so no rate limit counts them
+	Preflights    int64 `protobuf:"varint,7,opt,name=preflights,proto3" json:"preflights,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -340,6 +343,13 @@ func (x *GatewayClientStat) GetLastRule() string {
 		return x.LastRule
 	}
 	return ""
+}
+
+func (x *GatewayClientStat) GetPreflights() int64 {
+	if x != nil {
+		return x.Preflights
+	}
+	return 0
 }
 
 type GatewaySeenOrigin struct {
@@ -696,14 +706,17 @@ const file_ruto_v1_gateway_proto_rawDesc = "" +
 	"seen_paths\x18\f \x03(\v2\x18.ruto_v1.GatewaySeenPathR\tseenPaths\x12=\n" +
 	"\fseen_origins\x18\r \x03(\v2\x1a.ruto_v1.GatewaySeenOriginR\vseenOrigins\x12+\n" +
 	"\x11blocklist_version\x18\x0e \x01(\tR\x10blocklistVersion\x12=\n" +
-	"\fclient_stats\x18\x0f \x03(\v2\x1a.ruto_v1.GatewayClientStatR\vclientStatsJ\x04\b\x03\x10\x04\"\xaa\x01\n" +
+	"\fclient_stats\x18\x0f \x03(\v2\x1a.ruto_v1.GatewayClientStatR\vclientStatsJ\x04\b\x03\x10\x04\"\xca\x01\n" +
 	"\x11GatewayClientStat\x12\x0e\n" +
 	"\x02ip\x18\x01 \x01(\tR\x02ip\x12\x18\n" +
 	"\atrusted\x18\x02 \x01(\tR\atrusted\x12\x1a\n" +
 	"\brequests\x18\x03 \x01(\x03R\brequests\x12\x18\n" +
 	"\ablocked\x18\x04 \x01(\x03R\ablocked\x12\x18\n" +
 	"\alimited\x18\x05 \x01(\x03R\alimited\x12\x1b\n" +
-	"\tlast_rule\x18\x06 \x01(\tR\blastRule\"j\n" +
+	"\tlast_rule\x18\x06 \x01(\tR\blastRule\x12\x1e\n" +
+	"\n" +
+	"preflights\x18\a \x01(\x03R\n" +
+	"preflights\"j\n" +
 	"\x11GatewaySeenOrigin\x12\x16\n" +
 	"\x06origin\x18\x01 \x01(\tR\x06origin\x12\x12\n" +
 	"\x04hits\x18\x02 \x01(\x03R\x04hits\x12)\n" +

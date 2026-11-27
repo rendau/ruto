@@ -86,6 +86,7 @@ function normalizeItem(value: Raw<ClientStatItem>): ClientStatItem {
     ip: text(value.ip),
     trusted: text(value.trusted),
     requests: count(value.requests),
+    preflights: count(value.preflights),
     blocked: count(value.blocked),
     limited: count(value.limited),
     last_rule: text(value.last_rule),

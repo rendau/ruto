@@ -673,11 +673,14 @@ export interface ClientStatItem {
   last_seen_at_unix: number;
   // the active block covering ip, if any
   block: ClientStatBlock | null;
-  // requests per minute in the busiest 5-minute step of the range
+  // requests per minute in the busiest 5-minute step of the range,
+  // CORS preflights left out (rate limits never count them)
   peak_rpm: number;
   // requests per minute in the last full 5-minute step
-  // (it starts at ClientStatTopRep.recent_from_unix)
+  // (it starts at ClientStatTopRep.recent_from_unix), preflights left out
   recent_rpm: number;
+  // CORS preflights among requests that the gateway answered itself
+  preflights: number;
 }
 
 // A Root rate-limit rule with key "ip": it counts every request of a client

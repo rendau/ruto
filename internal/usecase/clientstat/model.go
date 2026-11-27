@@ -25,8 +25,8 @@ type TopRep struct {
 }
 
 // IpLimit is a Root rate-limit rule with key "ip": it counts every request of
-// a client through the whole gateway, as the client stats do, so a client's
-// rate compares to it. App and endpoint rules count only a part of a client's
+// a client through the whole gateway, as the client stats do (CORS preflights
+// aside: no limit sees them), so a client's rate compares to it. App and endpoint rules count only a part of a client's
 // requests and are left out.
 type IpLimit struct {
 	Name     string

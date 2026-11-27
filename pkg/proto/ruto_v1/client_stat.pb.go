@@ -560,11 +560,15 @@ type ClientStatItem struct {
 	LastSeenAtUnix  int64  `protobuf:"varint,8,opt,name=last_seen_at_unix,json=lastSeenAtUnix,proto3" json:"last_seen_at_unix,omitempty"`
 	// the active block covering ip, if any
 	Block *ClientStatBlock `protobuf:"bytes,9,opt,name=block,proto3" json:"block,omitempty"`
-	// requests per minute in the busiest 5-minute step of the range
+	// requests per minute in the busiest 5-minute step of the range, CORS
+	// preflights left out (rate limits never count them)
 	PeakRpm float64 `protobuf:"fixed64,10,opt,name=peak_rpm,json=peakRpm,proto3" json:"peak_rpm,omitempty"`
 	// requests per minute in the last full 5-minute step (it starts at
-	// ClientStatTopRep.recent_from_unix; 0 when the client sent nothing then)
-	RecentRpm     float64 `protobuf:"fixed64,11,opt,name=recent_rpm,json=recentRpm,proto3" json:"recent_rpm,omitempty"`
+	// ClientStatTopRep.recent_from_unix; 0 when the client sent nothing then),
+	// CORS preflights left out
+	RecentRpm float64 `protobuf:"fixed64,11,opt,name=recent_rpm,json=recentRpm,proto3" json:"recent_rpm,omitempty"`
+	// CORS preflights among requests that the gateway answered itself
+	Preflights    int64 `protobuf:"varint,12,opt,name=preflights,proto3" json:"preflights,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -672,6 +676,13 @@ func (x *ClientStatItem) GetPeakRpm() float64 {
 func (x *ClientStatItem) GetRecentRpm() float64 {
 	if x != nil {
 		return x.RecentRpm
+	}
+	return 0
+}
+
+func (x *ClientStatItem) GetPreflights() int64 {
+	if x != nil {
+		return x.Preflights
 	}
 	return 0
 }
@@ -906,7 +917,7 @@ const file_ruto_v1_client_stat_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\brequests\x18\x02 \x01(\x03R\brequests\x12%\n" +
 	"\x0eperiod_seconds\x18\x03 \x01(\x03R\rperiodSeconds\x12\x10\n" +
-	"\x03rpm\x18\x04 \x01(\x01R\x03rpm\"\xe9\x02\n" +
+	"\x03rpm\x18\x04 \x01(\x01R\x03rpm\"\x89\x03\n" +
 	"\x0eClientStatItem\x12\x0e\n" +
 	"\x02ip\x18\x01 \x01(\tR\x02ip\x12\x18\n" +
 	"\atrusted\x18\x02 \x01(\tR\atrusted\x12\x1a\n" +
@@ -920,7 +931,10 @@ const file_ruto_v1_client_stat_proto_rawDesc = "" +
 	"\bpeak_rpm\x18\n" +
 	" \x01(\x01R\apeakRpm\x12\x1d\n" +
 	"\n" +
-	"recent_rpm\x18\v \x01(\x01R\trecentRpm\"\xa8\x01\n" +
+	"recent_rpm\x18\v \x01(\x01R\trecentRpm\x12\x1e\n" +
+	"\n" +
+	"preflights\x18\f \x01(\x03R\n" +
+	"preflights\"\xa8\x01\n" +
 	"\x0fClientStatBlock\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x0e\n" +
 	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x16\n" +

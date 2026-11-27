@@ -17,14 +17,15 @@ import (
 
 const (
 	addSQL = `
-		INSERT INTO client_stat (bucket, ip, trusted, requests, blocked, limited, last_rule)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO client_stat (bucket, ip, trusted, requests, preflights, blocked, limited, last_rule)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (bucket, ip) DO UPDATE SET
-			trusted   = EXCLUDED.trusted,
-			requests  = client_stat.requests + EXCLUDED.requests,
-			blocked   = client_stat.blocked + EXCLUDED.blocked,
-			limited   = client_stat.limited + EXCLUDED.limited,
-			last_rule = CASE WHEN EXCLUDED.last_rule <> '' THEN EXCLUDED.last_rule ELSE client_stat.last_rule END`
+			trusted    = EXCLUDED.trusted,
+			requests   = client_stat.requests + EXCLUDED.requests,
+			preflights = client_stat.preflights + EXCLUDED.preflights,
+			blocked    = client_stat.blocked + EXCLUDED.blocked,
+			limited    = client_stat.limited + EXCLUDED.limited,
+			last_rule  = CASE WHEN EXCLUDED.last_rule <> '' THEN EXCLUDED.last_rule ELSE client_stat.last_rule END`
 
 	bucketSumsSQL = `
 		SELECT bucket,
@@ -65,13 +66,14 @@ const (
 	topSQL = `
 		SELECT ip, trusted,
 		       sum(requests)::bigint AS requests,
+		       sum(preflights)::bigint,
 		       sum(blocked)::bigint  AS blocked,
 		       sum(limited)::bigint  AS limited,
 		       coalesce((array_agg(last_rule ORDER BY bucket DESC) FILTER (WHERE last_rule <> ''))[1], ''),
 		       min(bucket),
 		       max(bucket),
-		       max(requests)::bigint,
-		       coalesce(sum(requests) FILTER (WHERE bucket = $3), 0)::bigint
+		       max(greatest(requests - preflights, 0))::bigint,
+		       coalesce(sum(greatest(requests - preflights, 0)) FILTER (WHERE bucket = $3), 0)::bigint
 		FROM client_stat
 		WHERE bucket >= $1 AND %s
 		GROUP BY ip, trusted
@@ -113,7 +115,7 @@ func (r *Repo) Add(ctx context.Context, bucket time.Time, items []*model.ClientS
 
 	batch := &pgx.Batch{}
 	for _, item := range sorted {
-		batch.Queue(addSQL, bucket, item.Ip, item.Trusted, item.Requests, item.Blocked, item.Limited, item.LastRule)
+		batch.Queue(addSQL, bucket, item.Ip, item.Trusted, item.Requests, item.Preflights, item.Blocked, item.Limited, item.LastRule)
 	}
 
 	err := pgx.BeginFunc(ctx, r.Con, func(tx pgx.Tx) error {
@@ -198,7 +200,7 @@ func (r *Repo) Top(ctx context.Context, req *model.TopReq) ([]*model.Item, error
 	items, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*model.Item, error) {
 		item := &model.Item{}
 		scanErr := row.Scan(
-			&item.Ip, &item.Trusted, &item.Requests, &item.Blocked, &item.Limited,
+			&item.Ip, &item.Trusted, &item.Requests, &item.Preflights, &item.Blocked, &item.Limited,
 			&item.LastRule, &item.FirstSeenAt, &item.LastSeenAt,
 			&item.PeakRequests, &item.RecentRequests,
 		)
