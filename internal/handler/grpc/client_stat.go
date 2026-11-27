@@ -3,8 +3,6 @@ package grpc
 import (
 	"context"
 
-	"github.com/samber/lo"
-
 	"github.com/rendau/ruto/internal/handler/grpc/dto"
 	usecase "github.com/rendau/ruto/internal/usecase/clientstat"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
@@ -28,7 +26,7 @@ func (h *ClientStat) Overview(ctx context.Context, req *ruto_v1.ClientStatOvervi
 }
 
 func (h *ClientStat) Top(ctx context.Context, req *ruto_v1.ClientStatTopReq) (*ruto_v1.ClientStatTopRep, error) {
-	items, err := h.usecase.Top(ctx, &usecase.TopReq{
+	result, err := h.usecase.Top(ctx, &usecase.TopReq{
 		Range: dto.DecodeClientStatRange(req.RangeSeconds),
 		Kind:  req.Kind,
 		Limit: req.Limit,
@@ -36,7 +34,7 @@ func (h *ClientStat) Top(ctx context.Context, req *ruto_v1.ClientStatTopReq) (*r
 	if err != nil {
 		return nil, err
 	}
-	return &ruto_v1.ClientStatTopRep{Results: lo.Map(items, dto.EncodeClientStatItem)}, nil
+	return dto.EncodeClientStatTopRep(result), nil
 }
 
 func (h *ClientStat) Series(ctx context.Context, req *ruto_v1.ClientStatSeriesReq) (*ruto_v1.ClientStatSeriesRep, error) {

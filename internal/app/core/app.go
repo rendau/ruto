@@ -218,7 +218,7 @@ func (a *App) Init() error {
 	// client stat (who calls the gateway, reported in heartbeats)
 	domainClientStatRepoDb := domainClientStatRepoDbP.New(a.pgpool)
 	domainClientStatService := domainClientStatServiceP.New(domainClientStatRepoDb)
-	a.clientStatUsecase = usecaseClientStatP.New(domainClientStatService, domainBlockedClientService, sessionService)
+	a.clientStatUsecase = usecaseClientStatP.New(domainClientStatService, domainBlockedClientService, domainRootService, sessionService)
 	handlerGrpcClientStat := handlerGrpcP.NewClientStat(a.clientStatUsecase)
 
 	// gateway

@@ -11,6 +11,8 @@ import (
 
 	blockedClientModel "github.com/rendau/ruto/internal/domain/blockedclient/model"
 	"github.com/rendau/ruto/internal/domain/clientstat/model"
+	rateLimitModel "github.com/rendau/ruto/internal/domain/ratelimit/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	"github.com/rendau/ruto/internal/errs"
 )
@@ -68,14 +70,31 @@ func (s *testBlocked) List(_ context.Context, pars *blockedClientModel.ListReq) 
 	return s.items, int64(len(s.items)), nil
 }
 
+type testRoot struct {
+	root *rootModel.Root
+}
+
+func (s *testRoot) Get(_ context.Context) (*rootModel.Root, error) {
+	if s.root == nil {
+		return rootModel.NewEmpty(), nil
+	}
+	return s.root, nil
+}
+
 var testNow = time.Date(2026, 11, 25, 12, 1, 0, 0, time.UTC)
 
 func newTestUsecase(session *sessionModel.Session) (*Usecase, *testService, *testBlocked) {
+	uc, svc, blocked, _ := newTestUsecaseWithRoot(session)
+	return uc, svc, blocked
+}
+
+func newTestUsecaseWithRoot(session *sessionModel.Session) (*Usecase, *testService, *testBlocked, *testRoot) {
 	svc := &testService{}
 	blocked := &testBlocked{}
-	uc := New(svc, blocked, &testSession{session: session})
+	root := &testRoot{}
+	uc := New(svc, blocked, root, &testSession{session: session})
 	uc.now = func() time.Time { return testNow }
-	return uc, svc, blocked
+	return uc, svc, blocked, root
 }
 
 func admin() *sessionModel.Session { return &sessionModel.Session{Id: 1, Admin: true} }
@@ -199,8 +218,9 @@ func TestUsecase_Top_AttachesBlocks(t *testing.T) {
 		{Ip: "garbage"},
 	}
 
-	items, err := uc.Top(ctx, &TopReq{Kind: model.KindBlocked})
+	rep, err := uc.Top(ctx, &TopReq{Kind: model.KindBlocked})
 	require.NoError(t, err)
+	items := rep.Items
 	require.Len(t, items, len(svc.top))
 
 	ids := make([]string, len(items))
@@ -213,6 +233,40 @@ func TestUsecase_Top_AttachesBlocks(t *testing.T) {
 
 	require.NotNil(t, blocked.pars.ActiveAt)
 	assert.Equal(t, testNow, *blocked.pars.ActiveAt)
+}
+
+func TestUsecase_Top_RecentAndIpLimits(t *testing.T) {
+	ctx := context.Background()
+	uc, svc, _, root := newTestUsecaseWithRoot(admin())
+
+	root.root = &rootModel.Root{RateLimit: rateLimitModel.RateLimit{Rules: []*rateLimitModel.Rule{
+		{Name: "hourly", Key: "ip", Requests: 6000, Period: "1h"},
+		{Name: "all", Key: "all", Requests: 10, Period: "1s"},
+		{Name: "token", Key: "token", Requests: 1, Period: "1s"},
+		{Name: "burst", Key: "ip", Requests: 20, Period: "1s"},
+		{Name: "minute", Key: "ip", Requests: 300, Period: "1m"},
+		nil,
+	}}}
+
+	rep, err := uc.Top(ctx, &TopReq{})
+	require.NoError(t, err)
+
+	// testNow is 12:01: the 12:00 bucket still takes reports, 11:55 is full
+	want := time.Date(2026, 11, 25, 11, 55, 0, 0, time.UTC)
+	assert.Equal(t, want, svc.topReq.Recent)
+	assert.Equal(t, want, rep.RecentFrom)
+
+	require.Len(t, rep.IpLimits, 3)
+	assert.Equal(t, []string{"hourly", "minute", "burst"}, []string{rep.IpLimits[0].Name, rep.IpLimits[1].Name, rep.IpLimits[2].Name})
+	assert.InDelta(t, 100, rep.IpLimits[0].Rpm, 1e-9)
+	assert.InDelta(t, 300, rep.IpLimits[1].Rpm, 1e-9)
+	assert.InDelta(t, 1200, rep.IpLimits[2].Rpm, 1e-9)
+	assert.Equal(t, time.Hour, rep.IpLimits[0].Period)
+
+	root.root = nil
+	rep, err = uc.Top(ctx, &TopReq{})
+	require.NoError(t, err)
+	assert.Empty(t, rep.IpLimits)
 }
 
 func TestUsecase_Prune(t *testing.T) {

@@ -2815,6 +2815,28 @@
         }
       }
     },
+    "ruto_v1ClientStatIpLimit": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "requests": {
+          "type": "string",
+          "format": "int64"
+        },
+        "period_seconds": {
+          "type": "string",
+          "format": "int64"
+        },
+        "rpm": {
+          "type": "number",
+          "format": "double",
+          "title": "requests / period, per minute"
+        }
+      },
+      "description": "ClientStatIpLimit is a Root rate-limit rule with key \"ip\"."
+    },
     "ruto_v1ClientStatItem": {
       "type": "object",
       "properties": {
@@ -2852,6 +2874,16 @@
         "block": {
           "$ref": "#/definitions/ruto_v1ClientStatBlock",
           "title": "the active block covering ip, if any"
+        },
+        "peak_rpm": {
+          "type": "number",
+          "format": "double",
+          "title": "requests per minute in the busiest 5-minute step of the range"
+        },
+        "recent_rpm": {
+          "type": "number",
+          "format": "double",
+          "title": "requests per minute in the last full 5-minute step (it starts at\nClientStatTopRep.recent_from_unix; 0 when the client sent nothing then)"
         }
       }
     },
@@ -2933,6 +2965,19 @@
             "type": "object",
             "$ref": "#/definitions/ruto_v1ClientStatItem"
           }
+        },
+        "ip_limits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ruto_v1ClientStatIpLimit"
+          },
+          "title": "Root rate-limit rules with key \"ip\", strictest first: they count every\nrequest of a client through the whole gateway, so peak_rpm / recent_rpm\ncompare to them"
+        },
+        "recent_from_unix": {
+          "type": "string",
+          "format": "int64",
+          "title": "start of the 5-minute step of ClientStatItem.recent_rpm"
         }
       }
     },

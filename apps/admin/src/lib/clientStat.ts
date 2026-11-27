@@ -1,4 +1,6 @@
-import type { ClientStatPoint } from "@/api/types";
+import type { ClientStatIpLimit, ClientStatPoint } from "@/api/types";
+import { formatDuration } from "@/lib/datetime";
+import { formatCount } from "@/lib/format";
 
 export const CLIENT_STAT_RANGE_OPTIONS: { label: string; value: number }[] = [
   { label: "1h", value: 3600 },
@@ -54,4 +56,38 @@ export function chartTsFormatter(rangeSeconds: number): (ts: number) => string {
 export function rangeLabel(rangeSeconds: number): string {
   const option = CLIENT_STAT_RANGE_OPTIONS.find((o) => o.value === rangeSeconds);
   return option ? `last ${option.label}` : "the selected period";
+}
+
+// Requests per minute: a decimal below 10 (0.4 rpm is not "0"), whole above.
+export function formatRpm(rpm: number): string {
+  if (rpm <= 0) return "0";
+  if (rpm < 10) return String(Math.round(rpm * 10) / 10);
+  return formatCount(Math.round(rpm));
+}
+
+// "default: 300 / 1m ≈ 300 rpm"
+export function ipLimitLabel(limit: ClientStatIpLimit): string {
+  const rule = `${formatCount(limit.requests)} / ${formatDuration(limit.period_seconds)}`;
+  const label = limit.name ? `${limit.name}: ${rule}` : rule;
+  return `${label} ≈ ${formatRpm(limit.rpm)} rpm`;
+}
+
+// Share of the limit, 0.62 = 62%; null without a limit.
+export function limitShare(rpm: number, limit: ClientStatIpLimit | null): number | null {
+  if (!limit || limit.rpm <= 0) return null;
+  return rpm / limit.rpm;
+}
+
+// Close to the limit from 80%, at it from 100%.
+export function limitTone(share: number | null): "" | "warning" | "error" {
+  if (share === null) return "";
+  if (share >= 1) return "error";
+  if (share >= 0.8) return "warning";
+  return "";
+}
+
+export function formatShare(share: number): string {
+  const pct = share * 100;
+  if (pct > 0 && pct < 1) return "<1%";
+  return `${formatCount(Math.round(pct))}%`;
 }

@@ -12,6 +12,11 @@ import {
   chartPoints,
   chartTsFormatter,
   fillClientStatPoints,
+  formatRpm,
+  formatShare,
+  ipLimitLabel,
+  limitShare,
+  limitTone,
   rangeLabel
 } from "@/lib/clientStat";
 import { BLOCKED_CLIENT_SOURCE_LABEL, BLOCKED_CLIENT_SOURCE_TAG } from "@/constants/enums";
@@ -19,11 +24,15 @@ import CopyText from "@/components/common/CopyText.vue";
 import DefList from "@/components/common/DefList.vue";
 import DefRow from "@/components/common/DefRow.vue";
 import SparklineChart from "@/components/monitoring/SparklineChart.vue";
-import type { ClientStatItem, ClientStatPoint } from "@/api/types";
+import type { ClientStatIpLimit, ClientStatItem, ClientStatPoint } from "@/api/types";
 
 const props = defineProps<{
   show: boolean;
   item: ClientStatItem | null;
+  // the strictest Root rate limit by address, if any
+  ipLimit: ClientStatIpLimit | null;
+  // start of the 5 minutes recent_rpm is counted over
+  recentFrom: number;
   rangeSeconds: number;
   canBlock: boolean;
 }>();
@@ -63,6 +72,28 @@ const counters = computed(() => {
     }),
     { requests: 0, blocked: 0, limited: 0 }
   );
+});
+
+// Trusted clients skip rate limits. The rates come from the list row, so they
+// follow the list's range.
+const rates = computed(() => {
+  const item = props.item;
+  if (!item) return [];
+  const limit = item.trusted ? null : props.ipLimit;
+  return [
+    { key: "peak", label: "Peak / min", value: item.peak_rpm },
+    { key: "now", label: "Now / min", value: item.recent_rpm }
+  ].map((rate) => {
+    const share = rate.value > 0 ? limitShare(rate.value, limit) : null;
+    return { ...rate, share, tone: limitTone(share) };
+  });
+});
+
+const recentSpan = computed(() => {
+  if (!props.recentFrom) return "the last full 5 minutes";
+  const time = (unix: number) =>
+    new Date(unix * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return `${time(props.recentFrom)}–${time(props.recentFrom + 300)}`;
 });
 
 const showBlockedChart = computed(() => Boolean(counters.value.blocked || block.value));
@@ -157,6 +188,35 @@ function relative(unix: number): string {
           <template v-if="item.last_rule">
             Last rate limit: <span class="mono">{{ item.last_rule }}</span>.
           </template>
+        </p>
+
+        <div class="cs__counters cs__counters--rates">
+          <div v-for="rate in rates" :key="rate.key" class="cs__counter">
+            <span class="cs__counter-label">{{ rate.label }}</span>
+            <span
+              class="cs__counter-value"
+              :class="rate.tone ? `cs__counter-value--${rate.tone}` : ''"
+            >
+              {{ formatRpm(rate.value) }}
+            </span>
+            <span
+              v-if="rate.share !== null"
+              class="cs__counter-sub"
+              :class="rate.tone ? `cs__counter-value--${rate.tone}` : 'muted'"
+            >
+              {{ formatShare(rate.share) }} of limit
+            </span>
+          </div>
+        </div>
+        <p class="cs__note muted">
+          Requests per minute: peak — the busiest 5 minutes of the {{ period }}, now —
+          {{ recentSpan }}.
+          <template v-if="isTrusted">A trusted client skips rate limits.</template>
+          <template v-else-if="ipLimit">
+            Limit: {{ ipLimitLabel(ipLimit) }}. Every gateway pod counts on its own, so with
+            several pods the real ceiling can be higher.
+          </template>
+          <template v-else>Root has no rate limit by address.</template>
         </p>
 
         <NSpin :show="loading">
@@ -276,6 +336,14 @@ function relative(unix: number): string {
   border-radius: 10px;
   background: var(--c-surface-2);
   min-width: 0;
+}
+
+.cs__counters--rates {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cs__counter-sub {
+  font-size: 11.5px;
 }
 
 .cs__counter-label {

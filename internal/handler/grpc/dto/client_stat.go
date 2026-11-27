@@ -68,6 +68,23 @@ func EncodeClientStatTrusted(v *model.TrustedSum, _ int) *ruto_v1.ClientStatTrus
 	}
 }
 
+func EncodeClientStatTopRep(v *usecase.TopRep) *ruto_v1.ClientStatTopRep {
+	return &ruto_v1.ClientStatTopRep{
+		Results:        lo.Map(v.Items, EncodeClientStatItem),
+		IpLimits:       lo.Map(v.IpLimits, EncodeClientStatIpLimit),
+		RecentFromUnix: v.RecentFrom.Unix(),
+	}
+}
+
+func EncodeClientStatIpLimit(v *usecase.IpLimit, _ int) *ruto_v1.ClientStatIpLimit {
+	return &ruto_v1.ClientStatIpLimit{
+		Name:          v.Name,
+		Requests:      int64(v.Requests),
+		PeriodSeconds: int64(v.Period.Seconds()),
+		Rpm:           v.Rpm,
+	}
+}
+
 func EncodeClientStatItem(v *usecase.TopItem, _ int) *ruto_v1.ClientStatItem {
 	return &ruto_v1.ClientStatItem{
 		Ip:              v.Ip,
@@ -79,6 +96,8 @@ func EncodeClientStatItem(v *usecase.TopItem, _ int) *ruto_v1.ClientStatItem {
 		FirstSeenAtUnix: v.FirstSeenAt.Unix(),
 		LastSeenAtUnix:  v.LastSeenAt.Unix(),
 		Block:           encodeClientStatBlock(v.Block),
+		PeakRpm:         model.PerMinute(v.PeakRequests),
+		RecentRpm:       model.PerMinute(v.RecentRequests),
 	}
 }
 

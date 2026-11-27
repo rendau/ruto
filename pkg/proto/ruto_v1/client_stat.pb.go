@@ -413,10 +413,16 @@ func (x *ClientStatTopReq) GetLimit() int64 {
 }
 
 type ClientStatTopRep struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Results       []*ClientStatItem      `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Results []*ClientStatItem      `protobuf:"bytes,1,rep,name=results,proto3" json:"results,omitempty"`
+	// Root rate-limit rules with key "ip", strictest first: they count every
+	// request of a client through the whole gateway, so peak_rpm / recent_rpm
+	// compare to them
+	IpLimits []*ClientStatIpLimit `protobuf:"bytes,2,rep,name=ip_limits,json=ipLimits,proto3" json:"ip_limits,omitempty"`
+	// start of the 5-minute step of ClientStatItem.recent_rpm
+	RecentFromUnix int64 `protobuf:"varint,3,opt,name=recent_from_unix,json=recentFromUnix,proto3" json:"recent_from_unix,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ClientStatTopRep) Reset() {
@@ -456,6 +462,90 @@ func (x *ClientStatTopRep) GetResults() []*ClientStatItem {
 	return nil
 }
 
+func (x *ClientStatTopRep) GetIpLimits() []*ClientStatIpLimit {
+	if x != nil {
+		return x.IpLimits
+	}
+	return nil
+}
+
+func (x *ClientStatTopRep) GetRecentFromUnix() int64 {
+	if x != nil {
+		return x.RecentFromUnix
+	}
+	return 0
+}
+
+// ClientStatIpLimit is a Root rate-limit rule with key "ip".
+type ClientStatIpLimit struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Requests      int64                  `protobuf:"varint,2,opt,name=requests,proto3" json:"requests,omitempty"`
+	PeriodSeconds int64                  `protobuf:"varint,3,opt,name=period_seconds,json=periodSeconds,proto3" json:"period_seconds,omitempty"`
+	// requests / period, per minute
+	Rpm           float64 `protobuf:"fixed64,4,opt,name=rpm,proto3" json:"rpm,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientStatIpLimit) Reset() {
+	*x = ClientStatIpLimit{}
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientStatIpLimit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientStatIpLimit) ProtoMessage() {}
+
+func (x *ClientStatIpLimit) ProtoReflect() protoreflect.Message {
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientStatIpLimit.ProtoReflect.Descriptor instead.
+func (*ClientStatIpLimit) Descriptor() ([]byte, []int) {
+	return file_ruto_v1_client_stat_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ClientStatIpLimit) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ClientStatIpLimit) GetRequests() int64 {
+	if x != nil {
+		return x.Requests
+	}
+	return 0
+}
+
+func (x *ClientStatIpLimit) GetPeriodSeconds() int64 {
+	if x != nil {
+		return x.PeriodSeconds
+	}
+	return 0
+}
+
+func (x *ClientStatIpLimit) GetRpm() float64 {
+	if x != nil {
+		return x.Rpm
+	}
+	return 0
+}
+
 type ClientStatItem struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Ip    string                 `protobuf:"bytes,1,opt,name=ip,proto3" json:"ip,omitempty"`
@@ -469,14 +559,19 @@ type ClientStatItem struct {
 	FirstSeenAtUnix int64  `protobuf:"varint,7,opt,name=first_seen_at_unix,json=firstSeenAtUnix,proto3" json:"first_seen_at_unix,omitempty"`
 	LastSeenAtUnix  int64  `protobuf:"varint,8,opt,name=last_seen_at_unix,json=lastSeenAtUnix,proto3" json:"last_seen_at_unix,omitempty"`
 	// the active block covering ip, if any
-	Block         *ClientStatBlock `protobuf:"bytes,9,opt,name=block,proto3" json:"block,omitempty"`
+	Block *ClientStatBlock `protobuf:"bytes,9,opt,name=block,proto3" json:"block,omitempty"`
+	// requests per minute in the busiest 5-minute step of the range
+	PeakRpm float64 `protobuf:"fixed64,10,opt,name=peak_rpm,json=peakRpm,proto3" json:"peak_rpm,omitempty"`
+	// requests per minute in the last full 5-minute step (it starts at
+	// ClientStatTopRep.recent_from_unix; 0 when the client sent nothing then)
+	RecentRpm     float64 `protobuf:"fixed64,11,opt,name=recent_rpm,json=recentRpm,proto3" json:"recent_rpm,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ClientStatItem) Reset() {
 	*x = ClientStatItem{}
-	mi := &file_ruto_v1_client_stat_proto_msgTypes[7]
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -488,7 +583,7 @@ func (x *ClientStatItem) String() string {
 func (*ClientStatItem) ProtoMessage() {}
 
 func (x *ClientStatItem) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_client_stat_proto_msgTypes[7]
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -501,7 +596,7 @@ func (x *ClientStatItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientStatItem.ProtoReflect.Descriptor instead.
 func (*ClientStatItem) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_client_stat_proto_rawDescGZIP(), []int{7}
+	return file_ruto_v1_client_stat_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ClientStatItem) GetIp() string {
@@ -567,6 +662,20 @@ func (x *ClientStatItem) GetBlock() *ClientStatBlock {
 	return nil
 }
 
+func (x *ClientStatItem) GetPeakRpm() float64 {
+	if x != nil {
+		return x.PeakRpm
+	}
+	return 0
+}
+
+func (x *ClientStatItem) GetRecentRpm() float64 {
+	if x != nil {
+		return x.RecentRpm
+	}
+	return 0
+}
+
 type ClientStatBlock struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Id     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -583,7 +692,7 @@ type ClientStatBlock struct {
 
 func (x *ClientStatBlock) Reset() {
 	*x = ClientStatBlock{}
-	mi := &file_ruto_v1_client_stat_proto_msgTypes[8]
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -595,7 +704,7 @@ func (x *ClientStatBlock) String() string {
 func (*ClientStatBlock) ProtoMessage() {}
 
 func (x *ClientStatBlock) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_client_stat_proto_msgTypes[8]
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -608,7 +717,7 @@ func (x *ClientStatBlock) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientStatBlock.ProtoReflect.Descriptor instead.
 func (*ClientStatBlock) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_client_stat_proto_rawDescGZIP(), []int{8}
+	return file_ruto_v1_client_stat_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ClientStatBlock) GetId() string {
@@ -663,7 +772,7 @@ type ClientStatSeriesReq struct {
 
 func (x *ClientStatSeriesReq) Reset() {
 	*x = ClientStatSeriesReq{}
-	mi := &file_ruto_v1_client_stat_proto_msgTypes[9]
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +784,7 @@ func (x *ClientStatSeriesReq) String() string {
 func (*ClientStatSeriesReq) ProtoMessage() {}
 
 func (x *ClientStatSeriesReq) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_client_stat_proto_msgTypes[9]
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +797,7 @@ func (x *ClientStatSeriesReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientStatSeriesReq.ProtoReflect.Descriptor instead.
 func (*ClientStatSeriesReq) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_client_stat_proto_rawDescGZIP(), []int{9}
+	return file_ruto_v1_client_stat_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ClientStatSeriesReq) GetIp() string {
@@ -715,7 +824,7 @@ type ClientStatSeriesRep struct {
 
 func (x *ClientStatSeriesRep) Reset() {
 	*x = ClientStatSeriesRep{}
-	mi := &file_ruto_v1_client_stat_proto_msgTypes[10]
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +836,7 @@ func (x *ClientStatSeriesRep) String() string {
 func (*ClientStatSeriesRep) ProtoMessage() {}
 
 func (x *ClientStatSeriesRep) ProtoReflect() protoreflect.Message {
-	mi := &file_ruto_v1_client_stat_proto_msgTypes[10]
+	mi := &file_ruto_v1_client_stat_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -740,7 +849,7 @@ func (x *ClientStatSeriesRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientStatSeriesRep.ProtoReflect.Descriptor instead.
 func (*ClientStatSeriesRep) Descriptor() ([]byte, []int) {
-	return file_ruto_v1_client_stat_proto_rawDescGZIP(), []int{10}
+	return file_ruto_v1_client_stat_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ClientStatSeriesRep) GetStepSeconds() int64 {
@@ -788,9 +897,16 @@ const file_ruto_v1_client_stat_proto_rawDesc = "" +
 	"\x10ClientStatTopReq\x12#\n" +
 	"\rrange_seconds\x18\x01 \x01(\x03R\frangeSeconds\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x03R\x05limit\"E\n" +
+	"\x05limit\x18\x03 \x01(\x03R\x05limit\"\xa8\x01\n" +
 	"\x10ClientStatTopRep\x121\n" +
-	"\aresults\x18\x01 \x03(\v2\x17.ruto_v1.ClientStatItemR\aresults\"\xaf\x02\n" +
+	"\aresults\x18\x01 \x03(\v2\x17.ruto_v1.ClientStatItemR\aresults\x127\n" +
+	"\tip_limits\x18\x02 \x03(\v2\x1a.ruto_v1.ClientStatIpLimitR\bipLimits\x12(\n" +
+	"\x10recent_from_unix\x18\x03 \x01(\x03R\x0erecentFromUnix\"|\n" +
+	"\x11ClientStatIpLimit\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
+	"\brequests\x18\x02 \x01(\x03R\brequests\x12%\n" +
+	"\x0eperiod_seconds\x18\x03 \x01(\x03R\rperiodSeconds\x12\x10\n" +
+	"\x03rpm\x18\x04 \x01(\x01R\x03rpm\"\xe9\x02\n" +
 	"\x0eClientStatItem\x12\x0e\n" +
 	"\x02ip\x18\x01 \x01(\tR\x02ip\x12\x18\n" +
 	"\atrusted\x18\x02 \x01(\tR\atrusted\x12\x1a\n" +
@@ -800,7 +916,11 @@ const file_ruto_v1_client_stat_proto_rawDesc = "" +
 	"\tlast_rule\x18\x06 \x01(\tR\blastRule\x12+\n" +
 	"\x12first_seen_at_unix\x18\a \x01(\x03R\x0ffirstSeenAtUnix\x12)\n" +
 	"\x11last_seen_at_unix\x18\b \x01(\x03R\x0elastSeenAtUnix\x12.\n" +
-	"\x05block\x18\t \x01(\v2\x18.ruto_v1.ClientStatBlockR\x05block\"\xa8\x01\n" +
+	"\x05block\x18\t \x01(\v2\x18.ruto_v1.ClientStatBlockR\x05block\x12\x19\n" +
+	"\bpeak_rpm\x18\n" +
+	" \x01(\x01R\apeakRpm\x12\x1d\n" +
+	"\n" +
+	"recent_rpm\x18\v \x01(\x01R\trecentRpm\"\xa8\x01\n" +
 	"\x0fClientStatBlock\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x0e\n" +
 	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x16\n" +
@@ -834,7 +954,7 @@ func file_ruto_v1_client_stat_proto_rawDescGZIP() []byte {
 	return file_ruto_v1_client_stat_proto_rawDescData
 }
 
-var file_ruto_v1_client_stat_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_ruto_v1_client_stat_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_ruto_v1_client_stat_proto_goTypes = []any{
 	(*ClientStatOverviewReq)(nil), // 0: ruto_v1.ClientStatOverviewReq
 	(*ClientStatOverviewRep)(nil), // 1: ruto_v1.ClientStatOverviewRep
@@ -843,30 +963,32 @@ var file_ruto_v1_client_stat_proto_goTypes = []any{
 	(*ClientStatTrusted)(nil),     // 4: ruto_v1.ClientStatTrusted
 	(*ClientStatTopReq)(nil),      // 5: ruto_v1.ClientStatTopReq
 	(*ClientStatTopRep)(nil),      // 6: ruto_v1.ClientStatTopRep
-	(*ClientStatItem)(nil),        // 7: ruto_v1.ClientStatItem
-	(*ClientStatBlock)(nil),       // 8: ruto_v1.ClientStatBlock
-	(*ClientStatSeriesReq)(nil),   // 9: ruto_v1.ClientStatSeriesReq
-	(*ClientStatSeriesRep)(nil),   // 10: ruto_v1.ClientStatSeriesRep
+	(*ClientStatIpLimit)(nil),     // 7: ruto_v1.ClientStatIpLimit
+	(*ClientStatItem)(nil),        // 8: ruto_v1.ClientStatItem
+	(*ClientStatBlock)(nil),       // 9: ruto_v1.ClientStatBlock
+	(*ClientStatSeriesReq)(nil),   // 10: ruto_v1.ClientStatSeriesReq
+	(*ClientStatSeriesRep)(nil),   // 11: ruto_v1.ClientStatSeriesRep
 }
 var file_ruto_v1_client_stat_proto_depIdxs = []int32{
 	2,  // 0: ruto_v1.ClientStatOverviewRep.points:type_name -> ruto_v1.ClientStatPoint
 	3,  // 1: ruto_v1.ClientStatOverviewRep.totals:type_name -> ruto_v1.ClientStatTotals
 	4,  // 2: ruto_v1.ClientStatOverviewRep.trusted:type_name -> ruto_v1.ClientStatTrusted
 	2,  // 3: ruto_v1.ClientStatTrusted.points:type_name -> ruto_v1.ClientStatPoint
-	7,  // 4: ruto_v1.ClientStatTopRep.results:type_name -> ruto_v1.ClientStatItem
-	8,  // 5: ruto_v1.ClientStatItem.block:type_name -> ruto_v1.ClientStatBlock
-	2,  // 6: ruto_v1.ClientStatSeriesRep.points:type_name -> ruto_v1.ClientStatPoint
-	0,  // 7: ruto_v1.ClientStat.Overview:input_type -> ruto_v1.ClientStatOverviewReq
-	5,  // 8: ruto_v1.ClientStat.Top:input_type -> ruto_v1.ClientStatTopReq
-	9,  // 9: ruto_v1.ClientStat.Series:input_type -> ruto_v1.ClientStatSeriesReq
-	1,  // 10: ruto_v1.ClientStat.Overview:output_type -> ruto_v1.ClientStatOverviewRep
-	6,  // 11: ruto_v1.ClientStat.Top:output_type -> ruto_v1.ClientStatTopRep
-	10, // 12: ruto_v1.ClientStat.Series:output_type -> ruto_v1.ClientStatSeriesRep
-	10, // [10:13] is the sub-list for method output_type
-	7,  // [7:10] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	8,  // 4: ruto_v1.ClientStatTopRep.results:type_name -> ruto_v1.ClientStatItem
+	7,  // 5: ruto_v1.ClientStatTopRep.ip_limits:type_name -> ruto_v1.ClientStatIpLimit
+	9,  // 6: ruto_v1.ClientStatItem.block:type_name -> ruto_v1.ClientStatBlock
+	2,  // 7: ruto_v1.ClientStatSeriesRep.points:type_name -> ruto_v1.ClientStatPoint
+	0,  // 8: ruto_v1.ClientStat.Overview:input_type -> ruto_v1.ClientStatOverviewReq
+	5,  // 9: ruto_v1.ClientStat.Top:input_type -> ruto_v1.ClientStatTopReq
+	10, // 10: ruto_v1.ClientStat.Series:input_type -> ruto_v1.ClientStatSeriesReq
+	1,  // 11: ruto_v1.ClientStat.Overview:output_type -> ruto_v1.ClientStatOverviewRep
+	6,  // 12: ruto_v1.ClientStat.Top:output_type -> ruto_v1.ClientStatTopRep
+	11, // 13: ruto_v1.ClientStat.Series:output_type -> ruto_v1.ClientStatSeriesRep
+	11, // [11:14] is the sub-list for method output_type
+	8,  // [8:11] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_ruto_v1_client_stat_proto_init() }
@@ -880,7 +1002,7 @@ func file_ruto_v1_client_stat_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_ruto_v1_client_stat_proto_rawDesc), len(file_ruto_v1_client_stat_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

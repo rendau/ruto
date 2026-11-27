@@ -72,12 +72,18 @@ type Item struct {
 	LastRule    string
 	FirstSeenAt time.Time
 	LastSeenAt  time.Time
+	// requests of the busiest bucket of the range
+	PeakRequests int64
+	// requests of the bucket TopReq.Recent
+	RecentRequests int64
 }
 
 type TopReq struct {
 	Since time.Time
 	Kind  string
 	Limit int64
+	// the bucket whose requests go to Item.RecentRequests
+	Recent time.Time
 }
 
 // TrustedPoint is the sum of one stored bucket of one trusted client.

@@ -20,6 +20,16 @@ func BucketOf(t time.Time) time.Time {
 	return floorTo(t, BucketSize)
 }
 
+// PerMinute is the rate of n requests of one bucket.
+func PerMinute(n int64) float64 {
+	return float64(n) / BucketSize.Minutes()
+}
+
+// LastFullBucket is the newest bucket that no longer takes reports at t.
+func LastFullBucket(t time.Time) time.Time {
+	return BucketOf(t).Add(-BucketSize)
+}
+
 // ClampRange applies the default to a missing range and keeps it within
 // MinRange..MaxRange.
 func ClampRange(rng time.Duration) time.Duration {

@@ -119,7 +119,7 @@ func TestRepo_Postgres(t *testing.T) {
 
 	// top
 	top := func(kind string, limit int64) []*model.Item {
-		items, err := r.Top(ctx, &model.TopReq{Since: b1, Kind: kind, Limit: limit})
+		items, err := r.Top(ctx, &model.TopReq{Since: b1, Kind: kind, Limit: limit, Recent: b2})
 		require.NoError(t, err)
 		return items
 	}
@@ -144,6 +144,13 @@ func TestRepo_Postgres(t *testing.T) {
 	assert.Equal(t, "r2", limited[0].LastRule, "the rule of the latest bucket that has one")
 	assert.True(t, b1.Equal(limited[0].FirstSeenAt))
 	assert.True(t, b2.Equal(limited[0].LastSeenAt))
+	assert.Equal(t, int64(6), limited[0].PeakRequests, "the busiest bucket, all gateways summed")
+	assert.Equal(t, int64(2), limited[0].RecentRequests)
+
+	trustedTop := top(model.KindTrusted, 50)
+	require.Len(t, trustedTop, 1)
+	assert.Equal(t, int64(50), trustedTop[0].PeakRequests)
+	assert.Equal(t, int64(0), trustedTop[0].RecentRequests, "no requests in the recent bucket")
 
 	_, err = r.Top(ctx, &model.TopReq{Since: b1, Kind: "bytes", Limit: 1})
 	require.Error(t, err)

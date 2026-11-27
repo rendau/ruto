@@ -6,6 +6,7 @@ import (
 
 	blockedClientModel "github.com/rendau/ruto/internal/domain/blockedclient/model"
 	"github.com/rendau/ruto/internal/domain/clientstat/model"
+	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 )
 
@@ -19,6 +20,10 @@ type ServiceI interface {
 
 type BlockedClientServiceI interface {
 	List(ctx context.Context, pars *blockedClientModel.ListReq) ([]*blockedClientModel.BlockedClient, int64, error)
+}
+
+type RootServiceI interface {
+	Get(ctx context.Context) (*rootModel.Root, error)
 }
 
 type SessionServiceI interface {

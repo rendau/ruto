@@ -3,17 +3,21 @@
 package clientstat
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
 	"net/netip"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/samber/lo"
 
+	"github.com/rendau/ruto/internal/constant"
 	blockedClientModel "github.com/rendau/ruto/internal/domain/blockedclient/model"
 	"github.com/rendau/ruto/internal/domain/clientstat/model"
+	rateLimitModel "github.com/rendau/ruto/internal/domain/ratelimit/model"
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
 	"github.com/rendau/ruto/internal/errs"
 )
@@ -32,15 +36,17 @@ const (
 type Usecase struct {
 	svc        ServiceI
 	blockedSvc BlockedClientServiceI
+	rootSvc    RootServiceI
 	sessionSvc SessionServiceI
 
 	now func() time.Time
 }
 
-func New(svc ServiceI, blockedSvc BlockedClientServiceI, sessionSvc SessionServiceI) *Usecase {
+func New(svc ServiceI, blockedSvc BlockedClientServiceI, rootSvc RootServiceI, sessionSvc SessionServiceI) *Usecase {
 	return &Usecase{
 		svc:        svc,
 		blockedSvc: blockedSvc,
+		rootSvc:    rootSvc,
 		sessionSvc: sessionSvc,
 		now:        time.Now,
 	}
@@ -83,7 +89,7 @@ func (u *Usecase) Overview(ctx context.Context, rng time.Duration) (*model.Overv
 	return result, nil
 }
 
-func (u *Usecase) Top(ctx context.Context, req *TopReq) ([]*TopItem, error) {
+func (u *Usecase) Top(ctx context.Context, req *TopReq) (*TopRep, error) {
 	if err := u.requireAdmin(ctx); err != nil {
 		return nil, err
 	}
@@ -94,11 +100,13 @@ func (u *Usecase) Top(ctx context.Context, req *TopReq) ([]*TopItem, error) {
 	}
 
 	now := u.now()
+	recent := model.LastFullBucket(now)
 
 	items, err := u.svc.Top(ctx, &model.TopReq{
-		Since: model.NewWindow(now, req.Range).From,
-		Kind:  kind,
-		Limit: clampLimit(req.Limit),
+		Since:  model.NewWindow(now, req.Range).From,
+		Kind:   kind,
+		Limit:  clampLimit(req.Limit),
+		Recent: recent,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("svc.Top: %w", err)
@@ -110,9 +118,41 @@ func (u *Usecase) Top(ctx context.Context, req *TopReq) ([]*TopItem, error) {
 	}
 	matcher := newBlockMatcher(blocks)
 
-	return lo.Map(items, func(v *model.Item, _ int) *TopItem {
-		return &TopItem{Item: v, Block: matcher.find(v.Ip)}
-	}), nil
+	root, err := u.rootSvc.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("rootSvc.Get: %w", err)
+	}
+
+	return &TopRep{
+		Items: lo.Map(items, func(v *model.Item, _ int) *TopItem {
+			return &TopItem{Item: v, Block: matcher.find(v.Ip)}
+		}),
+		IpLimits:   ipLimits(root.RateLimit.Rules),
+		RecentFrom: recent,
+	}, nil
+}
+
+// ipLimits picks the rules with key "ip", strictest first.
+func ipLimits(rules []*rateLimitModel.Rule) []*IpLimit {
+	result := lo.FilterMap(rules, func(v *rateLimitModel.Rule, _ int) (*IpLimit, bool) {
+		if v == nil || v.Key != constant.RateLimitKeyIP || v.Requests <= 0 {
+			return nil, false
+		}
+		period, err := time.ParseDuration(v.Period)
+		if err != nil || period <= 0 {
+			return nil, false
+		}
+		return &IpLimit{
+			Name:     v.Name,
+			Requests: v.Requests,
+			Period:   period,
+			Rpm:      float64(v.Requests) / period.Minutes(),
+		}, true
+	})
+
+	slices.SortStableFunc(result, func(a, b *IpLimit) int { return cmp.Compare(a.Rpm, b.Rpm) })
+
+	return result
 }
 
 // Series is the timeline of one client; ip is as Top returns it, "" included

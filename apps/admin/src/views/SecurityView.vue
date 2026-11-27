@@ -26,6 +26,11 @@ import {
   chartPoints,
   chartTsFormatter,
   fillClientStatPoints,
+  formatRpm,
+  formatShare,
+  ipLimitLabel,
+  limitShare,
+  limitTone,
   rangeLabel
 } from "@/lib/clientStat";
 import { BLOCKED_CLIENT_SOURCE_LABEL, BLOCKED_CLIENT_SOURCE_TAG } from "@/constants/enums";
@@ -37,6 +42,7 @@ import BlockClientModal from "@/components/blockedclient/BlockClientModal.vue";
 import ClientStatDrawer from "@/components/security/ClientStatDrawer.vue";
 import type {
   BlockedClientMain,
+  ClientStatIpLimit,
   ClientStatItem,
   ClientStatKind,
   ClientStatOverviewRep
@@ -178,6 +184,11 @@ const EMPTY_TEXT: Record<ClientStatKind, string> = {
 };
 
 const tab = ref<ClientStatKind>("requests");
+// Root rate-limit rules by address, strictest first, and the start of the
+// 5 minutes "now" is counted over: the same in every reply, kept from the last
+const ipLimits = ref<ClientStatIpLimit[]>([]);
+const recentFrom = ref(0);
+const ipLimit = computed(() => ipLimits.value[0] ?? null);
 const top = reactive(
   Object.fromEntries(
     KINDS.map((kind) => [kind, { rows: [], loading: false, loadedRange: 0, seq: 0 }])
@@ -195,6 +206,8 @@ async function loadTop(kind: ClientStatKind): Promise<void> {
     if (seq !== state.seq) return;
     state.rows = rep.results;
     state.loadedRange = rangeSeconds;
+    ipLimits.value = rep.ip_limits;
+    recentFrom.value = rep.recent_from_unix;
     now.value = Math.floor(Date.now() / 1000);
     refreshSelected(rep.results);
   } catch (error) {
@@ -319,6 +332,73 @@ function countColumn(
   };
 }
 
+type RateKey = "peak_rpm" | "recent_rpm";
+const RATE_KEYS: RateKey[] = ["peak_rpm", "recent_rpm"];
+
+const RATE_TITLE: Record<RateKey, string> = {
+  peak_rpm: "Peak / min",
+  recent_rpm: "Now / min"
+};
+
+function clockTime(unix: number): string {
+  return new Date(unix * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+function rateWhat(key: RateKey): string {
+  if (key === "peak_rpm") return "Requests per minute in the busiest 5 minutes of the period.";
+  if (!recentFrom.value) return "Requests per minute in the last full 5 minutes.";
+  return `Requests per minute from ${clockTime(recentFrom.value)} to ${clockTime(recentFrom.value + 300)}.`;
+}
+
+const limitHint = computed(() => {
+  const limit = ipLimit.value;
+  if (!limit) return "Root has no rate limit by address, so there is nothing to compare with.";
+  const others = ipLimits.value.length > 1 ? " (the strictest Root rule by address)" : "";
+  return (
+    `% — of the limit ${ipLimitLabel(limit)}${others}. ` +
+    "Every gateway pod counts on its own: with several pods the real ceiling can be higher."
+  );
+});
+
+// Trusted clients skip rate limits, and a client that sent nothing has no
+// share worth showing.
+function rowShare(row: ClientStatItem, key: RateKey): number | null {
+  return row.trusted || row[key] <= 0 ? null : limitShare(row[key], ipLimit.value);
+}
+
+function rateClass(row: ClientStatItem, key: RateKey): string {
+  const tone = limitTone(rowShare(row, key));
+  return tone ? `sec-num--${tone}` : "";
+}
+
+function rateColumn(key: RateKey): DataTableColumns<ClientStatItem>[number] {
+  return {
+    title: () => h("span", { title: `${rateWhat(key)}\n${limitHint.value}` }, RATE_TITLE[key]),
+    key,
+    width: 120,
+    align: "right",
+    sorter: (a, b) => a[key] - b[key],
+    render: (row) => {
+      const share = rowShare(row, key);
+      const tone = limitTone(share);
+      let sub: VNodeChild = null;
+      if (row.trusted && ipLimit.value) {
+        sub = h("span", { class: "sec-rate__share muted" }, "no limit");
+      } else if (share !== null) {
+        sub = h(
+          "span",
+          { class: ["sec-rate__share", tone ? `sec-num--${tone}` : "muted"] },
+          `${formatShare(share)} of limit`
+        );
+      }
+      return h("div", { class: "sec-rate", title: `${rateWhat(key)}\n${limitHint.value}` }, [
+        h("span", { class: ["sec-num", tone ? `sec-num--${tone}` : ""] }, formatRpm(row[key])),
+        sub
+      ]);
+    }
+  };
+}
+
 const lastSeenColumn: DataTableColumns<ClientStatItem>[number] = {
   title: "Last seen",
   key: "last_seen_at_unix",
@@ -402,6 +482,8 @@ const columns = computed<DataTableColumns<ClientStatItem>>(() => {
         address(true),
         countColumn("Rate limited", "limited", "warning"),
         countColumn("Requests", "requests"),
+        rateColumn("peak_rpm"),
+        rateColumn("recent_rpm"),
         {
           title: "Last rule",
           key: "last_rule",
@@ -421,12 +503,16 @@ const columns = computed<DataTableColumns<ClientStatItem>>(() => {
         },
         address(false, "Network"),
         countColumn("Requests", "requests"),
+        rateColumn("peak_rpm"),
+        rateColumn("recent_rpm"),
         lastSeenColumn
       ];
     default:
       return [
         address(true),
         countColumn("Requests", "requests"),
+        rateColumn("peak_rpm"),
+        rateColumn("recent_rpm"),
         countColumn("Blocked", "blocked", "error"),
         countColumn("Rate limited", "limited", "warning"),
         lastSeenColumn
@@ -554,6 +640,11 @@ function rowKey(row: ClientStatItem): string {
       </NTabs>
       <p class="sec-tab-hint muted">
         {{ TAB_HINT[tab] }} Top {{ TOP_LIMIT }}, {{ period }}. Click an address for details.
+        <template v-if="tab !== 'blocked'">
+          <br />
+          “Peak / min” — requests per minute in the busiest 5 minutes, “Now / min” — in the
+          last full 5 minutes. {{ limitHint }}
+        </template>
       </p>
 
       <template v-if="isMobile">
@@ -571,6 +662,19 @@ function rowKey(row: ClientStatItem): string {
               </div>
               <div class="sec-card__meta">
                 <span>{{ formatCount(row.requests) }} requests</span>
+                <template v-if="tab !== 'blocked'">
+                  <span
+                    v-for="key in RATE_KEYS"
+                    :key="key"
+                    :class="rateClass(row, key)"
+                  >
+                    {{ key === "peak_rpm" ? "peak" : "now" }} {{ formatRpm(row[key]) }}/min<template
+                      v-if="rowShare(row, key) !== null"
+                    >
+                      · {{ formatShare(rowShare(row, key) ?? 0) }} of limit</template
+                    >
+                  </span>
+                </template>
                 <span v-if="row.blocked" class="sec-num--error">
                   {{ formatCount(row.blocked) }} blocked
                 </span>
@@ -607,7 +711,7 @@ function rowKey(row: ClientStatItem): string {
         :loading="current.loading"
         :row-key="rowKey"
         :bordered="false"
-        :scroll-x="860"
+        :scroll-x="tab === 'blocked' ? 860 : 1060"
       >
         <template #empty>
           <EmptyState :description="EMPTY_TEXT[tab]" size="medium" />
@@ -618,6 +722,8 @@ function rowKey(row: ClientStatItem): string {
     <ClientStatDrawer
       v-model:show="showDrawer"
       :item="selected"
+      :ip-limit="ipLimit"
+      :recent-from="recentFrom"
       :range-seconds="range"
       :can-block="canBlock"
       @block="openBlock"
@@ -775,6 +881,18 @@ function rowKey(row: ClientStatItem): string {
 
 :deep(.sec-num) {
   font-variant-numeric: tabular-nums;
+}
+
+:deep(.sec-rate) {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.3;
+}
+
+:deep(.sec-rate__share) {
+  font-size: 11.5px;
+  white-space: nowrap;
 }
 
 :deep(.sec-num--error) {

@@ -69,7 +69,9 @@ const (
 		       sum(limited)::bigint  AS limited,
 		       coalesce((array_agg(last_rule ORDER BY bucket DESC) FILTER (WHERE last_rule <> ''))[1], ''),
 		       min(bucket),
-		       max(bucket)
+		       max(bucket),
+		       max(requests)::bigint,
+		       coalesce(sum(requests) FILTER (WHERE bucket = $3), 0)::bigint
 		FROM client_stat
 		WHERE bucket >= $1 AND %s
 		GROUP BY ip, trusted
@@ -188,7 +190,7 @@ func (r *Repo) Top(ctx context.Context, req *model.TopReq) ([]*model.Item, error
 		return nil, errs.InvalidRequest
 	}
 
-	rows, err := r.Txm.GetConnection(ctx).Query(ctx, fmt.Sprintf(topSQL, parts[0], parts[1], parts[2]), req.Since, req.Limit)
+	rows, err := r.Txm.GetConnection(ctx).Query(ctx, fmt.Sprintf(topSQL, parts[0], parts[1], parts[2]), req.Since, req.Limit, req.Recent)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
@@ -198,6 +200,7 @@ func (r *Repo) Top(ctx context.Context, req *model.TopReq) ([]*model.Item, error
 		scanErr := row.Scan(
 			&item.Ip, &item.Trusted, &item.Requests, &item.Blocked, &item.Limited,
 			&item.LastRule, &item.FirstSeenAt, &item.LastSeenAt,
+			&item.PeakRequests, &item.RecentRequests,
 		)
 		return item, scanErr
 	})

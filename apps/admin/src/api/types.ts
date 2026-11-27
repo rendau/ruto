@@ -673,10 +673,28 @@ export interface ClientStatItem {
   last_seen_at_unix: number;
   // the active block covering ip, if any
   block: ClientStatBlock | null;
+  // requests per minute in the busiest 5-minute step of the range
+  peak_rpm: number;
+  // requests per minute in the last full 5-minute step
+  // (it starts at ClientStatTopRep.recent_from_unix)
+  recent_rpm: number;
+}
+
+// A Root rate-limit rule with key "ip": it counts every request of a client
+// through the whole gateway, so a client's rpm compares to it.
+export interface ClientStatIpLimit {
+  name: string;
+  requests: number;
+  period_seconds: number;
+  // requests per minute
+  rpm: number;
 }
 
 export interface ClientStatTopRep {
   results: ClientStatItem[];
+  // strictest first
+  ip_limits: ClientStatIpLimit[];
+  recent_from_unix: number;
 }
 
 export interface ClientStatSeriesRep {

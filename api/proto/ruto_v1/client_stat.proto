@@ -72,6 +72,21 @@ message ClientStatTopReq {
 
 message ClientStatTopRep {
   repeated ClientStatItem results = 1;
+  // Root rate-limit rules with key "ip", strictest first: they count every
+  // request of a client through the whole gateway, so peak_rpm / recent_rpm
+  // compare to them
+  repeated ClientStatIpLimit ip_limits = 2;
+  // start of the 5-minute step of ClientStatItem.recent_rpm
+  int64 recent_from_unix = 3;
+}
+
+// ClientStatIpLimit is a Root rate-limit rule with key "ip".
+message ClientStatIpLimit {
+  string name = 1;
+  int64 requests = 2;
+  int64 period_seconds = 3;
+  // requests / period, per minute
+  double rpm = 4;
 }
 
 message ClientStatItem {
@@ -87,6 +102,11 @@ message ClientStatItem {
   int64 last_seen_at_unix = 8;
   // the active block covering ip, if any
   ClientStatBlock block = 9;
+  // requests per minute in the busiest 5-minute step of the range
+  double peak_rpm = 10;
+  // requests per minute in the last full 5-minute step (it starts at
+  // ClientStatTopRep.recent_from_unix; 0 when the client sent nothing then)
+  double recent_rpm = 11;
 }
 
 message ClientStatBlock {

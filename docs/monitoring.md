@@ -89,7 +89,14 @@ not need Prometheus: core stores these counters itself, in PostgreSQL.
   - `overview?range_seconds=` — timeline of all traffic (requests, blocked, limited, trusted),
     totals with the number of distinct clients, and the traffic of each trusted client;
   - `top?kind=requests|blocked|limited|trusted&limit=&range_seconds=` — clients of the range,
-    busiest first, with the active block covering each of them;
+    busiest first, with the active block covering each of them. Each client also has
+    `peak_rpm` — requests per minute in its busiest 5-minute bucket of the range — and
+    `recent_rpm` — in the last full bucket (it starts at `recent_from_unix` of the reply).
+    `ip_limits` are the Root rate-limit rules with `key: ip`, strictest first: only they count
+    every request of a client through the whole gateway, as these counters do, so the admin
+    shows a client's rate as a share of the strictest one ("92% of limit"; trusted clients skip
+    limits). The share is a guide, not the limiter's own count: buckets sum all gateway pods,
+    while every pod limits on its own, and a 5-minute average hides shorter bursts;
   - `series?ip=&range_seconds=` — timeline of one client (`ip` as `top` returns it).
 
   Range is clamped to 5m…7d (default 24h), `limit` to 1…200 (default 50). The step is the

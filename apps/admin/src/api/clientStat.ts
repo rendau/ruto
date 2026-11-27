@@ -2,6 +2,7 @@ import { apiFetch } from "./http";
 import { withQuery } from "./query";
 import type {
   ClientStatBlock,
+  ClientStatIpLimit,
   ClientStatItem,
   ClientStatKind,
   ClientStatOverviewRep,
@@ -18,6 +19,11 @@ type Raw<T> = { [K in keyof T]?: unknown };
 
 function count(value: unknown): number {
   const n = Math.trunc(Number(value));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function rate(value: unknown): number {
+  const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
@@ -85,7 +91,18 @@ function normalizeItem(value: Raw<ClientStatItem>): ClientStatItem {
     last_rule: text(value.last_rule),
     first_seen_at_unix: count(value.first_seen_at_unix),
     last_seen_at_unix: count(value.last_seen_at_unix),
-    block: normalizeBlock(value.block as Raw<ClientStatBlock> | null | undefined)
+    block: normalizeBlock(value.block as Raw<ClientStatBlock> | null | undefined),
+    peak_rpm: rate(value.peak_rpm),
+    recent_rpm: rate(value.recent_rpm)
+  };
+}
+
+function normalizeIpLimit(value: Raw<ClientStatIpLimit>): ClientStatIpLimit {
+  return {
+    name: text(value.name),
+    requests: count(value.requests),
+    period_seconds: count(value.period_seconds),
+    rpm: rate(value.rpm)
   };
 }
 
@@ -111,7 +128,14 @@ export async function getClientStatTop(
   const rep = await apiFetch<Raw<ClientStatTopRep>>(
     withQuery("/client_stat/top", { range_seconds: rangeSeconds, kind, limit })
   );
-  return { results: list<ClientStatItem>(rep.results).map(normalizeItem) };
+  return {
+    results: list<ClientStatItem>(rep.results).map(normalizeItem),
+    ip_limits: list<ClientStatIpLimit>(rep.ip_limits)
+      .map(normalizeIpLimit)
+      .filter((limit) => limit.rpm > 0)
+      .sort((a, b) => a.rpm - b.rpm),
+    recent_from_unix: count(rep.recent_from_unix)
+  };
 }
 
 export async function getClientStatSeries(
