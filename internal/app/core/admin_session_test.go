@@ -4,19 +4,27 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/internal/infra/clientip"
 )
 
-type fakeAdminLogin struct{}
+type fakeAdminLogin struct {
+	clientIP netip.Addr
+}
 
-func (f *fakeAdminLogin) Login(_ context.Context, username, password string) (string, error) {
-	if username == "admin" && password == "pass" {
+func (f *fakeAdminLogin) Login(_ context.Context, username, password string, clientIP netip.Addr) (string, error) {
+	f.clientIP = clientIP
+	switch {
+	case username == "admin" && password == "pass":
 		return "jwt-token", nil
+	case username == "locked":
+		return "", errs.TooManyAttempts
 	}
 	return "", errs.NotAuthorized
 }
@@ -30,11 +38,13 @@ func sessionRequest(method, origin, body string) *http.Request {
 }
 
 func TestAdminSessionLogin(t *testing.T) {
-	handler := NewAdminSessionHandler(&fakeAdminLogin{})
+	login := &fakeAdminLogin{}
+	handler := NewAdminSessionHandler(login, clientip.New(nil, nil))
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, sessionRequest(http.MethodPost, "https://ruto.example.com", `{"username":"admin","password":"pass"}`))
 	require.Equal(t, http.StatusNoContent, rec.Code)
+	require.Equal(t, netip.MustParseAddr("192.0.2.1"), login.clientIP, "the throttle gets the client address")
 	require.Empty(t, rec.Body.String(), "the token must not reach the page")
 
 	cookies := rec.Result().Cookies()
@@ -54,6 +64,12 @@ func TestAdminSessionLogin(t *testing.T) {
 	require.Contains(t, rec.Body.String(), `"code":"not_authorized"`)
 	require.Empty(t, rec.Result().Cookies())
 
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, sessionRequest(http.MethodPost, "https://ruto.example.com", `{"username":"locked","password":"pass"}`))
+	require.Equal(t, http.StatusTooManyRequests, rec.Code)
+	require.Contains(t, rec.Body.String(), `"code":"too_many_attempts"`)
+	require.Empty(t, rec.Result().Cookies())
+
 	for _, origin := range []string{"", "https://evil.example.com", "https://other.example.com"} {
 		rec = httptest.NewRecorder()
 		handler.ServeHTTP(rec, sessionRequest(http.MethodPost, origin, `{"username":"admin","password":"pass"}`))
@@ -64,7 +80,7 @@ func TestAdminSessionLogin(t *testing.T) {
 
 func TestAdminSessionLogout(t *testing.T) {
 	rec := httptest.NewRecorder()
-	NewAdminSessionHandler(&fakeAdminLogin{}).ServeHTTP(rec, sessionRequest(http.MethodDelete, "https://ruto.example.com", ""))
+	NewAdminSessionHandler(&fakeAdminLogin{}, clientip.New(nil, nil)).ServeHTTP(rec, sessionRequest(http.MethodDelete, "https://ruto.example.com", ""))
 	require.Equal(t, http.StatusNoContent, rec.Code)
 
 	cookies := rec.Result().Cookies()

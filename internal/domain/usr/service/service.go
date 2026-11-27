@@ -65,6 +65,12 @@ func (s *Service) PasswordMatches(item *model.Usr, password string) (bool, error
 	return ok, nil
 }
 
+// PasswordVersion is a fingerprint of the user's current password, put into
+// admin tokens so that a password change ends every session issued before.
+func (s *Service) PasswordVersion(item *model.Usr) string {
+	return passwordVersion(item.Password)
+}
+
 func (s *Service) HasAny(ctx context.Context) (bool, error) {
 	result, err := s.repoDb.HasAny(ctx)
 	if err != nil {

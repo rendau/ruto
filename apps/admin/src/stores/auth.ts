@@ -65,6 +65,11 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function updateProfile(payload: { name?: string; password?: string; current_password?: string }): Promise<void> {
     await apiUpdateProfile(payload);
+    // a new password ends every session issued before, this one included:
+    // sign in again with it before the next request
+    if (payload.password && profile.value) {
+      await apiLogin(profile.value.username, payload.password);
+    }
     await refreshProfile();
   }
 

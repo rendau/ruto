@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/internal/infra/clientip"
 )
 
 func TestErrorStatusCodes(t *testing.T) {
@@ -25,6 +26,7 @@ func TestErrorStatusCodes(t *testing.T) {
 		{"not authorized", fmt.Errorf("uc: %w", errs.NotAuthorized), http.StatusUnauthorized, errs.NotAuthorized.Error()},
 		{"no permission", errs.NoPermission, http.StatusForbidden, errs.NoPermission.Error()},
 		{"no permission with desc", errs.ErrFull{Err: errs.NoPermission, Desc: "app is not yours"}, http.StatusForbidden, errs.NoPermission.Error()},
+		{"too many attempts", errs.TooManyAttempts, http.StatusTooManyRequests, errs.TooManyAttempts.Error()},
 		{"business error", errs.ObjectNotFound, http.StatusBadRequest, errs.ObjectNotFound.Error()},
 		{"unexpected error", fmt.Errorf("boom"), http.StatusBadRequest, errs.ServiceNA.Error()},
 	}
@@ -39,7 +41,7 @@ func TestErrorStatusCodes(t *testing.T) {
 			)
 			require.Error(t, grpcErr)
 
-			handler, err := GrpcGatewayCreateHandler(func(mux *runtime.ServeMux) error {
+			handler, err := GrpcGatewayCreateHandler(clientip.New(nil, nil), func(mux *runtime.ServeMux) error {
 				return mux.HandlePath(http.MethodGet, "/fail", func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 					runtime.HTTPError(r.Context(), mux, &runtime.JSONPb{}, w, r, grpcErr)
 				})

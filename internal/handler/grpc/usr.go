@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/rendau/ruto/internal/handler/grpc/dto"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	usecase "github.com/rendau/ruto/internal/usecase/usr"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
@@ -67,7 +68,7 @@ func (h *Usr) Delete(ctx context.Context, req *ruto_v1.UsrGetReq) (*emptypb.Empt
 }
 
 func (h *Usr) Login(ctx context.Context, req *ruto_v1.UsrLoginReq) (*ruto_v1.UsrLoginRep, error) {
-	jwtToken, err := h.usecase.Login(ctx, req.Username, req.Password)
+	jwtToken, err := h.usecase.Login(ctx, req.Username, req.Password, clientip.FromContext(ctx))
 	if err != nil {
 		return nil, err
 	}

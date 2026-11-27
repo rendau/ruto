@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"runtime/debug"
 
 	"encoding/json"
@@ -14,16 +15,35 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rs/cors"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	configCore "github.com/rendau/ruto/internal/config/core"
 	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/internal/infra/clientip"
 )
 
-func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handler, error) {
+// ClientIPResolverI finds the client address of an HTTP request.
+type ClientIPResolverI interface {
+	ClientIP(req clientip.RequestI) netip.Addr
+}
+
+// grpcGatewayMetadata passes the session cookie and the client address on to
+// the grpc server.
+func grpcGatewayMetadata(resolver ClientIPResolverI) func(context.Context, *http.Request) metadata.MD {
+	return func(ctx context.Context, r *http.Request) metadata.MD {
+		md := grpcGatewaySessionMetadata(ctx, r)
+		if ip := resolver.ClientIP(clientip.HTTPRequest(r)); ip.IsValid() {
+			md = metadata.Join(md, metadata.Pairs(clientIPMetadata, ip.String()))
+		}
+		return md
+	}
+}
+
+func GrpcGatewayCreateHandler(resolver ClientIPResolverI, muxHook func(*runtime.ServeMux) error) (http.Handler, error) {
 	mux := runtime.NewServeMux(
-		runtime.WithMetadata(grpcGatewaySessionMetadata),
+		runtime.WithMetadata(grpcGatewayMetadata(resolver)),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.JSONPb{
 			MarshalOptions: protojson.MarshalOptions{
 				UseProtoNames:   true,
@@ -47,6 +67,8 @@ func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handl
 					httpStatus = http.StatusUnauthorized
 				case codes.PermissionDenied:
 					httpStatus = http.StatusForbidden
+				case codes.ResourceExhausted:
+					httpStatus = http.StatusTooManyRequests
 				}
 				if len(st.Details()) > 0 {
 					var marshalErr error

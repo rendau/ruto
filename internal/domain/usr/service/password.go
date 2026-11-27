@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strings"
 
@@ -37,4 +39,12 @@ func comparePassword(hash, password string) (bool, error) {
 	}
 
 	return false, err
+}
+
+// passwordVersion fingerprints a stored password hash: every new password
+// gets a new bcrypt salt, so the fingerprint changes even when the same
+// password is set again.
+func passwordVersion(hash string) string {
+	sum := sha256.Sum256([]byte(hash))
+	return hex.EncodeToString(sum[:8])
 }

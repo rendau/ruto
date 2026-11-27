@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"net"
+	"net/netip"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
@@ -25,6 +27,7 @@ import (
 	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	sessionService "github.com/rendau/ruto/internal/domain/session/service"
 	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/internal/infra/clientip"
 	"github.com/rendau/ruto/pkg/proto/ruto_v1"
 )
 
@@ -36,6 +39,7 @@ type GrpcServer struct {
 func NewGrpcServer(
 	name string,
 	sessionSvc *sessionService.Service,
+	adminAuth AdminAuthI,
 	apiKeyAuth ApiKeyAuthI,
 	gatewayToken string,
 	reflectionOn bool,
@@ -46,11 +50,12 @@ func NewGrpcServer(
 	}
 	tokenCheck := newGatewayTokenCheck(gatewayToken)
 
-	interceptors := make([]grpc.UnaryServerInterceptor, 0, 6)
+	interceptors := make([]grpc.UnaryServerInterceptor, 0, 7)
 
 	interceptors = append(interceptors, tokenCheck.unary())
 	interceptors = append(interceptors, GrpcInterceptorCtxWithoutCancel())
-	interceptors = append(interceptors, GrpcInterceptorSession(sessionSvc, apiKeyAuth))
+	interceptors = append(interceptors, GrpcInterceptorClientIP())
+	interceptors = append(interceptors, GrpcInterceptorSession(sessionSvc, adminAuth, apiKeyAuth))
 	interceptors = append(interceptors, GrpcInterceptorRecovery())
 	interceptors = append(interceptors, GrpcInterceptorError())
 
@@ -121,6 +126,11 @@ func GrpcInterceptorCtxWithoutCancel() grpc.UnaryServerInterceptor {
 	}
 }
 
+// AdminAuthI authenticates the token of an admin login.
+type AdminAuthI interface {
+	SessionFromToken(ctx context.Context, token string) (*sessionModel.Session, error)
+}
+
 // ApiKeyAuthI authenticates an api key (rtk_…) of the MCP server.
 type ApiKeyAuthI interface {
 	SessionFromKey(ctx context.Context, key string) (*sessionModel.Session, error)
@@ -137,7 +147,7 @@ var apiKeyMethods = map[string]bool{
 	ruto_v1.BlockedClient_Remove_FullMethodName: true,
 }
 
-func GrpcInterceptorSession(sessionSvc *sessionService.Service, apiKeyAuth ApiKeyAuthI) grpc.UnaryServerInterceptor {
+func GrpcInterceptorSession(sessionSvc *sessionService.Service, adminAuth AdminAuthI, apiKeyAuth ApiKeyAuthI) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		var session *sessionModel.Session
 
@@ -154,14 +164,56 @@ func GrpcInterceptorSession(sessionSvc *sessionService.Service, apiKeyAuth ApiKe
 				}
 			}
 		default:
-			parsedSession, parseErr := sessionSvc.FromToken(token)
-			if parseErr == nil && parsedSession != nil && parsedSession.Id != 0 {
-				session = parsedSession
+			adminSession, adminErr := adminAuth.SessionFromToken(ctx, token)
+			switch {
+			case adminErr == nil:
+				session = adminSession
+			case !errors.Is(adminErr, errs.NotAuthorized):
+				// a failed lookup is not a bad token: the admin UI must not
+				// sign the user out over it
+				slog.Error("api: admin token check", "method", info.FullMethod, "error", adminErr)
+				return nil, status.Error(codes.Unavailable, errs.ServiceNA.Error())
 			}
 		}
 
 		return handler(sessionSvc.WithContext(ctx, session), req)
 	}
+}
+
+// clientIPMetadata carries the client address the grpc-gateway of this
+// process resolved from the HTTP request. It is believed only from a loopback
+// peer, and the grpc-gateway never passes it on from the client's headers.
+const clientIPMetadata = "x-ruto-client-ip"
+
+// GrpcInterceptorClientIP keeps the client address of the call in the context
+// (see clientip.FromContext).
+func GrpcInterceptorClientIP() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+		return handler(clientip.WithContext(ctx, grpcClientIP(ctx)), req)
+	}
+}
+
+func grpcClientIP(ctx context.Context) netip.Addr {
+	p, ok := peer.FromContext(ctx)
+	if !ok || p.Addr == nil {
+		return netip.Addr{}
+	}
+	addrPort, err := netip.ParseAddrPort(p.Addr.String())
+	if err != nil {
+		return netip.Addr{}
+	}
+	ip := addrPort.Addr().Unmap()
+	if !ip.IsLoopback() {
+		return ip
+	}
+
+	md, _ := metadata.FromIncomingContext(ctx)
+	if values := md.Get(clientIPMetadata); len(values) == 1 {
+		if forwarded, parseErr := netip.ParseAddr(values[0]); parseErr == nil {
+			return forwarded.Unmap()
+		}
+	}
+	return ip
 }
 
 func grpcExtractBearerToken(ctx context.Context) string {
@@ -253,6 +305,8 @@ func GrpcInterceptorError() grpc.UnaryServerInterceptor {
 			code = codes.Unauthenticated
 		case errs.NoPermission.Error():
 			code = codes.PermissionDenied
+		case errs.TooManyAttempts.Error():
+			code = codes.ResourceExhausted
 		}
 
 		st := status.New(code, errStr)

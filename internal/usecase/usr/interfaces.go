@@ -12,6 +12,7 @@ type ServiceI interface {
 	Get(ctx context.Context, id int64, errNE bool) (*model.Usr, bool, error)
 	AuthByUsernamePassword(ctx context.Context, username, password string) (*model.Usr, bool, error)
 	PasswordMatches(item *model.Usr, password string) (bool, error)
+	PasswordVersion(item *model.Usr) string
 	HasAny(ctx context.Context) (bool, error)
 	Create(ctx context.Context, obj *model.Edit) (int64, error)
 	Update(ctx context.Context, id int64, obj *model.Edit) error
@@ -22,5 +23,6 @@ type SessionServiceI interface {
 	FromContext(ctx context.Context) *sessionModel.Session
 	CtxIsAuthorized(ctx context.Context) bool
 	CtxIsAdmin(ctx context.Context) bool
-	CreateToken(usrId int64, isAdmin bool, allApps bool, appIds []string) (string, error)
+	CreateToken(usrId int64, passwordVersion string) (string, error)
+	ParseToken(tokenStr string) (int64, string, error)
 }

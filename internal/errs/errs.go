@@ -15,6 +15,7 @@ const (
 	ObjectNotFound    = Err("object_not_found")
 	NoRows            = Err("err_no_rows")
 	NotAuthorized     = Err("not_authorized")
+	TooManyAttempts   = Err("too_many_attempts")
 	InvalidRequest    = Err("invalid_request")
 	IncorrectPageSize = Err("incorrect_page_size")
 

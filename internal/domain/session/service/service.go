@@ -63,9 +63,12 @@ func (s *Service) CtxGetAppIds(ctx context.Context) []string {
 	return s.FromContext(ctx).AppIds
 }
 
-func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
+// ParseToken checks an admin token and returns the user it was issued to and
+// the fingerprint of the password it was issued under. Rights are not read
+// from the token: the caller builds the session from the live user record.
+func (s *Service) ParseToken(tokenStr string) (int64, string, error) {
 	if s.secret == "" {
-		return nil, errs.InvalidConfig
+		return 0, "", errs.InvalidConfig
 	}
 
 	claims := jwtv5.MapClaims{}
@@ -79,73 +82,39 @@ func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
 	)
 	if err != nil || parsedToken == nil || !parsedToken.Valid {
 		if err == nil {
-			return nil, fmt.Errorf("fail to parse token")
+			return 0, "", fmt.Errorf("fail to parse token")
 		}
-		return nil, err
+		return 0, "", err
 	}
 
 	usrRaw, ok := claims["id"]
 	if !ok {
-		return nil, fmt.Errorf("missing user id claim in token")
+		return 0, "", fmt.Errorf("missing user id claim in token")
 	}
-
 	usrId, err := usrIDFromClaim(usrRaw)
 	if err != nil {
-		return nil, err
+		return 0, "", err
 	}
 
-	isAdminRaw, ok := claims["is_admin"]
-	if !ok {
-		return nil, fmt.Errorf("missing is_admin claim in token")
-	}
-	isAdmin, err := boolFromClaim(isAdminRaw)
-	if err != nil {
-		return nil, err
+	passwordVersion, _ := claims["pv"].(string)
+	if passwordVersion == "" {
+		return 0, "", fmt.Errorf("missing pv claim in token")
 	}
 
-	allAppsRaw, ok := claims["all_apps"]
-	if !ok {
-		return nil, fmt.Errorf("missing all_apps claim in token")
-	}
-	allApps, err := boolFromClaim(allAppsRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	appIdsRaw, ok := claims["app_ids"]
-	if !ok {
-		return nil, fmt.Errorf("missing app_ids claim in token")
-	}
-	appIds, err := stringSliceFromClaim(appIdsRaw)
-	if err != nil {
-		return nil, err
-	}
-
-	return &sessionModel.Session{
-		Id:      usrId,
-		Admin:   isAdmin,
-		AllApps: allApps,
-		AppIds:  appIds,
-	}, nil
+	return usrId, passwordVersion, nil
 }
 
-func (s *Service) CreateToken(usrId int64, isAdmin bool, allApps bool, appIds []string) (string, error) {
+func (s *Service) CreateToken(usrId int64, passwordVersion string) (string, error) {
 	if s.secret == "" {
 		return "", errs.InvalidConfig
 	}
 
-	if appIds == nil {
-		appIds = []string{}
-	}
-
 	now := time.Now().UTC()
 	claims := jwtv5.MapClaims{
-		"id":       usrId,
-		"is_admin": isAdmin,
-		"all_apps": allApps,
-		"app_ids":  appIds,
-		"iat":      now.Unix(),
-		"exp":      now.Add(TokenTTL).Unix(),
+		"id":  usrId,
+		"pv":  passwordVersion,
+		"iat": now.Unix(),
+		"exp": now.Add(TokenTTL).Unix(),
 	}
 
 	token := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, claims)
@@ -155,51 +124,6 @@ func (s *Service) CreateToken(usrId int64, isAdmin bool, allApps bool, appIds []
 	}
 
 	return tokenStr, nil
-}
-
-func boolFromClaim(v any) (bool, error) {
-	switch x := v.(type) {
-	case bool:
-		return x, nil
-	case string:
-		parsed, err := strconv.ParseBool(x)
-		if err != nil {
-			return false, fmt.Errorf("strconv.ParseBool: %w", err)
-		}
-		return parsed, nil
-	case float64:
-		if x == 1 {
-			return true, nil
-		}
-		if x == 0 {
-			return false, nil
-		}
-		return false, fmt.Errorf("invalid is_admin claim")
-	default:
-		return false, fmt.Errorf("invalid is_admin claim")
-	}
-}
-
-func stringSliceFromClaim(v any) ([]string, error) {
-	if v == nil {
-		return []string{}, nil
-	}
-	switch x := v.(type) {
-	case []string:
-		return x, nil
-	case []any:
-		result := make([]string, 0, len(x))
-		for _, item := range x {
-			s, ok := item.(string)
-			if !ok {
-				return nil, fmt.Errorf("invalid app_ids claim item")
-			}
-			result = append(result, s)
-		}
-		return result, nil
-	default:
-		return nil, fmt.Errorf("invalid app_ids claim")
-	}
 }
 
 func usrIDFromClaim(v any) (int64, error) {

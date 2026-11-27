@@ -2,10 +2,14 @@ package usr
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
+	"net/netip"
 	"strings"
+	"time"
 
+	sessionModel "github.com/rendau/ruto/internal/domain/session/model"
 	"github.com/rendau/ruto/internal/domain/usr/model"
 	"github.com/rendau/ruto/internal/errs"
 )
@@ -37,32 +41,74 @@ var errCurrentPasswordMismatch = errs.ErrFull{
 type Usecase struct {
 	svc        ServiceI
 	sessionSvc SessionServiceI
+	throttle   *loginThrottle
 }
 
 func New(srv ServiceI, sessionSvc SessionServiceI) *Usecase {
 	return &Usecase{
 		svc:        srv,
 		sessionSvc: sessionSvc,
+		throttle:   newLoginThrottle(time.Now),
 	}
 }
 
-func (u *Usecase) Login(ctx context.Context, username, password string) (string, error) {
+// Login checks a username and password from the client at clientIP (invalid
+// when unknown) and returns an admin token.
+func (u *Usecase) Login(ctx context.Context, username, password string, clientIP netip.Addr) (string, error) {
 	username = strings.TrimSpace(username)
+
+	if u.throttle.Blocked(username, clientIP) {
+		return "", errs.TooManyAttempts
+	}
 
 	item, found, err := u.svc.AuthByUsernamePassword(ctx, username, password)
 	if err != nil {
 		return "", fmt.Errorf("svc.AuthByUsernamePassword: %w", err)
 	}
-	if !found || !item.Active {
+	if !found {
+		u.throttle.Failed(username, clientIP)
+		return "", errs.NotAuthorized
+	}
+	u.throttle.Succeeded(username, clientIP)
+	if !item.Active {
 		return "", errs.NotAuthorized
 	}
 
-	token, err := u.sessionSvc.CreateToken(item.Id, item.IsAdmin, item.AllApps, item.AppIds)
+	token, err := u.sessionSvc.CreateToken(item.Id, u.svc.PasswordVersion(item))
 	if err != nil {
 		return "", fmt.Errorf("sessionSvc.CreateToken: %w", err)
 	}
 
 	return token, nil
+}
+
+// SessionFromToken authenticates an admin token. As with api keys, the
+// session is built from the live user record, and the token must carry the
+// fingerprint of the current password: changing the password, deactivating
+// the user or taking rights away ends every session issued before at once.
+func (u *Usecase) SessionFromToken(ctx context.Context, token string) (*sessionModel.Session, error) {
+	usrId, passwordVersion, err := u.sessionSvc.ParseToken(token)
+	if err != nil {
+		return nil, errs.NotAuthorized
+	}
+
+	item, found, err := u.svc.Get(ctx, usrId, false)
+	if err != nil {
+		return nil, fmt.Errorf("svc.Get: %w", err)
+	}
+	if !found || !item.Active {
+		return nil, errs.NotAuthorized
+	}
+	if subtle.ConstantTimeCompare([]byte(u.svc.PasswordVersion(item)), []byte(passwordVersion)) != 1 {
+		return nil, errs.NotAuthorized
+	}
+
+	return &sessionModel.Session{
+		Id:      item.Id,
+		Admin:   item.IsAdmin,
+		AllApps: item.AllApps,
+		AppIds:  item.AppIds,
+	}, nil
 }
 
 func (u *Usecase) BootstrapStatus(ctx context.Context) (bool, error) {

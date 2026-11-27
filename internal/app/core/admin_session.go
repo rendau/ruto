@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 
 	sessionService "github.com/rendau/ruto/internal/domain/session/service"
 	"github.com/rendau/ruto/internal/errs"
+	"github.com/rendau/ruto/internal/infra/clientip"
 )
 
 // The admin UI keeps its token in an HttpOnly cookie: scripts of the page
@@ -26,7 +28,7 @@ const (
 
 // AdminLoginI checks a username and password and returns an admin token.
 type AdminLoginI interface {
-	Login(ctx context.Context, username, password string) (string, error)
+	Login(ctx context.Context, username, password string, clientIP netip.Addr) (string, error)
 }
 
 type adminLoginReq struct {
@@ -36,7 +38,7 @@ type adminLoginReq struct {
 
 // NewAdminSessionHandler serves /api/session: POST signs in and sets the
 // cookie, DELETE signs out and removes it.
-func NewAdminSessionHandler(login AdminLoginI) http.Handler {
+func NewAdminSessionHandler(login AdminLoginI, resolver ClientIPResolverI) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !sameOriginRequest(r) {
 			writeSessionError(w, http.StatusForbidden, errs.NoPermission, "cross-site request")
@@ -50,10 +52,15 @@ func NewAdminSessionHandler(login AdminLoginI) http.Handler {
 				writeSessionError(w, http.StatusBadRequest, errs.InvalidRequest, "bad request body")
 				return
 			}
-			token, err := login.Login(r.Context(), req.Username, req.Password)
+			token, err := login.Login(r.Context(), req.Username, req.Password, resolver.ClientIP(clientip.HTTPRequest(r)))
 			if err != nil {
 				if errors.Is(err, errs.NotAuthorized) {
 					writeSessionError(w, http.StatusUnauthorized, errs.NotAuthorized, "wrong username or password")
+					return
+				}
+				if errors.Is(err, errs.TooManyAttempts) {
+					writeSessionError(w, http.StatusTooManyRequests, errs.TooManyAttempts,
+						"too many failed sign-in attempts, try again in 15 minutes")
 					return
 				}
 				slog.Error("admin session: login", "error", err)

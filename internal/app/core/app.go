@@ -366,7 +366,14 @@ func (a *App) Init() error {
 	}
 
 	// grpc-server
-	a.grpcServer = NewGrpcServer("core", sessionService, usecaseApiKey, configCore.Conf.GatewayToken, configCore.Conf.Debug, func(server *grpc.Server) {
+	// the client address of admin API calls, for the sign-in throttle
+	var cloudflare infraClientipP.CloudflareI
+	if a.cloudflare != nil {
+		cloudflare = a.cloudflare
+	}
+	clientIPResolver := infraClientipP.New(configCore.Conf.TrustedProxyAddresses, cloudflare)
+
+	a.grpcServer = NewGrpcServer("core", sessionService, usecaseUsr, usecaseApiKey, configCore.Conf.GatewayToken, configCore.Conf.Debug, func(server *grpc.Server) {
 		ruto_v1.RegisterRootServer(server, handlerGrpcRoot)
 		ruto_v1.RegisterAppServer(server, handlerGrpcApp)
 		ruto_v1.RegisterEndpointServer(server, handlerGrpcEndpoint)
@@ -385,7 +392,7 @@ func (a *App) Init() error {
 	})
 
 	// grpc-gateway
-	grpcGwHandler, err := GrpcGatewayCreateHandler(func(mux *runtime.ServeMux) error {
+	grpcGwHandler, err := GrpcGatewayCreateHandler(clientIPResolver, func(mux *runtime.ServeMux) error {
 		opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 		conn, dialErr := grpc.NewClient("localhost:"+strconv.Itoa(configCore.Conf.GrpcPort), opts...)
 		if dialErr != nil {
@@ -424,7 +431,7 @@ func (a *App) Init() error {
 
 	handler := http.NewServeMux()
 	handler.Handle("/api", http.RedirectHandler("/api/", http.StatusMovedPermanently))
-	handler.Handle("/api/session", NewAdminSessionHandler(usecaseUsr))
+	handler.Handle("/api/session", NewAdminSessionHandler(usecaseUsr, clientIPResolver))
 	handler.Handle("/api/", NewSessionCSRFGuard(http.StripPrefix("/api", grpcGwHandler)))
 	handler.Handle("/", NewAdminSPAHandler())
 
