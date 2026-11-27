@@ -105,4 +105,6 @@ message UsrBootstrapStatusRep {
 message UsrUpdateProfileReq {
   optional string name = 1;
   optional string password = 2;
+  // required together with password: the new one is set only when it matches
+  optional string current_password = 3;
 }

@@ -57,6 +57,14 @@ func (s *Service) AuthByUsernamePassword(ctx context.Context, username, password
 	return nil, false, nil
 }
 
+func (s *Service) PasswordMatches(item *model.Usr, password string) (bool, error) {
+	ok, err := comparePassword(item.Password, password)
+	if err != nil {
+		return false, fmt.Errorf("comparePassword: %w", err)
+	}
+	return ok, nil
+}
+
 func (s *Service) HasAny(ctx context.Context) (bool, error) {
 	result, err := s.repoDb.HasAny(ctx)
 	if err != nil {

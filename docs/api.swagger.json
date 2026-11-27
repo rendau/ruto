@@ -3830,6 +3830,10 @@
         },
         "password": {
           "type": "string"
+        },
+        "current_password": {
+          "type": "string",
+          "title": "required together with password: the new one is set only when it matches"
         }
       }
     }

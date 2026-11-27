@@ -27,11 +27,18 @@ const { profile, isAdmin } = storeToRefs(authStore);
 
 const formRef = ref<FormInst | null>(null);
 const saving = ref(false);
-const model = reactive({ name: profile.value?.name ?? "", password: "" });
+const model = reactive({ name: profile.value?.name ?? "", password: "", currentPassword: "" });
 
 const rules: FormRules = {
   name: [{ required: true, message: "Name is required", trigger: ["blur", "input"] }],
-  password: [{ min: 6, message: "At least 6 characters", trigger: ["blur", "input"] }]
+  password: [{ min: 6, message: "At least 6 characters", trigger: ["blur", "input"] }],
+  currentPassword: [
+    {
+      validator: () => !model.password || model.currentPassword !== "",
+      message: "Enter your current password to set a new one",
+      trigger: ["blur", "input"]
+    }
+  ]
 };
 
 const accessLabel = computed(() => {
@@ -52,9 +59,10 @@ async function save(): Promise<void> {
   try {
     await authStore.updateProfile({
       name: model.name,
-      ...(model.password ? { password: model.password } : {})
+      ...(model.password ? { password: model.password, current_password: model.currentPassword } : {})
     });
     model.password = "";
+    model.currentPassword = "";
     message.success("Profile updated");
     router.back();
   } catch (error) {
@@ -105,6 +113,15 @@ async function save(): Promise<void> {
             type="password"
             show-password-on="click"
             placeholder="Unchanged"
+          />
+        </NFormItem>
+        <NFormItem v-if="model.password" label="Current password" path="currentPassword">
+          <NInput
+            v-model:value="model.currentPassword"
+            type="password"
+            show-password-on="click"
+            placeholder="Required to set a new password"
+            :input-props="{ autocomplete: 'current-password' }"
           />
         </NFormItem>
         <NButton type="primary" :loading="saving" @click="save">Save changes</NButton>

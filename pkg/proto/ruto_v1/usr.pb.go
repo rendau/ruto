@@ -656,11 +656,13 @@ func (x *UsrBootstrapStatusRep) GetCanCreateFirstAdmin() bool {
 }
 
 type UsrUpdateProfileReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Password      *string                `protobuf:"bytes,2,opt,name=password,proto3,oneof" json:"password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Name     *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Password *string                `protobuf:"bytes,2,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	// required together with password: the new one is set only when it matches
+	CurrentPassword *string `protobuf:"bytes,3,opt,name=current_password,json=currentPassword,proto3,oneof" json:"current_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UsrUpdateProfileReq) Reset() {
@@ -703,6 +705,13 @@ func (x *UsrUpdateProfileReq) GetName() string {
 func (x *UsrUpdateProfileReq) GetPassword() string {
 	if x != nil && x.Password != nil {
 		return *x.Password
+	}
+	return ""
+}
+
+func (x *UsrUpdateProfileReq) GetCurrentPassword() string {
+	if x != nil && x.CurrentPassword != nil {
+		return *x.CurrentPassword
 	}
 	return ""
 }
@@ -771,12 +780,14 @@ const file_ruto_v1_usr_proto_rawDesc = "" +
 	"\vUsrLoginRep\x12\x10\n" +
 	"\x03jwt\x18\x01 \x01(\tR\x03jwt\"L\n" +
 	"\x15UsrBootstrapStatusRep\x123\n" +
-	"\x16can_create_first_admin\x18\x01 \x01(\bR\x13canCreateFirstAdmin\"e\n" +
+	"\x16can_create_first_admin\x18\x01 \x01(\bR\x13canCreateFirstAdmin\"\xaa\x01\n" +
 	"\x13UsrUpdateProfileReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1f\n" +
-	"\bpassword\x18\x02 \x01(\tH\x01R\bpassword\x88\x01\x01B\a\n" +
+	"\bpassword\x18\x02 \x01(\tH\x01R\bpassword\x88\x01\x01\x12.\n" +
+	"\x10current_password\x18\x03 \x01(\tH\x02R\x0fcurrentPassword\x88\x01\x01B\a\n" +
 	"\x05_nameB\v\n" +
-	"\t_password2\xc2\x05\n" +
+	"\t_passwordB\x13\n" +
+	"\x11_current_password2\xc2\x05\n" +
 	"\x03Usr\x12>\n" +
 	"\x04List\x12\x13.ruto_v1.UsrListReq\x1a\x13.ruto_v1.UsrListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/usr\x12>\n" +
 	"\x03Get\x12\x12.ruto_v1.UsrGetReq\x1a\x10.ruto_v1.UsrMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/usr/{id}\x12D\n" +

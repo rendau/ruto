@@ -18,6 +18,22 @@ var errUsernameExists = errs.ErrFull{
 	},
 }
 
+var errCurrentPasswordRequired = errs.ErrFull{
+	Err:  errs.PasswordRequired,
+	Desc: "current password is required to set a new one",
+	Fields: map[string]string{
+		"current_password": "required",
+	},
+}
+
+var errCurrentPasswordMismatch = errs.ErrFull{
+	Err:  errs.PasswordMismatch,
+	Desc: "current password is incorrect",
+	Fields: map[string]string{
+		"current_password": "incorrect",
+	},
+}
+
 type Usecase struct {
 	svc        ServiceI
 	sessionSvc SessionServiceI
@@ -103,6 +119,20 @@ func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) erro
 
 	if err = u.validateEdit(edit, false); err != nil {
 		return err
+	}
+
+	// a stolen session alone must not be enough to take the account over
+	if edit.Password != nil {
+		if req.CurrentPassword == nil || *req.CurrentPassword == "" {
+			return errCurrentPasswordRequired
+		}
+		ok, err := u.svc.PasswordMatches(item, *req.CurrentPassword)
+		if err != nil {
+			return fmt.Errorf("svc.PasswordMatches: %w", err)
+		}
+		if !ok {
+			return errCurrentPasswordMismatch
+		}
 	}
 
 	if err = u.svc.Update(ctx, extractedSession.Id, edit); err != nil {

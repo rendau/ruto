@@ -31,7 +31,7 @@ export function getBootstrapStatus(): Promise<UsrBootstrapStatusRep> {
   return apiFetch<UsrBootstrapStatusRep>("/usr/bootstrap/status");
 }
 
-export function updateProfile(req: { name?: string; password?: string }): Promise<void> {
+export function updateProfile(req: { name?: string; password?: string; current_password?: string }): Promise<void> {
   return apiFetch<void>("/usr/profile", { method: "PUT", body: JSON.stringify(req) });
 }
 

@@ -60,7 +60,8 @@ func DecodeUsrListReq(v *ruto_v1.UsrListReq) *model.ListReq {
 
 func DecodeUsrUpdateProfileReq(v *ruto_v1.UsrUpdateProfileReq) *usecase.UpdateProfileReq {
 	return &usecase.UpdateProfileReq{
-		Name:     v.Name,
-		Password: v.Password,
+		Name:            v.Name,
+		Password:        v.Password,
+		CurrentPassword: v.CurrentPassword,
 	}
 }
