@@ -133,6 +133,18 @@ func buildHandler(
 					router.Method(ep.Http.Method, pattern, handler)
 				}
 			}
+			// A concrete route without allow_trailing_slash still claims its
+			// trailing-slash form with 404 so "/shop/admin/" or "/shop/users/me/"
+			// cannot fall through to a public "*" or "{id}/" route (Express and
+			// older Spring treat "/admin/" and "/admin" as the same route).
+			if !ep.Http.HasWildcard() && !ep.AllowTrailingSlash {
+				slashPattern := lowerRoutePattern(routePath + "/")
+				if ep.Http.Method == "*" {
+					router.Handle(slashPattern, http.NotFoundHandler())
+				} else {
+					router.Method(ep.Http.Method, slashPattern, http.NotFoundHandler())
+				}
+			}
 		}
 	}
 
@@ -154,22 +166,45 @@ func anyMethodOrder(ep *endpointModel.Endpoint) int {
 	return 1
 }
 
-// canonicalRoutePath makes chi match against the decoded, lowercased path while
+// canonicalRoutePath makes chi match against the decoded, lowercased path
+// (with trailing dots/spaces trimmed per segment for IIS compatibility) while
 // leaving r.URL intact for the backend, logs and seen paths. Without this,
 // chi routes on RawPath (case-sensitive), so /shop/%61dmin, /shop/users/m%65,
-// /shop/admin%2fsecret or /shop/ADMIN would miss a protected endpoint and fall
-// through to a public "*" or "{id}" route.
+// /shop/admin%2fsecret, /shop/ADMIN, /shop/admin. or /shop/admin%20 would miss
+// a protected endpoint and fall through to a public "*" or "{id}" route.
 func canonicalRoutePath(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if rctx := chi.RouteContext(r.Context()); rctx != nil {
-			p := r.URL.Path
-			if p == "" {
-				p = "/"
-			}
-			rctx.RoutePath = strings.ToLower(p)
+			rctx.RoutePath = canonicalPath(r.URL.Path)
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func canonicalPath(p string) string {
+	if p == "" {
+		return "/"
+	}
+	p = strings.ToLower(p)
+	if !hasTrailingDotOrSpace(p) {
+		return p
+	}
+	segs := strings.Split(p, "/")
+	for i, seg := range segs {
+		if trimmed := strings.TrimRight(seg, ". "); trimmed != "" {
+			segs[i] = trimmed
+		}
+	}
+	return strings.Join(segs, "/")
+}
+
+func hasTrailingDotOrSpace(p string) bool {
+	for i := range len(p) {
+		if (p[i] == '.' || p[i] == ' ') && (i+1 == len(p) || p[i+1] == '/') {
+			return true
+		}
+	}
+	return false
 }
 
 // lowerRoutePattern lowercases the static parts of a chi route pattern and

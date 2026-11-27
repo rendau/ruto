@@ -261,20 +261,23 @@ func TestService_HTTPAllowTrailingSlash(t *testing.T) {
 	tests := []struct {
 		allowTrailingSlash bool
 		requestPath        string
+		wantCode           int
 		want               hit
 	}{
-		{requestPath: "/account/compare", want: hit{"compare", "/compare"}},
-		{requestPath: "/account/compare/", want: hit{"mask", "/compare/"}},
-		{requestPath: "/account/", want: hit{"mask", "/"}},
-		{requestPath: "/account/items/AB1/", want: hit{"mask", "/items/AB1/"}},
-		{allowTrailingSlash: true, requestPath: "/account/compare", want: hit{"compare", "/compare"}},
-		{allowTrailingSlash: true, requestPath: "/account/compare/", want: hit{"compare", "/compare/"}},
-		{allowTrailingSlash: true, requestPath: "/account/", want: hit{"root", "/"}},
-		{allowTrailingSlash: true, requestPath: "/account/items/AB1/", want: hit{"item", "/items/AB1/"}},
-		{allowTrailingSlash: true, requestPath: "/account/other/", want: hit{"mask", "/other/"}},
+		{requestPath: "/account/compare", wantCode: http.StatusOK, want: hit{"compare", "/compare"}},
+		// concrete routes without allow_trailing_slash answer 404 instead of falling into "*"
+		{requestPath: "/account/compare/", wantCode: http.StatusNotFound},
+		{requestPath: "/account/", wantCode: http.StatusNotFound},
+		{requestPath: "/account/items/AB1/", wantCode: http.StatusNotFound},
+		{requestPath: "/account/other/", wantCode: http.StatusOK, want: hit{"mask", "/other/"}},
+		{allowTrailingSlash: true, requestPath: "/account/compare", wantCode: http.StatusOK, want: hit{"compare", "/compare"}},
+		{allowTrailingSlash: true, requestPath: "/account/compare/", wantCode: http.StatusOK, want: hit{"compare", "/compare/"}},
+		{allowTrailingSlash: true, requestPath: "/account/", wantCode: http.StatusOK, want: hit{"root", "/"}},
+		{allowTrailingSlash: true, requestPath: "/account/items/AB1/", wantCode: http.StatusOK, want: hit{"item", "/items/AB1/"}},
+		{allowTrailingSlash: true, requestPath: "/account/other/", wantCode: http.StatusOK, want: hit{"mask", "/other/"}},
 		// the bare prefix of an app served by a wildcard only stays with the wildcard
-		{requestPath: "/files/", want: hit{"files-mask", "/"}},
-		{allowTrailingSlash: true, requestPath: "/files/", want: hit{"files-mask", "/"}},
+		{requestPath: "/files/", wantCode: http.StatusOK, want: hit{"files-mask", "/"}},
+		{allowTrailingSlash: true, requestPath: "/files/", wantCode: http.StatusOK, want: hit{"files-mask", "/"}},
 	}
 
 	services := map[bool]*Service{false: newService(false), true: newService(true)}
@@ -285,7 +288,11 @@ func TestService_HTTPAllowTrailingSlash(t *testing.T) {
 
 			rec := performRequest(services[tt.allowTrailingSlash], http.MethodGet, tt.requestPath, nil)
 
-			require.Equal(t, http.StatusOK, rec.Code)
+			require.Equal(t, tt.wantCode, rec.Code)
+			if tt.wantCode != http.StatusOK {
+				require.Empty(t, hits)
+				return
+			}
 			require.Equal(t, []hit{tt.want}, hits)
 		})
 	}
