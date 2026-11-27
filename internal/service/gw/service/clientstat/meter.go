@@ -107,14 +107,6 @@ func (c *Client) Blocked() {
 	c.collector.record(c.key, counter{blocked: 1})
 }
 
-// Preflight marks the request as a CORS preflight the gateway answered itself.
-func (c *Client) Preflight() {
-	if c == nil {
-		return
-	}
-	c.collector.record(c.key, counter{preflights: 1})
-}
-
 // Limited counts the request as rejected by the rate-limit rule labelled rule.
 func (c *Client) Limited(rule string) {
 	if c == nil {

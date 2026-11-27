@@ -454,13 +454,12 @@ func encodeSeenOrigin(v *seen.OriginItem, _ int) *ruto_v1.GatewaySeenOrigin {
 
 func encodeClientStat(v *clientstat.Item, _ int) *ruto_v1.GatewayClientStat {
 	return &ruto_v1.GatewayClientStat{
-		Ip:         v.Ip,
-		Trusted:    v.Trusted,
-		Requests:   v.Requests,
-		Preflights: v.Preflights,
-		Blocked:    v.Blocked,
-		Limited:    v.Limited,
-		LastRule:   v.LastRule,
+		Ip:       v.Ip,
+		Trusted:  v.Trusted,
+		Requests: v.Requests,
+		Blocked:  v.Blocked,
+		Limited:  v.Limited,
+		LastRule: v.LastRule,
 	}
 }
 

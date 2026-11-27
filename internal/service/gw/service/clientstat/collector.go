@@ -38,11 +38,8 @@ type Item struct {
 	// Trusted is the name of the trusted client, "" for any other.
 	Trusted  string
 	Requests int64
-	// Preflights are the CORS preflights among Requests that the gateway
-	// answered itself: they reach no endpoint, so no rate limit counts them.
-	Preflights int64
-	Blocked    int64
-	Limited    int64
+	Blocked  int64
+	Limited  int64
 	// LastRule is the label of the rate-limit rule of the latest rejection.
 	LastRule string
 }
@@ -55,11 +52,10 @@ type key struct {
 }
 
 type counter struct {
-	requests   int64
-	preflights int64
-	blocked    int64
-	limited    int64
-	lastRule   string
+	requests int64
+	blocked  int64
+	limited  int64
+	lastRule string
 	// ruleAt orders the rejections of the rows summed together, so the sum
 	// keeps the rule of the latest one
 	ruleAt int64
@@ -194,18 +190,16 @@ func (c *Collector) Drain() []*Item {
 func (c *Collector) Restore(items []*Item) {
 	for _, item := range items {
 		c.record(parseKey(item.Ip, item.Trusted), counter{
-			requests:   item.Requests,
-			preflights: item.Preflights,
-			blocked:    item.Blocked,
-			limited:    item.Limited,
-			lastRule:   item.LastRule,
+			requests: item.Requests,
+			blocked:  item.Blocked,
+			limited:  item.Limited,
+			lastRule: item.LastRule,
 		})
 	}
 }
 
 func (v *counter) merge(d *counter) {
 	v.requests += d.requests
-	v.preflights += d.preflights
 	v.blocked += d.blocked
 	v.limited += d.limited
 	if d.lastRule != "" && (v.lastRule == "" || d.ruleAt >= v.ruleAt) {
@@ -232,13 +226,12 @@ func (k *key) ip() string {
 
 func (k *key) item(v *counter) *Item {
 	return &Item{
-		Ip:         k.ip(),
-		Trusted:    k.trusted,
-		Requests:   v.requests,
-		Preflights: v.preflights,
-		Blocked:    v.blocked,
-		Limited:    v.limited,
-		LastRule:   v.lastRule,
+		Ip:       k.ip(),
+		Trusted:  k.trusted,
+		Requests: v.requests,
+		Blocked:  v.blocked,
+		Limited:  v.limited,
+		LastRule: v.lastRule,
 	}
 }
 

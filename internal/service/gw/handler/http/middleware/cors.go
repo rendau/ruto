@@ -7,7 +7,6 @@ import (
 	"github.com/samber/lo"
 
 	rootModel "github.com/rendau/ruto/internal/domain/root/model"
-	"github.com/rendau/ruto/internal/service/gw/service/clientstat"
 )
 
 func NewCors(conf rootModel.RootCors) Middleware {
@@ -39,8 +38,6 @@ func NewCors(conf rootModel.RootCors) Middleware {
 			}
 
 			if r.Method == http.MethodOptions {
-				clientstat.FromContext(r.Context()).Preflight()
-
 				if origin != "" && !originIsAllowed {
 					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 					return
